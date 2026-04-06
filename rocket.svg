@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M16 2 L21 9 L22 19 Q22 22 19 22 L13 22 Q10 22 10 19 L11 9 Z" fill="url(#grad)"/>
+  <circle cx="16" cy="13" r="3.5" fill="white" opacity="0.9"/>
+  <circle cx="16" cy="13" r="2" fill="#bde0ff" opacity="0.7"/>
+  <circle cx="17" cy="12" r="0.7" fill="white"/>
+  <path d="M10 18 L5 25 L11 21 Z" fill="#c94f28"/>
+  <path d="M22 18 L27 25 L21 21 Z" fill="#c94f28"/>
+  <path d="M12 22 Q14 30 16 27 Q18 30 20 22" fill="#ffb347" opacity="0.95"/>
+  <path d="M13.5 22 Q15 28 16 26 Q17 28 18.5 22" fill="#fff176" opacity="0.75"/>
+  <defs>
+    <linearGradient id="grad" x1="16" y1="2" x2="16" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ff9a6c"/>
+      <stop offset="100%" stop-color="#c94f28"/>
+    </linearGradient>
+  </defs>
+</svg>
