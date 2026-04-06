@@ -224,8 +224,8 @@ function LaunchOverlay({ app, gameArt, accent, onDone }) {
         {art ? (
           <img src={art} alt={app.name} style={{ width: 160, height: 240, borderRadius: 16, objectFit: "cover", boxShadow: `0 8px 40px ${accent.glow}0.5), 0 0 0 2px ${accent.glow}0.3)` }} />
         ) : app?.icon_base64 ? (
-          <div style={{ width: 120, height: 120, borderRadius: 24, background: `${accent.glow}0.15)`, border: `2px solid ${accent.glow}0.4)`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 40px ${accent.glow}0.4)` }}>
-            <img src={`data:image/png;base64,${app.icon_base64}`} width={72} height={72} style={{ borderRadius: 12, objectFit: "contain" }} alt={app.name} />
+          <div style={{ width: 120, height: 120, borderRadius: 24, background: `${accent.glow}0.15)`, border: `2px solid ${accent.glow}0.4)`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 40px ${accent.glow}0.4)`, overflow: "hidden" }}>
+            <img src={`data:image/png;base64,${app.icon_base64}`} alt={app.name} style={{ width: 72, height: 72, maxWidth: "100%", maxHeight: "100%", borderRadius: 12, objectFit: "contain", objectPosition: "center", display: "block" }} />
           </div>
         ) : (
           <div style={{ width: 120, height: 120, borderRadius: 24, background: `${accent.glow}0.2)`, border: `2px solid ${accent.glow}0.4)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 52, fontWeight: 700, color: accent.primary, boxShadow: `0 8px 40px ${accent.glow}0.4)` }}>
@@ -436,7 +436,9 @@ function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHideModal, toggle
                     {checked && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                   </div>
                   {item.icon_base64
-                    ? <img src={`data:image/png;base64,${item.icon_base64}`} width={28} height={28} style={{ borderRadius: 6, objectFit: "contain", flexShrink: 0 }} alt={item.name} />
+                    ? <div style={{ width: 28, height: 28, borderRadius: 6, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <img src={`data:image/png;base64,${item.icon_base64}`} alt={item.name} style={{ width: "100%", height: "100%", maxWidth: "100%", maxHeight: "100%", objectFit: "contain", objectPosition: "center", display: "block" }} />
+                      </div>
                     : <div style={{ width: 28, height: 28, borderRadius: 6, background: `${accent.glow}0.15)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: accent.primary, flexShrink: 0 }}>{(item.name || "?")[0]}</div>
                   }
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -1434,7 +1436,17 @@ export default function App() {
   const isFocused = (section, index) => focusSection === section && focusIndex === index;
 
   const AppIcon = ({ app, size = 36 }) => {
-    if (app.icon_base64) return <img src={`data:image/png;base64,${app.icon_base64}`} width={size} height={size} style={{ borderRadius: 8, objectFit: "contain" }} alt={app.name} />;
+    if (app.icon_base64) {
+      return (
+        <div style={{ width: size, height: size, borderRadius: 8, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <img
+            src={`data:image/png;base64,${app.icon_base64}`}
+            alt={app.name}
+            style={{ width: "100%", height: "100%", maxWidth: "100%", maxHeight: "100%", objectFit: "contain", objectPosition: "center", display: "block" }}
+          />
+        </div>
+      );
+    }
     return <div style={{ width: size, height: size, borderRadius: 10, background: `${accent.glow}0.25)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45, fontWeight: 700, color: accent.primary }}>{app.name.charAt(0).toUpperCase()}</div>;
   };
 

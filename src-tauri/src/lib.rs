@@ -4,10 +4,11 @@ use std::path::Path;
 use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use windows::{
-    Win32::UI::Shell::{SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON},
-    Win32::UI::WindowsAndMessaging::{DestroyIcon, GetIconInfo, GetForegroundWindow, ICONINFO},
+    Win32::UI::Shell::{SHGetFileInfoW, SHFILEINFOW, SHGFI_FLAGS, SHGFI_ICON, SHGFI_LARGEICON},
+    Win32::UI::WindowsAndMessaging::{DestroyIcon, DrawIconEx, GetForegroundWindow, DI_NORMAL},
     Win32::Graphics::Gdi::{
-        GetDIBits, CreateCompatibleDC, DeleteDC, DeleteObject,
+        GetDC, ReleaseDC, GetDIBits, CreateCompatibleDC, CreateCompatibleBitmap, SelectObject,
+        DeleteDC, DeleteObject, PatBlt, BLACKNESS,
         BITMAPINFOHEADER, BITMAPINFO, DIB_RGB_COLORS, RGBQUAD,
     },
     Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS},
@@ -21,6 +22,12 @@ use tauri::Manager;
 const SGDB_KEY: &str = "515a2318c7d29c0786c3e2058615e8dc";
 const RECENTS_MAX: usize = 10;
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+/// PNG size for embedded icons. UI tiles are ~48px; 128px gives headroom for high-DPI / focus scale
+/// without huge JSON payloads (256px would be sharper but much larger base64).
+const ICON_EXPORT_PX: i32 = 128;
+/// `SHGFI_JUMBOICON` — request up to 256×256 source icon when available (Vista+).
+const SHGFI_JUMBOICON: SHGFI_FLAGS = SHGFI_FLAGS(0x40000);
 
 static GAMEPAD_READY: AtomicBool = AtomicBool::new(false);
 static OUR_HWND: AtomicIsize = AtomicIsize::new(0);
@@ -241,30 +248,52 @@ fn fetch_game_art(game_name: String) -> Option<String> {
 fn extract_icon_base64(path: &str) -> Option<String> {
     unsafe {
         let wide: Vec<u16> = std::ffi::OsStr::new(path).encode_wide().chain(std::iter::once(0)).collect();
+        let cb = std::mem::size_of::<SHFILEINFOW>() as u32;
         let mut shfi = SHFILEINFOW::default();
-        let result = SHGetFileInfoW(windows::core::PCWSTR(wide.as_ptr()), Default::default(), Some(&mut shfi), std::mem::size_of::<SHFILEINFOW>() as u32, SHGFI_ICON | SHGFI_LARGEICON);
-        if result == 0 || shfi.hIcon.is_invalid() { return None; }
+        let mut result = SHGetFileInfoW(windows::core::PCWSTR(wide.as_ptr()), Default::default(), Some(&mut shfi), cb, SHGFI_ICON | SHGFI_JUMBOICON);
+        if result == 0 || shfi.hIcon.is_invalid() {
+            shfi = SHFILEINFOW::default();
+            result = SHGetFileInfoW(windows::core::PCWSTR(wide.as_ptr()), Default::default(), Some(&mut shfi), cb, SHGFI_ICON | SHGFI_LARGEICON);
+            if result == 0 || shfi.hIcon.is_invalid() { return None; }
+        }
         let hicon = shfi.hIcon;
-        let mut icon_info = ICONINFO::default();
-        if GetIconInfo(hicon, &mut icon_info).is_err() { let _ = DestroyIcon(hicon); return None; }
-        let hdc = CreateCompatibleDC(None);
+
+        // Rasterize with DrawIconEx at ICON_EXPORT_PX — avoids corrupt GetDIBits reads and keeps
+        // enough resolution for crisp downscaling in the WebView (32×32 looked soft at 48px+ tiles).
+        let px = ICON_EXPORT_PX;
+        let px_u = px as u32;
+        let px_us = px as usize;
+        let hdc_screen = GetDC(None);
+        if hdc_screen.is_invalid() { let _ = DestroyIcon(hicon); return None; }
+        let hdc_mem = CreateCompatibleDC(hdc_screen);
+        if hdc_mem.is_invalid() { let _ = ReleaseDC(None, hdc_screen); let _ = DestroyIcon(hicon); return None; }
+        let hbm = CreateCompatibleBitmap(hdc_screen, px, px);
+        if hbm.is_invalid() { let _ = DeleteDC(hdc_mem); let _ = ReleaseDC(None, hdc_screen); let _ = DestroyIcon(hicon); return None; }
+
+        let old = SelectObject(hdc_mem, hbm);
+        let _ = PatBlt(hdc_mem, 0, 0, px, px, BLACKNESS);
+        let drawn = DrawIconEx(hdc_mem, 0, 0, hicon, px, px, 0, None, DI_NORMAL);
+        let _ = SelectObject(hdc_mem, old);
+
         let mut bmi = BITMAPINFO {
             bmiHeader: BITMAPINFOHEADER {
                 biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
-                biWidth: 32, biHeight: -32, biPlanes: 1, biBitCount: 32, biCompression: 0,
+                biWidth: px, biHeight: -px, biPlanes: 1, biBitCount: 32, biCompression: 0,
                 biSizeImage: 0, biXPelsPerMeter: 0, biYPelsPerMeter: 0, biClrUsed: 0, biClrImportant: 0,
             },
             bmiColors: [RGBQUAD::default()],
         };
-        let mut pixels: Vec<u8> = vec![0u8; 32 * 32 * 4];
-        let lines = GetDIBits(hdc, icon_info.hbmColor, 0, 32, Some(pixels.as_mut_ptr() as *mut _), &mut bmi, DIB_RGB_COLORS);
-        DeleteDC(hdc);
-        if !icon_info.hbmColor.is_invalid() { let _ = DeleteObject(icon_info.hbmColor); }
-        if !icon_info.hbmMask.is_invalid() { let _ = DeleteObject(icon_info.hbmMask); }
+        let mut pixels: Vec<u8> = vec![0u8; px_us * px_us * 4];
+        let lines = GetDIBits(hdc_mem, hbm, 0, px_u, Some(pixels.as_mut_ptr() as *mut _), &mut bmi, DIB_RGB_COLORS);
+
+        let _ = DeleteObject(hbm);
+        let _ = DeleteDC(hdc_mem);
+        let _ = ReleaseDC(None, hdc_screen);
         let _ = DestroyIcon(hicon);
-        if lines == 0 { return None; }
+
+        if drawn.is_err() || lines == 0 { return None; }
         for chunk in pixels.chunks_mut(4) { chunk.swap(0, 2); }
-        match lodepng::encode32(&pixels, 32, 32) { Ok(png_bytes) => Some(general_purpose::STANDARD.encode(&png_bytes)), Err(_) => None }
+        match lodepng::encode32(&pixels, px_us, px_us) { Ok(png_bytes) => Some(general_purpose::STANDARD.encode(&png_bytes)), Err(_) => None }
     }
 }
 
@@ -304,12 +333,14 @@ fn extract_uwp_icon_base64(install_location: &str, logo_hint: &str) -> Option<St
                 })
                 .collect();
 
+            // Prefer larger scale variants so downscaled icons stay sharp (object-fit handles size in UI).
             candidates.sort_by_key(|p| {
                 let s = p.to_string_lossy().to_lowercase();
                 if s.contains("scale-200") { 0 }
                 else if s.contains("scale-150") { 1 }
-                else if s.contains("scale-100") { 2 }
-                else { 3 }
+                else if s.contains("scale-125") { 2 }
+                else if s.contains("scale-100") { 3 }
+                else { 4 }
             });
 
             for candidate in &candidates {
