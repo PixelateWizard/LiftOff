@@ -52,7 +52,13 @@
 - `scan_folder()` excludes paths containing `target\release` or `target/release` to hide dev build
 - `get_apps()` respects all `scan_*` settings toggles and filters hidden IDs before returning
 
-**SGDB API key** is currently hardcoded in `lib.rs` as `SGDB_KEY`. This needs to be moved to a build-time environment variable (see remaining tasks below).
+**Icon extraction (`extract_icon_base64`):**
+- Icons are **not** read with `GetDIBits` directly from `ICONINFO.hbmColor` at a fixed size — `SHGFI_LARGEICON` / jumbo sources can use bitmaps larger than the assumed size, which previously produced **corrupt PNGs** (huge / clipped / top-left-only in the UI).
+- **Approach:** `SHGetFileInfoW` → `HICON` (try **`SHGFI_JUMBOICON`** first, then fall back to **`SHGFI_LARGEICON`**), then **`DrawIconEx`** onto a square DIB, then **`GetDIBits`** from that bitmap, BGRA→RGBA swap, **`lodepng::encode32`**.
+- **Export size:** `ICON_EXPORT_PX` (currently **128**) — high enough to stay sharp when the WebView displays icons at ~48px+ and scales; tunable in `lib.rs`.
+- **UWP:** `extract_uwp_icon_base64` prefers **larger** `scale-*` variants (200 → 150 → 125 → 100) when multiple PNGs match, so downscaling stays sharp; `object-fit: contain` in the UI handles layout.
+
+**SGDB API key** is read at compile time via `env!("SGDB_API_KEY")` in `lib.rs`. The key lives in `src-tauri/.env` (gitignored). `build.rs` reads `.env` and passes each key as `cargo:rustc-env=`. For CI/CD, set `SGDB_API_KEY` as an environment variable instead.
 
 ---
 
@@ -117,34 +123,24 @@ Two parallel input paths:
 ### Settings Items
 Defined as `SETTINGS_ITEMS` array with types: `accent`, `cycle`, `toggle`, `divider`, `action`, `link`, `info`
 
+### App icons (UI)
+- **`AppIcon`** wraps `data:image/png;base64` icons in a fixed-size box with **`overflow: hidden`**, **`objectFit: "contain"`**, **`objectPosition: "center"`** — belts-and-suspenders with correct backend pixels.
+- **Manage modal** list rows and **launch overlay** fallback icon use the same containment pattern.
+
+### Splash screen (`SplashScreen`)
+- Splash CSS is injected in a `useEffect`, so the first paint can occur **before** `.splash-rocket { opacity: 0 }` exists. The rocket wrapper uses **inline `style={{ opacity: 0 }}`** so the logo does not flash before `splashRocket` runs.
+
+---
+
+## Completed in a recent session
+
+- **Splash:** Inline initial opacity on the rocket container (above); removes pre-CSS flash.
+- **Icons wrong size / clipped:** Fixed in **`extract_icon_base64`** via `DrawIconEx` + fixed output size (see backend notes). Frontend wrappers were added for safety; root cause was backend pixel corruption.
+- **Icons blurry:** Raised rasterized export to **128×128**, **`SHGFI_JUMBOICON`** when available, and UWP **scale** preference for sharper source PNGs.
+
 ---
 
 ## Remaining Tasks Before v1
-
-### 1. Attributions in Settings
-Add a static credits section at the bottom of the Settings menu for sound effect attributions. Add new item type (e.g. `"attribution"`) or just `"info"` rows under a new `"CREDITS"` divider in `SETTINGS_ITEMS`.
-
-### 2. Splash Screen Logo Flash
-The rocket SVG logo flashes briefly mid-animation before the opening animation starts. Likely the SVG rendering before the CSS animation kicks in. Fix: set `opacity: 0` as the initial inline style on the logo element, then let the animation take over. Check the `splashRocket` keyframe — it starts at `opacity: 0` at 0% so the initial style should match.
-
-### 3. Windows Code Signing
-For SmartScreen not to flag the installer:
-- Need an EV or OV code signing certificate (DigiCert, Sectigo, etc.)
-- In `tauri.conf.json` under `bundle.windows`, add `"certificateThumbprint"` or `"signingIdentity"` 
-- Tauri 2 docs: https://tauri.app/distribute/sign/windows/
-- Without a cert, can at minimum self-sign for testing but users will see SmartScreen warning
-
-### 4. Hide SGDB API Key
-Currently hardcoded in `lib.rs` as:
-```rust
-const SGDB_KEY: &str = "515a2318c7d29c0786c3e2058615e8dc";
-```
-Move to build-time env var:
-- In `lib.rs`: `const SGDB_KEY: &str = env!("SGDB_API_KEY");`
-- Set `SGDB_API_KEY` in environment before building
-- Add to `.gitignore` any `.env` files
-- For CI/CD: set as a secret environment variable
-- Optionally use a `build.rs` to read from `.env` file
 
 ---
 
@@ -152,7 +148,7 @@ Move to build-time env var:
 
 All of the following are working as of this handoff:
 - App scanning: Steam, Xbox/Game Pass, UWP Store apps, Desktop shortcuts
-- UWP icon extraction from disk PNG assets
+- UWP icon extraction from disk PNG assets; desktop/Steam shortcut icons rasterized via `DrawIconEx` at `ICON_EXPORT_PX` with jumbo/large fallback; list UI shows icons at correct size, not clipped; sharp enough for typical tile sizes
 - No console window flash on launch (CREATE_NO_WINDOW everywhere)
 - LiftOff's own dev build excluded from scan results
 - Game art fetching from SteamGridDB with local cache
@@ -164,7 +160,7 @@ All of the following are working as of this handoff:
 - Settings: accent colors, theme, scan toggles, startup, repeat speed
 - Search overlay with virtual keyboard
 - Battery, clock display
-- Splash screen with exit animation
+- Splash screen with exit animation; no rocket flash before CSS loads (inline opacity on rocket wrapper)
 - Pins, recents, hidden state all persisted to disk
 - NSIS installer builds correctly
 

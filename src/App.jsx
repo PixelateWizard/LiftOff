@@ -10,6 +10,8 @@ import appLoadedSound from "./assets/appLoadedSound.wav";
 const COLS = 6;
 const GAME_COLS = 5;
 const TABS = ["Home", "Games", "Apps", "Settings"];
+const APP_VERSION = "1.0.0";
+const GITHUB_REPO = "taylo/liftoff"; // owner/repo — update before release
 
 const ACCENTS = {
   ember:    { primary: "#e8714a", light: "#ff9a6c", dark: "#c94f28", glow: "rgba(232,113,74,", lightBg: "#f5e8e0" },
@@ -171,8 +173,8 @@ function SplashScreen({ exiting }) {
             <div className="splash-trail3" style={ss.tl3} />
           </div>
         </div>
-        <div className="splash-word" style={ss.wordmark}>LiftOff</div>
-        <div className="splash-dots">
+        <div className="splash-word" style={{ ...ss.wordmark, opacity: 0 }}>LiftOff</div>
+        <div className="splash-dots" style={{ opacity: 0 }}>
           <div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" />
         </div>
       </div>
@@ -512,6 +514,8 @@ export default function App() {
   });
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
   const [heroIndex, setHeroIndex]                   = useState(0);
+  const [updateStatus, setUpdateStatus]             = useState(null); // null | "checking" | "up_to_date" | "available" | "error"
+  const [updateInfo, setUpdateInfo]                 = useState(null);
 
   // ── Search state ──────────────────────────────────────────────
   const [searchOpen, setSearchOpen]               = useState(false);
@@ -567,8 +571,8 @@ export default function App() {
   const isDark = resolvedTheme === "dark";
   const appBg  = isDark ? "#100a06" : accent.lightBg;
 
-  const bgGlow1 = `${accent.glow}${isDark ? "0.18)" : "0.08)"}`;
-  const bgGlow2 = `${accent.glow}${isDark ? "0.14)" : "0.06)"}`;
+  const bgGlow1 = `${accent.glow}${isDark ? "0.07)" : "0.08)"}`;
+  const bgGlow2 = `${accent.glow}${isDark ? "0.05)" : "0.06)"}`;
 
   const glass = {
     background:           isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.75)",
@@ -940,6 +944,23 @@ export default function App() {
     });
   };
 
+  const checkForUpdates = () => {
+    setUpdateStatus("checking");
+    fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`)
+      .then(r => r.json())
+      .then(data => {
+        const latest = data.tag_name?.replace(/^v/, "");
+        if (!latest) { setUpdateStatus("error"); return; }
+        if (latest === APP_VERSION) {
+          setUpdateStatus("up_to_date");
+        } else {
+          setUpdateStatus("available");
+          setUpdateInfo(latest);
+        }
+      })
+      .catch(() => setUpdateStatus("error"));
+  };
+
   const filteredApps = apps.filter((a) => {
     if (tab === "Games") {
       if (a.app_type !== "game") return false;
@@ -1030,7 +1051,8 @@ export default function App() {
     { key: "clear_recents",     label: "Clear Recently Played",  type: "action" },
     { key: "clear_cache",       label: "Clear Art Cache",        type: "action" },
     { key: "divider4",          label: "ABOUT",                  type: "divider" },
-    { key: "version",           label: "LiftOff v0.1.0",         type: "info" },
+    { key: "version",           label: `LiftOff v${APP_VERSION}`, type: "info" },
+    { key: "check_updates",     label: "Check for Updates",       type: "update" },
     { key: "coffee",            label: "☕ Buy Me a Coffee",      type: "link" },
     { key: "github",            label: "⭐ GitHub",               type: "link" },
     { key: "divider5",  label: "CREDITS",                         type: "divider" },
@@ -1190,6 +1212,10 @@ export default function App() {
           if (item.key === "clear_recents") invoke("clear_recents").then(() => { setRecent([]); recentRef.current = []; });
           if (item.key === "clear_cache")   invoke("clear_art_cache").then(() => setGameArt({}));
         }
+        else if (item.type === "update") {
+          if (updateStatus === "available") invoke("launch_app", { path: `https://github.com/${GITHUB_REPO}/releases/latest`, id: "releases", name: "LiftOff Releases", appType: "app" }).catch(() => {});
+          else checkForUpdates();
+        }
         else if (item.type === "link") {
           if (item.key === "coffee") invoke("launch_app", { path: "https://buymeacoffee.com", id: "coffee", name: "Buy Me a Coffee", appType: "app" }).catch(() => {});
           if (item.key === "github") invoke("launch_app", { path: "https://github.com", id: "github", name: "GitHub", appType: "app" }).catch(() => {});
@@ -1248,6 +1274,7 @@ export default function App() {
         const cur = SOURCES.indexOf(gameSourceTabRef.current);
         const next = SOURCES[(cur - 1 + SOURCES.length) % SOURCES.length];
         setGameSourceTab(next); gameSourceTabRef.current = next;
+        setFocusSection("grid"); focusSectionRef.current = "grid";
         setFocusIndex(0); focusIndexRef.current = 0;
         playSound(); return;
       }
@@ -1255,6 +1282,7 @@ export default function App() {
         const cur = SOURCES.indexOf(gameSourceTabRef.current);
         const next = SOURCES[(cur + 1) % SOURCES.length];
         setGameSourceTab(next); gameSourceTabRef.current = next;
+        setFocusSection("grid"); focusSectionRef.current = "grid";
         setFocusIndex(0); focusIndexRef.current = 0;
         playSound(); return;
       }
@@ -1634,6 +1662,26 @@ export default function App() {
             <span style={{ fontSize: 12, color: theme.textDim }}>↵ Confirm</span>
           </div>
         );
+        if (item.type === "update") {
+          const statusText = updateStatus === "checking"   ? "Checking..."
+                           : updateStatus === "up_to_date" ? "✓ Up to date"
+                           : updateStatus === "available"  ? `↓ v${updateInfo} available`
+                           : updateStatus === "error"      ? "⚠ Check failed"
+                           : "↵ Check";
+          const statusColor = updateStatus === "up_to_date" ? "#4ae88a"
+                            : updateStatus === "available"  ? accent.primary
+                            : updateStatus === "error"      ? "#e84a4a"
+                            : theme.textDim;
+          return (
+            <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => {
+              if (updateStatus === "available") invoke("launch_app", { path: `https://github.com/${GITHUB_REPO}/releases/latest`, id: "releases", name: "LiftOff Releases", appType: "app" }).catch(() => {});
+              else checkForUpdates();
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
+              <span style={{ fontSize: 12, color: statusColor, fontWeight: updateStatus === "available" ? 600 : 400 }}>{statusText}</span>
+            </div>
+          );
+        }
         if (item.type === "link") return (
           <div key={item.key} ref={rowRef} style={rowStyle}>
             <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
@@ -1987,6 +2035,7 @@ export default function App() {
                     const focused = focusSection === "recent" && focusIndex === i;
                     const isPinned = pins.includes(app.id);
                     const art = app.app_type === "game" ? gameArt[app.id] : null;
+                    const fullApp = allAppsRef.current.find(a => a.id === app.id) || app;
                     const CARD_W = "clamp(76px, 10vw, 110px)";
                     const CARD_H = "clamp(114px, 15vw, 165px)";
                     if (app.app_type === "game") {
@@ -2000,7 +2049,7 @@ export default function App() {
                             transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" }}>
                           {art
                             ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                            : <div style={{ width: "100%", height: "100%", background: `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={app} size={36} /></div>
+                            : <div style={{ width: "100%", height: "100%", background: `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
                           }
                           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
                             <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
@@ -2017,7 +2066,7 @@ export default function App() {
                         style={{ ...glass, border: focused ? `1px solid ${accent.glow}0.6)` : "1px solid rgba(255,255,255,0.06)", flexShrink: 0, borderRadius: 12, cursor: "pointer", transition: "all 0.15s ease",
                           width: CARD_W, height: CARD_H, boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px", position: "relative",
                           ...(focused ? { background: isDark ? `${accent.glow}0.1)` : `${accent.glow}0.07)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, transform: "scale(1.05) translateY(-3px)" } : {}) }}>
-                        <AppIcon app={app} size={32} />
+                        <AppIcon app={fullApp} size={32} />
                         <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
                         <PinBadge isPinned={isPinned} small />
                       </div>

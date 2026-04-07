@@ -19,7 +19,7 @@ use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_autostart::ManagerExt;
 use tauri::Manager;
 
-const SGDB_KEY: &str = "515a2318c7d29c0786c3e2058615e8dc";
+const SGDB_KEY: &str = env!("SGDB_API_KEY");
 const RECENTS_MAX: usize = 10;
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 

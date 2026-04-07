@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    ally_launcher_lib::run()
+    liftoff_lib::run()
 }

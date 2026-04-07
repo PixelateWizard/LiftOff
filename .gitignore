@@ -1,3 +1,6 @@
+# Secrets
+src-tauri/.env
+
 # Logs
 logs
 *.log

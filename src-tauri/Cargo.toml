@@ -1,12 +1,12 @@
 [package]
-name = "ally-launcher"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+name = "liftoff"
+version = "1.0.0"
+description = "LiftOff — gamepad-first game launcher"
+authors = ["taylo"]
 edition = "2021"
 
 [lib]
-name = "ally_launcher_lib"
+name = "liftoff_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
