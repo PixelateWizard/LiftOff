@@ -418,13 +418,14 @@ fn open_osk() {
 
 fn scan_uwp_apps() -> Vec<AppEntry> {
     let mut apps = Vec::new();
-    let output = std::process::Command::new("powershell").args(["-NoProfile", "-NonInteractive", "-Command", r##"
+    let output = std::process::Command::new("powershell").args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", r##"
         Get-AppxPackage | ForEach-Object {
             $pkg = $_
             try {
                 $manifest = Get-AppxPackageManifest $pkg.PackageFullName
                 $appNodes = $manifest.Package.Applications.Application
-                foreach ($app in $appNodes) {
+                $app = if ($appNodes -is [array]) { $appNodes[0] } else { $appNodes }
+                if ($app -and $app.Id) {
                     $appId = $app.Id
                     $name = $null
                     try { $name = $manifest.Package.Properties.DisplayName } catch {}
@@ -482,23 +483,65 @@ fn scan_uwp_apps() -> Vec<AppEntry> {
     apps
 }
 
+fn get_steam_install_path() -> Option<String> {
+    unsafe {
+        use windows::Win32::System::Registry::{
+            RegCloseKey, RegOpenKeyExW, RegQueryValueExW, HKEY, HKEY_LOCAL_MACHINE, KEY_READ,
+        };
+        use windows::core::PCWSTR;
+        let subkeys = ["SOFTWARE\\WOW6432Node\\Valve\\Steam", "SOFTWARE\\Valve\\Steam"];
+        let value_name: Vec<u16> = std::ffi::OsStr::new("InstallPath")
+            .encode_wide().chain(std::iter::once(0)).collect();
+        for subkey in &subkeys {
+            let wide_key: Vec<u16> = std::ffi::OsStr::new(subkey)
+                .encode_wide().chain(std::iter::once(0)).collect();
+            let mut hkey = HKEY::default();
+            if RegOpenKeyExW(HKEY_LOCAL_MACHINE, PCWSTR(wide_key.as_ptr()), 0, KEY_READ, &mut hkey).is_ok() {
+                let mut buf = vec![0u8; 1024];
+                let mut buf_len = buf.len() as u32;
+                let ok = RegQueryValueExW(
+                    hkey, PCWSTR(value_name.as_ptr()), None, None,
+                    Some(buf.as_mut_ptr()), Some(&mut buf_len),
+                ).is_ok();
+                let _ = RegCloseKey(hkey);
+                if ok && buf_len >= 2 {
+                    let wchars: Vec<u16> = buf[..buf_len as usize]
+                        .chunks_exact(2)
+                        .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                        .collect();
+                    let path = String::from_utf16_lossy(&wchars).trim_end_matches('\0').to_string();
+                    if !path.is_empty() { return Some(path); }
+                }
+            }
+        }
+        None
+    }
+}
+
 fn scan_steam_games() -> Vec<AppEntry> {
     let mut games = Vec::new();
-    let mut library_paths: Vec<String> = vec![
-        "C:\\Program Files (x86)\\Steam\\steamapps".to_string(),
-        "C:\\Program Files\\Steam\\steamapps".to_string(),
-    ];
-    for config_path in &[
-        "C:\\Program Files (x86)\\Steam\\steamapps\\libraryfolders.vdf",
-        "C:\\Program Files\\Steam\\steamapps\\libraryfolders.vdf",
-    ] {
-        if let Ok(content) = std::fs::read_to_string(config_path) {
+
+    // Build candidate steamapps dirs: registry-derived path first, then fallbacks
+    let mut candidate_steamapps: Vec<String> = Vec::new();
+    if let Some(steam_root) = get_steam_install_path() {
+        candidate_steamapps.push(format!("{}\\steamapps", steam_root));
+    }
+    candidate_steamapps.push("C:\\Program Files (x86)\\Steam\\steamapps".to_string());
+    candidate_steamapps.push("C:\\Program Files\\Steam\\steamapps".to_string());
+    candidate_steamapps.dedup();
+
+    // Extend library_paths with any additional folders listed in libraryfolders.vdf
+    let mut library_paths: Vec<String> = candidate_steamapps.clone();
+    for steamapps in &candidate_steamapps {
+        let vdf_path = format!("{}\\libraryfolders.vdf", steamapps);
+        if let Ok(content) = std::fs::read_to_string(&vdf_path) {
             for line in content.lines() {
                 if line.trim().contains("\"path\"") {
                     if let Some(start) = line.rfind('"') {
                         let rest = &line[..start];
                         if let Some(start2) = rest.rfind('"') {
-                            library_paths.push(format!("{}\\steamapps", &rest[start2 + 1..].replace("\\\\", "\\")));
+                            let extra = format!("{}\\steamapps", &rest[start2 + 1..].replace("\\\\", "\\"));
+                            if !library_paths.contains(&extra) { library_paths.push(extra); }
                         }
                     }
                 }
@@ -575,22 +618,24 @@ fn get_apps() -> Vec<AppEntry> {
         }
     }
 
-    // --- NEW: MANUAL STEAM APP CHECK ---
-    let steam_path = "C:\\Program Files (x86)\\Steam\\Steam.exe";
-    if std::path::Path::new(steam_path).exists() {
-        // Only add if it's not already in the list from the folder scan
+    // Steam launcher app entry — try registry path first, then fallbacks
+    let steam_exe = get_steam_install_path()
+        .map(|p| format!("{}\\Steam.exe", p))
+        .and_then(|p| if std::path::Path::new(&p).exists() { Some(p) } else { None })
+        .or_else(|| ["C:\\Program Files (x86)\\Steam\\Steam.exe", "C:\\Program Files\\Steam\\Steam.exe"]
+            .iter().find(|&&p| std::path::Path::new(p).exists()).map(|p| p.to_string()));
+    if let Some(steam_path) = steam_exe {
         if !apps.iter().any(|a| a.name.to_lowercase() == "steam") {
             apps.push(AppEntry {
                 id: "steam_launcher".to_string(),
                 name: "Steam".to_string(),
-                icon_base64: extract_icon_base64(steam_path),
-                launch_path: steam_path.to_string(),
+                icon_base64: extract_icon_base64(&steam_path),
+                launch_path: steam_path,
                 app_type: "app".to_string(),
                 source: "desktop".to_string(),
             });
         }
     }
-    // ------------------------------------
 
     // 2. UWP and Xbox scan
     if settings.scan_uwp || settings.scan_xbox {
@@ -629,14 +674,18 @@ fn get_all_apps() -> Vec<AppEntry> {
         }
     }
 
-    let steam_path = "C:\\Program Files (x86)\\Steam\\Steam.exe";
-    if std::path::Path::new(steam_path).exists() {
+    let steam_exe = get_steam_install_path()
+        .map(|p| format!("{}\\Steam.exe", p))
+        .and_then(|p| if std::path::Path::new(&p).exists() { Some(p) } else { None })
+        .or_else(|| ["C:\\Program Files (x86)\\Steam\\Steam.exe", "C:\\Program Files\\Steam\\Steam.exe"]
+            .iter().find(|&&p| std::path::Path::new(p).exists()).map(|p| p.to_string()));
+    if let Some(steam_path) = steam_exe {
         if !apps.iter().any(|a| a.name.to_lowercase() == "steam") {
             apps.push(AppEntry {
                 id: "steam_launcher".to_string(),
                 name: "Steam".to_string(),
-                icon_base64: extract_icon_base64(steam_path),
-                launch_path: steam_path.to_string(),
+                icon_base64: extract_icon_base64(&steam_path),
+                launch_path: steam_path,
                 app_type: "app".to_string(),
                 source: "desktop".to_string(),
             });
