@@ -208,16 +208,22 @@ fn save_settings(settings: Settings, app_handle: tauri::AppHandle) -> Result<(),
     Ok(())
 }
 
+#[derive(Serialize)]
+struct BatteryInfo { percent: u32, charging: bool }
+
 #[tauri::command]
-fn get_battery() -> u32 {
+fn get_battery() -> BatteryInfo {
     unsafe {
         let mut status = SYSTEM_POWER_STATUS::default();
         if GetSystemPowerStatus(&mut status).is_ok() {
+            let charging = status.ACLineStatus == 1;
             let pct = status.BatteryLifePercent;
-            if pct <= 100 { return pct as u32; }
+            // 255 = Windows "unknown" — reported when fully charged on some devices
+            let percent = if pct <= 100 { pct as u32 } else { if charging { 100 } else { 0 } };
+            return BatteryInfo { percent, charging };
         }
     }
-    0
+    BatteryInfo { percent: 0, charging: false }
 }
 
 #[tauri::command]

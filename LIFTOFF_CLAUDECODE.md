@@ -6,7 +6,7 @@
 
 - **Stack:** Tauri 2, Rust (`src-tauri/src/lib.rs`), React (`src/App.jsx`)
 - **Identifier:** `com.taylo.liftoff`
-- **Version:** `0.1.0`
+- **Version:** `1.0.0`
 - **Installer:** NSIS bundle at `src-tauri/target/release/bundle/nsis/`
 - **Dev command:** `npm run dev` (frontend) + `cargo tauri dev`
 - **Build:** `cargo tauri build` → use NSIS installer for testing, not raw `.exe`
@@ -21,24 +21,24 @@
 - `AppEntry` — `{ id, name, icon_base64, launch_path, app_type, source }`
   - `app_type`: `"game"` | `"app"`
   - `source`: `"steam"` | `"xbox"` | `"uwp"` | `"desktop"`
-- `RecentEntry` — `{ id, name, launch_path, app_type, launched_at }`
+- `RecentEntry` — `{ id, name, launch_path, app_type, launched_at }` (no icon — look up via `allAppsRef` in frontend)
 - `Settings` — accent, theme, stars_enabled, default_tab, scan_steam, scan_xbox, scan_uwp, scan_desktop, repeat_speed, launch_at_startup
 
 **Persistent storage** (all in `%LOCALAPPDATA%/LiftOff/`):
 - `pins.json` — Vec<String> of pinned app IDs
-- `hidden.json` — Vec<String> of hidden app IDs (filtered from `get_apps` return)
+- `hidden.json` — Vec<String> of hidden app IDs
 - `recents.json` — Vec<RecentEntry>
 - `art_cache.json` — HashMap<String, String> (game name → SGDB image URL)
 - `settings.json` — Settings struct
 
 **Tauri commands:**
-- `get_apps` — scans all sources, filters hidden, returns Vec<AppEntry>
-- `get_all_apps` — same scan as `get_apps` but returns ALL apps including hidden ones (used to populate `allAppsRef` on startup so the Manage modal can show proper names/icons for hidden apps)
+- `get_all_apps` — scans all sources, returns ALL apps including hidden ones. **This is the only scan called on startup** — hidden filtering is done client-side in JS using the `get_hidden` result.
+- `get_apps` — same scan but filters hidden IDs before returning. Still registered but no longer called on startup; kept for potential future use.
 - `launch_app(path, id, name, app_type)` — launches via `cmd /C start`, updates recents
 - `get_recents` / `clear_recents`
 - `get_pins` / `toggle_pin(app_id)`
 - `get_hidden` / `toggle_hidden(app_id)`
-- `fetch_game_art(game_name)` — SteamGridDB lookup, cached
+- `fetch_game_art(game_name)` — SteamGridDB lookup, cached in `art_cache.json`
 - `get_settings` / `save_settings(settings)`
 - `clear_art_cache`
 - `get_battery` — Win32 power status
@@ -64,9 +64,13 @@
 
 ## Frontend (`src/App.jsx`)
 
+### Constants (top of file)
+- `APP_VERSION = "1.0.0"` — compared against GitHub Releases API for update checks
+- `GITHUB_REPO = "taylo/liftoff"` — **update this to your actual GitHub owner/repo before release**
+
 ### State
 - `tab` — "Home" | "Games" | "Apps" | "Settings"
-- `apps` — Vec<AppEntry> from backend
+- `apps` — visible AppEntry list (all apps minus hidden, filtered client-side from `allAppsRef`)
 - `recent` — recently launched apps
 - `pins` — pinned app IDs
 - `hidden` — hidden app IDs
@@ -76,6 +80,17 @@
 - `gameArt` — { [appId]: imageUrl } from SGDB
 - `focusSection` — "hero" | "pinned" | "recent" | "grid" | "subtabs"
 - `focusIndex` — current position within section
+- `updateStatus` — null | "checking" | "up_to_date" | "available" | "error"
+- `updateInfo` — latest version string when an update is available
+
+### Startup sequence
+On mount, `Promise.all([invoke("get_all_apps"), invoke("get_hidden")])` fires alongside parallel calls for `get_settings`, `get_recents`, `get_pins`. When the Promise.all resolves:
+1. `allAppsRef.current` is populated with all apps (including hidden)
+2. Hidden IDs are stored; visible apps = `all.filter(a => !hidden.includes(a.id))`
+3. `fetchGameArt` fires for all visible games in **parallel** (one invoke per game, no await)
+4. Splash exits after 800ms
+
+This replaced the previous two-call approach (`get_apps` + `get_all_apps` in parallel) which caused resource contention (double PowerShell UWP scan, double icon extraction).
 
 ### Gamepad Input System
 Two parallel input paths:
@@ -95,15 +110,17 @@ Two parallel input paths:
 
 ### Navigation Sections (Games/Apps tab)
 `subtabs` → `pinned` → `grid`
+- Switching main tabs (LB/RB) lands on **first pinned item** if any pins exist, otherwise **first grid item**
+- LT/RT source switches on Games tab: "All" subtab lands on first pinned or first grid; Steam/Xbox/Other always land on first grid item
 - Navigating up from `pinned` or first row of `grid` goes to `subtabs`
-- `subtabs` row: source pills (Games only) + single "Manage" button (no separate Restore button)
+- `subtabs` row: source pills (Games only) + single "Manage" button
 - Source pills auto-switch on focus (no Enter needed)
 - LT/RT cycles source from anywhere on the Games tab
 
 ### Modal System (`HideModal`)
 - **Unified "Manage" modal** — shows all apps (visible + hidden) in one list. Checked = visible, unchecked = hidden. Uncheck to hide, check to restore. "Save N changes" button.
 - `HideModal` is defined **outside** the `App` function to keep a stable component type across re-renders (clock ticker was causing unmount/remount every 10s, resetting state)
-- `allAppsRef` — ref populated on startup via `get_all_apps()` (includes hidden apps); used by modal to look up full name/icon/source for hidden entries
+- `allAppsRef` — ref populated on startup via `get_all_apps()`; used by modal to look up full name/icon/source for hidden entries
 - Controlled by `showHideModal` boolean + `showHideModalRef` (ref kept in sync)
 - `openHideModal()` — blurs DOM focus, sets ref true
 - `closeHideModal()` — snapshots held buttons into `suppressUntilRelease`, sets ref false
@@ -119,28 +136,27 @@ Two parallel input paths:
 - `toggleHidden(appId)` — calls backend, removes/restores from apps state reactively (uses `allAppsRef` to restore full object immediately)
 - `openHideModal` / `closeHideModal` — modal lifecycle with all guards
 - `updateSetting(key, value)` — updates state + saves to backend
+- `checkForUpdates()` — fetches `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, compares tag to `APP_VERSION`, updates `updateStatus`/`updateInfo`
 
 ### Settings Items
-Defined as `SETTINGS_ITEMS` array with types: `accent`, `cycle`, `toggle`, `divider`, `action`, `link`, `info`
+Defined as `SETTINGS_ITEMS` array with types: `accent`, `cycle`, `toggle`, `divider`, `action`, `link`, `info`, `update`, `attribution`
+
+The `update` type renders the "Check for Updates" row in the ABOUT section. When status is `"available"`, pressing A opens the GitHub releases page in browser.
 
 ### App icons (UI)
-- **`AppIcon`** wraps `data:image/png;base64` icons in a fixed-size box with **`overflow: hidden`**, **`objectFit: "contain"`**, **`objectPosition: "center"`** — belts-and-suspenders with correct backend pixels.
-- **Manage modal** list rows and **launch overlay** fallback icon use the same containment pattern.
+- **`AppIcon`** wraps `data:image/png;base64` icons in a fixed-size box with **`overflow: hidden`**, **`objectFit: "contain"`**, **`objectPosition: "center"`**
+- **Recent cards** on Home tab look up the full `AppEntry` from `allAppsRef` to get `icon_base64` (since `RecentEntry` doesn't store icons)
+- **Manage modal** list rows and **launch overlay** fallback icon use the same containment pattern
 
 ### Splash screen (`SplashScreen`)
-- Splash CSS is injected in a `useEffect`, so the first paint can occur **before** `.splash-rocket { opacity: 0 }` exists. The rocket wrapper uses **inline `style={{ opacity: 0 }}`** so the logo does not flash before `splashRocket` runs.
-
----
-
-## Completed in a recent session
-
-- **Splash:** Inline initial opacity on the rocket container (above); removes pre-CSS flash.
-- **Icons wrong size / clipped:** Fixed in **`extract_icon_base64`** via `DrawIconEx` + fixed output size (see backend notes). Frontend wrappers were added for safety; root cause was backend pixel corruption.
-- **Icons blurry:** Raised rasterized export to **128×128**, **`SHGFI_JUMBOICON`** when available, and UWP **scale** preference for sharper source PNGs.
+- Splash CSS is injected in a `useEffect`, so the first paint can occur before the styles exist
+- The rocket wrapper, `splash-word` div, and `splash-dots` div all use **inline `style={{ opacity: 0 }}`** so nothing flashes before the CSS animations kick in
 
 ---
 
 ## Remaining Tasks Before v1
+
+*(none)*
 
 ---
 
@@ -148,21 +164,26 @@ Defined as `SETTINGS_ITEMS` array with types: `accent`, `cycle`, `toggle`, `divi
 
 All of the following are working as of this handoff:
 - App scanning: Steam, Xbox/Game Pass, UWP Store apps, Desktop shortcuts
-- UWP icon extraction from disk PNG assets; desktop/Steam shortcut icons rasterized via `DrawIconEx` at `ICON_EXPORT_PX` with jumbo/large fallback; list UI shows icons at correct size, not clipped; sharp enough for typical tile sizes
+- UWP icon extraction from disk PNG assets; desktop/Steam shortcut icons rasterized via `DrawIconEx` at `ICON_EXPORT_PX` with jumbo/large fallback
 - No console window flash on launch (CREATE_NO_WINDOW everywhere)
 - LiftOff's own dev build excluded from scan results
-- Game art fetching from SteamGridDB with local cache
+- Game art fetching from SteamGridDB with local cache; fetches fire in parallel on startup
+- Single library scan on startup (no duplicate PowerShell/icon-extraction work)
 - Gamepad navigation with hold-repeat across all tabs/sections
-- Source sub-tabs on Games tab (All/Steam/Xbox/Other) via LT/RT or d-pad
+- Tab switching (LB/RB) lands on first pinned item or first grid item
+- Source sub-tabs on Games tab (All/Steam/Xbox/Other) via LT/RT or d-pad; All lands on pinned-or-grid, others land on grid
 - Pinned apps hidden on filtered sub-tabs (only shown on "All")
-- Hide/Restore modal with full gamepad nav, hold-repeat, Start=confirm, B=cancel
+- Hide/Restore unified Manage modal with full gamepad nav, hold-repeat, Start=confirm, B=cancel
 - All modal input isolation (no bleed-through to background UI)
 - Settings: accent colors, theme, scan toggles, startup, repeat speed
+- Check for Updates in Settings (GitHub Releases API, opens browser if update available)
 - Search overlay with virtual keyboard
 - Battery, clock display
-- Splash screen with exit animation; no rocket flash before CSS loads (inline opacity on rocket wrapper)
+- Splash screen with exit animation; no flash before CSS loads (inline opacity on all animated elements)
 - Pins, recents, hidden state all persisted to disk
-- NSIS installer builds correctly
+- Recent cards on Home tab show correct icons (looked up from allAppsRef)
+- NSIS installer builds correctly; exe named LiftOff; package name `liftoff`
+- README.md written
 
 ## File Structure Notes
 ```
@@ -178,7 +199,9 @@ src/
 src-tauri/
   src/
     lib.rs         — entire backend (single file)
+    main.rs        — calls liftoff_lib::run()
   tauri.conf.json
   Cargo.toml
+  .env             — SGDB_API_KEY (gitignored)
   target/release/bundle/nsis/  ← installer here
 ```
