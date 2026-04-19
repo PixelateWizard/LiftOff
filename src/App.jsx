@@ -251,6 +251,141 @@ function LaunchOverlay({ app, gameArt, accent, onDone }) {
   );
 }
 
+// ── Gamepad state reader ──────────────────────────────────────
+// Centralises button mapping so both the main poll and the modal poll
+// benefit from the same non-standard-controller fixes.
+//
+// Standard ("standard" mapping) controllers use Chromium's XInput layout:
+//   buttons 0-3  = A/B/X/Y   buttons 4-7  = LB/RB/LT/RT
+//   buttons 9    = Start      buttons 12-15 = D-pad Up/Down/Left/Right
+//
+// Non-standard (DirectInput / raw HID / some GameSir modes) often report the
+// D-pad as a hat-switch on axes[6] (X) and axes[7] (Y) instead of buttons.
+// Using optional chaining (?.pressed) avoids crashes if a controller reports
+// fewer buttons than expected.
+function readGpState(gp) {
+  const btn = (i) => !!gp.buttons[i]?.pressed;
+  // Hat-switch axes present on many DirectInput / non-standard controllers
+  const hatLeft  = (gp.axes[6] ?? 0) < -0.5;
+  const hatRight = (gp.axes[6] ?? 0) >  0.5;
+  const hatUp    = (gp.axes[7] ?? 0) < -0.5;
+  const hatDown  = (gp.axes[7] ?? 0) >  0.5;
+  return {
+    ArrowUp:      btn(12) || hatUp    || gp.axes[1] < -0.5,
+    ArrowDown:    btn(13) || hatDown  || gp.axes[1] >  0.5,
+    ArrowLeft:    btn(14) || hatLeft  || gp.axes[0] < -0.5,
+    ArrowRight:   btn(15) || hatRight || gp.axes[0] >  0.5,
+    Enter:        btn(0),
+    Escape:       btn(1),
+    ButtonX:      btn(2),
+    ButtonY:      btn(3),
+    BumperLeft:   btn(4),
+    BumperRight:  btn(5),
+    TriggerLeft:  btn(6),
+    TriggerRight: btn(7),
+    Start:        btn(9),
+  };
+}
+
+// ── Controller Test Widget ─────────────────────────────────────
+// Live gamepad debug display rendered in the Settings screen.
+// Persists last-known gamepad snapshot across remounts so there's no blank
+// flash when SettingsScreen re-creates itself on each navigation keypress.
+let _cachedGpSnap = null;
+
+// Shows the controller name, mapping type, every button (lit when pressed),
+// and every axis as a bar — lets users identify index offsets on odd hardware.
+function ControllerTestWidget({ accent, theme, isDark, glass }) {
+  const [gpSnap, setGpSnap] = useState(_cachedGpSnap);
+  const rAFRef = useRef(null);
+  useEffect(() => {
+    const poll = () => {
+      const gps = navigator.getGamepads();
+      const gp  = gps[0] || gps[1] || gps[2] || gps[3];
+      const next = gp ? {
+        name:    gp.id,
+        mapping: gp.mapping,
+        buttons: Array.from(gp.buttons).map(b => b.pressed),
+        axes:    Array.from(gp.axes).map(v => (typeof v === "number" && isFinite(v)) ? v : 0),
+      } : null;
+      _cachedGpSnap = next;
+      setGpSnap(next);
+      rAFRef.current = requestAnimationFrame(poll);
+    };
+    rAFRef.current = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(rAFRef.current);
+  }, []);
+
+  if (!gpSnap) return (
+    <div style={{ fontSize: 13, color: theme.textDim, padding: "4px 0 8px" }}>
+      No controller detected — connect a gamepad and press any button.
+    </div>
+  );
+
+  const isStandard = gpSnap.mapping === "standard";
+  const BUTTON_LABELS = { 0:"A",1:"B",2:"X",3:"Y",4:"LB",5:"RB",6:"LT",7:"RT",8:"⊞",9:"☰",10:"LS",11:"RS",12:"↑",13:"↓",14:"←",15:"→" };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ fontSize: 12, color: theme.textDim, wordBreak: "break-all" }}>
+        <span style={{ fontWeight: 600, color: theme.text }}>{gpSnap.name}</span>
+        <span style={{
+          marginLeft: 10, fontSize: 11, fontWeight: 600, padding: "2px 7px", borderRadius: 6,
+          background: isStandard ? `${accent.glow}0.15)` : (isDark ? "rgba(255,165,0,0.15)" : "rgba(180,100,0,0.12)"),
+          color: isStandard ? accent.primary : (isDark ? "#ffa040" : "#a06000"),
+        }}>
+          {isStandard ? "standard mapping ✓" : `non-standard${gpSnap.mapping ? ` (${gpSnap.mapping})` : ""}`}
+        </span>
+      </div>
+
+      {/* Buttons */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+        {gpSnap.buttons.map((pressed, i) => (
+          <div key={i} style={{
+            minWidth: 36, height: 30, borderRadius: 7, fontSize: 9, fontWeight: 700, padding: "0 4px",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
+            background: pressed ? accent.primary : (isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"),
+            color: pressed ? "white" : theme.textDim,
+            border: `1px solid ${pressed ? accent.primary : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
+            transition: "background 0.05s, color 0.05s, border-color 0.05s",
+          }}>
+            <span style={{ fontSize: 8, opacity: 0.7 }}>{BUTTON_LABELS[i] ?? ""}</span>
+            <span>{i}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Axes */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "5px 14px" }}>
+        {gpSnap.axes.map((val, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <span style={{ fontSize: 10, color: theme.textFaint, width: 52, flexShrink: 0 }}>
+              A{i}: {val >= 0 ? " " : ""}{val.toFixed(2)}
+            </span>
+            <div style={{ flex: 1, height: 6, borderRadius: 3, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", position: "relative" }}>
+              <div style={{
+                position: "absolute",
+                left:  val >= 0 ? "50%" : `${(1 + val) * 50}%`,
+                width: `${Math.abs(val) * 50}%`,
+                height: "100%", borderRadius: 3,
+                background: accent.primary,
+              }} />
+              <div style={{ position: "absolute", left: "50%", top: 0, width: 1, height: "100%", background: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)" }} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {!isStandard && (
+        <div style={{ fontSize: 11, color: isDark ? "#ffa040" : "#a06000", lineHeight: 1.5 }}>
+          Non-standard mapping detected. If navigation isn't working, try switching your controller to XInput mode (hold the GameSir / mode button until the indicator changes).
+          D-pad may be on axes 6 &amp; 7 — check the bars above.
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Manage Apps Modal ─────────────────────────────────────────
 // Defined outside App so the component type is stable across re-renders.
 // If it were defined inside App, every clock-tick re-render would create a
@@ -350,19 +485,11 @@ function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHideModal, toggle
       const pollModal = (now) => {
         if (closed) return;
         const gps = navigator.getGamepads();
-        const gp  = gps[0] || gps[1];
+        const gp  = gps[0] || gps[1] || gps[2] || gps[3];
         if (gp) {
-          const startPressed = gp.buttons[9].pressed;
-          if (!startPressed) startReleased = true;
-          const state = {
-            ArrowDown:  gp.buttons[13].pressed || gp.axes[1] > 0.5,
-            ArrowUp:    gp.buttons[12].pressed || gp.axes[1] < -0.5,
-            ArrowLeft:  gp.buttons[14].pressed || gp.axes[0] < -0.5,
-            ArrowRight: gp.buttons[15].pressed || gp.axes[0] > 0.5,
-            Enter:      gp.buttons[0].pressed,
-            Escape:     gp.buttons[1].pressed,
-            Start:      startReleased && startPressed,
-          };
+          const base = readGpState(gp);
+          if (!base.Start) startReleased = true;
+          const state = { ...base, Start: startReleased && base.Start };
           Object.keys(state).forEach(k => {
             const pressed = state[k], was = lastBtn[k];
             if (pressed && !was) {
@@ -392,6 +519,7 @@ function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHideModal, toggle
 
     return (
       <div
+        data-modal-overlay
         onMouseDown={e => e.stopPropagation()}
         onClick={e => e.stopPropagation()}
         onDoubleClick={e => e.stopPropagation()}
@@ -622,16 +750,17 @@ export default function App() {
   const closeHideModal = ()     => {
     // Snapshot whichever buttons are currently held so main poll won't fire them on release
     const gps = navigator.getGamepads();
-    const gp  = gps[0] || gps[1];
+    const gp  = gps[0] || gps[1] || gps[2] || gps[3];
     if (gp) {
+      const s = readGpState(gp);
       suppressUntilRelease.current = {
-        Enter:      gp.buttons[0].pressed,
-        Escape:     gp.buttons[1].pressed,
-        ButtonX:    gp.buttons[2].pressed,
-        ButtonY:    gp.buttons[3].pressed,
-        BumperLeft: gp.buttons[4].pressed,
-        BumperRight:gp.buttons[5].pressed,
-        Start:      gp.buttons[9].pressed,
+        Enter:       s.Enter,
+        Escape:      s.Escape,
+        ButtonX:     s.ButtonX,
+        ButtonY:     s.ButtonY,
+        BumperLeft:  s.BumperLeft,
+        BumperRight: s.BumperRight,
+        Start:       s.Start,
       };
     }
     setShowHideModal(false); showHideModalRef.current = false;
@@ -707,27 +836,13 @@ export default function App() {
 
     const poll = (now) => {
       const gps = navigator.getGamepads();
-      const gp  = gps[0] || gps[1];
+      const gp  = gps[0] || gps[1] || gps[2] || gps[3];
       if (gp && isReadyRef.current) {
         const speed = settingsRef.current.repeat_speed;
         const initialDelay = speed === "slow" ? 500 : speed === "fast" ? 250 : 400;
         const repeatDelay  = speed === "slow" ? 150 : speed === "fast" ? 60  : 100;
 
-        const state = {
-          ArrowUp:      gp.buttons[12].pressed || gp.axes[1] < -0.5,
-          ArrowDown:    gp.buttons[13].pressed || gp.axes[1] > 0.5,
-          ArrowLeft:    gp.buttons[14].pressed || gp.axes[0] < -0.5,
-          ArrowRight:   gp.buttons[15].pressed || gp.axes[0] > 0.5,
-          Enter:        gp.buttons[0].pressed,
-          Escape:       gp.buttons[1].pressed,
-          ButtonX:      gp.buttons[2].pressed,
-          ButtonY:      gp.buttons[3].pressed,
-          BumperLeft:   gp.buttons[4].pressed,
-          BumperRight:  gp.buttons[5].pressed,
-          TriggerLeft:  gp.buttons[6].pressed,
-          TriggerRight: gp.buttons[7].pressed,
-          Start:        gp.buttons[9].pressed,
-        };
+        const state = readGpState(gp);
 
         Object.keys(state).forEach(key => {
           const pressed    = state[key];
@@ -1074,6 +1189,8 @@ export default function App() {
     { key: "default_tab",       label: "Default Tab",            type: "cycle",  options: ["Home","Games","Apps"] },
     { key: "repeat_speed",      label: "Stick Repeat Speed",     type: "cycle",  options: ["slow","normal","fast"] },
     { key: "launch_at_startup", label: "Launch at Startup",      type: "toggle" },
+    { key: "divider_ctrl",      label: "CONTROLLER",             type: "divider" },
+    { key: "controller_test",   label: "Controller Test",        type: "controller_test" },
     { key: "divider3",          label: "DATA",                   type: "divider" },
     { key: "clear_recents",     label: "Clear Recently Played",  type: "action" },
     { key: "clear_cache",       label: "Clear Art Cache",        type: "action" },
@@ -1088,7 +1205,7 @@ export default function App() {
     { key: "credit3",   label: "Mysterious Sparkle Flourish",      author: "DanaiOuranos", license: "CC0",       url: "https://freesound.org/s/844398/",                        type: "attribution" },
     { key: "credit4",   label: "Universal UI Soundpack",           author: "Nathan Gibson", license: "CC BY 4.0", url: "https://cyrex-studios.itch.io/universal-ui-soundpack",  type: "attribution" },
   ];
-  const navigableSettings = SETTINGS_ITEMS.filter(i => i.type !== "divider" && i.type !== "info");
+  const navigableSettings = SETTINGS_ITEMS.filter(i => i.type !== "divider" && i.type !== "info" && i.type !== "controller_test");
 
   // ── handleNav ─────────────────────────────────────────────────
   const handleNav = (key) => {
@@ -1402,8 +1519,8 @@ export default function App() {
   useEffect(() => {
     const block = (e) => {
       if (!showHideModalRef.current) return;
-      // Allow clicks that originate inside the modal itself
-      if (e.target?.closest?.("[data-modal-container]")) return;
+      // Allow clicks that originate inside the modal overlay
+      if (e.target?.closest?.("[data-modal-overlay]")) return;
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
@@ -1638,7 +1755,7 @@ export default function App() {
   );
 
   const SettingsScreen = () => (
-    <div style={{ padding: "14px 24px 100px", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+    <div style={{ padding: "14px 24px 160px", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
       {SETTINGS_ITEMS.map((item) => {
         if (item.type === "divider") return <div key={item.key} style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, padding: "22px 4px 10px" }}>{item.label}</div>;
         const navIdx  = navigableSettings.findIndex(n => n.key === item.key);
@@ -1738,6 +1855,11 @@ export default function App() {
               <span style={{ fontSize: 11, color: theme.textDim }}>by {item.author} · {item.license}</span>
             </div>
             <span style={{ fontSize: 12, color: theme.textDim }}>↵ Open</span>
+          </div>
+        );
+        if (item.type === "controller_test") return (
+          <div key={item.key} style={{ ...glass, borderRadius: 14, padding: "14px 20px", marginBottom: 8, border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
+            <ControllerTestWidget accent={accent} theme={theme} isDark={isDark} glass={glass} />
           </div>
         );
         return null;
