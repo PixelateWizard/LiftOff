@@ -1,3 +1,5 @@
+//Copyright (C) 2025 Taylor Denby
+
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -11,7 +13,7 @@ const COLS = 6;
 const GAME_COLS = 5;
 const TABS = ["Home", "Games", "Apps", "Settings"];
 const APP_VERSION = "1.0.0";
-const GITHUB_REPO = "taylo/liftoff"; // owner/repo — update before release
+const GITHUB_REPO = "PixelateWizard/LiftOff"; // owner/repo — update before release
 
 const ACCENTS = {
   ember:    { primary: "#e8714a", light: "#ff9a6c", dark: "#c94f28", glow: "rgba(232,113,74,", lightBg: "#f5e8e0" },
@@ -1243,8 +1245,8 @@ export default function App() {
           else checkForUpdates();
         }
         else if (item.type === "link") {
-          if (item.key === "coffee") invoke("launch_app", { path: "https://buymeacoffee.com", id: "coffee", name: "Buy Me a Coffee", appType: "app" }).catch(() => {});
-          if (item.key === "github") invoke("launch_app", { path: "https://github.com", id: "github", name: "GitHub", appType: "app" }).catch(() => {});
+          if (item.key === "coffee") invoke("launch_app", { path: "https://buymeacoffee.com/liftoff_handheld_launcher", id: "coffee", name: "Buy Me a Coffee", appType: "app" }).catch(() => {});
+          if (item.key === "github") invoke("launch_app", { path: "https://github.com/PixelateWizard/LiftOff", id: "github", name: "GitHub", appType: "app" }).catch(() => {});
         }
         else if (item.type === "attribution") {
           if (item.url) invoke("launch_app", { path: item.url, id: item.key, name: item.label, appType: "app" }).catch(() => {});

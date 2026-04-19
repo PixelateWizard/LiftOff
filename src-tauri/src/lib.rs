@@ -1,3 +1,5 @@
+//Copyright (C) 2025 Taylor Denby
+
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::process::CommandExt;
 use std::path::Path;
