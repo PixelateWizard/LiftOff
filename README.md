@@ -133,6 +133,14 @@ All persistent data is stored in `%LOCALAPPDATA%\LiftOff\`:
 
 ---
 
+## Support
+
+LiftOff is free and open source. If you enjoy it, consider buying me a coffee!
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support%20development-orange?style=flat&logo=buy-me-a-coffee)](https://buymeacoffee.com/liftoff_handheld_launcher)
+
+---
+
 ## Stack
 
 - [Tauri 2](https://tauri.app/) — Rust backend, WebView frontend
