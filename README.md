@@ -27,6 +27,8 @@ Download the latest installer from the [Releases](../../releases) page and run i
 
 > **Windows SmartScreen may show a warning** since the app is not code-signed. Click **More info → Run anyway** to proceed.
 
+> **Steam must be installed in its default location.** Custom Steam install paths are not yet supported.
+
 ---
 
 ## Controls
