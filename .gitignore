@@ -1,6 +1,9 @@
 # Secrets
 src-tauri/.env
 
+# Dev notes
+LIFTOFF_CLAUDECODE.md
+
 # Logs
 logs
 *.log

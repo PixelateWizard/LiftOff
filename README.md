@@ -8,12 +8,15 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 
 - **Gamepad-native** — full navigation with hold-repeat, no mouse required
 - **Automatic library scanning** — Steam games, Xbox/Game Pass titles, UWP Store apps, and Desktop shortcuts
+- **Live library refresh** — rescan without restarting; auto-refreshes when scan settings change
 - **Game art** — cover art fetched automatically from SteamGridDB
 - **Pinned apps** — pin your most-used games and apps to the top of any tab
 - **Manage visibility** — hide apps from view and restore them anytime from the same menu
 - **Search** — on-screen virtual keyboard for controller-only searching
 - **Themes** — dark, light, and system-follow modes with 5 accent colors
 - **Recent apps** — quick access to what you launched last
+- **Battery indicator** — shows charge level and charging status
+- **Check for updates** — one-button update check from Settings
 - **Splash screen** with launch sounds
 
 ---
@@ -22,7 +25,7 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 
 Download the latest installer from the [Releases](../../releases) page and run it.
 
-> **Windows SmartScreen may show a warning** since the app is not code-signed yet. Click **More info → Run anyway** to proceed. The app is safe.
+> **Windows SmartScreen may show a warning** since the app is not code-signed. Click **More info → Run anyway** to proceed.
 
 ---
 
@@ -49,7 +52,7 @@ Download the latest installer from the [Releases](../../releases) page and run i
 
 **Apps** — all detected non-game apps and shortcuts
 
-**Settings** — accent color, theme, library scan toggles, startup behavior, repeat speed
+**Settings** — accent color, theme, library scan toggles, startup behavior, repeat speed, update check
 
 ---
 
@@ -63,9 +66,11 @@ Download the latest installer from the [Releases](../../releases) page and run i
 | Scan Xbox | Include Xbox / Game Pass titles |
 | Scan Store Apps | Include UWP / Microsoft Store apps |
 | Scan Desktop Shortcuts | Include `.lnk` shortcuts from Desktop and Start Menu |
+| Refresh Library | Rescan all sources immediately |
 | Default Tab | Which tab opens on launch |
 | Stick Repeat Speed | How fast held directions repeat (Slow / Normal / Fast) |
 | Launch at Startup | Start LiftOff with Windows |
+| Check for Updates | Check GitHub for a newer release |
 
 ---
 
@@ -112,6 +117,17 @@ All persistent data is stored in `%LOCALAPPDATA%\LiftOff\`:
 | `hidden.json` | Hidden app IDs |
 | `recents.json` | Recently launched apps |
 | `art_cache.json` | Cached SteamGridDB art URLs |
+
+---
+
+## Planned Features
+
+- Game videos in the hero spotlight
+- Ability to rearrange pinned items
+- In-app browser
+- More customization options
+- System settings controls (brightness, volume, Wi-Fi, Bluetooth)
+- Additional game library support (GOG, Battle.net, Epic Games, etc.)
 
 ---
 
