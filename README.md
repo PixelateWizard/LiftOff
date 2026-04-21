@@ -2,6 +2,9 @@
 
 A Windows game and app launcher built for gamepad-first navigation. Designed for HTPC / couch setups — pick up a controller and go.
 
+[![Discord](https://img.shields.io/badge/Discord-join%20the%20community-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/F5ncP75WtD)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support%20development-orange?style=flat&logo=buy-me-a-coffee)](https://buymeacoffee.com/liftoff_handheld_launcher)
+
 ---
 
 ## Features
@@ -9,13 +12,15 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 - **Gamepad-native** — full navigation with hold-repeat, no mouse required
 - **Automatic library scanning** — Steam games, Xbox/Game Pass titles, UWP Store apps, and Desktop shortcuts
 - **Live library refresh** — rescan without restarting; auto-refreshes when scan settings change
-- **Game art** — cover art fetched automatically from SteamGridDB
+- **Game art** — cover art fetched automatically from SteamGridDB; replace per-game with your own image
+- **Custom cover art** — press Select/Back on any game to set a custom cover image, with a reset-to-default option
 - **Pinned apps** — pin your most-used games and apps to the top of any tab
 - **Manage visibility** — hide apps from view and restore them anytime from the same menu
 - **Search** — on-screen virtual keyboard for controller-only searching
 - **Themes** — dark, light, and system-follow modes with 5 accent colors
 - **Recent apps** — quick access to what you launched last
 - **Battery indicator** — shows charge level and charging status
+- **Controller test** — live button and axis display in Settings to verify your gamepad mapping
 - **Check for updates** — one-button update check from Settings
 - **Splash screen** with launch sounds
 
@@ -27,7 +32,7 @@ Download the latest installer from the [Releases](../../releases) page and run i
 
 > **Windows SmartScreen may show a warning** since the app is not code-signed. Click **More info → Run anyway** to proceed.
 
-> **Steam must be installed in its default location.** Custom Steam install paths are not yet supported.
+> **Steam** installs in non-default locations are supported via registry detection.
 
 ---
 
@@ -39,6 +44,7 @@ Download the latest installer from the [Releases](../../releases) page and run i
 | **B** | Back / cancel |
 | **X** | Pin / unpin |
 | **Y** | Search |
+| **Select / Back** | Replace cover art (Games tab, focused game) |
 | **LB / RB** | Switch tabs |
 | **LT / RT** | Switch game source filter (All / Steam / Xbox / Other) |
 | **D-pad / Left stick** | Navigate |
@@ -54,7 +60,7 @@ Download the latest installer from the [Releases](../../releases) page and run i
 
 **Apps** — all detected non-game apps and shortcuts
 
-**Settings** — accent color, theme, library scan toggles, startup behavior, repeat speed, update check
+**Settings** — accent color, theme, library scan toggles, startup behavior, repeat speed, controller test, update check, Discord, and more
 
 ---
 
@@ -64,7 +70,7 @@ Download the latest installer from the [Releases](../../releases) page and run i
 |---------|-------------|
 | Accent Color | Ember, Ocean, Neon, Rose, Midnight |
 | Theme | Dark / Light / System |
-| Scan Steam | Include Steam games |
+| Scan Steam | Include Steam games (supports custom install paths) |
 | Scan Xbox | Include Xbox / Game Pass titles |
 | Scan Store Apps | Include UWP / Microsoft Store apps |
 | Scan Desktop Shortcuts | Include `.lnk` shortcuts from Desktop and Start Menu |
@@ -72,6 +78,7 @@ Download the latest installer from the [Releases](../../releases) page and run i
 | Default Tab | Which tab opens on launch |
 | Stick Repeat Speed | How fast held directions repeat (Slow / Normal / Fast) |
 | Launch at Startup | Start LiftOff with Windows |
+| Controller Test | Live display of button states and axes for your active gamepad |
 | Check for Updates | Check GitHub for a newer release |
 
 ---
@@ -119,6 +126,7 @@ All persistent data is stored in `%LOCALAPPDATA%\LiftOff\`:
 | `hidden.json` | Hidden app IDs |
 | `recents.json` | Recently launched apps |
 | `art_cache.json` | Cached SteamGridDB art URLs |
+| `custom_art.json` | Per-game custom cover art (data URLs) |
 
 ---
 
@@ -135,8 +143,9 @@ All persistent data is stored in `%LOCALAPPDATA%\LiftOff\`:
 
 ## Support
 
-LiftOff is free and open source. If you enjoy it, consider buying me a coffee!
+LiftOff is free and open source. Join the community on [Discord](https://discord.gg/F5ncP75WtD) or consider buying me a coffee!
 
+[![Discord](https://img.shields.io/badge/Discord-join%20the%20community-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/F5ncP75WtD)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support%20development-orange?style=flat&logo=buy-me-a-coffee)](https://buymeacoffee.com/liftoff_handheld_launcher)
 
 ---
