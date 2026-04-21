@@ -162,11 +162,40 @@ fn save_hidden_inner(hidden: &Vec<String>) {
     if let Ok(json) = serde_json::to_string(hidden) { let _ = std::fs::write(path, json); }
 }
 
+fn custom_art_path() -> std::path::PathBuf { liftoff_dir().join("custom_art.json") }
+
+fn load_custom_art_inner() -> HashMap<String, String> {
+    let path = custom_art_path();
+    if !path.exists() { return HashMap::new(); }
+    std::fs::read_to_string(&path).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
+}
+
+fn save_custom_art_inner(map: &HashMap<String, String>) {
+    let path = custom_art_path();
+    if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
+    if let Ok(json) = serde_json::to_string(map) { let _ = std::fs::write(path, json); }
+}
+
 #[tauri::command] fn get_settings() -> Settings { load_settings_inner() }
 #[tauri::command] fn clear_recents() -> Result<(), String> { save_recents(&vec![]); Ok(()) }
 #[tauri::command] fn clear_art_cache() -> Result<(), String> { save_art_cache(&HashMap::new()); Ok(()) }
 #[tauri::command] fn get_recents() -> Vec<RecentEntry> { load_recents() }
 #[tauri::command] fn set_gamepad_ready() { GAMEPAD_READY.store(true, Ordering::Relaxed); }
+#[tauri::command] fn get_custom_art() -> HashMap<String, String> { load_custom_art_inner() }
+#[tauri::command]
+fn set_custom_art(id: String, data: String) -> Result<(), String> {
+    let mut map = load_custom_art_inner();
+    map.insert(id, data);
+    save_custom_art_inner(&map);
+    Ok(())
+}
+#[tauri::command]
+fn clear_custom_art(id: String) -> Result<(), String> {
+    let mut map = load_custom_art_inner();
+    map.remove(&id);
+    save_custom_art_inner(&map);
+    Ok(())
+}
 
 #[tauri::command]
 fn get_pins() -> Vec<String> {
@@ -776,7 +805,8 @@ pub fn run() {
             set_gamepad_ready, get_settings, save_settings, clear_recents,
             clear_art_cache, set_frontend_active, open_osk,
             get_pins, toggle_pin,
-            get_hidden, toggle_hidden
+            get_hidden, toggle_hidden,
+            get_custom_art, set_custom_art, clear_custom_art
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

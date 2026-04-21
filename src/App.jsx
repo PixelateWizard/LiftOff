@@ -12,7 +12,7 @@ import appLoadedSound from "./assets/appLoadedSound.wav";
 const COLS = 6;
 const GAME_COLS = 5;
 const TABS = ["Home", "Games", "Apps", "Settings"];
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.1.0";
 const GITHUB_REPO = "PixelateWizard/LiftOff"; // owner/repo — update before release
 
 const ACCENTS = {
@@ -196,8 +196,8 @@ const ss = {
   wordmark: { fontWeight: 700, fontSize: 36, letterSpacing: "0.04em", background: "linear-gradient(135deg, #ff9a6c, #e8714a)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", fontFamily: "'Segoe UI', sans-serif" },
 };
 
-function LaunchOverlay({ app, gameArt, accent, onDone }) {
-  const art = app?.app_type === "game" ? gameArt[app?.id] : null;
+function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
+  const art = app?.app_type === "game" ? (customArt?.[app?.id] || gameArt[app?.id]) : null;
   useEffect(() => {
     const style = document.createElement("style");
     style.id = "launch-overlay-styles";
@@ -251,6 +251,70 @@ function LaunchOverlay({ app, gameArt, accent, onDone }) {
   );
 }
 
+// ── Custom Art Picker Modal ───────────────────────────────────
+function ArtPickerModal({ app, currentArt, hasCustomArt, accent, theme, isDark, glass, onClose, onSet, onReset }) {
+  const fileRef = useRef(null);
+  const [preview, setPreview] = useState(currentArt || null);
+  const [pendingData, setPendingData] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => { const url = ev.target.result; setPreview(url); setPendingData(url); };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSave = () => {
+    if (!pendingData) return;
+    setSaving(true);
+    invoke("set_custom_art", { id: app.id, data: pendingData })
+      .then(() => { onSet(app.id, pendingData); onClose(); })
+      .catch(console.error)
+      .finally(() => setSaving(false));
+  };
+
+  const handleReset = () => {
+    invoke("clear_custom_art", { id: app.id })
+      .then(() => { onReset(app.id); onClose(); })
+      .catch(console.error);
+  };
+
+  const btnStyle = (bg, color, extra = {}) => ({
+    padding: "10px 20px", borderRadius: 10, cursor: "pointer",
+    fontFamily: "'Segoe UI', sans-serif", fontSize: 14, fontWeight: 600,
+    border: "none", width: "100%", background: bg, color, transition: "all 0.15s ease", ...extra,
+  });
+
+  return (
+    <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
+      <div style={{ ...glass, borderRadius: 20, padding: 28, width: 300, maxHeight: "85vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: theme.text }}>{app.name}</div>
+        <div style={{ fontSize: 12, color: theme.textDim }}>Replace cover art</div>
+        {preview
+          ? <div style={{ width: "100%", aspectRatio: "2/3", borderRadius: 12, overflow: "hidden" }}><img src={preview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>
+          : <div style={{ width: "100%", aspectRatio: "2/3", borderRadius: 12, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 13, color: theme.textDim }}>No art</span></div>
+        }
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
+        <button onClick={() => fileRef.current?.click()} style={btnStyle(`linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, "white")}>Browse Image</button>
+        {pendingData && <button onClick={handleSave} disabled={saving} style={btnStyle("#4a9c4a", "white", { opacity: saving ? 0.6 : 1 })}>{saving ? "Saving…" : "Save"}</button>}
+        {hasCustomArt && !pendingData && <button onClick={handleReset} style={btnStyle("rgba(255,255,255,0.08)", theme.text, { border: "1px solid rgba(255,255,255,0.15)" })}>Reset to Default</button>}
+        <button onClick={onClose} style={btnStyle("rgba(255,255,255,0.05)", theme.textDim)}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Gamepad selector ─────────────────────────────────────────
+// Some USB devices (headset adapters, audio dongles) expose a HID interface
+// that the browser registers as a gamepad. They have 0–2 buttons and no axes.
+// Prefer the first gamepad with ≥4 buttons; fall back to the first connected one.
+function getBestGamepad() {
+  const gps = Array.from(navigator.getGamepads()).filter(Boolean);
+  return gps.find(gp => gp.buttons.length >= 4) || gps[0] || null;
+}
+
 // ── Gamepad state reader ──────────────────────────────────────
 // Centralises button mapping so both the main poll and the modal poll
 // benefit from the same non-standard-controller fixes.
@@ -283,6 +347,7 @@ function readGpState(gp) {
     BumperRight:  btn(5),
     TriggerLeft:  btn(6),
     TriggerRight: btn(7),
+    Select:       btn(8),
     Start:        btn(9),
   };
 }
@@ -300,13 +365,14 @@ function ControllerTestWidget({ accent, theme, isDark, glass }) {
   const rAFRef = useRef(null);
   useEffect(() => {
     const poll = () => {
-      const gps = navigator.getGamepads();
-      const gp  = gps[0] || gps[1] || gps[2] || gps[3];
-      const next = gp ? {
-        name:    gp.id,
-        mapping: gp.mapping,
-        buttons: Array.from(gp.buttons).map(b => b.pressed),
-        axes:    Array.from(gp.axes).map(v => (typeof v === "number" && isFinite(v)) ? v : 0),
+      const all  = Array.from(navigator.getGamepads()).filter(Boolean);
+      const best = getBestGamepad();
+      const next = best ? {
+        name:    best.id,
+        mapping: best.mapping,
+        buttons: Array.from(best.buttons).map(b => b.pressed),
+        axes:    Array.from(best.axes).map(v => (typeof v === "number" && isFinite(v)) ? v : 0),
+        allDevices: all.map((gp, i) => ({ index: i, name: gp.id, btnCount: gp.buttons.length, isBest: gp === best })),
       } : null;
       _cachedGpSnap = next;
       setGpSnap(next);
@@ -375,6 +441,17 @@ function ControllerTestWidget({ accent, theme, isDark, glass }) {
           </div>
         ))}
       </div>
+
+      {gpSnap.allDevices?.length > 1 && (
+        <div style={{ fontSize: 11, color: theme.textDim, lineHeight: 1.6 }}>
+          <span style={{ fontWeight: 600, color: theme.textDim }}>All HID devices: </span>
+          {gpSnap.allDevices.map(d => (
+            <span key={d.index} style={{ marginRight: 12, color: d.isBest ? accent.primary : theme.textFaint }}>
+              [{d.index}] {d.name.split('(')[0].trim()} ({d.btnCount} btns){d.isBest ? " ←" : ""}
+            </span>
+          ))}
+        </div>
+      )}
 
       {!isStandard && (
         <div style={{ fontSize: 11, color: isDark ? "#ffa040" : "#a06000", lineHeight: 1.5 }}>
@@ -484,8 +561,7 @@ function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHideModal, toggle
 
       const pollModal = (now) => {
         if (closed) return;
-        const gps = navigator.getGamepads();
-        const gp  = gps[0] || gps[1] || gps[2] || gps[3];
+        const gp  = getBestGamepad();
         if (gp) {
           const base = readGpState(gp);
           if (!base.Start) startReleased = true;
@@ -636,6 +712,8 @@ export default function App() {
   const [battery, setBattery]                       = useState(0);
   const [charging, setCharging]                     = useState(false);
   const [gameArt, setGameArt]                       = useState({});
+  const [customArt, setCustomArt]                   = useState({});
+  const [artPickerApp, setArtPickerApp]             = useState(null);
   const [launchingApp, setLaunchingApp]             = useState(null);
   const [settings, setSettings]                     = useState({
     accent: "ember", theme: "dark", stars_enabled: true,
@@ -667,6 +745,8 @@ export default function App() {
   const kbNumModeRef        = useRef(false);
   // ─────────────────────────────────────────────────────────────
 
+  const customArtRef          = useRef({});
+  const artPickerAppRef       = useRef(null);
   const focusedCardRef        = useRef(null);
   const searchFocusedCardRef  = useRef(null);   // FIX 3: focused search result card ref
   const settingsFocusedRef    = useRef(null);
@@ -764,6 +844,17 @@ export default function App() {
       };
     }
     setShowHideModal(false); showHideModalRef.current = false;
+  };
+
+  const closeArtPicker = () => {
+    const gp = getBestGamepad();
+    if (gp) {
+      const s = readGpState(gp);
+      suppressUntilRelease.current = {
+        Enter: s.Enter, Escape: s.Escape, Select: s.Select, ButtonX: s.ButtonX, ButtonY: s.ButtonY,
+      };
+    }
+    setArtPickerApp(null); artPickerAppRef.current = null;
   };
 
   const toggleHidden = (appId) => {
@@ -1020,6 +1111,7 @@ export default function App() {
       setSettings(s); settingsRef.current = s;
       setTab(s.default_tab || "Home"); tabRef.current = s.default_tab || "Home";
     });
+    invoke("get_custom_art").then(art => { setCustomArt(art); customArtRef.current = art; }).catch(() => {});
     invoke("get_recents").then(recents => {
       if (recents.length > 0) { setRecent(recents); recentRef.current = recents; }
     });
@@ -1199,6 +1291,7 @@ export default function App() {
     { key: "check_updates",     label: "Check for Updates",       type: "update" },
     { key: "coffee",            label: "☕ Buy Me a Coffee",      type: "link" },
     { key: "github",            label: "⭐ GitHub",               type: "link" },
+    { key: "discord",           label: "💬 Discord",              type: "link" },
     { key: "divider5",  label: "CREDITS",                         type: "divider" },
     { key: "credit1",   label: "Mysterious Magical Bell Flourish", author: "DanaiOuranos", license: "CC0",       url: "https://freesound.org/s/848847/",                        type: "attribution" },
     { key: "credit2",   label: "Achievement Sparkle",              author: "DanaiOuranos", license: "CC0",       url: "https://freesound.org/s/715067/",                        type: "attribution" },
@@ -1212,6 +1305,12 @@ export default function App() {
     // Modal intercepts all input via its own poll — main nav must not run
     if (showHideModalRef.current) return;
 
+    // Art picker open — only Escape closes it (user interacts via touch/mouse)
+    if (artPickerAppRef.current) {
+      if (key === "Escape") closeArtPicker();
+      return;
+    }
+
     const section         = focusSectionRef.current;
     const index           = focusIndexRef.current;
     const currentTab      = tabRef.current;
@@ -1221,10 +1320,18 @@ export default function App() {
     const cols            = currentTab === "Games" ? GAME_COLS : COLS;
     const currentSettings = settingsRef.current;
 
-    const fApps = allApps.filter(a =>
-      currentTab === "Home" || currentTab === "All" ? true
-        : currentTab === "Games" ? a.app_type === "game" : a.app_type === "app"
-    );
+    const fApps = allApps.filter(a => {
+      if (currentTab === "Home" || currentTab === "All") return true;
+      if (currentTab === "Games") {
+        if (a.app_type !== "game") return false;
+        const src = gameSourceTabRef.current;
+        if (src === "Steam") return a.source === "steam";
+        if (src === "Xbox")  return a.source === "xbox";
+        if (src === "Other") return a.source !== "steam" && a.source !== "xbox";
+        return true;
+      }
+      return a.app_type === "app";
+    });
     const fRecent = rec.filter(a =>
       currentTab === "Home" || currentTab === "All" ? true
         : currentTab === "Games" ? a.app_type === "game" : a.app_type === "app"
@@ -1362,8 +1469,9 @@ export default function App() {
           else checkForUpdates();
         }
         else if (item.type === "link") {
-          if (item.key === "coffee") invoke("launch_app", { path: "https://buymeacoffee.com/liftoff_handheld_launcher", id: "coffee", name: "Buy Me a Coffee", appType: "app" }).catch(() => {});
-          if (item.key === "github") invoke("launch_app", { path: "https://github.com/PixelateWizard/LiftOff", id: "github", name: "GitHub", appType: "app" }).catch(() => {});
+          if (item.key === "coffee")  invoke("launch_app", { path: "https://buymeacoffee.com/liftoff_handheld_launcher", id: "coffee", name: "Buy Me a Coffee", appType: "app" }).catch(() => {});
+          if (item.key === "github")  invoke("launch_app", { path: "https://github.com/PixelateWizard/LiftOff", id: "github", name: "GitHub", appType: "app" }).catch(() => {});
+          if (item.key === "discord") invoke("launch_app", { path: "https://discord.gg/F5ncP75WtD", id: "discord", name: "Discord", appType: "app" }).catch(() => {});
         }
         else if (item.type === "attribution") {
           if (item.url) invoke("launch_app", { path: item.url, id: item.key, name: item.label, appType: "app" }).catch(() => {});
@@ -1488,6 +1596,9 @@ export default function App() {
         else { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; }
       }
       if (key === "Enter" && fPinned[index]) triggerLaunch(fPinned[index], rec);
+      if (key === "Select" && fPinned[index]?.app_type === "game") {
+        setArtPickerApp(fPinned[index]); artPickerAppRef.current = fPinned[index];
+      }
       return;
     }
     if (section === "grid") {
@@ -1508,6 +1619,9 @@ export default function App() {
         } else { const ni = index - cols; setFocusIndex(ni); focusIndexRef.current = ni; }
       }
       if (key === "Enter" && fApps[index]) triggerLaunch(fApps[index], rec);
+      if (key === "Select" && fApps[index]?.app_type === "game") {
+        setArtPickerApp(fApps[index]); artPickerAppRef.current = fApps[index];
+      }
       return;
     }
   };
@@ -1643,7 +1757,7 @@ export default function App() {
   };
 
   const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned }) => {
-    const art = gameArt[app.id];
+    const art = customArt[app.id] || gameArt[app.id];
     return (
       <div ref={cardRef} onClick={onClick} onDoubleClick={onDoubleClick}
         style={focused
@@ -1883,7 +1997,24 @@ export default function App() {
     <div style={{ height: "100vh", overflowY: "auto", position: "relative", animation: "appFadeIn 0.5s ease forwards" }} ref={outerRef}>
 
       <div style={{ position: "fixed", inset: 0, background: appBg, zIndex: -2 }} />
-      {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} accent={accent} onDone={() => setLaunchingApp(null)} />}
+      {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={() => setLaunchingApp(null)} />}
+      {artPickerApp && (
+        <ArtPickerModal
+          app={artPickerApp}
+          currentArt={customArt[artPickerApp.id] || gameArt[artPickerApp.id]}
+          hasCustomArt={!!customArt[artPickerApp.id]}
+          accent={accent} theme={theme} isDark={isDark} glass={glass}
+          onClose={closeArtPicker}
+          onSet={(id, dataUrl) => {
+            const next = { ...customArtRef.current, [id]: dataUrl };
+            setCustomArt(next); customArtRef.current = next;
+          }}
+          onReset={(id) => {
+            const next = { ...customArtRef.current }; delete next[id];
+            setCustomArt(next); customArtRef.current = next;
+          }}
+        />
+      )}
       {showHideModal && <HideModal key="hide-modal" tab={tab} appsRef={appsRef} hiddenRef={hiddenRef} allAppsRef={allAppsRef} closeHideModal={closeHideModal} toggleHidden={toggleHidden} glass={glass} accent={accent} isDark={isDark} theme={theme} />}
       {libraryRefreshStatus === "scanning" && (
         <div style={{ position: "fixed", inset: 0, zIndex: 5000, display: "flex", alignItems: "center", justifyContent: "center",
@@ -2099,7 +2230,7 @@ export default function App() {
           <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "14px 24px 0", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
             {(() => {
               const heroGame = recentGames[heroIndex];
-              const heroArt  = heroGame ? gameArt[heroGame.id] : null;
+              const heroArt  = heroGame ? (customArt[heroGame.id] || gameArt[heroGame.id]) : null;
               const heroFocused = focusSection === "hero";
               return (
                 <div style={{ position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: 20, overflow: "visible", display: "flex", flexDirection: "column", flexShrink: 0,
@@ -2132,7 +2263,7 @@ export default function App() {
                       <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 4, paddingBottom: 4 }}>
                         {pinnedAppsReactive.map((app, i) => {
                           const focused = focusSection === "pinned" && focusIndex === i;
-                          const art = app.app_type === "game" ? gameArt[app.id] : null;
+                          const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
                           return (
                             <div key={app.id} ref={focused ? focusedCardRef : null}
                               onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
@@ -2219,7 +2350,7 @@ export default function App() {
                   {filteredRecent.slice(0, 10).map((app, i) => {
                     const focused = focusSection === "recent" && focusIndex === i;
                     const isPinned = pins.includes(app.id);
-                    const art = app.app_type === "game" ? gameArt[app.id] : null;
+                    const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
                     const fullApp = allAppsRef.current.find(a => a.id === app.id) || app;
                     const CARD_W = "clamp(76px, 10vw, 110px)";
                     const CARD_H = "clamp(114px, 15vw, 165px)";
