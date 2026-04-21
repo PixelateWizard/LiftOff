@@ -814,6 +814,7 @@ export default function App() {
   const [battery, setBattery]                       = useState(0);
   const [charging, setCharging]                     = useState(false);
   const [gameArt, setGameArt]                       = useState({});
+  const [heroBanners, setHeroBanners]               = useState({});
   const [customArt, setCustomArt]                   = useState({});
   const [artPickerApp, setArtPickerApp]             = useState(null);
   const [contextMenu, setContextMenu]               = useState(null); // { x, y, app }
@@ -1243,7 +1244,10 @@ export default function App() {
   const fetchGameArt = (games) => {
     games.forEach(game => {
       invoke("fetch_game_art", { gameName: game.name })
-        .then(url => { if (url) setGameArt(prev => ({ ...prev, [game.id]: url })); })
+        .then(bundle => {
+          if (bundle.grid) setGameArt(prev => ({ ...prev, [game.id]: bundle.grid }));
+          if (bundle.hero) setHeroBanners(prev => ({ ...prev, [game.id]: bundle.hero }));
+        })
         .catch(() => {});
     });
   };
@@ -2336,8 +2340,9 @@ export default function App() {
         {tab === "Settings" ? <SettingsScreen /> : tab === "Home" ? (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "14px 24px 0", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
             {(() => {
-              const heroGame = recentGames[heroIndex];
-              const heroArt  = heroGame ? (customArt[heroGame.id] || gameArt[heroGame.id]) : null;
+              const heroGame    = recentGames[heroIndex];
+              const heroArt    = heroGame ? (customArt[heroGame.id] || gameArt[heroGame.id]) : null;
+              const heroBanner = heroGame ? heroBanners[heroGame.id] : null;
               const heroFocused = focusSection === "hero";
               return (
                 <div style={{ position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: 20, overflow: "visible", display: "flex", flexDirection: "column", flexShrink: 0,
@@ -2346,16 +2351,22 @@ export default function App() {
                   transition: "border-color 0.2s ease, box-shadow 0.2s ease",
                   background: isDark ? "#0a0502" : appBg,
                 }}>
-                  {/* Blurred art background — clipped separately so pinned bar can scroll */}
+                  {/* Background: hero banner if available, else blurred cover art */}
                   <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: 20, overflow: "hidden" }}>
-                    {heroArt
-                      ? <img key={heroGame.id} src={heroArt} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: "scale(1.08)", animation: "heroArtFade 0.4s ease forwards" }} />
-                      : <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${accent.glow}0.25) 0%, ${accent.glow}0.06) 100%)` }} />
+                    {heroBanner
+                      ? <img key={heroGame.id + "_hero"} src={heroBanner} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", animation: "heroArtFade 0.4s ease forwards" }} />
+                      : heroArt
+                        ? <img key={heroGame.id} src={heroArt} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: "scale(1.08)", animation: "heroArtFade 0.4s ease forwards" }} />
+                        : <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${accent.glow}0.25) 0%, ${accent.glow}0.06) 100%)` }} />
                     }
-                    {/* Directional vignette */}
-                    <div style={{ position: "absolute", inset: 0, background: isDark
-                      ? "linear-gradient(to right, rgba(8,4,2,0.88) 0%, rgba(8,4,2,0.5) 50%, rgba(8,4,2,0.2) 100%)"
-                      : `linear-gradient(to right, ${appBg}ee 0%, ${appBg}99 50%, transparent 100%)`
+                    {/* Overlay — heavier when using a hero banner to keep text legible */}
+                    <div style={{ position: "absolute", inset: 0, background: heroBanner
+                      ? (isDark
+                          ? "linear-gradient(to right, rgba(6,3,1,0.82) 0%, rgba(6,3,1,0.55) 45%, rgba(6,3,1,0.18) 100%)"
+                          : `linear-gradient(to right, ${appBg}dd 0%, ${appBg}99 45%, ${appBg}22 100%)`)
+                      : (isDark
+                          ? "linear-gradient(to right, rgba(8,4,2,0.88) 0%, rgba(8,4,2,0.5) 50%, rgba(8,4,2,0.2) 100%)"
+                          : `linear-gradient(to right, ${appBg}ee 0%, ${appBg}99 50%, transparent 100%)`)
                     }} />
                     {/* Bottom fade */}
                     <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "55%", background: isDark

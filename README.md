@@ -10,10 +10,12 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 ## Features
 
 - **Gamepad-native** — full navigation with hold-repeat, no mouse required
-- **Automatic library scanning** — Steam games, Xbox/Game Pass titles, UWP Store apps, and Desktop shortcuts
+- **Automatic library scanning** — Steam games, Xbox/Game Pass titles, UWP Store apps, Desktop shortcuts, and Battle.net games
 - **Live library refresh** — rescan without restarting; auto-refreshes when scan settings change
-- **Game art** — cover art fetched automatically from SteamGridDB; replace per-game with your own image
-- **Custom cover art** — press Select/Back on any game to set a custom cover image, with a reset-to-default option
+- **Game art** — cover art and hero banners fetched automatically from SteamGridDB; cached locally to minimize API calls
+- **Hero spotlight** — full-width landscape banner art in the Home tab hero section
+- **Custom cover art** — press Select/Back or right-click any game to set a custom cover image, with a reset-to-default option
+- **Context menu** — right-click any game card to Open, Pin/Unpin, or change art
 - **Pinned apps** — pin your most-used games and apps to the top of any tab
 - **Manage visibility** — hide apps from view and restore them anytime from the same menu
 - **Search** — on-screen virtual keyboard for controller-only searching
@@ -46,9 +48,10 @@ Download the latest installer from the [Releases](../../releases) page and run i
 | **Y** | Search |
 | **Select / Back** | Replace cover art (Games tab, focused game) |
 | **LB / RB** | Switch tabs |
-| **LT / RT** | Switch game source filter (All / Steam / Xbox / Other) |
+| **LT / RT** | Switch game source filter (All / Steam / Xbox / Bnet / Other) |
 | **D-pad / Left stick** | Navigate |
 | **Menu (Start)** | Open Manage on Games or Apps tab |
+| **Right-click** | Context menu — Open, Pin/Unpin, Change Art |
 
 ---
 
@@ -56,7 +59,7 @@ Download the latest installer from the [Releases](../../releases) page and run i
 
 **Home** — hero spotlight, recent apps, pinned apps
 
-**Games** — all detected games with cover art, filterable by source (Steam / Xbox / Other)
+**Games** — all detected games with cover art, filterable by source (Steam / Xbox / Bnet / Other)
 
 **Apps** — all detected non-game apps and shortcuts
 
@@ -74,6 +77,7 @@ Download the latest installer from the [Releases](../../releases) page and run i
 | Scan Xbox | Include Xbox / Game Pass titles |
 | Scan Store Apps | Include UWP / Microsoft Store apps |
 | Scan Desktop Shortcuts | Include `.lnk` shortcuts from Desktop and Start Menu |
+| Scan Battle.net | Include installed Blizzard / Battle.net games |
 | Refresh Library | Rescan all sources immediately |
 | Default Tab | Which tab opens on launch |
 | Stick Repeat Speed | How fast held directions repeat (Slow / Normal / Fast) |
@@ -125,7 +129,8 @@ All persistent data is stored in `%LOCALAPPDATA%\LiftOff\`:
 | `pins.json` | Pinned app IDs |
 | `hidden.json` | Hidden app IDs |
 | `recents.json` | Recently launched apps |
-| `art_cache.json` | Cached SteamGridDB art URLs |
+| `art_cache.json` | Cached SteamGridDB cover art URLs (600×900) |
+| `hero_cache.json` | Cached SteamGridDB hero banner URLs (landscape) |
 | `custom_art.json` | Per-game custom cover art (data URLs) |
 
 ---
@@ -137,7 +142,7 @@ All persistent data is stored in `%LOCALAPPDATA%\LiftOff\`:
 - In-app browser
 - More customization options
 - System settings controls (brightness, volume, Wi-Fi, Bluetooth)
-- Additional game library support (GOG, Battle.net, Epic Games, etc.)
+- Additional game library support (GOG, Epic Games, etc.)
 
 ---
 
