@@ -257,50 +257,152 @@ function ArtPickerModal({ app, currentArt, hasCustomArt, accent, theme, isDark, 
   const [preview, setPreview] = useState(currentArt || null);
   const [pendingData, setPendingData] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [focusedBtn, setFocusedBtn] = useState("browse");
 
-  const handleFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => { const url = ev.target.result; setPreview(url); setPendingData(url); };
-    reader.readAsDataURL(file);
+  const pendingDataRef  = useRef(null);
+  const focusedBtnRef   = useRef("browse");
+  const lastBtnRef      = useRef({});
+
+  // Compute which buttons are visible given current pending state
+  const getButtons = () => {
+    const btns = ["browse"];
+    if (pendingDataRef.current) btns.push("save");
+    if (hasCustomArt && !pendingDataRef.current) btns.push("reset");
+    btns.push("cancel");
+    return btns;
   };
 
   const handleSave = () => {
-    if (!pendingData) return;
+    if (!pendingDataRef.current) return;
     setSaving(true);
-    invoke("set_custom_art", { id: app.id, data: pendingData })
-      .then(() => { onSet(app.id, pendingData); onClose(); })
+    invoke("set_custom_art", { id: app.id, data: pendingDataRef.current })
+      .then(() => { onSet(app.id, pendingDataRef.current); onClose(); })
       .catch(console.error)
       .finally(() => setSaving(false));
   };
-
   const handleReset = () => {
     invoke("clear_custom_art", { id: app.id })
       .then(() => { onReset(app.id); onClose(); })
       .catch(console.error);
   };
 
-  const btnStyle = (bg, color, extra = {}) => ({
-    padding: "10px 20px", borderRadius: 10, cursor: "pointer",
-    fontFamily: "'Segoe UI', sans-serif", fontSize: 14, fontWeight: 600,
-    border: "none", width: "100%", background: bg, color, transition: "all 0.15s ease", ...extra,
-  });
+  // Keep latest handlers accessible inside the RAF closure
+  const handleSaveRef  = useRef(handleSave);
+  const handleResetRef = useRef(handleReset);
+  useEffect(() => { handleSaveRef.current  = handleSave; });
+  useEffect(() => { handleResetRef.current = handleReset; });
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        // Normalise to 600×900 (2:3, same as SteamGridDB) with cover-crop
+        const TW = 600, TH = 900;
+        const canvas = document.createElement("canvas");
+        canvas.width = TW; canvas.height = TH;
+        const ctx = canvas.getContext("2d");
+        const scale = Math.max(TW / img.width, TH / img.height);
+        const sw = TW / scale, sh = TH / scale;
+        const sx = (img.width  - sw) / 2;
+        const sy = (img.height - sh) / 2;
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, TW, TH);
+        const url = canvas.toDataURL("image/jpeg", 0.88);
+        setPreview(url);
+        setPendingData(url);
+        pendingDataRef.current = url;
+        setFocusedBtn("save"); focusedBtnRef.current = "save";
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Own RAF gamepad poll — runs while modal is mounted
+  useEffect(() => {
+    let rAFId;
+    const poll = () => {
+      const gp = getBestGamepad();
+      if (gp) {
+        const state = readGpState(gp);
+        const btns  = getButtons();
+
+        if (state.ArrowDown && !lastBtnRef.current.ArrowDown) {
+          const i    = btns.indexOf(focusedBtnRef.current);
+          const next = btns[Math.min(i + 1, btns.length - 1)];
+          if (next !== focusedBtnRef.current) { setFocusedBtn(next); focusedBtnRef.current = next; }
+        }
+        if (state.ArrowUp && !lastBtnRef.current.ArrowUp) {
+          const i    = btns.indexOf(focusedBtnRef.current);
+          const next = btns[Math.max(i - 1, 0)];
+          if (next !== focusedBtnRef.current) { setFocusedBtn(next); focusedBtnRef.current = next; }
+        }
+        if (state.Enter && !lastBtnRef.current.Enter) {
+          const btn = focusedBtnRef.current;
+          if (btn === "browse") fileRef.current?.click();
+          else if (btn === "save")   handleSaveRef.current();
+          else if (btn === "reset")  handleResetRef.current();
+          else if (btn === "cancel") onClose();
+        }
+        if (state.Escape && !lastBtnRef.current.Escape) onClose();
+
+        lastBtnRef.current = state;
+      }
+      rAFId = requestAnimationFrame(poll);
+    };
+    rAFId = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(rAFId);
+  }, []);
+
+  const btnStyle = (key, bg, color, extra = {}) => {
+    const focused = focusedBtn === key;
+    return {
+      padding: "10px 20px", borderRadius: 10, cursor: "pointer",
+      fontFamily: "'Segoe UI', sans-serif", fontSize: 14, fontWeight: 600,
+      border: focused ? `2px solid ${accent.primary}` : "2px solid transparent",
+      width: "100%", background: bg, color,
+      transition: "all 0.15s ease",
+      boxShadow: focused ? `0 0 0 2px ${accent.glow}0.4), 0 0 16px ${accent.glow}0.2)` : "none",
+      transform: focused ? "scale(1.02)" : "scale(1)",
+      ...extra,
+    };
+  };
 
   return (
     <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
-      <div style={{ ...glass, borderRadius: 20, padding: 28, width: 300, maxHeight: "85vh", overflowY: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: theme.text }}>{app.name}</div>
-        <div style={{ fontSize: 12, color: theme.textDim }}>Replace cover art</div>
-        {preview
-          ? <div style={{ width: "100%", aspectRatio: "2/3", borderRadius: 12, overflow: "hidden" }}><img src={preview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /></div>
-          : <div style={{ width: "100%", aspectRatio: "2/3", borderRadius: 12, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 13, color: theme.textDim }}>No art</span></div>
-        }
-        <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
-        <button onClick={() => fileRef.current?.click()} style={btnStyle(`linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, "white")}>Browse Image</button>
-        {pendingData && <button onClick={handleSave} disabled={saving} style={btnStyle("#4a9c4a", "white", { opacity: saving ? 0.6 : 1 })}>{saving ? "Saving…" : "Save"}</button>}
-        {hasCustomArt && !pendingData && <button onClick={handleReset} style={btnStyle("rgba(255,255,255,0.08)", theme.text, { border: "1px solid rgba(255,255,255,0.15)" })}>Reset to Default</button>}
-        <button onClick={onClose} style={btnStyle("rgba(255,255,255,0.05)", theme.textDim)}>Cancel</button>
+      <div style={{ ...glass, borderRadius: 20, padding: 24, width: 380 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: theme.text, marginBottom: 4 }}>{app.name}</div>
+        <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 16 }}>Replace cover art</div>
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+          {/* Preview — fixed width, 2:3 tall */}
+          <div style={{ flexShrink: 0, width: 110 }}>
+            {preview
+              ? <img src={preview} alt="" style={{ width: "100%", aspectRatio: "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
+              : <div style={{ width: "100%", aspectRatio: "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>No art</span></div>
+            }
+          </div>
+          {/* Controls */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
+            <button onClick={() => fileRef.current?.click()} style={btnStyle("browse", `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, "white")}>Browse Image</button>
+            {pendingData && <button onClick={handleSave} disabled={saving} style={btnStyle("save", "#4a9c4a", "white", { opacity: saving ? 0.6 : 1 })}>{saving ? "Saving…" : "Save"}</button>}
+            {hasCustomArt && !pendingData && <button onClick={handleReset} style={btnStyle("reset", "rgba(255,255,255,0.08)", theme.text)}>Reset to Default</button>}
+            <button onClick={onClose} style={btnStyle("cancel", "rgba(255,255,255,0.05)", theme.textDim)}>Cancel</button>
+            <div style={{ display: "flex", justifyContent: "center", gap: 12, paddingTop: 4 }}>
+              {[
+                { bg: "#4a9c4a", label: "A Confirm" },
+                { bg: "#b03030", label: "B Cancel" },
+              ].map(({ bg, label }) => (
+                <span key={label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
+                  <span style={{ width: 18, height: 18, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "white", flexShrink: 0 }}>{label[0]}</span>
+                  {label.slice(1)}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -714,11 +816,12 @@ export default function App() {
   const [gameArt, setGameArt]                       = useState({});
   const [customArt, setCustomArt]                   = useState({});
   const [artPickerApp, setArtPickerApp]             = useState(null);
+  const [contextMenu, setContextMenu]               = useState(null); // { x, y, app }
   const [launchingApp, setLaunchingApp]             = useState(null);
   const [settings, setSettings]                     = useState({
     accent: "ember", theme: "dark", stars_enabled: true,
     default_tab: "Home", scan_steam: true, scan_xbox: true,
-    scan_uwp: true, scan_desktop: true, repeat_speed: "normal",
+    scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
     launch_at_startup: false,
   });
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
@@ -1145,7 +1248,7 @@ export default function App() {
     });
   };
 
-  const SCAN_KEYS = ["scan_steam", "scan_xbox", "scan_uwp", "scan_desktop"];
+  const SCAN_KEYS = ["scan_steam", "scan_xbox", "scan_uwp", "scan_desktop", "scan_battlenet"];
 
   const updateSetting = (key, value) => {
     setSettings(prev => {
@@ -1193,7 +1296,8 @@ export default function App() {
       if (a.app_type !== "game") return false;
       if (gameSourceTab === "Steam") return a.source === "steam";
       if (gameSourceTab === "Xbox")  return a.source === "xbox";
-      if (gameSourceTab === "Other") return a.source !== "steam" && a.source !== "xbox";
+      if (gameSourceTab === "Bnet")  return a.source === "battlenet";
+      if (gameSourceTab === "Other") return a.source !== "steam" && a.source !== "xbox" && a.source !== "battlenet";
       return true; // "All"
     }
     if (tab === "Apps") return a.app_type === "app";
@@ -1276,6 +1380,7 @@ export default function App() {
     { key: "scan_xbox",         label: "Scan Xbox",              type: "toggle" },
     { key: "scan_uwp",          label: "Scan Store Apps",        type: "toggle" },
     { key: "scan_desktop",      label: "Scan Desktop Shortcuts", type: "toggle" },
+    { key: "scan_battlenet",    label: "Scan Battle.net",        type: "toggle" },
     { key: "refresh_library",   label: "Refresh Library",        type: "refresh" },
     { key: "divider2",          label: "BEHAVIOR",               type: "divider" },
     { key: "default_tab",       label: "Default Tab",            type: "cycle",  options: ["Home","Games","Apps"] },
@@ -1327,7 +1432,8 @@ export default function App() {
         const src = gameSourceTabRef.current;
         if (src === "Steam") return a.source === "steam";
         if (src === "Xbox")  return a.source === "xbox";
-        if (src === "Other") return a.source !== "steam" && a.source !== "xbox";
+        if (src === "Bnet")  return a.source === "battlenet";
+        if (src === "Other") return a.source !== "steam" && a.source !== "xbox" && a.source !== "battlenet";
         return true;
       }
       return a.app_type === "app";
@@ -1521,7 +1627,7 @@ export default function App() {
     // Games / Apps tabs
     // LT/RT cycle source sub-tabs on Games tab (from anywhere)
     if (currentTab === "Games") {
-      const SOURCES = ["All", "Steam", "Xbox", "Other"];
+      const SOURCES = ["All", "Steam", "Xbox", "Bnet", "Other"];
       // "Manage" is the last item in the subtab row, index = SOURCES.length (for Games) or 0 (for Apps)
       if (key === "TriggerLeft") {
         const cur = SOURCES.indexOf(gameSourceTabRef.current);
@@ -1546,7 +1652,7 @@ export default function App() {
     // subtabs row: source pills + manage button
     // For Games: indices 0–3 = All/Steam/Xbox/Other, index 4 = "Manage", index 5 = "Restore" (if hidden exist)
     // For Apps:  index 0 = "Manage", index 1 = "Restore" (if hidden exist)
-    const SOURCES = ["All", "Steam", "Xbox", "Other"];
+    const SOURCES = ["All", "Steam", "Xbox", "Bnet", "Other"];
     const subtabItems = currentTab === "Games"
       ? [...SOURCES, "manage"]
       : ["manage"];
@@ -1756,10 +1862,11 @@ export default function App() {
     );
   };
 
-  const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned }) => {
+  const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, onRightClick }) => {
     const art = customArt[app.id] || gameArt[app.id];
     return (
       <div ref={cardRef} onClick={onClick} onDoubleClick={onDoubleClick}
+        onContextMenu={onRightClick ? (e) => { e.preventDefault(); onRightClick(e, app); } : undefined}
         style={focused
           ? { ...glass, border: `1px solid ${accent.glow}0.6)`, borderRadius: 16, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "all 0.15s ease", boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 40px ${accent.glow}0.2)`, transform: "scale(1.04)" }
           : { ...glass, border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "all 0.15s ease" }
@@ -2396,7 +2503,7 @@ export default function App() {
 
             {/* ── SOURCE SUB-TABS (Games only) + MANAGE BUTTONS ── */}
             {(() => {
-              const SOURCES = ["All", "Steam", "Xbox", "Other"];
+              const SOURCES = ["All", "Steam", "Xbox", "Bnet", "Other"];
               const subtabItems = tab === "Games"
                 ? [...SOURCES, "manage"]
                 : ["manage"];
@@ -2449,7 +2556,8 @@ export default function App() {
                       return <GameCard key={app.id} app={app} focused={focused} isPinned={isPinned}
                         cardRef={focused ? focusedCardRef : null}
                         onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
-                        onDoubleClick={() => triggerLaunch(app, recent)} />;
+                        onDoubleClick={() => triggerLaunch(app, recent)}
+                        onRightClick={(e, a) => { setContextMenu({ x: e.clientX, y: e.clientY, app: a }); }} />;
                     })}
                   </div>
                 ) : (
@@ -2489,7 +2597,8 @@ export default function App() {
                   return <GameCard key={app.id} app={app} focused={focused} isPinned={isPinned}
                     cardRef={focused ? focusedCardRef : null}
                     onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
-                    onDoubleClick={() => triggerLaunch(app, recent)} />;
+                    onDoubleClick={() => triggerLaunch(app, recent)}
+                    onRightClick={(e, a) => { setContextMenu({ x: e.clientX, y: e.clientY, app: a }); }} />;
                 })}
               </div>
             ) : (
@@ -2542,6 +2651,10 @@ export default function App() {
                       <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>MENU</span>
                       Manage
                     </span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
+                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>BACK</span>
+                      Art
+                    </span>
                   </>}
                   {tab === "Apps" && <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
                     <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>MENU</span>
@@ -2552,6 +2665,32 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      {contextMenu && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9000 }} onClick={() => setContextMenu(null)} onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}>
+          <div onClick={(e) => e.stopPropagation()}
+            style={{ position: "fixed", left: Math.min(contextMenu.x, window.innerWidth - 180), top: Math.min(contextMenu.y, window.innerHeight - 100),
+              background: isDark ? "rgba(20,14,10,0.97)" : "rgba(255,255,255,0.97)",
+              backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+              borderRadius: 10, overflow: "hidden", minWidth: 160, zIndex: 9001,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+            {[
+              { label: "Open", action: () => { triggerLaunch(contextMenu.app, recentRef.current); setContextMenu(null); } },
+              { label: pins.includes(contextMenu.app.id) ? "Unpin" : "Pin", action: () => { togglePin(contextMenu.app); setContextMenu(null); } },
+              ...(contextMenu.app.app_type === "game" ? [{ label: "Change Art", action: () => { setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); } }] : []),
+            ].map(({ label, action }) => (
+              <div key={label} onClick={action}
+                style={{ padding: "10px 16px", cursor: "pointer", fontSize: 13, fontWeight: 500, color: theme.text,
+                  transition: "background 0.1s ease" }}
+                onMouseEnter={(e) => e.currentTarget.style.background = `${accent.glow}0.15)`}
+                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                {label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
