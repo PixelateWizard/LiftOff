@@ -96,10 +96,14 @@ impl Default for Settings {
 #[derive(Deserialize)] struct SgdbGame { id: u64 }
 #[derive(Deserialize)] struct SgdbGridResponse { success: bool, data: Option<Vec<SgdbGrid>> }
 #[derive(Deserialize)] struct SgdbGrid { url: String }
+#[derive(Deserialize)] struct SgdbHeroResponse { success: bool, data: Option<Vec<SgdbHero>> }
+#[derive(Deserialize)] struct SgdbHero { url: String }
+#[derive(Serialize)] struct GameArtBundle { grid: Option<String>, hero: Option<String> }
 
 fn liftoff_dir() -> std::path::PathBuf { dirs::data_local_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("LiftOff") }
 fn recents_path() -> std::path::PathBuf { liftoff_dir().join("recents.json") }
 fn art_cache_path() -> std::path::PathBuf { liftoff_dir().join("art_cache.json") }
+fn hero_cache_path() -> std::path::PathBuf { liftoff_dir().join("hero_cache.json") }
 fn settings_path() -> std::path::PathBuf { liftoff_dir().join("settings.json") }
 fn pins_path() -> std::path::PathBuf { liftoff_dir().join("pins.json") }
 fn hidden_path() -> std::path::PathBuf { liftoff_dir().join("hidden.json") }
@@ -124,6 +128,18 @@ fn load_art_cache() -> HashMap<String, String> {
 
 fn save_art_cache(cache: &HashMap<String, String>) {
     let path = art_cache_path();
+    if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
+    if let Ok(json) = serde_json::to_string(cache) { let _ = std::fs::write(path, json); }
+}
+
+fn load_hero_cache() -> HashMap<String, String> {
+    let path = hero_cache_path();
+    if !path.exists() { return HashMap::new(); }
+    std::fs::read_to_string(&path).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
+}
+
+fn save_hero_cache(cache: &HashMap<String, String>) {
+    let path = hero_cache_path();
     if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
     if let Ok(json) = serde_json::to_string(cache) { let _ = std::fs::write(path, json); }
 }
@@ -180,7 +196,7 @@ fn save_custom_art_inner(map: &HashMap<String, String>) {
 
 #[tauri::command] fn get_settings() -> Settings { load_settings_inner() }
 #[tauri::command] fn clear_recents() -> Result<(), String> { save_recents(&vec![]); Ok(()) }
-#[tauri::command] fn clear_art_cache() -> Result<(), String> { save_art_cache(&HashMap::new()); Ok(()) }
+#[tauri::command] fn clear_art_cache() -> Result<(), String> { save_art_cache(&HashMap::new()); save_hero_cache(&HashMap::new()); Ok(()) }
 #[tauri::command] fn get_recents() -> Vec<RecentEntry> { load_recents() }
 #[tauri::command] fn set_gamepad_ready() { GAMEPAD_READY.store(true, Ordering::Relaxed); }
 #[tauri::command] fn get_custom_art() -> HashMap<String, String> { load_custom_art_inner() }
@@ -260,28 +276,60 @@ fn get_battery() -> BatteryInfo {
 }
 
 #[tauri::command]
-fn fetch_game_art(game_name: String) -> Option<String> {
-    let mut cache = load_art_cache();
-    if let Some(cached_url) = cache.get(&game_name) { return Some(cached_url.clone()); }
-    let client = reqwest::blocking::Client::builder().timeout(std::time::Duration::from_secs(10)).build().ok()?;
-    let search_url = format!("https://www.steamgriddb.com/api/v2/search/autocomplete/{}", urlencoding::encode(&game_name));
-    let search_res = client.get(&search_url).header("Authorization", format!("Bearer {}", SGDB_KEY)).send().ok()?;
-    let search_data: SgdbSearchResponse = search_res.json().ok()?;
-    if !search_data.success { return None; }
-    let game_id = search_data.data?.into_iter().next()?.id;
-    let grid_url = format!("https://www.steamgriddb.com/api/v2/grids/game/{}?dimensions=600x900&limit=1", game_id);
-    let grid_res = client.get(&grid_url).header("Authorization", format!("Bearer {}", SGDB_KEY)).send().ok()?;
-    let grid_data: SgdbGridResponse = grid_res.json().ok()?;
-    if grid_data.success {
-        if let Some(grids) = grid_data.data {
-            if let Some(grid) = grids.into_iter().next() {
-                cache.insert(game_name, grid.url.clone());
-                save_art_cache(&cache);
-                return Some(grid.url);
-            }
-        }
+fn fetch_game_art(game_name: String) -> GameArtBundle {
+    let mut grid_cache = load_art_cache();
+    let mut hero_cache = load_hero_cache();
+    let grid_cached = grid_cache.get(&game_name).cloned();
+    let hero_cached = hero_cache.get(&game_name).cloned();
+
+    // Both cached — zero API calls
+    if grid_cached.is_some() && hero_cached.is_some() {
+        return GameArtBundle { grid: grid_cached, hero: hero_cached };
     }
-    None
+
+    let client = match reqwest::blocking::Client::builder().timeout(std::time::Duration::from_secs(10)).build() {
+        Ok(c) => c,
+        Err(_) => return GameArtBundle { grid: grid_cached, hero: hero_cached },
+    };
+
+    // One search call covers both art types
+    let search_url = format!("https://www.steamgriddb.com/api/v2/search/autocomplete/{}", urlencoding::encode(&game_name));
+    let game_id = client.get(&search_url)
+        .header("Authorization", format!("Bearer {}", SGDB_KEY))
+        .send().ok()
+        .and_then(|r| r.json::<SgdbSearchResponse>().ok())
+        .filter(|d| d.success)
+        .and_then(|d| d.data)
+        .and_then(|items| items.into_iter().next())
+        .map(|g| g.id);
+
+    let Some(game_id) = game_id else {
+        return GameArtBundle { grid: grid_cached, hero: hero_cached };
+    };
+
+    let grid = grid_cached.or_else(|| {
+        let url = format!("https://www.steamgriddb.com/api/v2/grids/game/{}?dimensions=600x900&limit=1", game_id);
+        client.get(&url).header("Authorization", format!("Bearer {}", SGDB_KEY))
+            .send().ok()
+            .and_then(|r| r.json::<SgdbGridResponse>().ok())
+            .filter(|d| d.success)
+            .and_then(|d| d.data)
+            .and_then(|v| v.into_iter().next())
+            .map(|g| { grid_cache.insert(game_name.clone(), g.url.clone()); save_art_cache(&grid_cache); g.url })
+    });
+
+    let hero = hero_cached.or_else(|| {
+        let url = format!("https://www.steamgriddb.com/api/v2/heroes/game/{}?limit=1", game_id);
+        client.get(&url).header("Authorization", format!("Bearer {}", SGDB_KEY))
+            .send().ok()
+            .and_then(|r| r.json::<SgdbHeroResponse>().ok())
+            .filter(|d| d.success)
+            .and_then(|d| d.data)
+            .and_then(|v| v.into_iter().next())
+            .map(|h| { hero_cache.insert(game_name.clone(), h.url.clone()); save_hero_cache(&hero_cache); h.url })
+    });
+
+    GameArtBundle { grid, hero }
 }
 
 fn extract_icon_base64(path: &str) -> Option<String> {
@@ -579,11 +627,10 @@ fn scan_battlenet_games() -> Vec<AppEntry> {
         let install = parts[1].trim();
         let uid     = if parts.len() >= 3 { parts[2].trim() } else { "" };
         if name.is_empty() { continue; }
-        let launch_path = if !uid.is_empty() {
-            format!("battlenet://{}", uid)
-        } else {
-            find_main_exe_in_dir(install).unwrap_or_default()
-        };
+        // Prefer the direct game exe (matches what Start Menu shortcuts do).
+        // Fall back to battlenet:// URI only if no exe is found.
+        let launch_path = find_main_exe_in_dir(install)
+            .unwrap_or_else(|| if !uid.is_empty() { format!("battlenet://{}", uid) } else { String::new() });
         if launch_path.is_empty() { continue; }
         let icon = find_game_icon(install);
         let id = format!("battlenet:{}", name.to_lowercase().replace(' ', "_").replace([':', '\'', '"'], ""));
@@ -594,18 +641,25 @@ fn scan_battlenet_games() -> Vec<AppEntry> {
 
 fn find_main_exe_in_dir(dir: &str) -> Option<String> {
     let path = Path::new(dir);
+    let skip = ["unins", "crash", "update", "error", "report", "helper", "agent", "redist", "setup", "install", "vcredist"];
+    let mut candidates: Vec<String> = Vec::new();
     if let Ok(entries) = std::fs::read_dir(path) {
         for e in entries.flatten() {
             let p = e.path();
             if p.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase() == "exe" {
                 let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
-                if !name.contains("unins") && !name.contains("crash") && !name.contains("update") {
-                    return Some(p.to_string_lossy().to_string());
-                }
+                if skip.iter().any(|s| name.contains(s)) { continue; }
+                candidates.push(p.to_string_lossy().to_string());
             }
         }
     }
-    None
+    // Prefer exes with "launcher" in the name, then shortest name (usually the main exe)
+    candidates.sort_by_key(|p| {
+        let n = p.to_lowercase();
+        let pref = if n.contains("launcher") { 0 } else { 1 };
+        (pref, p.len())
+    });
+    candidates.into_iter().next()
 }
 
 fn scan_steam_games() -> Vec<AppEntry> {
