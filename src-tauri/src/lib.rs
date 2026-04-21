@@ -6,8 +6,8 @@ use std::path::Path;
 use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use windows::{
-    Win32::UI::Shell::{SHGetFileInfoW, SHFILEINFOW, SHGFI_FLAGS, SHGFI_ICON, SHGFI_LARGEICON},
-    Win32::UI::WindowsAndMessaging::{DestroyIcon, DrawIconEx, GetForegroundWindow, DI_NORMAL},
+    Win32::UI::Shell::{SHGetFileInfoW, ShellExecuteW, SHFILEINFOW, SHGFI_FLAGS, SHGFI_ICON, SHGFI_LARGEICON},
+    Win32::UI::WindowsAndMessaging::{DestroyIcon, DrawIconEx, GetForegroundWindow, DI_NORMAL, SW_SHOWNORMAL},
     Win32::Graphics::Gdi::{
         GetDC, ReleaseDC, GetDIBits, CreateCompatibleDC, CreateCompatibleBitmap, SelectObject,
         DeleteDC, DeleteObject, PatBlt, BLACKNESS,
@@ -69,6 +69,7 @@ pub struct Settings {
     pub scan_xbox: bool,
     pub scan_uwp: bool,
     pub scan_desktop: bool,
+    pub scan_battlenet: bool,
     pub repeat_speed: String,
     pub launch_at_startup: bool,
 }
@@ -84,6 +85,7 @@ impl Default for Settings {
             scan_xbox: true,
             scan_uwp: true,
             scan_desktop: true,
+            scan_battlenet: true,
             repeat_speed: "normal".to_string(),
             launch_at_startup: false,
         }
@@ -547,6 +549,65 @@ fn get_steam_install_path() -> Option<String> {
     }
 }
 
+fn scan_battlenet_games() -> Vec<AppEntry> {
+    // Games are registered in the Uninstall key with Blizzard Uninstaller as their uninstall string.
+    // The --uid= parameter in that string is the battlenet:// launch UID.
+    let output = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", r#"
+            $uninstKey = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+            Get-ChildItem $uninstKey -ErrorAction SilentlyContinue | ForEach-Object {
+                $p = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue
+                $uninstStr = if ($p.UninstallString) { $p.UninstallString } else { "" }
+                if ($uninstStr -notmatch "Blizzard Uninstaller") { return }
+                $name = $p.DisplayName
+                $loc  = $p.InstallLocation
+                if (-not $name -or $name -eq "Battle.net" -or -not $loc -or -not (Test-Path $loc)) { return }
+                $uid = ""
+                if ($uninstStr -match '--uid=([^\s"]+)') { $uid = $Matches[1] }
+                Write-Output "$name`t$loc`t$uid"
+            }
+        "#])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output();
+    let output = match output { Ok(o) => o, Err(_) => return vec![] };
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut games = Vec::new();
+    for line in stdout.lines() {
+        let parts: Vec<&str> = line.splitn(3, '\t').collect();
+        if parts.len() < 2 { continue; }
+        let name    = parts[0].trim().to_string();
+        let install = parts[1].trim();
+        let uid     = if parts.len() >= 3 { parts[2].trim() } else { "" };
+        if name.is_empty() { continue; }
+        let launch_path = if !uid.is_empty() {
+            format!("battlenet://{}", uid)
+        } else {
+            find_main_exe_in_dir(install).unwrap_or_default()
+        };
+        if launch_path.is_empty() { continue; }
+        let icon = find_game_icon(install);
+        let id = format!("battlenet:{}", name.to_lowercase().replace(' ', "_").replace([':', '\'', '"'], ""));
+        games.push(AppEntry { id, name, icon_base64: icon, launch_path, app_type: "game".to_string(), source: "battlenet".to_string() });
+    }
+    games
+}
+
+fn find_main_exe_in_dir(dir: &str) -> Option<String> {
+    let path = Path::new(dir);
+    if let Ok(entries) = std::fs::read_dir(path) {
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase() == "exe" {
+                let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
+                if !name.contains("unins") && !name.contains("crash") && !name.contains("update") {
+                    return Some(p.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
 fn scan_steam_games() -> Vec<AppEntry> {
     let mut games = Vec::new();
 
@@ -681,6 +742,11 @@ fn get_apps() -> Vec<AppEntry> {
         apps.extend(scan_steam_games());
     }
 
+    // 4. Battle.net Games scan
+    if settings.scan_battlenet {
+        apps.extend(scan_battlenet_games());
+    }
+
     let mut seen = std::collections::HashSet::new();
     // Use the ID for de-duplication instead of just the name to be safer
     apps.retain(|a| seen.insert(a.id.clone()) && !hidden.contains(&a.id));
@@ -734,6 +800,10 @@ fn get_all_apps() -> Vec<AppEntry> {
         apps.extend(scan_steam_games());
     }
 
+    if settings.scan_battlenet {
+        apps.extend(scan_battlenet_games());
+    }
+
     // Deduplicate only — no hidden filter
     let mut seen = std::collections::HashSet::new();
     apps.retain(|a| seen.insert(a.id.clone()));
@@ -759,11 +829,28 @@ async fn launch_app(
     recents.truncate(RECENTS_MAX);
     save_recents(&recents);
 
-    std::process::Command::new("cmd")
-        .args(["/C", "start", "", &path])
-        .creation_flags(CREATE_NO_WINDOW)
-        .spawn()
-        .map_err(|e| e.to_string())?;
+    if path.contains("://") {
+        // Use ShellExecuteW for URI schemes (battlenet://, steam://, shell:, etc.)
+        // cmd /C start can mis-parse // in protocol URLs
+        unsafe {
+            let op:   Vec<u16> = std::ffi::OsStr::new("open").encode_wide().chain(std::iter::once(0)).collect();
+            let file: Vec<u16> = std::ffi::OsStr::new(&path).encode_wide().chain(std::iter::once(0)).collect();
+            ShellExecuteW(
+                windows::Win32::Foundation::HWND::default(),
+                windows::core::PCWSTR(op.as_ptr()),
+                windows::core::PCWSTR(file.as_ptr()),
+                windows::core::PCWSTR::null(),
+                windows::core::PCWSTR::null(),
+                SW_SHOWNORMAL,
+            );
+        }
+    } else {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", &path])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
 
     Ok(())
 }
