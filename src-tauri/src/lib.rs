@@ -72,6 +72,7 @@ pub struct Settings {
     pub scan_battlenet: bool,
     pub repeat_speed: String,
     pub launch_at_startup: bool,
+    pub animated_heroes: bool,
 }
 
 impl Default for Settings {
@@ -88,6 +89,7 @@ impl Default for Settings {
             scan_battlenet: true,
             repeat_speed: "normal".to_string(),
             launch_at_startup: false,
+            animated_heroes: true,
         }
     }
 }
@@ -98,12 +100,13 @@ impl Default for Settings {
 #[derive(Deserialize)] struct SgdbGrid { url: String }
 #[derive(Deserialize)] struct SgdbHeroResponse { success: bool, data: Option<Vec<SgdbHero>> }
 #[derive(Deserialize)] struct SgdbHero { url: String }
-#[derive(Serialize)] struct GameArtBundle { grid: Option<String>, hero: Option<String> }
+#[derive(Serialize)] struct GameArtBundle { grid: Option<String>, hero_animated: Option<String>, hero_static: Option<String> }
 
 fn liftoff_dir() -> std::path::PathBuf { dirs::data_local_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("LiftOff") }
 fn recents_path() -> std::path::PathBuf { liftoff_dir().join("recents.json") }
 fn art_cache_path() -> std::path::PathBuf { liftoff_dir().join("art_cache.json") }
 fn hero_cache_path() -> std::path::PathBuf { liftoff_dir().join("hero_cache.json") }
+fn hero_animated_cache_path() -> std::path::PathBuf { liftoff_dir().join("hero_animated_cache.json") }
 fn settings_path() -> std::path::PathBuf { liftoff_dir().join("settings.json") }
 fn pins_path() -> std::path::PathBuf { liftoff_dir().join("pins.json") }
 fn hidden_path() -> std::path::PathBuf { liftoff_dir().join("hidden.json") }
@@ -140,6 +143,18 @@ fn load_hero_cache() -> HashMap<String, String> {
 
 fn save_hero_cache(cache: &HashMap<String, String>) {
     let path = hero_cache_path();
+    if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
+    if let Ok(json) = serde_json::to_string(cache) { let _ = std::fs::write(path, json); }
+}
+
+fn load_hero_animated_cache() -> HashMap<String, String> {
+    let path = hero_animated_cache_path();
+    if !path.exists() { return HashMap::new(); }
+    std::fs::read_to_string(&path).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
+}
+
+fn save_hero_animated_cache(cache: &HashMap<String, String>) {
+    let path = hero_animated_cache_path();
     if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
     if let Ok(json) = serde_json::to_string(cache) { let _ = std::fs::write(path, json); }
 }
@@ -196,7 +211,7 @@ fn save_custom_art_inner(map: &HashMap<String, String>) {
 
 #[tauri::command] fn get_settings() -> Settings { load_settings_inner() }
 #[tauri::command] fn clear_recents() -> Result<(), String> { save_recents(&vec![]); Ok(()) }
-#[tauri::command] fn clear_art_cache() -> Result<(), String> { save_art_cache(&HashMap::new()); save_hero_cache(&HashMap::new()); Ok(()) }
+#[tauri::command] fn clear_art_cache() -> Result<(), String> { save_art_cache(&HashMap::new()); save_hero_cache(&HashMap::new()); save_hero_animated_cache(&HashMap::new()); Ok(()) }
 #[tauri::command] fn get_recents() -> Vec<RecentEntry> { load_recents() }
 #[tauri::command] fn set_gamepad_ready() { GAMEPAD_READY.store(true, Ordering::Relaxed); }
 #[tauri::command] fn get_custom_art() -> HashMap<String, String> { load_custom_art_inner() }
@@ -275,24 +290,52 @@ fn get_battery() -> BatteryInfo {
     BatteryInfo { percent: 0, charging: false }
 }
 
+/// Read all three caches at once and return what's already stored — no HTTP calls.
+/// Used at startup to instantly hydrate cached art before making any API requests.
+#[tauri::command]
+fn get_cached_art_bulk(game_names: Vec<String>) -> HashMap<String, GameArtBundle> {
+    let grid_cache          = load_art_cache();
+    let hero_static_cache   = load_hero_cache();
+    let hero_animated_cache = load_hero_animated_cache();
+    let mut result = HashMap::new();
+    for name in game_names {
+        let grid          = grid_cache.get(&name).filter(|s| !s.is_empty()).cloned();
+        let hero_static   = hero_static_cache.get(&name).filter(|s| !s.is_empty()).cloned();
+        let hero_animated = hero_animated_cache.get(&name).filter(|s| !s.is_empty()).cloned();
+        result.insert(name, GameArtBundle { grid, hero_animated, hero_static });
+    }
+    result
+}
+
 #[tauri::command]
 fn fetch_game_art(game_name: String) -> GameArtBundle {
     let mut grid_cache = load_art_cache();
-    let mut hero_cache = load_hero_cache();
-    let grid_cached = grid_cache.get(&game_name).cloned();
-    let hero_cached = hero_cache.get(&game_name).cloned();
+    let mut hero_static_cache = load_hero_cache();
+    let mut hero_animated_cache = load_hero_animated_cache();
 
-    // Both cached — zero API calls
-    if grid_cached.is_some() && hero_cached.is_some() {
-        return GameArtBundle { grid: grid_cached, hero: hero_cached };
+    let grid_cached     = grid_cache.get(&game_name).cloned();
+    let hero_static_cached   = hero_static_cache.get(&game_name).cloned();
+    let hero_animated_cached = hero_animated_cache.get(&game_name).cloned();
+
+    // All three checked (sentinel "" or real URL) — zero API calls
+    if grid_cached.is_some() && hero_static_cached.is_some() && hero_animated_cached.is_some() {
+        return GameArtBundle {
+            grid:           grid_cached.filter(|s| !s.is_empty()),
+            hero_animated:  hero_animated_cached.filter(|s| !s.is_empty()),
+            hero_static:    hero_static_cached.filter(|s| !s.is_empty()),
+        };
     }
 
     let client = match reqwest::blocking::Client::builder().timeout(std::time::Duration::from_secs(10)).build() {
         Ok(c) => c,
-        Err(_) => return GameArtBundle { grid: grid_cached, hero: hero_cached },
+        Err(_) => return GameArtBundle {
+            grid:          grid_cached.filter(|s| !s.is_empty()),
+            hero_animated: hero_animated_cached.filter(|s| !s.is_empty()),
+            hero_static:   hero_static_cached.filter(|s| !s.is_empty()),
+        },
     };
 
-    // One search call covers both art types
+    // One search call covers all three art types
     let search_url = format!("https://www.steamgriddb.com/api/v2/search/autocomplete/{}", urlencoding::encode(&game_name));
     let game_id = client.get(&search_url)
         .header("Authorization", format!("Bearer {}", SGDB_KEY))
@@ -304,32 +347,60 @@ fn fetch_game_art(game_name: String) -> GameArtBundle {
         .map(|g| g.id);
 
     let Some(game_id) = game_id else {
-        return GameArtBundle { grid: grid_cached, hero: hero_cached };
+        // Mark all unchecked as sentinel so we don't re-search next time
+        if grid_cached.is_none()          { grid_cache.insert(game_name.clone(), String::new());          save_art_cache(&grid_cache); }
+        if hero_animated_cached.is_none() { hero_animated_cache.insert(game_name.clone(), String::new()); save_hero_animated_cache(&hero_animated_cache); }
+        if hero_static_cached.is_none()   { hero_static_cache.insert(game_name.clone(), String::new());   save_hero_cache(&hero_static_cache); }
+        return GameArtBundle { grid: None, hero_animated: None, hero_static: None };
     };
 
-    let grid = grid_cached.or_else(|| {
+    let grid = if let Some(cached) = grid_cached {
+        if cached.is_empty() { None } else { Some(cached) }
+    } else {
         let url = format!("https://www.steamgriddb.com/api/v2/grids/game/{}?dimensions=600x900&limit=1", game_id);
-        client.get(&url).header("Authorization", format!("Bearer {}", SGDB_KEY))
+        let result = client.get(&url).header("Authorization", format!("Bearer {}", SGDB_KEY))
             .send().ok()
             .and_then(|r| r.json::<SgdbGridResponse>().ok())
             .filter(|d| d.success)
             .and_then(|d| d.data)
             .and_then(|v| v.into_iter().next())
-            .map(|g| { grid_cache.insert(game_name.clone(), g.url.clone()); save_art_cache(&grid_cache); g.url })
-    });
+            .map(|g| g.url);
+        grid_cache.insert(game_name.clone(), result.clone().unwrap_or_default());
+        save_art_cache(&grid_cache);
+        result
+    };
 
-    let hero = hero_cached.or_else(|| {
-        let url = format!("https://www.steamgriddb.com/api/v2/heroes/game/{}?limit=1", game_id);
-        client.get(&url).header("Authorization", format!("Bearer {}", SGDB_KEY))
-            .send().ok()
-            .and_then(|r| r.json::<SgdbHeroResponse>().ok())
-            .filter(|d| d.success)
-            .and_then(|d| d.data)
-            .and_then(|v| v.into_iter().next())
-            .map(|h| { hero_cache.insert(game_name.clone(), h.url.clone()); save_hero_cache(&hero_cache); h.url })
-    });
+    // Resolve cached values (None = uncached, Some("") = checked/none, Some(url) = has art)
+    let static_cached_val  = hero_static_cached.as_deref().and_then(|s| if s.is_empty() { None } else { Some(s.to_string()) });
+    let animated_cached_val = hero_animated_cached.as_deref().and_then(|s| if s.is_empty() { None } else { Some(s.to_string()) });
+    let need_static  = hero_static_cached.is_none();
+    let need_animated = hero_animated_cached.is_none();
 
-    GameArtBundle { grid, hero }
+    let (hero_static, hero_animated) = if need_static || need_animated {
+        let fetch_hero = |extra_param: &str| -> Option<String> {
+            let url = format!("https://www.steamgriddb.com/api/v2/heroes/game/{}?{}&limit=1", game_id, extra_param);
+            client.get(&url)
+                .header("Authorization", format!("Bearer {}", SGDB_KEY))
+                .send().ok()
+                .and_then(|r| r.json::<SgdbHeroResponse>().ok())
+                .filter(|d| d.success)
+                .and_then(|d| d.data)
+                .and_then(|v| v.into_iter().next())
+                .map(|h| h.url)
+        };
+
+        let found_static   = if need_static   { fetch_hero("types=static")   } else { None };
+        let found_animated = if need_animated { fetch_hero("types=animated") } else { None };
+
+        if need_animated { hero_animated_cache.insert(game_name.clone(), found_animated.clone().unwrap_or_default()); save_hero_animated_cache(&hero_animated_cache); }
+        if need_static   { hero_static_cache.insert(game_name.clone(), found_static.clone().unwrap_or_default());     save_hero_cache(&hero_static_cache); }
+
+        (static_cached_val.or(found_static), animated_cached_val.or(found_animated))
+    } else {
+        (static_cached_val, animated_cached_val)
+    };
+
+    GameArtBundle { grid, hero_animated, hero_static }
 }
 
 fn extract_icon_base64(path: &str) -> Option<String> {
@@ -597,9 +668,37 @@ fn get_steam_install_path() -> Option<String> {
     }
 }
 
+fn battlenet_exec_code(uid: &str) -> Option<&'static str> {
+    match uid.to_lowercase().as_str() {
+        "osi"             => Some("OSI"),   // Diablo II Resurrected
+        "fenris"          => Some("Fen"),   // Diablo IV
+        "d3"              => Some("D3"),    // Diablo III
+        "lazarus"         => Some("LAZR"),  // Diablo Immortal
+        "wow"             => Some("WoW"),   // World of Warcraft
+        "wow_classic"     => Some("WoWC"),  // WoW Classic
+        "wow_classic_era" => Some("WoWe"),  // WoW Classic Era
+        "s2"              => Some("S2"),    // StarCraft II
+        "s1"              => Some("S1"),    // StarCraft Remastered
+        "w3"              => Some("W3"),    // Warcraft III Reforged
+        "wtcg"            => Some("WTCG"),  // Hearthstone
+        "hero"            => Some("Hero"),  // Heroes of the Storm
+        "pro"             => Some("Pro"),   // Overwatch 2
+        "viper"           => Some("VIPR"),  // Overwatch (legacy)
+        "dst2"            => Some("DST2"),  // Destiny 2
+        _                 => None,
+    }
+}
+
+fn find_battlenet_exe() -> Option<String> {
+    let candidates = [
+        r"C:\Program Files (x86)\Battle.net\Battle.net.exe",
+        r"C:\Program Files\Battle.net\Battle.net.exe",
+    ];
+    candidates.iter().find(|p| std::path::Path::new(p).exists()).map(|p| p.to_string())
+}
+
 fn scan_battlenet_games() -> Vec<AppEntry> {
     // Games are registered in the Uninstall key with Blizzard Uninstaller as their uninstall string.
-    // The --uid= parameter in that string is the battlenet:// launch UID.
     let output = std::process::Command::new("powershell")
         .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", r#"
             $uninstKey = "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
@@ -627,10 +726,18 @@ fn scan_battlenet_games() -> Vec<AppEntry> {
         let install = parts[1].trim();
         let uid     = if parts.len() >= 3 { parts[2].trim() } else { "" };
         if name.is_empty() { continue; }
-        // Prefer the direct game exe (matches what Start Menu shortcuts do).
-        // Fall back to battlenet:// URI only if no exe is found.
-        let launch_path = find_main_exe_in_dir(install)
-            .unwrap_or_else(|| if !uid.is_empty() { format!("battlenet://{}", uid) } else { String::new() });
+        // Use Battle.net.exe --exec="launch CODE" to start the game without the launcher window.
+        // Fall back to direct game exe if the code isn't known, then battlenet:// URI as last resort.
+        let launch_path = if let Some(code) = battlenet_exec_code(uid) {
+            if let Some(bnet) = find_battlenet_exe() {
+                format!("bnet-exec:{}|{}", bnet, code)
+            } else {
+                find_bnet_game_exe(install).unwrap_or_default()
+            }
+        } else {
+            find_bnet_game_exe(install)
+                .unwrap_or_else(|| if !uid.is_empty() { format!("battlenet://{}", uid) } else { String::new() })
+        };
         if launch_path.is_empty() { continue; }
         let icon = find_game_icon(install);
         let id = format!("battlenet:{}", name.to_lowercase().replace(' ', "_").replace([':', '\'', '"'], ""));
@@ -659,6 +766,28 @@ fn find_main_exe_in_dir(dir: &str) -> Option<String> {
         let pref = if n.contains("launcher") { 0 } else { 1 };
         (pref, p.len())
     });
+    candidates.into_iter().next()
+}
+
+// Like find_main_exe_in_dir but also skips *launcher* exes — for Blizzard games where
+// the Launcher.exe opens the full Battle.net window but the game EXE runs standalone.
+fn find_bnet_game_exe(dir: &str) -> Option<String> {
+    let path = Path::new(dir);
+    let skip = ["unins", "crash", "update", "error", "report", "helper", "agent",
+                "redist", "setup", "install", "vcredist", "launcher"];
+    let mut candidates: Vec<String> = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(path) {
+        for e in entries.flatten() {
+            let p = e.path();
+            if p.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase() == "exe" {
+                let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
+                if skip.iter().any(|s| name.contains(s)) { continue; }
+                candidates.push(p.to_string_lossy().to_string());
+            }
+        }
+    }
+    // Shortest name is typically the main game exe (e.g. D2R.exe over longer helpers)
+    candidates.sort_by_key(|p| p.len());
     candidates.into_iter().next()
 }
 
@@ -883,9 +1012,25 @@ async fn launch_app(
     recents.truncate(RECENTS_MAX);
     save_recents(&recents);
 
-    if path.contains("://") {
-        // Use ShellExecuteW for URI schemes (battlenet://, steam://, shell:, etc.)
-        // cmd /C start can mis-parse // in protocol URLs
+    if let Some(rest) = path.strip_prefix("bnet-exec:") {
+        // "bnet-exec:{exe_path}|{code}" — Battle.net.exe --exec="launch CODE"
+        if let Some((exe, code)) = rest.split_once('|') {
+            std::process::Command::new(exe)
+                .arg(format!("--exec=launch {}", code))
+                .creation_flags(CREATE_NO_WINDOW)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+    } else if path.starts_with("steam://") {
+        // cmd /C start routes steam:// to the already-running Steam instance
+        // without opening the full client window (same mechanism Steam's own shortcuts use)
+        std::process::Command::new("cmd")
+            .args(["/C", "start", &path])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    } else if path.contains("://") {
+        // ShellExecuteW for other URI schemes (shell:AppsFolder\, etc.)
         unsafe {
             let op:   Vec<u16> = std::ffi::OsStr::new("open").encode_wide().chain(std::iter::once(0)).collect();
             let file: Vec<u16> = std::ffi::OsStr::new(&path).encode_wide().chain(std::iter::once(0)).collect();
@@ -942,7 +1087,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec![])))
         .invoke_handler(tauri::generate_handler![
-            get_apps, get_all_apps, launch_app, fetch_game_art, get_recents, get_battery,
+            get_apps, get_all_apps, launch_app, fetch_game_art, get_cached_art_bulk, get_recents, get_battery,
             set_gamepad_ready, get_settings, save_settings, clear_recents,
             clear_art_cache, set_frontend_active, open_osk,
             get_pins, toggle_pin,
