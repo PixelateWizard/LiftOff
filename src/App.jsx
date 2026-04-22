@@ -12,7 +12,7 @@ import appLoadedSound from "./assets/appLoadedSound.wav";
 const COLS = 6;
 const GAME_COLS = 5;
 const TABS = ["Home", "Games", "Apps", "Settings"];
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.1.1";
 const GITHUB_REPO = "PixelateWizard/LiftOff"; // owner/repo — update before release
 
 const ACCENTS = {
@@ -814,16 +814,18 @@ export default function App() {
   const [battery, setBattery]                       = useState(0);
   const [charging, setCharging]                     = useState(false);
   const [gameArt, setGameArt]                       = useState({});
-  const [heroBanners, setHeroBanners]               = useState({});
+  const [heroStatic, setHeroStatic]                 = useState({});
+  const [heroAnimated, setHeroAnimated]             = useState({});
   const [customArt, setCustomArt]                   = useState({});
   const [artPickerApp, setArtPickerApp]             = useState(null);
   const [contextMenu, setContextMenu]               = useState(null); // { x, y, app }
+  const [cacheClearLoading, setCacheClearLoading]   = useState(false);
   const [launchingApp, setLaunchingApp]             = useState(null);
   const [settings, setSettings]                     = useState({
     accent: "ember", theme: "dark", stars_enabled: true,
     default_tab: "Home", scan_steam: true, scan_xbox: true,
     scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
-    launch_at_startup: false,
+    launch_at_startup: false, animated_heroes: true,
   });
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
   const [heroIndex, setHeroIndex]                   = useState(0);
@@ -869,6 +871,7 @@ export default function App() {
   const showHideModalRef      = useRef(false);
   const suppressUntilRelease  = useRef({}); // buttons held when modal closed — suppress until released
   const isReadyRef            = useRef(false);
+  const heroVideoRefs         = useRef({});
   const settingsRef           = useRef(settings);
   const settingsFocusIndexRef = useRef(0);
   const heroIndexRef          = useRef(0);
@@ -1097,6 +1100,7 @@ export default function App() {
     style.textContent = [
       "@keyframes appFadeIn     { from { opacity: 0; } to { opacity: 1; } }",
       "@keyframes heroArtFade   { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: scale(1); } }",
+      "@keyframes spin          { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }",
       "@keyframes bgStarTwinkle { 0%, 100% { opacity: 0.08; transform: scale(1); } 50% { opacity: 0.35; transform: scale(1.2); } }",
       "@keyframes cloudDrift    { from { transform: translateX(110vw); } to { transform: translateX(-110vw); } }",
       ".bg-star  { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; animation: bgStarTwinkle ease-in-out infinite; }",
@@ -1210,6 +1214,8 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
+
+
   useEffect(() => {
     invoke("get_settings").then(s => {
       setSettings(s); settingsRef.current = s;
@@ -1236,20 +1242,46 @@ export default function App() {
       setTimeout(() => {
         setLoading(false);
         setTimeout(() => invoke("set_gamepad_ready"), 2000);
-        setTimeout(() => { isReadyRef.current = true; }, 500);
+        setTimeout(() => { isReadyRef.current = true; }, 200);
       }, 800);
     }).catch((e) => { console.error("Failed to load apps:", e); setLoading(false); });
   }, []);
 
-  const fetchGameArt = (games) => {
-    games.forEach(game => {
+  const fetchGameArt = async (games) => {
+    if (!games.length) return;
+    // Bulk cache read — instant disk read, no HTTP — hydrates all previously cached art at once
+    try {
+      const bulk = await invoke("get_cached_art_bulk", { gameNames: games.map(g => g.name) });
+      const newGrid = {}, newAnimated = {}, newStatic = {};
+      games.forEach(game => {
+        const b = bulk[game.name];
+        if (!b) return;
+        if (b.grid)          newGrid[game.id]     = b.grid;
+        if (b.hero_animated) newAnimated[game.id] = b.hero_animated;
+        if (b.hero_static)   newStatic[game.id]   = b.hero_static;
+      });
+      if (Object.keys(newGrid).length)     setGameArt(prev => ({ ...prev, ...newGrid }));
+      if (Object.keys(newAnimated).length) setHeroAnimated(prev => ({ ...prev, ...newAnimated }));
+      if (Object.keys(newStatic).length)   setHeroStatic(prev => ({ ...prev, ...newStatic }));
+    } catch {}
+    // Per-game fetch — makes API calls only for entries not yet in cache
+    await Promise.all(games.map(game =>
       invoke("fetch_game_art", { gameName: game.name })
         .then(bundle => {
-          if (bundle.grid) setGameArt(prev => ({ ...prev, [game.id]: bundle.grid }));
-          if (bundle.hero) setHeroBanners(prev => ({ ...prev, [game.id]: bundle.hero }));
+          if (bundle.grid)          setGameArt(prev => ({ ...prev, [game.id]: bundle.grid }));
+          if (bundle.hero_animated) setHeroAnimated(prev => ({ ...prev, [game.id]: bundle.hero_animated }));
+          if (bundle.hero_static)   setHeroStatic(prev => ({ ...prev, [game.id]: bundle.hero_static }));
         })
-        .catch(() => {});
-    });
+        .catch(() => {})
+    ));
+  };
+
+  const handleClearCache = async () => {
+    setCacheClearLoading(true);
+    await invoke("clear_art_cache");
+    setGameArt({}); setHeroAnimated({}); setHeroStatic({});
+    await fetchGameArt(appsRef.current.filter(a => a.app_type === "game"));
+    setCacheClearLoading(false);
   };
 
   const SCAN_KEYS = ["scan_steam", "scan_xbox", "scan_uwp", "scan_desktop", "scan_battlenet"];
@@ -1313,6 +1345,31 @@ export default function App() {
 
   // Games-only recent list — drives the hero on Home
   const recentGames = recent.filter(a => a.app_type === "game");
+
+  // Only play the active hero video; pause all others to avoid simultaneous GPU decode overhead
+  useEffect(() => {
+    Object.entries(heroVideoRefs.current).forEach(([id, vid]) => {
+      if (!vid) return;
+      // eslint-disable-next-line eqeqeq
+      const idx = recentGames.findIndex(g => g.id == id);
+      if (idx === heroIndex) { vid.play().catch(() => {}); }
+      else { vid.pause(); }
+    });
+  }, [heroIndex, recentGames]);
+
+  // Force-render animated hero images offscreen so they're fully decoded before the user reaches them
+  useEffect(() => {
+    const nodes = [];
+    Object.values(heroAnimated).forEach(url => {
+      if (!url || url.endsWith(".webm")) return;
+      const img = document.createElement("img");
+      img.src = url;
+      img.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0.001;pointer-events:none;";
+      document.body.appendChild(img);
+      nodes.push(img);
+    });
+    return () => { nodes.forEach(n => n.parentNode && n.parentNode.removeChild(n)); };
+  }, [heroAnimated]);
 
   // Pinned apps reactive (for render)
   const pinnedAppsReactive = pins
@@ -1390,6 +1447,7 @@ export default function App() {
     { key: "default_tab",       label: "Default Tab",            type: "cycle",  options: ["Home","Games","Apps"] },
     { key: "repeat_speed",      label: "Stick Repeat Speed",     type: "cycle",  options: ["slow","normal","fast"] },
     { key: "launch_at_startup", label: "Launch at Startup",      type: "toggle" },
+    { key: "animated_heroes",   label: "Animated Hero Art",      type: "toggle" },
     { key: "divider_ctrl",      label: "CONTROLLER",             type: "divider" },
     { key: "controller_test",   label: "Controller Test",        type: "controller_test" },
     { key: "divider3",          label: "DATA",                   type: "divider" },
@@ -1571,7 +1629,7 @@ export default function App() {
         else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur + 1) % keys.length]); }
         else if (item.type === "action") {
           if (item.key === "clear_recents") invoke("clear_recents").then(() => { setRecent([]); recentRef.current = []; });
-          if (item.key === "clear_cache")   invoke("clear_art_cache").then(() => setGameArt({}));
+          if (item.key === "clear_cache")   handleClearCache();
         }
         else if (item.type === "refresh") { refreshLibrary(); }
         else if (item.type === "update") {
@@ -1599,7 +1657,7 @@ export default function App() {
     if (currentTab === "Home") {
       if (section === "hero") {
         if (key === "ArrowLeft")  { const ni = Math.max(heroIndexRef.current - 1, 0); setHeroIndex(ni); heroIndexRef.current = ni; }
-        if (key === "ArrowRight") { const ni = Math.min(heroIndexRef.current + 1, fRecentGames.length - 1); setHeroIndex(ni); heroIndexRef.current = ni; }
+        if (key === "ArrowRight") { const ni = Math.min(heroIndexRef.current + 1, Math.min(fRecentGames.length, 6) - 1); setHeroIndex(ni); heroIndexRef.current = ni; }
         if (key === "ArrowUp") {
           if (fPinned.length > 0) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
         }
@@ -2041,7 +2099,7 @@ export default function App() {
         if (item.type === "action") return (
           <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => {
             if (item.key === "clear_recents") invoke("clear_recents").then(() => { setRecent([]); recentRef.current = []; });
-            if (item.key === "clear_cache")   invoke("clear_art_cache").then(() => setGameArt({}));
+            if (item.key === "clear_cache")   handleClearCache();
           }}>
             <span style={{ fontSize: 14, fontWeight: 500, color: "#e84a4a" }}>{item.label}</span>
             <span style={{ fontSize: 12, color: theme.textDim }}>↵ Confirm</span>
@@ -2342,7 +2400,11 @@ export default function App() {
             {(() => {
               const heroGame    = recentGames[heroIndex];
               const heroArt    = heroGame ? (customArt[heroGame.id] || gameArt[heroGame.id]) : null;
-              const heroBanner = heroGame ? heroBanners[heroGame.id] : null;
+              const heroBanner = heroGame
+                ? (settings.animated_heroes
+                    ? (heroAnimated[heroGame.id] || heroStatic[heroGame.id])
+                    : heroStatic[heroGame.id])
+                : null;
               const heroFocused = focusSection === "hero";
               return (
                 <div style={{ position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: 20, overflow: "visible", display: "flex", flexDirection: "column", flexShrink: 0,
@@ -2351,16 +2413,29 @@ export default function App() {
                   transition: "border-color 0.2s ease, box-shadow 0.2s ease",
                   background: isDark ? "#0a0502" : appBg,
                 }}>
-                  {/* Background: hero banner if available, else blurred cover art */}
+                  {/* Background: all recent game heroes preloaded and stacked, opacity-switched for instant transitions */}
                   <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: 20, overflow: "hidden" }}>
-                    {heroBanner
-                      ? <img key={heroGame.id + "_hero"} src={heroBanner} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", animation: "heroArtFade 0.4s ease forwards" }} />
-                      : heroArt
-                        ? <img key={heroGame.id} src={heroArt} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", filter: `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: "scale(1.08)", animation: "heroArtFade 0.4s ease forwards" }} />
-                        : <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${accent.glow}0.25) 0%, ${accent.glow}0.06) 100%)` }} />
-                    }
+                    {recentGames.map((game, idx) => {
+                      const isActive = idx === heroIndex;
+                      const banner = settings.animated_heroes
+                        ? (heroAnimated[game.id] || heroStatic[game.id])
+                        : heroStatic[game.id];
+                      const fallback = customArt[game.id] || gameArt[game.id];
+                      return (
+                        <div key={game.id} style={{ position: "absolute", inset: 0, opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
+                          {banner
+                            ? (banner.endsWith(".webm")
+                                ? <video ref={el => { heroVideoRefs.current[game.id] = el; }} src={banner} loop muted playsInline preload="auto" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }} />
+                                : <img src={banner} alt="" loading="eager" fetchPriority="high" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", transform: "translateZ(0)" }} />)
+                            : fallback
+                              ? <img src={fallback} alt="" loading="eager" style={{ width: "100%", height: "100%", objectFit: "cover", filter: `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: "scale(1.08)" }} />
+                              : <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${accent.glow}0.25) 0%, ${accent.glow}0.06) 100%)` }} />
+                          }
+                        </div>
+                      );
+                    })}
                     {/* Overlay — heavier when using a hero banner to keep text legible */}
-                    <div style={{ position: "absolute", inset: 0, background: heroBanner
+                    <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroBanner
                       ? (isDark
                           ? "linear-gradient(to right, rgba(6,3,1,0.82) 0%, rgba(6,3,1,0.55) 45%, rgba(6,3,1,0.18) 100%)"
                           : `linear-gradient(to right, ${appBg}dd 0%, ${appBg}99 45%, ${appBg}22 100%)`)
@@ -2369,7 +2444,7 @@ export default function App() {
                           : `linear-gradient(to right, ${appBg}ee 0%, ${appBg}99 50%, transparent 100%)`)
                     }} />
                     {/* Bottom fade */}
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "55%", background: isDark
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "55%", zIndex: 2, background: isDark
                       ? "linear-gradient(to bottom, transparent, rgba(6,3,1,0.95))"
                       : `linear-gradient(to bottom, transparent, ${appBg})`
                     }} />
@@ -2699,6 +2774,17 @@ export default function App() {
                 {label}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {cacheClearLoading && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ background: theme.card, borderRadius: 18, padding: "36px 52px", textAlign: "center", display: "flex", flexDirection: "column", gap: 14, alignItems: "center",
+            boxShadow: "0 8px 48px rgba(0,0,0,0.5)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}` }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", border: `3px solid ${accent.primary}`, borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
+            <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>Refreshing Art Cache</div>
+            <div style={{ fontSize: 13, color: theme.textDim }}>Fetching artwork for your library…</div>
           </div>
         </div>
       )}
