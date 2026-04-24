@@ -7,7 +7,13 @@ use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use windows::{
     Win32::UI::Shell::{SHGetFileInfoW, ShellExecuteW, SHFILEINFOW, SHGFI_FLAGS, SHGFI_ICON, SHGFI_LARGEICON},
-    Win32::UI::WindowsAndMessaging::{DestroyIcon, DrawIconEx, GetForegroundWindow, DI_NORMAL, SW_SHOWNORMAL},
+    Win32::UI::WindowsAndMessaging::{
+        DestroyIcon, DrawIconEx, GetForegroundWindow, DI_NORMAL, SW_SHOWNORMAL,
+        EnumWindows, IsWindowVisible, GetWindowTextLengthW, GetWindowThreadProcessId,
+        SetForegroundWindow, ShowWindow, SW_SHOW,
+        GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN,
+    },
+    Win32::Foundation::{BOOL, LPARAM},
     Win32::Graphics::Gdi::{
         GetDC, ReleaseDC, GetDIBits, CreateCompatibleDC, CreateCompatibleBitmap, SelectObject,
         DeleteDC, DeleteObject, PatBlt, BLACKNESS,
@@ -20,6 +26,7 @@ use std::collections::HashMap;
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_autostart::ManagerExt;
 use tauri::Manager;
+use tauri::Emitter;
 
 const SGDB_KEY: &str = env!("SGDB_API_KEY");
 const RECENTS_MAX: usize = 10;
@@ -73,6 +80,9 @@ pub struct Settings {
     pub repeat_speed: String,
     pub launch_at_startup: bool,
     pub animated_heroes: bool,
+    // None means "not yet set by user"; frontend fills in auto-detected value.
+    #[serde(default)]
+    pub ui_scale: Option<f32>,
 }
 
 impl Default for Settings {
@@ -90,6 +100,7 @@ impl Default for Settings {
             repeat_speed: "normal".to_string(),
             launch_at_startup: false,
             animated_heroes: true,
+            ui_scale: None,
         }
     }
 }
@@ -110,6 +121,48 @@ fn hero_animated_cache_path() -> std::path::PathBuf { liftoff_dir().join("hero_a
 fn settings_path() -> std::path::PathBuf { liftoff_dir().join("settings.json") }
 fn pins_path() -> std::path::PathBuf { liftoff_dir().join("pins.json") }
 fn hidden_path() -> std::path::PathBuf { liftoff_dir().join("hidden.json") }
+
+fn art_dir() -> std::path::PathBuf { liftoff_dir().join("art") }
+fn grid_art_dir() -> std::path::PathBuf { art_dir().join("grid") }
+fn hero_static_art_dir() -> std::path::PathBuf { art_dir().join("hero_static") }
+fn hero_animated_art_dir() -> std::path::PathBuf { art_dir().join("hero_animated") }
+
+/// Scrub a game name into a safe filename (max 80 chars).
+fn sanitize_filename(name: &str) -> String {
+    name.chars()
+        .map(|c| if c.is_alphanumeric() || c == '-' { c } else { '_' })
+        .take(80)
+        .collect()
+}
+
+/// Extract the file extension from a URL (before any query string), e.g. "webm", "png".
+fn url_ext(url: &str) -> &str {
+    url.split('?').next()
+        .and_then(|u| u.rsplit('.').next())
+        .filter(|e| !e.is_empty() && e.len() <= 5 && e.chars().all(|c| c.is_ascii_alphanumeric()))
+        .unwrap_or("bin")
+}
+
+/// Download `url` into `dir/{sanitized_name}.{ext}` and return the absolute path.
+/// Returns None if the download or write fails; the caller should fall back to the remote URL.
+fn download_file(
+    client: &reqwest::blocking::Client,
+    url: &str,
+    dir: &std::path::Path,
+    name: &str,
+) -> Option<String> {
+    let path = dir.join(format!("{}.{}", sanitize_filename(name), url_ext(url)));
+    if path.exists() {
+        return Some(path.to_string_lossy().into_owned());
+    }
+    let _ = std::fs::create_dir_all(dir);
+    let bytes = client.get(url)
+        .timeout(std::time::Duration::from_secs(60))
+        .send().ok()?
+        .bytes().ok()?;
+    std::fs::write(&path, &bytes).ok()?;
+    Some(path.to_string_lossy().into_owned())
+}
 
 fn load_recents() -> Vec<RecentEntry> {
     let path = recents_path();
@@ -209,9 +262,28 @@ fn save_custom_art_inner(map: &HashMap<String, String>) {
     if let Ok(json) = serde_json::to_string(map) { let _ = std::fs::write(path, json); }
 }
 
+#[derive(Serialize)]
+struct ScreenResolution { width: i32, height: i32 }
+
+#[tauri::command]
+fn get_screen_resolution() -> ScreenResolution {
+    unsafe {
+        ScreenResolution {
+            width:  GetSystemMetrics(SM_CXSCREEN),
+            height: GetSystemMetrics(SM_CYSCREEN),
+        }
+    }
+}
+
 #[tauri::command] fn get_settings() -> Settings { load_settings_inner() }
 #[tauri::command] fn clear_recents() -> Result<(), String> { save_recents(&vec![]); Ok(()) }
-#[tauri::command] fn clear_art_cache() -> Result<(), String> { save_art_cache(&HashMap::new()); save_hero_cache(&HashMap::new()); save_hero_animated_cache(&HashMap::new()); Ok(()) }
+#[tauri::command] fn clear_art_cache() -> Result<(), String> {
+    save_art_cache(&HashMap::new());
+    save_hero_cache(&HashMap::new());
+    save_hero_animated_cache(&HashMap::new());
+    let _ = std::fs::remove_dir_all(art_dir());
+    Ok(())
+}
 #[tauri::command] fn get_recents() -> Vec<RecentEntry> { load_recents() }
 #[tauri::command] fn set_gamepad_ready() { GAMEPAD_READY.store(true, Ordering::Relaxed); }
 #[tauri::command] fn get_custom_art() -> HashMap<String, String> { load_custom_art_inner() }
@@ -358,26 +430,30 @@ fn fetch_game_art(game_name: String) -> GameArtBundle {
         if cached.is_empty() { None } else { Some(cached) }
     } else {
         let url = format!("https://www.steamgriddb.com/api/v2/grids/game/{}?dimensions=600x900&limit=1", game_id);
-        let result = client.get(&url).header("Authorization", format!("Bearer {}", SGDB_KEY))
+        let remote_url = client.get(&url).header("Authorization", format!("Bearer {}", SGDB_KEY))
             .send().ok()
             .and_then(|r| r.json::<SgdbGridResponse>().ok())
             .filter(|d| d.success)
             .and_then(|d| d.data)
             .and_then(|v| v.into_iter().next())
             .map(|g| g.url);
+        // Download to disk; fall back to remote URL if download fails
+        let result = remote_url.as_deref()
+            .and_then(|u| download_file(&client, u, &grid_art_dir(), &game_name))
+            .or(remote_url);
         grid_cache.insert(game_name.clone(), result.clone().unwrap_or_default());
         save_art_cache(&grid_cache);
         result
     };
 
-    // Resolve cached values (None = uncached, Some("") = checked/none, Some(url) = has art)
-    let static_cached_val  = hero_static_cached.as_deref().and_then(|s| if s.is_empty() { None } else { Some(s.to_string()) });
+    // Resolve cached values (None = uncached, Some("") = checked/none, Some(path) = has art)
+    let static_cached_val   = hero_static_cached.as_deref().and_then(|s| if s.is_empty() { None } else { Some(s.to_string()) });
     let animated_cached_val = hero_animated_cached.as_deref().and_then(|s| if s.is_empty() { None } else { Some(s.to_string()) });
-    let need_static  = hero_static_cached.is_none();
+    let need_static   = hero_static_cached.is_none();
     let need_animated = hero_animated_cached.is_none();
 
     let (hero_static, hero_animated) = if need_static || need_animated {
-        let fetch_hero = |extra_param: &str| -> Option<String> {
+        let fetch_hero_url = |extra_param: &str| -> Option<String> {
             let url = format!("https://www.steamgriddb.com/api/v2/heroes/game/{}?{}&limit=1", game_id, extra_param);
             client.get(&url)
                 .header("Authorization", format!("Bearer {}", SGDB_KEY))
@@ -389,8 +465,19 @@ fn fetch_game_art(game_name: String) -> GameArtBundle {
                 .map(|h| h.url)
         };
 
-        let found_static   = if need_static   { fetch_hero("types=static")   } else { None };
-        let found_animated = if need_animated { fetch_hero("types=animated") } else { None };
+        let found_static = if need_static {
+            let remote = fetch_hero_url("types=static");
+            remote.as_deref()
+                .and_then(|u| download_file(&client, u, &hero_static_art_dir(), &game_name))
+                .or(remote)
+        } else { None };
+
+        let found_animated = if need_animated {
+            let remote = fetch_hero_url("types=animated");
+            remote.as_deref()
+                .and_then(|u| download_file(&client, u, &hero_animated_art_dir(), &game_name))
+                .or(remote)
+        } else { None };
 
         if need_animated { hero_animated_cache.insert(game_name.clone(), found_animated.clone().unwrap_or_default()); save_hero_animated_cache(&hero_animated_cache); }
         if need_static   { hero_static_cache.insert(game_name.clone(), found_static.clone().unwrap_or_default());     save_hero_cache(&hero_static_cache); }
@@ -993,6 +1080,87 @@ fn get_all_apps() -> Vec<AppEntry> {
     apps
 }
 
+// ── Launch window watcher ─────────────────────────────────────
+// Passed via LPARAM to EnumWindows callbacks; lives on the calling thread.
+struct PollWindowState {
+    target_pid: u32,
+    existing: *const std::collections::HashSet<isize>,
+    our_hwnd: isize,
+    found: isize,
+}
+
+unsafe extern "system" fn enum_snapshot_callback(
+    hwnd: windows::Win32::Foundation::HWND,
+    lparam: LPARAM,
+) -> BOOL {
+    if IsWindowVisible(hwnd).as_bool() {
+        let set = &mut *(lparam.0 as *mut std::collections::HashSet<isize>);
+        set.insert(hwnd.0 as isize);
+    }
+    BOOL(1)
+}
+
+// Snapshot all currently visible top-level window handles.
+fn snapshot_visible_windows() -> std::collections::HashSet<isize> {
+    let mut set = std::collections::HashSet::new();
+    unsafe {
+        let _ = EnumWindows(
+            Some(enum_snapshot_callback),
+            LPARAM(&mut set as *mut _ as isize),
+        );
+    }
+    set
+}
+
+unsafe extern "system" fn enum_find_window_callback(
+    hwnd: windows::Win32::Foundation::HWND,
+    lparam: LPARAM,
+) -> BOOL {
+    let state = &mut *(lparam.0 as *mut PollWindowState);
+    let hwnd_val = hwnd.0 as isize;
+
+    if hwnd_val == state.our_hwnd { return BOOL(1); }
+    if !IsWindowVisible(hwnd).as_bool() { return BOOL(1); }
+    if GetWindowTextLengthW(hwnd) == 0 { return BOOL(1); }
+
+    let matched = if state.target_pid != 0 {
+        let mut pid: u32 = 0;
+        GetWindowThreadProcessId(hwnd, Some(&mut pid));
+        pid == state.target_pid
+    } else {
+        !(*state.existing).contains(&hwnd_val)
+    };
+
+    if matched {
+        state.found = hwnd_val;
+        BOOL(0) // stop enumeration
+    } else {
+        BOOL(1) // continue
+    }
+}
+
+// Poll once for a visible titled window belonging to `pid` (or any new window
+// when pid == 0). Returns the HWND value or 0 if nothing was found.
+fn poll_for_window(
+    pid: u32,
+    existing: &std::collections::HashSet<isize>,
+    our_hwnd: isize,
+) -> isize {
+    let mut state = PollWindowState {
+        target_pid: pid,
+        existing: existing as *const _,
+        our_hwnd,
+        found: 0,
+    };
+    unsafe {
+        let _ = EnumWindows(
+            Some(enum_find_window_callback),
+            LPARAM(&mut state as *mut _ as isize),
+        );
+    }
+    state.found
+}
+
 #[tauri::command]
 async fn launch_app(
     path: String,
@@ -1012,6 +1180,14 @@ async fn launch_app(
     recents.truncate(RECENTS_MAX);
     save_recents(&recents);
 
+    // Snapshot existing windows before launch so the watcher can detect new ones.
+    let existing = snapshot_visible_windows();
+    let our_hwnd = OUR_HWND.load(Ordering::Relaxed);
+
+    // child_pid: Some(pid) when we spawn the game directly (allows precise matching);
+    // None for launcher-mediated paths where the game process is a grandchild.
+    let child_pid: u32;
+
     if let Some(rest) = path.strip_prefix("bnet-exec:") {
         // "bnet-exec:{exe_path}|{code}" — Battle.net.exe --exec="launch CODE"
         if let Some((exe, code)) = rest.split_once('|') {
@@ -1021,6 +1197,8 @@ async fn launch_app(
                 .spawn()
                 .map_err(|e| e.to_string())?;
         }
+        // BNet spawns the game as a separate process; use snapshot-diff approach.
+        child_pid = 0;
     } else if path.starts_with("steam://") {
         // cmd /C start routes steam:// to the already-running Steam instance
         // without opening the full client window (same mechanism Steam's own shortcuts use)
@@ -1029,8 +1207,19 @@ async fn launch_app(
             .creation_flags(CREATE_NO_WINDOW)
             .spawn()
             .map_err(|e| e.to_string())?;
+        // Steam handles the launch; game PID is not recoverable from cmd.
+        child_pid = 0;
+    } else if path.starts_with("shell:") {
+        // shell:AppsFolder\{aumid} — UWP / Xbox Game Pass titles.
+        // cmd /C start is required; direct spawn can't resolve shell: URIs.
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", &path])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        child_pid = 0;
     } else if path.contains("://") {
-        // ShellExecuteW for other URI schemes (shell:AppsFolder\, etc.)
+        // ShellExecuteW for other URI schemes (https://, etc.)
         unsafe {
             let op:   Vec<u16> = std::ffi::OsStr::new("open").encode_wide().chain(std::iter::once(0)).collect();
             let file: Vec<u16> = std::ffi::OsStr::new(&path).encode_wide().chain(std::iter::once(0)).collect();
@@ -1043,13 +1232,39 @@ async fn launch_app(
                 SW_SHOWNORMAL,
             );
         }
+        child_pid = 0;
     } else {
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", &path])
+        // Direct exe — spawn without a cmd wrapper so we get the game's own PID.
+        let child = std::process::Command::new(&path)
             .creation_flags(CREATE_NO_WINDOW)
             .spawn()
             .map_err(|e| e.to_string())?;
+        child_pid = child.id();
     }
+
+    // Watch for the game window in a background thread, then notify the frontend.
+    let handle = app_handle.clone();
+    std::thread::spawn(move || {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+        let mut found: isize = 0;
+
+        while std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(250));
+            found = poll_for_window(child_pid, &existing, our_hwnd);
+            if found != 0 { break; }
+        }
+
+        if found != 0 {
+            unsafe {
+                let hwnd = windows::Win32::Foundation::HWND(found as _);
+                let _ = SetForegroundWindow(hwnd);
+                ShowWindow(hwnd, SW_SHOW);
+            }
+            let _ = handle.emit("launch-success", ());
+        } else {
+            let _ = handle.emit("launch-failed", ());
+        }
+    });
 
     Ok(())
 }
@@ -1092,7 +1307,8 @@ pub fn run() {
             clear_art_cache, set_frontend_active, open_osk,
             get_pins, toggle_pin,
             get_hidden, toggle_hidden,
-            get_custom_art, set_custom_art, clear_custom_art
+            get_custom_art, set_custom_art, clear_custom_art,
+            get_screen_resolution
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();

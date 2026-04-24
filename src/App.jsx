@@ -1,7 +1,7 @@
 //Copyright (C) 2025 Taylor Denby
 
-import { useState, useEffect, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import uiSound from "./assets/uiSound.mp3";
 import uiSoundAlt from "./assets/uiSoundAlt.mp3";
@@ -44,6 +44,14 @@ const CLOUD_CONFIGS = [
   { shape: 1, width: 240, top: "15%", duration: 120, delay: -100, opacity: 0.62 },
   { shape: 2, width: 160, top: "50%", duration: 85,  delay: -38,  opacity: 0.68 },
   { shape: 3, width: 200, top: "85%", duration: 100, delay: -70,  opacity: 0.60 },
+  { shape: 0, width: 120, top: "5%",  duration: 80,  delay: -15,  opacity: 0.55 },
+  { shape: 1, width: 260, top: "30%", duration: 115, delay: -55,  opacity: 0.63 },
+  { shape: 2, width: 190, top: "65%", duration: 105, delay: -88,  opacity: 0.67 },
+  { shape: 3, width: 150, top: "80%", duration: 88,  delay: -33,  opacity: 0.58 },
+  { shape: 0, width: 340, top: "45%", duration: 140, delay: -72,  opacity: 0.50 },
+  { shape: 1, width: 110, top: "18%", duration: 72,  delay: -48,  opacity: 0.70 },
+  { shape: 2, width: 220, top: "90%", duration: 95,  delay: -20,  opacity: 0.55 },
+  { shape: 3, width: 170, top: "55%", duration: 108, delay: -95,  opacity: 0.62 },
 ];
 
 // ── Xbox-style keyboard layouts ───────────────────────────────
@@ -198,19 +206,24 @@ const ss = {
 
 function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
   const art = app?.app_type === "game" ? (customArt?.[app?.id] || gameArt[app?.id]) : null;
+  const [status, setStatus] = useState("launching"); // "launching" | "failed"
+  const rafRef   = useRef(null);
+  const lastEsc  = useRef(false);
+  const mounted  = useRef(true);
+
   useEffect(() => {
+    mounted.current = true;
+
     const style = document.createElement("style");
     style.id = "launch-overlay-styles";
     style.textContent = `
       @keyframes overlayFadeIn   { from { opacity: 0; } to { opacity: 1; } }
       @keyframes launchIconPop   { 0% { transform: scale(0.7); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
-      @keyframes launchRocketFly { 0% { transform: translateY(0px) scale(1); opacity: 1; } 100% { transform: translateY(-60px) scale(0.6); opacity: 0; } }
       @keyframes launchTextFade  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
       @keyframes launchDot       { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
       @keyframes launchGlowPulse { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.2); opacity: 1; } }
       .launch-overlay { animation: overlayFadeIn 0.25s ease forwards; }
       .launch-icon    { animation: launchIconPop 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-      .launch-rocket  { animation: launchRocketFly 0.5s ease-in forwards; animation-delay: 1.2s; }
       .launch-text    { animation: launchTextFade 0.3s ease forwards; animation-delay: 0.3s; opacity: 0; }
       .launch-dot     { animation: launchDot 1s ease-in-out infinite; }
       .launch-dot:nth-child(2) { animation-delay: 0.15s; }
@@ -218,12 +231,49 @@ function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
       .launch-glow    { animation: launchGlowPulse 1.5s ease-in-out infinite; }
     `;
     document.head.appendChild(style);
-    const t = setTimeout(onDone, 1800);
-    return () => { clearTimeout(t); document.getElementById("launch-overlay-styles")?.remove(); };
+
+    // Tauri event listeners — dismiss on success, show error on failure.
+    let unlistenSuccess, unlistenFailed;
+    listen("launch-success", () => { if (mounted.current) onDone(); })
+      .then(fn => { unlistenSuccess = fn; });
+    listen("launch-failed", () => { if (mounted.current) setStatus("failed"); })
+      .then(fn => { unlistenFailed = fn; });
+
+    // Keyboard dismiss (Escape).
+    const handleKey = (e) => { if (e.key === "Escape") onDone(); };
+    window.addEventListener("keydown", handleKey);
+
+    // Gamepad B button dismiss. Suppress the first several frames so the
+    // button press that triggered launch doesn't immediately close the overlay.
+    let suppressFrames = 10;
+    const poll = () => {
+      const gp = getBestGamepad();
+      if (gp) {
+        const state = readGpState(gp);
+        if (suppressFrames > 0) {
+          suppressFrames--;
+        } else if (state.Escape && !lastEsc.current) {
+          onDone();
+        }
+        lastEsc.current = state.Escape;
+      }
+      rafRef.current = requestAnimationFrame(poll);
+    };
+    rafRef.current = requestAnimationFrame(poll);
+
+    return () => {
+      mounted.current = false;
+      document.getElementById("launch-overlay-styles")?.remove();
+      window.removeEventListener("keydown", handleKey);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      unlistenSuccess?.();
+      unlistenFailed?.();
+    };
   }, []);
+
   return (
-    <div className="launch-overlay" style={{ position: "fixed", inset: 0, zIndex: 8000, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
-      <div className="launch-glow" style={{ position: "absolute", width: 260, height: 260, borderRadius: "50%", background: `radial-gradient(circle, ${accent.glow}0.3) 0%, transparent 70%)`, pointerEvents: "none" }} />
+    <div className="launch-overlay" style={{ position: "fixed", inset: 0, zIndex: 9000, background: "rgba(0,0,0,0.88)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
+      <div className="launch-glow" style={{ position: "absolute", width: 320, height: 320, borderRadius: "50%", background: `radial-gradient(circle, ${accent.glow}0.25) 0%, transparent 70%)`, pointerEvents: "none" }} />
       <div className="launch-icon" style={{ position: "relative", zIndex: 1 }}>
         {art ? (
           <img src={art} alt={app.name} style={{ width: 160, height: 240, borderRadius: 16, objectFit: "cover", boxShadow: `0 8px 40px ${accent.glow}0.5), 0 0 0 2px ${accent.glow}0.3)` }} />
@@ -237,15 +287,33 @@ function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
           </div>
         )}
       </div>
-      <div className="launch-rocket" style={{ fontSize: 28, lineHeight: 1 }}>🚀</div>
       <div className="launch-text" style={{ fontFamily: "'Segoe UI', sans-serif", textAlign: "center" }}>
-        <div style={{ fontSize: 22, fontWeight: 700, color: "white", marginBottom: 6, letterSpacing: "0.02em" }}>{app?.name}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Launching</span>
-          <span style={{ display: "flex", gap: 3 }}>
-            {[0,1,2].map(i => <span key={i} className="launch-dot" style={{ width: 4, height: 4, borderRadius: "50%", background: accent.primary, display: "inline-block" }} />)}
-          </span>
-        </div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: "white", marginBottom: 8, letterSpacing: "0.02em" }}>{app?.name}</div>
+        {status === "launching" ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
+            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Launching</span>
+            <span style={{ display: "flex", gap: 3 }}>
+              {[0,1,2].map(i => <span key={i} className="launch-dot" style={{ width: 4, height: 4, borderRadius: "50%", background: accent.primary, display: "inline-block" }} />)}
+            </span>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: 13, color: "rgba(255,90,90,0.95)", letterSpacing: "0.05em" }}>Failed to launch</div>
+            <button
+              onClick={onDone}
+              style={{
+                padding: "8px 22px", borderRadius: 10, cursor: "pointer",
+                fontFamily: "'Segoe UI', sans-serif", fontSize: 13, fontWeight: 600,
+                background: `${accent.glow}0.18)`,
+                border: `1px solid ${accent.glow}0.5)`,
+                color: "rgba(255,255,255,0.85)",
+                letterSpacing: "0.06em",
+              }}
+            >
+              Dismiss  ·  B
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -820,12 +888,13 @@ export default function App() {
   const [artPickerApp, setArtPickerApp]             = useState(null);
   const [contextMenu, setContextMenu]               = useState(null); // { x, y, app }
   const [cacheClearLoading, setCacheClearLoading]   = useState(false);
+  const [cacheClearStatus, setCacheClearStatus]     = useState({ line1: "", line2: "" });
   const [launchingApp, setLaunchingApp]             = useState(null);
   const [settings, setSettings]                     = useState({
     accent: "ember", theme: "dark", stars_enabled: true,
     default_tab: "Home", scan_steam: true, scan_xbox: true,
     scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
-    launch_at_startup: false, animated_heroes: true,
+    launch_at_startup: false, animated_heroes: true, ui_scale: 1.0,
   });
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
   const [heroIndex, setHeroIndex]                   = useState(0);
@@ -857,6 +926,8 @@ export default function App() {
   const searchFocusedCardRef  = useRef(null);   // FIX 3: focused search result card ref
   const settingsFocusedRef    = useRef(null);
   const outerRef              = useRef(null);
+  const homeScrollRef         = useRef(null);
+  const tabScrollRef          = useRef(null);
   const handleNavRef          = useRef(null);
   const tabRef                = useRef("Home");
   const focusSectionRef       = useRef("hero");
@@ -873,6 +944,7 @@ export default function App() {
   const isReadyRef            = useRef(false);
   const heroVideoRefs         = useRef({});
   const settingsRef           = useRef(settings);
+  const autoScaleRef          = useRef(1.0);
   const settingsFocusIndexRef = useRef(0);
   const heroIndexRef          = useRef(0);
   const audioCtxRef           = useRef(null);
@@ -885,28 +957,32 @@ export default function App() {
   const resolvedTheme = settings.theme === "system"
     ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
     : settings.theme;
-  const theme  = THEMES[resolvedTheme] || THEMES.dark;
   const isDark = resolvedTheme === "dark";
-  const _baseAccent = ACCENTS[settings.accent] || ACCENTS.ember;
-  const accent = (!isDark && _baseAccent.lightPrimary) ? { ..._baseAccent, primary: _baseAccent.lightPrimary } : _baseAccent;
+
+  // Memoized so homeContent useMemo deps stay stable across unrelated re-renders
+  // (clock ticks every 10s, battery polls every 10s would otherwise bust the memo constantly)
+  const theme = useMemo(() => THEMES[resolvedTheme] || THEMES.dark, [resolvedTheme]);
+  const accent = useMemo(() => {
+    const base = ACCENTS[settings.accent] || ACCENTS.ember;
+    return (!isDark && base.lightPrimary) ? { ...base, primary: base.lightPrimary } : base;
+  }, [settings.accent, isDark]);
   const appBg  = isDark ? "#100a06" : accent.lightBg;
 
   const bgGlow1 = `${accent.glow}${isDark ? "0.07)" : "0.08)"}`;
   const bgGlow2 = `${accent.glow}${isDark ? "0.05)" : "0.06)"}`;
 
-  const glass = {
+  const glass = useMemo(() => ({
     background:           isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.75)",
     backdropFilter:       "blur(24px)",
     WebkitBackdropFilter: "blur(24px)",
     border:               `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.9)"}`,
     boxShadow:            isDark ? "none" : "0 2px 16px rgba(0,0,0,0.06)",
-  };
+  }), [isDark]);
 
   const lastLaunchTime = useRef(0);
-  const triggerLaunch = (app, rec) => {
+  const _triggerLaunchImpl = (app, rec) => {
     const now = Date.now();
     console.warn(`triggerLaunch @ ${new Date().toISOString()}`, app?.name, `(${now - lastLaunchTime.current}ms since last)`);
-    // Prevent accidental double-launches within 5 seconds
     if (now - lastLaunchTime.current < 5000) {
       console.warn("triggerLaunch BLOCKED — too soon after last launch");
       return;
@@ -918,6 +994,9 @@ export default function App() {
     const updated = [app, ...rec.filter(r => r.id !== app.id)].slice(0, 10);
     setRecent(updated); recentRef.current = updated;
   };
+  const _triggerLaunchRef = useRef(_triggerLaunchImpl);
+  _triggerLaunchRef.current = _triggerLaunchImpl;
+  const triggerLaunch = useRef((app, rec) => _triggerLaunchRef.current(app, rec)).current;
 
   // ── Pin helpers ───────────────────────────────────────────────
   const togglePin = (app) => {
@@ -1103,8 +1182,8 @@ export default function App() {
       "@keyframes spin          { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }",
       "@keyframes bgStarTwinkle { 0%, 100% { opacity: 0.08; transform: scale(1); } 50% { opacity: 0.35; transform: scale(1.2); } }",
       "@keyframes cloudDrift    { from { transform: translateX(110vw); } to { transform: translateX(-110vw); } }",
-      ".bg-star  { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; animation: bgStarTwinkle ease-in-out infinite; }",
-      ".bg-cloud { position: fixed; pointer-events: none; z-index: -1; animation: cloudDrift linear infinite; }",
+      ".bg-star  { position: fixed; border-radius: 50%; pointer-events: none; z-index: 2; animation: bgStarTwinkle ease-in-out infinite; }",
+      ".bg-cloud { position: fixed; top: 0; pointer-events: none; z-index: -1; animation: cloudDrift linear infinite; }",
       "html, body { overflow-x: hidden; }",
       "* { scrollbar-width: none !important; -ms-overflow-style: none !important; }",
       "*::-webkit-scrollbar { display: none !important; }",
@@ -1136,8 +1215,6 @@ export default function App() {
         document.body.appendChild(star);
       }
     } else {
-      const container = document.getElementById("cloud-container");
-      if (!container) return;
       CLOUD_CONFIGS.forEach((cfg) => {
         const div = document.createElement("div");
         div.className = "bg-cloud";
@@ -1148,11 +1225,11 @@ export default function App() {
         div.style.animationDelay    = cfg.delay + "s";
         div.innerHTML = CLOUD_SHAPES[cfg.shape];
         div.querySelector("svg").style.fill = "rgba(255,255,255,0.9)";
-        container.appendChild(div);
+        const cc = document.getElementById("cloud-container"); if (cc) cc.appendChild(div);
       });
     }
     return () => document.querySelectorAll(".bg-star, .bg-cloud").forEach(s => s.remove());
-  }, [settings.stars_enabled, settings.theme, settings.accent]);
+  }, [settings.stars_enabled, settings.theme, settings.accent, loading]);
 
   useEffect(() => {
     const tick = () => {
@@ -1217,9 +1294,18 @@ export default function App() {
 
 
   useEffect(() => {
-    invoke("get_settings").then(s => {
-      setSettings(s); settingsRef.current = s;
+    Promise.all([invoke("get_screen_resolution"), invoke("get_settings")]).then(([res, s]) => {
+      const auto = Math.min(2.0, Math.max(0.75, Math.min(res.width / 1920, res.height / 1080)));
+      autoScaleRef.current = auto;
+      // ui_scale is null when never saved; substitute the auto-detected value.
+      const updated = { ...s, ui_scale: s.ui_scale ?? auto };
+      setSettings(updated); settingsRef.current = updated;
       setTab(s.default_tab || "Home"); tabRef.current = s.default_tab || "Home";
+    }).catch(() => {
+      invoke("get_settings").then(s => {
+        setSettings(s); settingsRef.current = s;
+        setTab(s.default_tab || "Home"); tabRef.current = s.default_tab || "Home";
+      });
     });
     invoke("get_custom_art").then(art => { setCustomArt(art); customArtRef.current = art; }).catch(() => {});
     invoke("get_recents").then(recents => {
@@ -1247,7 +1333,18 @@ export default function App() {
     }).catch((e) => { console.error("Failed to load apps:", e); setLoading(false); });
   }, []);
 
-  const fetchGameArt = async (games) => {
+  // Convert a path-or-URL returned from Rust into a browser-loadable URL.
+  // New entries are local file paths (asset:// via convertFileSrc); old cached entries
+  // that were stored as remote https:// URLs still work as-is.
+  const toUrl = (pathOrUrl) => {
+    if (!pathOrUrl) return null;
+    if (pathOrUrl.startsWith("http")) return pathOrUrl;
+    const result = convertFileSrc(pathOrUrl);
+    console.log("toUrl input:", pathOrUrl, "→ output:", result);
+    return convertFileSrc(pathOrUrl);
+  };
+
+  const fetchGameArt = async (games, onProgress) => {
     if (!games.length) return;
     // Bulk cache read — instant disk read, no HTTP — hydrates all previously cached art at once
     try {
@@ -1256,31 +1353,42 @@ export default function App() {
       games.forEach(game => {
         const b = bulk[game.name];
         if (!b) return;
-        if (b.grid)          newGrid[game.id]     = b.grid;
-        if (b.hero_animated) newAnimated[game.id] = b.hero_animated;
-        if (b.hero_static)   newStatic[game.id]   = b.hero_static;
+        if (b.grid)          newGrid[game.id]     = toUrl(b.grid);
+        if (b.hero_animated) newAnimated[game.id] = toUrl(b.hero_animated);
+        if (b.hero_static)   newStatic[game.id]   = toUrl(b.hero_static);
       });
       if (Object.keys(newGrid).length)     setGameArt(prev => ({ ...prev, ...newGrid }));
       if (Object.keys(newAnimated).length) setHeroAnimated(prev => ({ ...prev, ...newAnimated }));
       if (Object.keys(newStatic).length)   setHeroStatic(prev => ({ ...prev, ...newStatic }));
     } catch {}
-    // Per-game fetch — makes API calls only for entries not yet in cache
-    await Promise.all(games.map(game =>
-      invoke("fetch_game_art", { gameName: game.name })
-        .then(bundle => {
-          if (bundle.grid)          setGameArt(prev => ({ ...prev, [game.id]: bundle.grid }));
-          if (bundle.hero_animated) setHeroAnimated(prev => ({ ...prev, [game.id]: bundle.hero_animated }));
-          if (bundle.hero_static)   setHeroStatic(prev => ({ ...prev, [game.id]: bundle.hero_static }));
-        })
-        .catch(() => {})
-    ));
+    // Per-game fetch — batched to avoid rate-limiting SteamGridDB
+    let done = 0;
+    const total = games.length;
+    const BATCH = 4;
+    for (let i = 0; i < games.length; i += BATCH) {
+      await Promise.all(games.slice(i, i + BATCH).map(game =>
+        invoke("fetch_game_art", { gameName: game.name })
+          .then(bundle => {
+            if (bundle.grid)          setGameArt(prev => ({ ...prev, [game.id]: toUrl(bundle.grid) }));
+            if (bundle.hero_animated) setHeroAnimated(prev => ({ ...prev, [game.id]: toUrl(bundle.hero_animated) }));
+            if (bundle.hero_static)   setHeroStatic(prev => ({ ...prev, [game.id]: toUrl(bundle.hero_static) }));
+            onProgress?.(++done, total, game.name);
+          })
+          .catch(() => { onProgress?.(++done, total, game.name); })
+      ));
+    }
   };
 
   const handleClearCache = async () => {
     setCacheClearLoading(true);
+    setCacheClearStatus({ line1: "Clearing Cache", line2: "Removing cached artwork files…" });
     await invoke("clear_art_cache");
     setGameArt({}); setHeroAnimated({}); setHeroStatic({});
-    await fetchGameArt(appsRef.current.filter(a => a.app_type === "game"));
+    const games = appsRef.current.filter(a => a.app_type === "game");
+    setCacheClearStatus({ line1: "Downloading Artwork", line2: `Starting download for ${games.length} games…` });
+    await fetchGameArt(games, (done, total, lastName) => {
+      setCacheClearStatus({ line1: "Downloading Artwork", line2: `${lastName ? `${lastName} — ` : ""}${done} / ${total} games` });
+    });
     setCacheClearLoading(false);
   };
 
@@ -1343,33 +1451,49 @@ export default function App() {
     tab === "Home" ? true : tab === "Games" ? a.app_type === "game" : a.app_type === "app"
   ).slice(0, 8);
 
-  // Games-only recent list — drives the hero on Home
-  const recentGames = recent.filter(a => a.app_type === "game");
+  // Games-only recent list — drives the hero on Home (stable ref via useMemo)
+  const recentGames = useMemo(() => recent.filter(a => a.app_type === "game"), [recent]);
 
-  // Only play the active hero video; pause all others to avoid simultaneous GPU decode overhead
+  // Manage hero video playback: pause all when off Home; on Home keep active + adjacent
+  // videos playing so heroIndex transitions feel instant (no play() decode stutter).
+  //
+  // IMPORTANT: when navigating TO Home, defer play() by one frame so the browser
+  // paints the tab switch first — calling play() synchronously blocks the main thread
+  // and causes the visible lag when animated heroes are enabled.
   useEffect(() => {
-    Object.entries(heroVideoRefs.current).forEach(([id, vid]) => {
-      if (!vid) return;
-      // eslint-disable-next-line eqeqeq
-      const idx = recentGames.findIndex(g => g.id == id);
-      if (idx === heroIndex) { vid.play().catch(() => {}); }
-      else { vid.pause(); }
-    });
-  }, [heroIndex, recentGames]);
+    const isHome = tab === "Home";
 
-  // Force-render animated hero images offscreen so they're fully decoded before the user reaches them
-  useEffect(() => {
-    const nodes = [];
-    Object.values(heroAnimated).forEach(url => {
-      if (!url || url.endsWith(".webm")) return;
-      const img = document.createElement("img");
-      img.src = url;
-      img.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0.001;pointer-events:none;";
-      document.body.appendChild(img);
-      nodes.push(img);
+    if (!isHome) {
+      // Leaving Home — pause all videos immediately but keep them loaded so
+      // they're warm (decoded frame 0 in memory) when we return.
+      Object.entries(heroVideoRefs.current).forEach(([id, vid]) => {
+        if (vid) vid.pause();
+      });
+      return;
+    }
+
+    // Arriving on Home — let the browser paint first, THEN start playback.
+    // requestAnimationFrame fires after paint, eliminating the decode-on-render stall.
+    let rafId = requestAnimationFrame(() => {
+      Object.entries(heroVideoRefs.current).forEach(([id, vid]) => {
+        if (!vid) return;
+        // eslint-disable-next-line eqeqeq
+        const idx = recentGames.findIndex(g => g.id == id);
+        const isNearby = Math.abs(idx - heroIndex) <= 1;
+        if (isNearby) { vid.play().catch(() => {}); }
+        // else: already paused from when we left Home
+      });
+      // Kick off buffering for adjacent heroes
+      [heroIndex + 1, heroIndex + 2, heroIndex - 1, heroIndex - 2].forEach(i => {
+        const game = recentGames[i];
+        if (!game) return;
+        const vid = heroVideoRefs.current[game.id];
+        if (vid && vid.readyState < 3) vid.load();
+      });
     });
-    return () => { nodes.forEach(n => n.parentNode && n.parentNode.removeChild(n)); };
-  }, [heroAnimated]);
+
+    return () => cancelAnimationFrame(rafId);
+  }, [heroIndex, recentGames, tab]);
 
   // Pinned apps reactive (for render)
   const pinnedAppsReactive = pins
@@ -1383,10 +1507,14 @@ export default function App() {
     if (tab === "Settings") return;
     const hasPinned = pinsRef.current.length > 0;
     const gridIsOffscreen = tab !== "Home" && hasPinned;
+    const scrollToTop = () => {
+      const scroller = tab === "Home" ? homeScrollRef.current : tabScrollRef.current;
+      if (scroller) scroller.scrollTo({ top: 0, behavior: "smooth" });
+    };
     if (focusSection === "hero" || focusSection === "recent") {
-      setTimeout(() => { if (outerRef.current) outerRef.current.scrollTo({ top: 0, behavior: "smooth" }); }, 50);
+      setTimeout(scrollToTop, 50);
     } else if (focusSection === "pinned") {
-      setTimeout(() => { if (outerRef.current) outerRef.current.scrollTo({ top: 0, behavior: "smooth" }); }, 50);
+      setTimeout(scrollToTop, 50);
       // On Home tab, pinned is a horizontal pill shelf — scroll focused pill into view horizontally
       if (tab === "Home") {
         setTimeout(() => {
@@ -1400,7 +1528,7 @@ export default function App() {
       const gridPushedDown = tab !== "Home" && hasPinned;
       if (!gridPushedDown) {
         // No pinned section — grid starts near top, snap there
-        setTimeout(() => { if (outerRef.current) outerRef.current.scrollTo({ top: 0, behavior: "smooth" }); }, 50);
+        setTimeout(scrollToTop, 50);
       } else if (focusedCardRef.current) {
         // Pinned section pushes grid down — scroll first row into view properly
         focusedCardRef.current.style.scrollMarginTop    = "100px";
@@ -1429,13 +1557,19 @@ export default function App() {
     setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
     setGameSourceTab("All"); gameSourceTabRef.current = "All";
     setSubtabFocusIndex(0); subtabFocusIndexRef.current = 0;
-    setTimeout(() => { if (outerRef.current) outerRef.current.scrollTo({ top: 0, behavior: "smooth" }); }, 50);
+    setTimeout(() => {
+      const scroller = newTab === "Home" ? homeScrollRef.current : tabScrollRef.current;
+      if (scroller) scroller.scrollTo({ top: 0, behavior: "smooth" });
+    }, 50);
   };
 
   const SETTINGS_ITEMS = [
     { key: "accent",            label: "Accent Color",           type: "accent" },
     { key: "theme",             label: "Theme",                  type: "cycle",  options: ["dark","light","system"] },
     { key: "stars_enabled",     label: isDark ? "Background Stars" : "Background Clouds", type: "toggle" },
+    { key: "divider_display",   label: "DISPLAY",                type: "divider" },
+    { key: "ui_scale",          label: "UI Scale",               type: "slider", min: 0.75, max: 2.0, step: 0.05 },
+    { key: "reset_scale",       label: "Reset Scale to Auto",    type: "action" },
     { key: "divider",           label: "LIBRARY",                type: "divider" },
     { key: "scan_steam",        label: "Scan Steam",             type: "toggle" },
     { key: "scan_xbox",         label: "Scan Xbox",              type: "toggle" },
@@ -1620,16 +1754,21 @@ export default function App() {
       if (key === "ArrowDown") { const ni = Math.min(sfIndex + 1, navigableSettings.length - 1); setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni; }
       if (key === "ArrowUp") {
         const ni = Math.max(sfIndex - 1, 0); setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni;
-        if (sfIndex === 0 && outerRef.current) outerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+        if (sfIndex === 0 && tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
       }
       if (key === "ArrowRight" || key === "Enter") {
         if (!item) return;
         if (item.type === "toggle")  updateSetting(item.key, !currentSettings[item.key]);
         else if (item.type === "cycle")  { const opts = item.options; const cur = opts.indexOf(currentSettings[item.key]); updateSetting(item.key, opts[(cur + 1) % opts.length]); }
         else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur + 1) % keys.length]); }
+        else if (item.type === "slider") {
+          const cur = currentSettings[item.key] ?? 1.0;
+          updateSetting(item.key, Math.min(item.max, Math.round((cur + item.step) * 100) / 100));
+        }
         else if (item.type === "action") {
           if (item.key === "clear_recents") invoke("clear_recents").then(() => { setRecent([]); recentRef.current = []; });
           if (item.key === "clear_cache")   handleClearCache();
+          if (item.key === "reset_scale")   updateSetting("ui_scale", autoScaleRef.current);
         }
         else if (item.type === "refresh") { refreshLibrary(); }
         else if (item.type === "update") {
@@ -1650,6 +1789,10 @@ export default function App() {
         if (item.type === "toggle")  updateSetting(item.key, !currentSettings[item.key]);
         else if (item.type === "cycle")  { const opts = item.options; const cur = opts.indexOf(currentSettings[item.key]); updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length]); }
         else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur - 1 + keys.length) % keys.length]); }
+        else if (item.type === "slider") {
+          const cur = currentSettings[item.key] ?? 1.0;
+          updateSetting(item.key, Math.max(item.min, Math.round((cur - item.step) * 100) / 100));
+        }
       }
       return;
     }
@@ -2017,7 +2160,205 @@ export default function App() {
   const batteryColor = charging ? "#4ae88a" : battery > 20 ? accent.primary : "#e84a4a";
   const batteryWidth = battery > 0 ? `${battery}%` : "72%";
 
-  if (loading) return <SplashScreen exiting={splashExiting} />;
+
+  // ── Home-tab-specific derived data (no dependency on `tab`) ──
+  const homeFilteredRecent = useMemo(() => recent.filter(a => true).slice(0, 8), [recent]);
+  const homePinnedApps     = useMemo(() => pins.map(id => apps.find(a => a.id === id)).filter(Boolean), [pins, apps]);
+
+  // ── Home screen content ──
+  const homeContent = (() => {
+    const heroIdx  = heroIndex;
+    const focusSec = focusSection;
+    const focusIdx = focusIndex;
+    const heroGame   = recentGames[heroIdx];
+    const heroArt    = heroGame ? (customArt[heroGame.id] || gameArt[heroGame.id]) : null;
+    const heroBanner = heroGame
+      ? (settings.animated_heroes
+          ? (heroAnimated[heroGame.id] || heroStatic[heroGame.id])
+          : heroStatic[heroGame.id])
+      : null;
+    const heroFocused = focusSec === "hero";
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", padding: "14px 24px 0", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box", minHeight: "100%" }}>
+        {/* ── HERO ── */}
+        <div style={{ position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: 20, overflow: "hidden", display: "flex", flexDirection: "column", flexShrink: 0,
+          border: heroFocused ? `1px solid ${accent.glow}0.5)` : `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+          boxShadow: heroFocused ? `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)` : "0 4px 24px rgba(0,0,0,0.15)",
+          transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+          background: isDark ? "#0a0502" : appBg,
+        }}>
+          <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: 20, overflow: "hidden" }}>
+            {recentGames.map((game, idx) => {
+              const isActive = idx === heroIdx;
+              if (Math.abs(idx - heroIdx) > 4) return null;
+              const banner = settings.animated_heroes
+                ? (heroAnimated[game.id] || heroStatic[game.id])
+                : heroStatic[game.id];
+              const fallback = customArt[game.id] || gameArt[game.id];
+              return (
+                <div key={game.id} style={{ position: "absolute", inset: 0, opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
+                  {banner
+                    ? (banner.endsWith(".webm")
+                        ? <video ref={el => { heroVideoRefs.current[game.id] = el; }} src={banner} loop muted playsInline preload="auto" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }} />
+                        : <img src={banner} alt="" decoding="async" loading="eager" fetchPriority="high" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", transform: "translateZ(0)" }} />)
+                    : fallback
+                      ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ width: "100%", height: "100%", objectFit: "cover", filter: `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: "scale(1.08)" }} />
+                      : <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${accent.glow}0.25) 0%, ${accent.glow}0.06) 100%)` }} />
+                  }
+                </div>
+              );
+            })}
+            <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroBanner
+              ? (isDark
+                  ? "linear-gradient(to right, rgba(6,3,1,0.82) 0%, rgba(6,3,1,0.55) 45%, rgba(6,3,1,0.18) 100%)"
+                  : `linear-gradient(to right, ${appBg}dd 0%, ${appBg}99 45%, ${appBg}22 100%)`)
+              : (isDark
+                  ? "linear-gradient(to right, rgba(8,4,2,0.88) 0%, rgba(8,4,2,0.5) 50%, rgba(8,4,2,0.2) 100%)"
+                  : `linear-gradient(to right, ${appBg}ee 0%, ${appBg}99 50%, transparent 100%)`)
+            }} />
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "55%", zIndex: 2, background: isDark
+              ? "linear-gradient(to bottom, transparent, rgba(6,3,1,0.95))"
+              : `linear-gradient(to bottom, transparent, ${appBg})`
+            }} />
+          </div>
+
+          {/* Pinned bar */}
+          <div style={{ position: "relative", zIndex: 2, padding: "16px 20px 0", flexShrink: 0 }}>
+            {homePinnedApps.length > 0 ? (
+              <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 4, paddingBottom: 4 }}>
+                {homePinnedApps.map((app, i) => {
+                  const focused = focusSec === "pinned" && focusIdx === i;
+                  const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
+                  return (
+                    <div key={app.id} ref={focused ? focusedCardRef : null}
+                      onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
+                      onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
+                        flexShrink: 0, cursor: "pointer", borderRadius: 10, transition: "all 0.15s ease",
+                        background: focused ? accent.primary : "rgba(8,4,2,0.55)",
+                        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+                        border: `1px solid ${focused ? accent.primary : "rgba(255,255,255,0.18)"}`,
+                        boxShadow: focused ? `0 2px 12px ${accent.glow}0.6)` : "none",
+                      }}>
+                      {art
+                        ? <img src={art} alt={app.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
+                        : <AppIcon app={app} size={24} />}
+                      <div style={{ fontSize: 12, fontWeight: 500, color: focused ? "white" : "rgba(245,237,232,0.88)", whiteSpace: "nowrap", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ fontSize: 10, color: "rgba(245,237,232,0.25)", letterSpacing: "0.1em" }}>Pin apps with X to show them here</div>
+            )}
+          </div>
+
+          {/* Hero content */}
+          <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", alignItems: "flex-end", padding: "0 20px 20px" }}>
+            <div style={{ flexShrink: 0, width: "clamp(80px, 10vw, 150px)", aspectRatio: "2/3", marginRight: 20 }}>
+              {heroArt
+                ? <img key={heroGame?.id} src={heroArt} alt={heroGame?.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.7)", animation: "heroArtFade 0.3s ease forwards" }} />
+                : heroGame
+                  ? <div style={{ width: "100%", height: "100%", borderRadius: 10, background: `${accent.glow}0.15)`, border: `1px solid ${accent.glow}0.3)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, fontWeight: 700, color: accent.primary }}>{heroGame.name.charAt(0).toUpperCase()}</div>
+                  : <div style={{ width: "100%", height: "100%", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
+              }
+            </div>
+            {heroGame ? (
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: accent.primary, marginBottom: 6, fontWeight: 600 }}>
+                  {heroIdx === 0 ? "▶ Resume playing" : "▶ Recently played"}
+                </div>
+                <div style={{ fontSize: "clamp(22px, 3.2vw, 48px)", fontWeight: 700, color: theme.text, marginBottom: 4, lineHeight: 1.05, textShadow: isDark ? "0 2px 20px rgba(0,0,0,0.8)" : "none" }}>{heroGame.name}</div>
+                <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 16 }}>Game</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div onClick={() => triggerLaunch(heroGame, recentRef.current)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 24px", borderRadius: 10, cursor: "pointer", transition: "all 0.15s ease", fontWeight: 600, fontSize: 14,
+                      background: heroFocused ? accent.primary : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)",
+                      color: heroFocused ? "white" : theme.text,
+                      border: `1px solid ${heroFocused ? accent.primary : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`,
+                      backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
+                      boxShadow: heroFocused ? `0 4px 24px ${accent.glow}0.5)` : "none",
+                    }}>
+                    <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5l7 3.5-7 3.5z"/></svg>
+                    Launch
+                  </div>
+                  {recentGames.length > 1 && (
+                    <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                      {recentGames.slice(0, 6).map((_, i) => (
+                        <div key={i} onClick={() => { setHeroIndex(i); heroIndexRef.current = i; }}
+                          style={{ width: i === heroIdx ? 20 : 6, height: 6, borderRadius: 3, cursor: "pointer", transition: "all 0.2s ease",
+                            background: i === heroIdx ? accent.primary : isDark ? "rgba(245,237,232,0.25)" : "rgba(0,0,0,0.2)" }} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 14, color: theme.textFaint }}>Launch a game to see it here</div>
+            )}
+          </div>
+          {heroFocused && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: `linear-gradient(to right, ${accent.primary}, ${accent.glow}0))`, pointerEvents: "none", zIndex: 3 }} />}
+        </div>
+
+        {/* ── RECENTS ── */}
+        <div style={{ paddingTop: 0 }}>
+          <div style={{ paddingTop: 14 }} />
+          {homeFilteredRecent.length === 0 ? (
+            <div style={{ fontSize: 13, color: theme.textFaint, paddingBottom: 100 }}>Nothing here yet — launch something!</div>
+          ) : (
+            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 100, paddingTop: 8, marginTop: -8, paddingLeft: 6, paddingRight: 6 }}>
+              {homeFilteredRecent.map((app, i) => {
+                const focused = focusSec === "recent" && focusIdx === i;
+                const isPinned = pins.includes(app.id);
+                const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
+                const fullApp = allAppsRef.current.find(a => a.id === app.id) || app;
+                const CARD_W = "clamp(76px, 10vw, 110px)";
+                const CARD_H = "clamp(114px, 15vw, 165px)";
+                if (app.app_type === "game") {
+                  return (
+                    <div key={app.id} ref={focused ? focusedCardRef : null}
+                      onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
+                      onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                      style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative", transition: "all 0.15s ease",
+                        border: `1px solid ${focused ? accent.glow + "0.6)" : "rgba(255,255,255,0.08)"}`,
+                        boxShadow: focused ? `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)` : "none",
+                        transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" }}>
+                      {art
+                        ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : <div style={{ width: "100%", height: "100%", background: `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
+                      }
+                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                      </div>
+                      <PinBadge isPinned={isPinned} small />
+                      {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${accent.glow}0.6)`, borderRadius: 12, pointerEvents: "none" }} />}
+                    </div>
+                  );
+                }
+                return (
+                  <div key={app.id} ref={focused ? focusedCardRef : null}
+                    onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
+                    onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                    style={{ ...glass, border: focused ? `1px solid ${accent.glow}0.6)` : "1px solid rgba(255,255,255,0.06)", flexShrink: 0, borderRadius: 12, cursor: "pointer", transition: "all 0.15s ease",
+                      width: CARD_W, height: CARD_H, boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px", position: "relative",
+                      ...(focused ? { background: isDark ? `${accent.glow}0.1)` : `${accent.glow}0.07)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, transform: "scale(1.05) translateY(-3px)" } : {}) }}>
+                    <AppIcon app={fullApp} size={32} />
+                    <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
+                    <PinBadge isPinned={isPinned} small />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  })();
+
+
+    if (loading) return <SplashScreen exiting={splashExiting} />;
 
   const RocketLogo = () => (
     <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
@@ -2096,13 +2437,33 @@ export default function App() {
             </div>
           );
         }
+        if (item.type === "slider") {
+          const val = settings[item.key] ?? 1.0;
+          const pct = `${Math.round(val * 100)}%`;
+          const trackPct = ((val - item.min) / (item.max - item.min)) * 100;
+          return (
+            <div key={item.key} ref={rowRef} style={rowStyle}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 11, color: focused ? accent.primary : theme.textDim }}>◀</span>
+                <div style={{ width: 140, height: 4, borderRadius: 2, background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", position: "relative", flexShrink: 0 }}>
+                  <div style={{ height: "100%", borderRadius: 2, background: accent.primary, width: `${trackPct}%`, transition: "width 0.08s ease" }} />
+                  <div style={{ width: 14, height: 14, borderRadius: "50%", background: accent.primary, position: "absolute", top: -5, left: `calc(${trackPct}% - 7px)`, transition: "left 0.08s ease", boxShadow: `0 0 8px ${accent.glow}0.6)` }} />
+                </div>
+                <span style={{ fontSize: 11, color: focused ? accent.primary : theme.textDim }}>▶</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: accent.primary, minWidth: 40, textAlign: "right" }}>{pct}</span>
+              </div>
+            </div>
+          );
+        }
         if (item.type === "action") return (
           <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => {
             if (item.key === "clear_recents") invoke("clear_recents").then(() => { setRecent([]); recentRef.current = []; });
             if (item.key === "clear_cache")   handleClearCache();
+            if (item.key === "reset_scale")   updateSetting("ui_scale", autoScaleRef.current);
           }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: "#e84a4a" }}>{item.label}</span>
-            <span style={{ fontSize: 12, color: theme.textDim }}>↵ Confirm</span>
+            <span style={{ fontSize: 14, fontWeight: 500, color: item.key === "reset_scale" ? theme.text : "#e84a4a" }}>{item.label}</span>
+            <span style={{ fontSize: 12, color: theme.textDim }}>{item.key === "reset_scale" ? "↵ Apply" : "↵ Confirm"}</span>
           </div>
         );
         if (item.type === "update") {
@@ -2163,9 +2524,12 @@ export default function App() {
 
   // ── Render ────────────────────────────────────────────────────
   return (
-    <div style={{ height: "100vh", overflowY: "auto", position: "relative", animation: "appFadeIn 0.5s ease forwards" }} ref={outerRef}>
+    <div style={{ position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1 }} ref={outerRef}>
 
       <div style={{ position: "fixed", inset: 0, background: appBg, zIndex: -2 }} />
+      {!isDark && settings.stars_enabled && (
+        <div id="cloud-container" style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none", overflow: "hidden" }} />
+      )}
       {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={() => setLaunchingApp(null)} />}
       {artPickerApp && (
         <ArtPickerModal
@@ -2200,10 +2564,6 @@ export default function App() {
       )}
       <div style={{ position: "fixed", top: "-80%", left: "-80%", width: "180%", height: "180%", borderRadius: "50%", background: `radial-gradient(circle, ${bgGlow1} 0%, transparent 55%)`, pointerEvents: "none", zIndex: 0 }} />
       <div style={{ position: "fixed", bottom: "-80%", right: "-80%", width: "180%", height: "180%", borderRadius: "50%", background: `radial-gradient(circle, ${bgGlow2} 0%, transparent 55%)`, pointerEvents: "none", zIndex: 0 }} />
-      {!isDark && settings.stars_enabled && (
-        <div id="cloud-container" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }} />
-      )}
-
       {/* ══════════════ SEARCH OVERLAY ══════════════ */}
       {searchOpen && (
         <div style={{
@@ -2356,7 +2716,7 @@ export default function App() {
       )}
       {/* ══════════════ END SEARCH OVERLAY ══════════════ */}
 
-      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100vh", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: showHideModal ? "none" : "auto" }}>
+      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: showHideModal ? "none" : "auto" }}>
 
         {/* Topbar */}
         <div style={{ position: "sticky", top: 0, zIndex: 100 }}>
@@ -2372,7 +2732,6 @@ export default function App() {
                   color: tab === t ? theme.text : theme.textDim, padding: "6px 16px", borderRadius: 8, cursor: "pointer",
                   border: `1px solid ${tab === t ? `${accent.glow}0.35)` : "transparent"}`,
                   background: tab === t ? `${accent.glow}0.15)` : "transparent",
-                  transition: "all 0.15s ease",
                 }}>{t}</div>
               ))}
             </div>
@@ -2395,197 +2754,28 @@ export default function App() {
             </div>
           </div>
         </div>
-        {tab === "Settings" ? <SettingsScreen /> : tab === "Home" ? (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "14px 24px 0", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
-            {(() => {
-              const heroGame    = recentGames[heroIndex];
-              const heroArt    = heroGame ? (customArt[heroGame.id] || gameArt[heroGame.id]) : null;
-              const heroBanner = heroGame
-                ? (settings.animated_heroes
-                    ? (heroAnimated[heroGame.id] || heroStatic[heroGame.id])
-                    : heroStatic[heroGame.id])
-                : null;
-              const heroFocused = focusSection === "hero";
-              return (
-                <div style={{ position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: 20, overflow: "visible", display: "flex", flexDirection: "column", flexShrink: 0,
-                  border: heroFocused ? `1px solid ${accent.glow}0.5)` : `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-                  boxShadow: heroFocused ? `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)` : "0 4px 24px rgba(0,0,0,0.15)",
-                  transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-                  background: isDark ? "#0a0502" : appBg,
-                }}>
-                  {/* Background: all recent game heroes preloaded and stacked, opacity-switched for instant transitions */}
-                  <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: 20, overflow: "hidden" }}>
-                    {recentGames.map((game, idx) => {
-                      const isActive = idx === heroIndex;
-                      const banner = settings.animated_heroes
-                        ? (heroAnimated[game.id] || heroStatic[game.id])
-                        : heroStatic[game.id];
-                      const fallback = customArt[game.id] || gameArt[game.id];
-                      return (
-                        <div key={game.id} style={{ position: "absolute", inset: 0, opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
-                          {banner
-                            ? (banner.endsWith(".webm")
-                                ? <video ref={el => { heroVideoRefs.current[game.id] = el; }} src={banner} loop muted playsInline preload="auto" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }} />
-                                : <img src={banner} alt="" loading="eager" fetchPriority="high" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", transform: "translateZ(0)" }} />)
-                            : fallback
-                              ? <img src={fallback} alt="" loading="eager" style={{ width: "100%", height: "100%", objectFit: "cover", filter: `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: "scale(1.08)" }} />
-                              : <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${accent.glow}0.25) 0%, ${accent.glow}0.06) 100%)` }} />
-                          }
-                        </div>
-                      );
-                    })}
-                    {/* Overlay — heavier when using a hero banner to keep text legible */}
-                    <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroBanner
-                      ? (isDark
-                          ? "linear-gradient(to right, rgba(6,3,1,0.82) 0%, rgba(6,3,1,0.55) 45%, rgba(6,3,1,0.18) 100%)"
-                          : `linear-gradient(to right, ${appBg}dd 0%, ${appBg}99 45%, ${appBg}22 100%)`)
-                      : (isDark
-                          ? "linear-gradient(to right, rgba(8,4,2,0.88) 0%, rgba(8,4,2,0.5) 50%, rgba(8,4,2,0.2) 100%)"
-                          : `linear-gradient(to right, ${appBg}ee 0%, ${appBg}99 50%, transparent 100%)`)
-                    }} />
-                    {/* Bottom fade */}
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "55%", zIndex: 2, background: isDark
-                      ? "linear-gradient(to bottom, transparent, rgba(6,3,1,0.95))"
-                      : `linear-gradient(to bottom, transparent, ${appBg})`
-                    }} />
-                  </div>
+        {/* Tab content area — Home always mounted; cover layer hides it when elsewhere;
+             clouds sit above cover, below all tab UI. */}
+        <div style={{ position: "relative", flex: 1, overflow: "hidden" }}>
 
-                  {/* Pinned bar at top of tile */}
-                  <div style={{ position: "relative", zIndex: 2, padding: "16px 20px 0", flexShrink: 0 }}>
-                    {pinnedAppsReactive.length > 0 ? (
-                      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 4, paddingBottom: 4 }}>
-                        {pinnedAppsReactive.map((app, i) => {
-                          const focused = focusSection === "pinned" && focusIndex === i;
-                          const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
-                          return (
-                            <div key={app.id} ref={focused ? focusedCardRef : null}
-                              onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
-                              onDoubleClick={() => triggerLaunch(app, recent)}
-                              style={{
-                                display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
-                                flexShrink: 0, cursor: "pointer", borderRadius: 10, transition: "all 0.15s ease",
-                                background: focused ? accent.primary : "rgba(8,4,2,0.55)",
-                                backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-                                border: `1px solid ${focused ? accent.primary : "rgba(255,255,255,0.18)"}`,
-                                boxShadow: focused ? `0 2px 12px ${accent.glow}0.6)` : "none",
-                              }}>
-                              {art
-                                ? <img src={art} alt={app.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
-                                : <AppIcon app={app} size={24} />}
-                              <div style={{ fontSize: 12, fontWeight: 500, color: focused ? "white" : "rgba(245,237,232,0.88)", whiteSpace: "nowrap", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: 10, color: "rgba(245,237,232,0.25)", letterSpacing: "0.1em" }}>Pin apps with X to show them here</div>
-                    )}
-                  </div>
-
-                  {/* Hero content — art card + info at bottom */}
-                  <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", alignItems: "flex-end", padding: "0 20px 20px" }}>
-                    <div style={{ flexShrink: 0, width: "clamp(80px, 10vw, 150px)", aspectRatio: "2/3", marginRight: 20 }}>
-                      {heroArt
-                        ? <img key={heroGame?.id} src={heroArt} alt={heroGame?.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.7)", animation: "heroArtFade 0.3s ease forwards" }} />
-                        : heroGame
-                          ? <div style={{ width: "100%", height: "100%", borderRadius: 10, background: `${accent.glow}0.15)`, border: `1px solid ${accent.glow}0.3)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, fontWeight: 700, color: accent.primary }}>{heroGame.name.charAt(0).toUpperCase()}</div>
-                          : <div style={{ width: "100%", height: "100%", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
-                      }
-                    </div>
-                    {heroGame ? (
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: accent.primary, marginBottom: 6, fontWeight: 600 }}>
-                          {heroIndex === 0 ? "▶ Resume playing" : "▶ Recently played"}
-                        </div>
-                        <div style={{ fontSize: "clamp(22px, 3.2vw, 48px)", fontWeight: 700, color: theme.text, marginBottom: 4, lineHeight: 1.05, textShadow: isDark ? "0 2px 20px rgba(0,0,0,0.8)" : "none" }}>{heroGame.name}</div>
-                        <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 16 }}>Game</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          <div onClick={() => triggerLaunch(heroGame, recent)}
-                            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 24px", borderRadius: 10, cursor: "pointer", transition: "all 0.15s ease", fontWeight: 600, fontSize: 14,
-                              background: heroFocused ? accent.primary : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)",
-                              color: heroFocused ? "white" : theme.text,
-                              border: `1px solid ${heroFocused ? accent.primary : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`,
-                              backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
-                              boxShadow: heroFocused ? `0 4px 24px ${accent.glow}0.5)` : "none",
-                            }}>
-                            <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5l7 3.5-7 3.5z"/></svg>
-                            Launch
-                          </div>
-                          {recentGames.length > 1 && (
-                            <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                              {recentGames.slice(0, 6).map((_, i) => (
-                                <div key={i} onClick={() => { setHeroIndex(i); heroIndexRef.current = i; }}
-                                  style={{ width: i === heroIndex ? 20 : 6, height: 6, borderRadius: 3, cursor: "pointer", transition: "all 0.2s ease",
-                                    background: i === heroIndex ? accent.primary : isDark ? "rgba(245,237,232,0.25)" : "rgba(0,0,0,0.2)" }} />
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: 14, color: theme.textFaint }}>Launch a game to see it here</div>
-                    )}
-                  </div>
-
-                  {/* Focus accent bar */}
-                  {heroFocused && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: `linear-gradient(to right, ${accent.primary}, ${accent.glow}0))`, pointerEvents: "none", zIndex: 3 }} />}
-                </div>
-              );
-            })()}
-
-            {/* ── RECENTS — single horizontal scrolling row, max 10 ── */}
-            <div style={{ paddingTop: 0 }}>
-              <div style={{ paddingTop: 14 }} />
-              {filteredRecent.length === 0 ? (
-                <div style={{ fontSize: 13, color: theme.textFaint, paddingBottom: 100 }}>Nothing here yet — launch something!</div>
-              ) : (
-                <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 100, paddingTop: 8, marginTop: -8, paddingLeft: 6, paddingRight: 6 }}>
-                  {filteredRecent.slice(0, 10).map((app, i) => {
-                    const focused = focusSection === "recent" && focusIndex === i;
-                    const isPinned = pins.includes(app.id);
-                    const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
-                    const fullApp = allAppsRef.current.find(a => a.id === app.id) || app;
-                    const CARD_W = "clamp(76px, 10vw, 110px)";
-                    const CARD_H = "clamp(114px, 15vw, 165px)";
-                    if (app.app_type === "game") {
-                      return (
-                        <div key={app.id} ref={focused ? focusedCardRef : null}
-                          onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
-                          onDoubleClick={() => triggerLaunch(app, recent)}
-                          style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative", transition: "all 0.15s ease",
-                            border: `1px solid ${focused ? accent.glow + "0.6)" : "rgba(255,255,255,0.08)"}`,
-                            boxShadow: focused ? `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)` : "none",
-                            transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" }}>
-                          {art
-                            ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                            : <div style={{ width: "100%", height: "100%", background: `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
-                          }
-                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
-                            <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
-                          </div>
-                          <PinBadge isPinned={isPinned} small />
-                          {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${accent.glow}0.6)`, borderRadius: 12, pointerEvents: "none" }} />}
-                        </div>
-                      );
-                    }
-                    return (
-                      <div key={app.id} ref={focused ? focusedCardRef : null}
-                        onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
-                        onDoubleClick={() => triggerLaunch(app, recent)}
-                        style={{ ...glass, border: focused ? `1px solid ${accent.glow}0.6)` : "1px solid rgba(255,255,255,0.06)", flexShrink: 0, borderRadius: 12, cursor: "pointer", transition: "all 0.15s ease",
-                          width: CARD_W, height: CARD_H, boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px", position: "relative",
-                          ...(focused ? { background: isDark ? `${accent.glow}0.1)` : `${accent.glow}0.07)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, transform: "scale(1.05) translateY(-3px)" } : {}) }}>
-                        <AppIcon app={fullApp} size={32} />
-                        <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
-                        <PinBadge isPinned={isPinned} small />
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+          {tab === "Settings" && (
+            <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
+              <SettingsScreen />
             </div>
-          </div>) : (
-          <div style={{ flex: 1, padding: "14px 24px 0", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+          )}
+          <div
+            ref={homeScrollRef}
+            style={{
+              position: "absolute", inset: 0, overflowY: "auto",
+              zIndex: 2,
+              pointerEvents: tab === "Home" ? "auto" : "none",
+              contentVisibility: tab === "Home" ? "visible" : "hidden",
+            }}>
+            {homeContent}
+          </div>
+          {(tab === "Games" || tab === "Apps") && (
+            <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
+            <div style={{ padding: "14px 24px 0", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
 
             {/* ── SOURCE SUB-TABS (Games only) + MANAGE BUTTONS ── */}
             {(() => {
@@ -2710,7 +2900,9 @@ export default function App() {
               </div>
             )}
           </div>
-        )}
+            </div>
+          )}
+        </div>
 
         {/* Bottom bar */}
         <div style={{ position: "sticky", bottom: 0, zIndex: 100 }}>
@@ -2783,8 +2975,8 @@ export default function App() {
           <div style={{ background: theme.card, borderRadius: 18, padding: "36px 52px", textAlign: "center", display: "flex", flexDirection: "column", gap: 14, alignItems: "center",
             boxShadow: "0 8px 48px rgba(0,0,0,0.5)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}` }}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", border: `3px solid ${accent.primary}`, borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
-            <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>Refreshing Art Cache</div>
-            <div style={{ fontSize: 13, color: theme.textDim }}>Fetching artwork for your library…</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{cacheClearStatus.line1}</div>
+            <div style={{ fontSize: 13, color: theme.textDim }}>{cacheClearStatus.line2}</div>
           </div>
         </div>
       )}
