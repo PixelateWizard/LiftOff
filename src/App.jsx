@@ -476,6 +476,414 @@ function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "portrait", 
   );
 }
 
+// ── SGDB thumbnail card ──────────────────────────────────────
+function ThumbnailCard({ result, selected, accent, theme, thumbW, thumbH, onClick }) {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <div style={{ position: "relative", width: thumbW, cursor: "pointer", borderRadius: 8, overflow: "hidden",
+      outline: selected ? `2px solid ${accent.primary}` : "2px solid transparent", outlineOffset: -2, transition: "outline 0.1s", flexShrink: 0 }}
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}>
+      <img src={result.thumb} alt="" style={{ width: "100%", height: thumbH, objectFit: "cover", display: "block" }} />
+      {hovered && (
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "4px 6px",
+          background: "rgba(0,0,0,0.72)", display: "flex", gap: 6, alignItems: "center" }}>
+          {result.author && <span style={{ fontSize: 9, color: "rgba(255,255,255,0.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{result.author}</span>}
+          {result.upvotes > 0 && <span style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", flexShrink: 0 }}>▲{result.upvotes}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── SgdbBrowser ───────────────────────────────────────────────
+function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose }) {
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [selectedIdx, setSelectedIdx] = useState(null);
+  const [heroFilter, setHeroFilter] = useState("all");
+  const [downloading, setDownloading] = useState(false);
+
+  const selectedIdxRef = useRef(null);
+  const lastBtnRef = useRef({});
+  const filteredResultsRef = useRef([]);
+
+  const isAnimatedUrl = (url) => {
+    const l = url.toLowerCase();
+    return l.endsWith(".mp4") || l.endsWith(".webm") || l.endsWith(".gif");
+  };
+
+  const filteredResults = useMemo(() => {
+    if (artType !== "hero" || heroFilter === "all") return results;
+    if (heroFilter === "animated") return results.filter(r => isAnimatedUrl(r.url));
+    return results.filter(r => !isAnimatedUrl(r.url));
+  }, [results, heroFilter, artType]);
+
+  useEffect(() => { filteredResultsRef.current = filteredResults; }, [filteredResults]);
+
+  const loadResults = () => {
+    setLoading(true);
+    setError(false);
+    setSelectedIdx(null);
+    selectedIdxRef.current = null;
+    invoke("search_sgdb_art", { gameName: app.name, artType })
+      .then(data => { setResults(data); setLoading(false); })
+      .catch(() => { setError(true); setLoading(false); });
+  };
+
+  useEffect(() => { loadResults(); }, []);
+
+  const GRID_COLS = artType === "grid" ? 4 : 2;
+  const THUMB_W   = artType === "grid" ? 148 : 258;
+  const THUMB_H   = artType === "grid" ? 222 : 145;
+
+  const handleSelect = () => {
+    const idx = selectedIdxRef.current;
+    const list = filteredResultsRef.current;
+    if (idx === null || idx >= list.length) return;
+    const chosen = list[idx];
+    setDownloading(true);
+    invoke("download_sgdb_art", { gameName: app.name, url: chosen.url, artType })
+      .then(path => {
+        if (path) { onSet(app.id, path); onClose(); }
+        else setDownloading(false);
+      })
+      .catch(() => setDownloading(false));
+  };
+  const handleSelectRef = useRef(handleSelect);
+  useEffect(() => { handleSelectRef.current = handleSelect; });
+
+  useEffect(() => {
+    let rAFId;
+    const poll = () => {
+      const gp = getBestGamepad();
+      if (gp) {
+        const state = readGpState(gp);
+        const list = filteredResultsRef.current;
+        const cur  = selectedIdxRef.current;
+
+        if (state.ArrowRight && !lastBtnRef.current.ArrowRight) {
+          const next = cur === null ? 0 : Math.min(cur + 1, list.length - 1);
+          if (next !== cur) { setSelectedIdx(next); selectedIdxRef.current = next; }
+        }
+        if (state.ArrowLeft && !lastBtnRef.current.ArrowLeft) {
+          if (cur === null && list.length > 0) { setSelectedIdx(0); selectedIdxRef.current = 0; }
+          else if (cur !== null && cur > 0) { setSelectedIdx(cur - 1); selectedIdxRef.current = cur - 1; }
+        }
+        if (state.ArrowDown && !lastBtnRef.current.ArrowDown) {
+          if (cur === null && list.length > 0) { setSelectedIdx(0); selectedIdxRef.current = 0; }
+          else if (cur !== null) {
+            const next = Math.min(cur + GRID_COLS, list.length - 1);
+            if (next !== cur) { setSelectedIdx(next); selectedIdxRef.current = next; }
+          }
+        }
+        if (state.ArrowUp && !lastBtnRef.current.ArrowUp) {
+          if (cur !== null && cur - GRID_COLS >= 0) {
+            const next = cur - GRID_COLS;
+            setSelectedIdx(next); selectedIdxRef.current = next;
+          }
+        }
+        if (state.Enter && !lastBtnRef.current.Enter) handleSelectRef.current();
+        if (state.Escape && !lastBtnRef.current.Escape) onClose();
+
+        lastBtnRef.current = state;
+      }
+      rAFId = requestAnimationFrame(poll);
+    };
+    rAFId = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(rAFId);
+  }, [artType, GRID_COLS]);
+
+  if (loading) return (
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="splash-dots" style={{ opacity: 1 }}>
+        <div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" />
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+      <span style={{ color: theme.textDim, fontSize: 13 }}>Failed to load results</span>
+      <button onClick={loadResults}
+        style={{ padding: "8px 20px", borderRadius: 8, background: `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, color: "white", fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer" }}>
+        Retry
+      </button>
+    </div>
+  );
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {artType === "hero" && (
+        <div style={{ display: "flex", gap: 6, paddingBottom: 10 }}>
+          {["all", "animated", "static"].map(f => (
+            <button key={f}
+              onClick={() => { setHeroFilter(f); setSelectedIdx(null); selectedIdxRef.current = null; }}
+              style={{ padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "none",
+                background: heroFilter === f ? accent.primary : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"),
+                color: heroFilter === f ? "white" : theme.text }}>
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
+      <div style={{ flex: 1, overflowY: "auto", display: "grid",
+        gridTemplateColumns: `repeat(${GRID_COLS}, ${THUMB_W}px)`, gap: 8, alignContent: "start", paddingRight: 4 }}>
+        {filteredResults.map((r, i) => (
+          <ThumbnailCard key={r.url} result={r} selected={selectedIdx === i}
+            accent={accent} theme={theme} thumbW={THUMB_W} thumbH={THUMB_H}
+            onClick={() => { setSelectedIdx(i); selectedIdxRef.current = i; }} />
+        ))}
+        {filteredResults.length === 0 && (
+          <div style={{ gridColumn: "1 / -1", textAlign: "center", color: theme.textDim, fontSize: 13, padding: 24 }}>
+            No results found
+          </div>
+        )}
+      </div>
+      <div style={{ paddingTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", gap: 12, marginRight: "auto" }}>
+          {[{ bg: "#4a9c4a", label: "A Select" }, { bg: "#b03030", label: "B Cancel" }].map(({ bg, label }) => (
+            <span key={label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
+              <span style={{ width: 18, height: 18, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "white", flexShrink: 0 }}>{label[0]}</span>
+              {label.slice(1)}
+            </span>
+          ))}
+        </div>
+        <button onClick={onClose}
+          style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none",
+            background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", color: theme.text }}>
+          Cancel
+        </button>
+        <button onClick={handleSelect} disabled={selectedIdx === null || downloading}
+          style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600,
+            cursor: selectedIdx !== null && !downloading ? "pointer" : "default", border: "none",
+            background: selectedIdx !== null && !downloading
+              ? `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`
+              : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"),
+            color: selectedIdx !== null && !downloading ? "white" : theme.textDim, transition: "all 0.15s" }}>
+          {downloading ? "Downloading…" : "Select"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── UploadTab ─────────────────────────────────────────────────
+function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accent, theme, isDark, onClose, onSet, onReset }) {
+  const fileRef = useRef(null);
+  const [preview, setPreview] = useState(currentArt || null);
+  const [pendingData, setPendingData] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [focusedBtn, setFocusedBtn] = useState("browse");
+
+  const pendingDataRef  = useRef(null);
+  const focusedBtnRef   = useRef("browse");
+  const lastBtnRef      = useRef({});
+
+  const getButtons = () => {
+    const btns = ["browse"];
+    if (pendingDataRef.current) btns.push("save");
+    if (hasCustomArt && !pendingDataRef.current) btns.push("reset");
+    btns.push("cancel");
+    return btns;
+  };
+
+  const handleSave = () => {
+    if (!pendingDataRef.current) return;
+    setSaving(true);
+    invoke("set_custom_art", { id: app.id, data: pendingDataRef.current })
+      .then(() => { onSet(app.id, pendingDataRef.current); onClose(); })
+      .catch(console.error)
+      .finally(() => setSaving(false));
+  };
+  const handleReset = () => {
+    invoke("clear_custom_art", { id: app.id })
+      .then(() => { onReset(app.id); onClose(); })
+      .catch(console.error);
+  };
+
+  const handleSaveRef  = useRef(handleSave);
+  const handleResetRef = useRef(handleReset);
+  useEffect(() => { handleSaveRef.current  = handleSave; });
+  useEffect(() => { handleResetRef.current = handleReset; });
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const TW = cropMode === "square" ? 500 : 600;
+        const TH = cropMode === "square" ? 500 : 900;
+        const canvas = document.createElement("canvas");
+        canvas.width = TW; canvas.height = TH;
+        const ctx = canvas.getContext("2d");
+        const scale = Math.max(TW / img.width, TH / img.height);
+        const sw = TW / scale, sh = TH / scale;
+        const sx = (img.width  - sw) / 2;
+        const sy = (img.height - sh) / 2;
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, TW, TH);
+        const url = canvas.toDataURL("image/jpeg", 0.88);
+        setPreview(url);
+        setPendingData(url);
+        pendingDataRef.current = url;
+        setFocusedBtn("save"); focusedBtnRef.current = "save";
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  useEffect(() => {
+    let rAFId;
+    const poll = () => {
+      const gp = getBestGamepad();
+      if (gp) {
+        const state = readGpState(gp);
+        const btns  = getButtons();
+
+        if (state.ArrowDown && !lastBtnRef.current.ArrowDown) {
+          const i    = btns.indexOf(focusedBtnRef.current);
+          const next = btns[Math.min(i + 1, btns.length - 1)];
+          if (next !== focusedBtnRef.current) { setFocusedBtn(next); focusedBtnRef.current = next; }
+        }
+        if (state.ArrowUp && !lastBtnRef.current.ArrowUp) {
+          const i    = btns.indexOf(focusedBtnRef.current);
+          const next = btns[Math.max(i - 1, 0)];
+          if (next !== focusedBtnRef.current) { setFocusedBtn(next); focusedBtnRef.current = next; }
+        }
+        if (state.Enter && !lastBtnRef.current.Enter) {
+          const btn = focusedBtnRef.current;
+          if (btn === "browse") fileRef.current?.click();
+          else if (btn === "save")   handleSaveRef.current();
+          else if (btn === "reset")  handleResetRef.current();
+          else if (btn === "cancel") onClose();
+        }
+        if (state.Escape && !lastBtnRef.current.Escape) onClose();
+
+        lastBtnRef.current = state;
+      }
+      rAFId = requestAnimationFrame(poll);
+    };
+    rAFId = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(rAFId);
+  }, []);
+
+  const btnStyle = (key, bg, color, extra = {}) => {
+    const focused = focusedBtn === key;
+    return {
+      padding: "10px 20px", borderRadius: 10, cursor: "pointer",
+      fontFamily: "'Segoe UI', sans-serif", fontSize: 14, fontWeight: 600,
+      border: focused ? `2px solid ${accent.primary}` : "2px solid transparent",
+      width: "100%", background: bg, color,
+      transition: "all 0.15s ease",
+      boxShadow: focused ? `0 0 0 2px ${accent.glow}0.4), 0 0 16px ${accent.glow}0.2)` : "none",
+      transform: focused ? "scale(1.02)" : "scale(1)",
+      ...extra,
+    };
+  };
+
+  return (
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ width: 380 }}>
+        <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 16 }}>Upload a custom image</div>
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+          <div style={{ flexShrink: 0, width: 110 }}>
+            {preview
+              ? <img src={preview} alt="" style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
+              : <div style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>No art</span></div>
+            }
+          </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
+            <button onClick={() => fileRef.current?.click()} style={btnStyle("browse", `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, "white")}>Browse Image</button>
+            {pendingData && <button onClick={handleSave} disabled={saving} style={btnStyle("save", "#4a9c4a", "white", { opacity: saving ? 0.6 : 1 })}>{saving ? "Saving…" : "Save"}</button>}
+            {hasCustomArt && !pendingData && <button onClick={handleReset} style={btnStyle("reset", "rgba(255,255,255,0.08)", theme.text)}>Reset to Default</button>}
+            <button onClick={onClose} style={btnStyle("cancel", "rgba(255,255,255,0.05)", theme.textDim)}>Cancel</button>
+            <div style={{ display: "flex", justifyContent: "center", gap: 12, paddingTop: 4 }}>
+              {[
+                { bg: "#4a9c4a", label: "A Confirm" },
+                { bg: "#b03030", label: "B Cancel" },
+              ].map(({ bg, label }) => (
+                <span key={label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
+                  <span style={{ width: 18, height: 18, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "white", flexShrink: 0 }}>{label[0]}</span>
+                  {label.slice(1)}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── SgdbBrowserModal ──────────────────────────────────────────
+function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait", accent, theme, isDark, glass, onClose, onSet, onReset }) {
+  const artType = cropMode === "portrait" ? "grid" : "hero";
+  const [activeTab, setActiveTab] = useState("browse");
+  const lastBtnRef = useRef({});
+
+  useEffect(() => {
+    let rAFId;
+    const poll = () => {
+      const gp = getBestGamepad();
+      if (gp) {
+        const state = readGpState(gp);
+        if (state.BumperLeft  && !lastBtnRef.current.BumperLeft)  setActiveTab("browse");
+        if (state.BumperRight && !lastBtnRef.current.BumperRight) setActiveTab("upload");
+        lastBtnRef.current = state;
+      }
+      rAFId = requestAnimationFrame(poll);
+    };
+    rAFId = requestAnimationFrame(poll);
+    return () => cancelAnimationFrame(rAFId);
+  }, []);
+
+  const badgeStyle = {
+    height: 18, minWidth: 24, borderRadius: 4,
+    background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)",
+    display: "inline-flex", alignItems: "center", justifyContent: "center",
+    fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px",
+  };
+
+  const tabBtnStyle = (tab) => ({
+    padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600,
+    cursor: "pointer", border: "none",
+    background: activeTab === tab ? `linear-gradient(135deg, ${accent.primary}, ${accent.dark})` : "transparent",
+    color: activeTab === tab ? "white" : theme.textDim,
+    transition: "all 0.15s",
+  });
+
+  return (
+    <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
+      <div style={{ ...glass, borderRadius: 20, padding: 20, width: "min(860px, 92vw)", height: "min(600px, 85vh)", display: "flex", flexDirection: "column",
+        border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.4)` }}>
+        <div style={{ marginBottom: 4 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: theme.text }}>{app.name}</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, paddingBottom: 10,
+          borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
+          <span style={badgeStyle}>LB</span>
+          <button onClick={() => setActiveTab("browse")} style={tabBtnStyle("browse")}>Browse SteamGridDB</button>
+          <button onClick={() => setActiveTab("upload")} style={tabBtnStyle("upload")}>Upload File</button>
+          <span style={badgeStyle}>RB</span>
+        </div>
+        {activeTab === "browse"
+          ? <SgdbBrowser app={app} artType={artType} accent={accent} theme={theme} isDark={isDark}
+              onSet={onSet} onClose={onClose} />
+          : <UploadTab app={app} currentArt={currentArt} hasCustomArt={hasCustomArt} cropMode={cropMode}
+              accent={accent} theme={theme} isDark={isDark}
+              onClose={onClose} onSet={onSet} onReset={onReset} />
+        }
+      </div>
+    </div>
+  );
+}
+
 // ── Gamepad selector ─────────────────────────────────────────
 // Some USB devices (headset adapters, audio dongles) expose a HID interface
 // that the browser registers as a gamepad. They have 0–2 buttons and no axes.
@@ -2647,16 +3055,26 @@ export default function App() {
       )}
       {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={() => setLaunchingApp(null)} />}
       {artPickerApp && (
-        <ArtPickerModal
+        <SgdbBrowserModal
           app={artPickerApp}
           currentArt={customArt[artPickerApp.id] || gameArt[artPickerApp.id]}
           hasCustomArt={!!customArt[artPickerApp.id]}
           cropMode={artPickerApp?.app_type === "game" ? "portrait" : "square"}
           accent={accent} theme={theme} isDark={isDark} glass={glass}
           onClose={closeArtPicker}
-          onSet={(id, dataUrl) => {
-            const next = { ...customArtRef.current, [id]: dataUrl };
-            setCustomArt(next); customArtRef.current = next;
+          onSet={(id, result) => {
+            if (typeof result === "string" && result.startsWith("data:")) {
+              const next = { ...customArtRef.current, [id]: result };
+              setCustomArt(next); customArtRef.current = next;
+            } else {
+              const url = convertFileSrc(result);
+              const isHero = artPickerApp?.app_type !== "game";
+              if (isHero) {
+                setHeroStatic(prev => ({ ...prev, [id]: url }));
+              } else {
+                setGameArt(prev => ({ ...prev, [id]: url }));
+              }
+            }
           }}
           onReset={(id) => {
             const next = { ...customArtRef.current }; delete next[id];
