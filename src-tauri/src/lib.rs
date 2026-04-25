@@ -113,6 +113,30 @@ impl Default for Settings {
 #[derive(Deserialize)] struct SgdbHero { url: String }
 #[derive(Serialize)] struct GameArtBundle { grid: Option<String>, hero_animated: Option<String>, hero_static: Option<String> }
 
+#[derive(Deserialize)] struct SgdbArtAuthor { name: Option<String> }
+#[derive(Deserialize)] struct SgdbArtItem {
+    url: String,
+    thumb: Option<String>,
+    width: Option<u32>,
+    height: Option<u32>,
+    author: Option<SgdbArtAuthor>,
+    style: Option<String>,
+    upvotes: Option<i32>,
+    downvotes: Option<i32>,
+}
+#[derive(Deserialize)] struct SgdbArtResponse { success: bool, data: Option<Vec<SgdbArtItem>> }
+#[derive(Serialize, Clone)]
+pub struct SgdbArtResult {
+    pub url: String,
+    pub thumb: String,
+    pub width: u32,
+    pub height: u32,
+    pub author: String,
+    pub style: String,
+    pub upvotes: i32,
+    pub downvotes: i32,
+}
+
 fn liftoff_dir() -> std::path::PathBuf { dirs::data_local_dir().unwrap_or_else(|| std::path::PathBuf::from(".")).join("LiftOff") }
 fn recents_path() -> std::path::PathBuf { liftoff_dir().join("recents.json") }
 fn art_cache_path() -> std::path::PathBuf { liftoff_dir().join("art_cache.json") }
@@ -300,6 +324,109 @@ fn clear_custom_art(id: String) -> Result<(), String> {
     map.remove(&id);
     save_custom_art_inner(&map);
     Ok(())
+}
+
+#[tauri::command]
+fn search_sgdb_art(game_name: String, art_type: String) -> Vec<SgdbArtResult> {
+    let client = match reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
+
+    let search_url = format!(
+        "https://www.steamgriddb.com/api/v2/search/autocomplete/{}",
+        urlencoding::encode(&game_name)
+    );
+    let game_id = match client.get(&search_url)
+        .header("Authorization", format!("Bearer {}", SGDB_KEY))
+        .send().ok()
+        .and_then(|r| r.json::<SgdbSearchResponse>().ok())
+        .filter(|d| d.success)
+        .and_then(|d| d.data)
+        .and_then(|items| items.into_iter().next())
+        .map(|g| g.id)
+    {
+        Some(id) => id,
+        None => return vec![],
+    };
+
+    let fetch_art = |url: &str| -> Vec<SgdbArtItem> {
+        client.get(url)
+            .header("Authorization", format!("Bearer {}", SGDB_KEY))
+            .send().ok()
+            .and_then(|r| r.json::<SgdbArtResponse>().ok())
+            .filter(|d| d.success)
+            .and_then(|d| d.data)
+            .unwrap_or_default()
+    };
+
+    let items: Vec<SgdbArtItem> = if art_type == "grid" {
+        let url = format!(
+            "https://www.steamgriddb.com/api/v2/grids/game/{}?dimensions=600x900&limit=20",
+            game_id
+        );
+        fetch_art(&url)
+    } else {
+        let url1 = format!("https://www.steamgriddb.com/api/v2/heroes/game/{}?limit=20", game_id);
+        let url2 = format!("https://www.steamgriddb.com/api/v2/heroes/game/{}?styles=alternate&limit=20", game_id);
+        let mut seen = std::collections::HashSet::new();
+        let mut combined = Vec::new();
+        for item in fetch_art(&url1).into_iter().chain(fetch_art(&url2).into_iter()) {
+            if seen.insert(item.url.clone()) {
+                combined.push(item);
+            }
+        }
+        combined
+    };
+
+    items.into_iter().map(|item| {
+        let thumb = item.thumb.unwrap_or_else(|| item.url.clone());
+        SgdbArtResult {
+            url: item.url,
+            thumb,
+            width: item.width.unwrap_or(0),
+            height: item.height.unwrap_or(0),
+            author: item.author.and_then(|a| a.name).unwrap_or_default(),
+            style: item.style.unwrap_or_default(),
+            upvotes: item.upvotes.unwrap_or(0),
+            downvotes: item.downvotes.unwrap_or(0),
+        }
+    }).collect()
+}
+
+#[tauri::command]
+fn download_sgdb_art(game_name: String, url: String, art_type: String) -> Option<String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build().ok()?;
+
+    let is_animated = url.ends_with(".mp4") || url.ends_with(".webm") || url.ends_with(".gif");
+
+    if art_type == "grid" {
+        let dir = grid_art_dir();
+        let path = download_file(&client, &url, &dir, &game_name)?;
+        let mut cache = load_art_cache();
+        cache.insert(game_name, path.clone());
+        save_art_cache(&cache);
+        Some(path)
+    } else if is_animated {
+        let dir = hero_animated_art_dir();
+        let path = download_file(&client, &url, &dir, &game_name)?;
+        let mut cache = load_hero_animated_cache();
+        cache.insert(game_name, path.clone());
+        save_hero_animated_cache(&cache);
+        Some(path)
+    } else {
+        let dir = hero_static_art_dir();
+        let path = download_file(&client, &url, &dir, &game_name)?;
+        let mut cache = load_hero_cache();
+        cache.insert(game_name, path.clone());
+        save_hero_cache(&cache);
+        Some(path)
+    }
 }
 
 #[tauri::command]
@@ -1313,7 +1440,8 @@ pub fn run() {
             get_pins, toggle_pin,
             get_hidden, toggle_hidden,
             get_custom_art, set_custom_art, clear_custom_art,
-            get_screen_resolution
+            get_screen_resolution,
+            search_sgdb_art, download_sgdb_art
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
