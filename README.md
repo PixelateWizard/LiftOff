@@ -13,9 +13,11 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 - **Automatic library scanning** — Steam games, Xbox/Game Pass titles, UWP Store apps, Desktop shortcuts, and Battle.net games
 - **Live library refresh** — rescan without restarting; auto-refreshes when scan settings change
 - **Game art** — cover art and hero banners fetched automatically from SteamGridDB; cached locally to minimize API calls
+- **Animated hero banners** — animated WebM hero art supported where available, with static fallback
 - **Hero spotlight** — full-width landscape banner art in the Home tab hero section
-- **Custom cover art** — press Select/Back or right-click any game to set a custom cover image, with a reset-to-default option
-- **Context menu** — right-click any game card to Open, Pin/Unpin, or change art
+- **Tinted app cards** — non-game app cards sample the dominant color from each app's icon and apply a matching tinted glassmorphism background
+- **Custom cover art** — press Select/Back or right-click any game or app to set a custom background image; games use a 2:3 portrait crop, apps use a square crop; reset to default anytime
+- **Context menu** — right-click any card to Open, Pin/Unpin, or Change Art
 - **Pinned apps** — pin your most-used games and apps to the top of any tab
 - **Manage visibility** — hide apps from view and restore them anytime from the same menu
 - **Search** — on-screen virtual keyboard for controller-only searching
@@ -46,7 +48,7 @@ Download the latest installer from the [Releases](../../releases) page and run i
 | **B** | Back / cancel |
 | **X** | Pin / unpin |
 | **Y** | Search |
-| **Select / Back** | Replace cover art (Games tab, focused game) |
+| **Select / Back** | Replace cover art (focused game or app card) |
 | **LB / RB** | Switch tabs |
 | **LT / RT** | Switch game source filter (All / Steam / Xbox / Bnet / Other) |
 | **D-pad / Left stick** | Navigate |
@@ -82,6 +84,9 @@ Download the latest installer from the [Releases](../../releases) page and run i
 | Default Tab | Which tab opens on launch |
 | Stick Repeat Speed | How fast held directions repeat (Slow / Normal / Fast) |
 | Launch at Startup | Start LiftOff with Windows |
+| Animated Stars | Toggle the background star field |
+| Animated Heroes | Use animated WebM hero banners where available |
+| UI Scale | Override the automatic UI scale (useful for non-standard display sizes) |
 | Controller Test | Live display of button states and axes for your active gamepad |
 | Check for Updates | Check GitHub for a newer release |
 
@@ -130,8 +135,9 @@ All persistent data is stored in `%LOCALAPPDATA%\LiftOff\`:
 | `hidden.json` | Hidden app IDs |
 | `recents.json` | Recently launched apps |
 | `art_cache.json` | Cached SteamGridDB cover art URLs (600×900) |
-| `hero_cache.json` | Cached SteamGridDB hero banner URLs (landscape) |
-| `custom_art.json` | Per-game custom cover art (data URLs) |
+| `hero_cache.json` | Cached SteamGridDB static hero banner URLs (landscape) |
+| `hero_animated_cache.json` | Cached SteamGridDB animated hero banner URLs (WebM) |
+| `custom_art.json` | Per-app custom art (data URLs) — games store 600×900, apps store 500×500 |
 
 ---
 

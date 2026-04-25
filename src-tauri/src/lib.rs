@@ -656,6 +656,8 @@ fn open_osk() {
 fn scan_uwp_apps() -> Vec<AppEntry> {
     let mut apps = Vec::new();
     let output = std::process::Command::new("powershell").args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", r##"
+        $startApps = @{}
+        try { Get-StartApps | ForEach-Object { $startApps[$_.AppID] = $_.Name } } catch {}
         Get-AppxPackage | ForEach-Object {
             $pkg = $_
             try {
@@ -666,7 +668,10 @@ fn scan_uwp_apps() -> Vec<AppEntry> {
                     $appId = $app.Id
                     $name = $null
                     try { $name = $manifest.Package.Properties.DisplayName } catch {}
-                    if (-not $name -or $name -match '^\s*$' -or $name -match 'ms-resource') { try { $name = $pkg.Name } catch {} }
+                    if (-not $name -or $name -match '^\s*$' -or $name -match 'ms-resource') {
+                        $aumid = "$($pkg.PackageFamilyName)!$appId"
+                        if ($startApps.ContainsKey($aumid)) { $name = $startApps[$aumid] } else { try { $name = $pkg.Name } catch {} }
+                    }
                     if ($name -and $appId) {
                         $aumid = "$($pkg.PackageFamilyName)!$appId"
                         $installLocation = $pkg.InstallLocation

@@ -320,7 +320,7 @@ function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
 }
 
 // ── Custom Art Picker Modal ───────────────────────────────────
-function ArtPickerModal({ app, currentArt, hasCustomArt, accent, theme, isDark, glass, onClose, onSet, onReset }) {
+function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "portrait", accent, theme, isDark, glass, onClose, onSet, onReset }) {
   const fileRef = useRef(null);
   const [preview, setPreview] = useState(currentArt || null);
   const [pendingData, setPendingData] = useState(null);
@@ -367,8 +367,8 @@ function ArtPickerModal({ app, currentArt, hasCustomArt, accent, theme, isDark, 
     reader.onload = (ev) => {
       const img = new Image();
       img.onload = () => {
-        // Normalise to 600×900 (2:3, same as SteamGridDB) with cover-crop
-        const TW = 600, TH = 900;
+        const TW = cropMode === "square" ? 500 : 600;
+        const TH = cropMode === "square" ? 500 : 900;
         const canvas = document.createElement("canvas");
         canvas.width = TW; canvas.height = TH;
         const ctx = canvas.getContext("2d");
@@ -447,8 +447,8 @@ function ArtPickerModal({ app, currentArt, hasCustomArt, accent, theme, isDark, 
           {/* Preview — fixed width, 2:3 tall */}
           <div style={{ flexShrink: 0, width: 110 }}>
             {preview
-              ? <img src={preview} alt="" style={{ width: "100%", aspectRatio: "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
-              : <div style={{ width: "100%", aspectRatio: "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>No art</span></div>
+              ? <img src={preview} alt="" style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
+              : <div style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>No art</span></div>
             }
           </div>
           {/* Controls */}
@@ -864,12 +864,37 @@ function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHideModal, toggle
 }
 // ─────────────────────────────────────────────────────────────
 
+async function sampleIconColor(base64) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const canvas = document.createElement("canvas");
+    canvas.width = 16; canvas.height = 16;
+    const ctx = canvas.getContext("2d");
+    const timer = setTimeout(() => resolve(null), 3000);
+    img.onload = () => {
+      clearTimeout(timer);
+      try {
+        ctx.drawImage(img, 0, 0, 16, 16);
+        const data = ctx.getImageData(0, 0, 16, 16).data;
+        let r = 0, g = 0, b = 0, count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] > 30) { r += data[i]; g += data[i + 1]; b += data[i + 2]; count++; }
+        }
+        resolve(count > 0 ? { r: Math.round(r / count), g: Math.round(g / count), b: Math.round(b / count) } : null);
+      } catch { resolve(null); }
+    };
+    img.onerror = () => { clearTimeout(timer); resolve(null); };
+    img.src = `data:image/png;base64,${base64}`;
+  });
+}
+
 export default function App() {
   const [tab, setTab]                               = useState("Home");
   const [apps, setApps]                             = useState([]);
   const [recent, setRecent]                         = useState([]);
   const [pins, setPins]                             = useState([]);
   const [hidden, setHidden]                         = useState([]);
+  const [iconColors, setIconColors]                 = useState({});
   const [gameSourceTab, setGameSourceTab]           = useState("All"); // "All" | "Steam" | "Xbox" | "Other"
   const [subtabFocusIndex, setSubtabFocusIndex]     = useState(0);    // index within subtab row
   const [showHideModal, setShowHideModal]           = useState(false);
@@ -901,6 +926,9 @@ export default function App() {
   const [updateStatus, setUpdateStatus]             = useState(null); // null | "checking" | "up_to_date" | "available" | "error"
   const [updateInfo, setUpdateInfo]                 = useState(null);
   const [libraryRefreshStatus, setLibraryRefreshStatus] = useState(null); // null | "scanning" | "done"
+  const [sliderDraft, setSliderDraft] = useState(null);
+  const sliderDraftRef = useRef(null);
+  const sliderTrackRef = useRef(null);
 
   // ── Search state ──────────────────────────────────────────────
   const [searchOpen, setSearchOpen]               = useState(false);
@@ -1182,7 +1210,7 @@ export default function App() {
       "@keyframes spin          { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }",
       "@keyframes bgStarTwinkle { 0%, 100% { opacity: 0.08; transform: scale(1); } 50% { opacity: 0.35; transform: scale(1.2); } }",
       "@keyframes cloudDrift    { from { transform: translateX(110vw); } to { transform: translateX(-110vw); } }",
-      ".bg-star  { position: fixed; border-radius: 50%; pointer-events: none; z-index: 2; animation: bgStarTwinkle ease-in-out infinite; }",
+      ".bg-star  { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; animation: bgStarTwinkle ease-in-out infinite; }",
       ".bg-cloud { position: fixed; top: 0; pointer-events: none; z-index: -1; animation: cloudDrift linear infinite; }",
       "html, body { overflow-x: hidden; }",
       "* { scrollbar-width: none !important; -ms-overflow-style: none !important; }",
@@ -1212,7 +1240,7 @@ export default function App() {
         star.style.animationDuration = (Math.random() * 4 + 2) + "s";
         star.style.animationDelay    = (Math.random() * 4) + "s";
         star.style.background = "rgba(245,237,232,0.9)";
-        document.body.appendChild(star);
+        const sc = document.getElementById("star-container"); if (sc) sc.appendChild(star);
       }
     } else {
       CLOUD_CONFIGS.forEach((cfg) => {
@@ -1319,6 +1347,11 @@ export default function App() {
       setHidden(loadedHidden); hiddenRef.current = loadedHidden;
       const visible = all.filter(a => !loadedHidden.includes(a.id));
       setApps(visible); appsRef.current = visible;
+      visible.filter(a => a.app_type !== "game" && a.icon_base64).forEach(a => {
+        sampleIconColor(a.icon_base64).then(color => {
+          if (color) setIconColors(prev => ({ ...prev, [a.id]: color }));
+        });
+      });
       invoke("get_recents").then(recents => {
         if (recents.length === 0) { setRecent(visible.slice(0, 10)); recentRef.current = visible.slice(0, 10); }
       });
@@ -1429,6 +1462,11 @@ export default function App() {
       setHidden(loadedHidden); hiddenRef.current = loadedHidden;
       const visible = all.filter(a => !loadedHidden.includes(a.id));
       setApps(visible); appsRef.current = visible;
+      visible.filter(a => a.app_type !== "game" && a.icon_base64).forEach(a => {
+        sampleIconColor(a.icon_base64).then(color => {
+          if (color) setIconColors(prev => ({ ...prev, [a.id]: color }));
+        });
+      });
       fetchGameArt(visible.filter(a => a.app_type === "game"));
       setLibraryRefreshStatus("done");
       setTimeout(() => setLibraryRefreshStatus(null), 2500);
@@ -1907,7 +1945,7 @@ export default function App() {
         else { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; }
       }
       if (key === "Enter" && fPinned[index]) triggerLaunch(fPinned[index], rec);
-      if (key === "Select" && fPinned[index]?.app_type === "game") {
+      if (key === "Select" && fPinned[index]) {
         setArtPickerApp(fPinned[index]); artPickerAppRef.current = fPinned[index];
       }
       return;
@@ -1930,7 +1968,7 @@ export default function App() {
         } else { const ni = index - cols; setFocusIndex(ni); focusIndexRef.current = ni; }
       }
       if (key === "Enter" && fApps[index]) triggerLaunch(fApps[index], rec);
-      if (key === "Select" && fApps[index]?.app_type === "game") {
+      if (key === "Select" && fApps[index]) {
         setArtPickerApp(fApps[index]); artPickerAppRef.current = fApps[index];
       }
       return;
@@ -2312,7 +2350,7 @@ export default function App() {
               {homeFilteredRecent.map((app, i) => {
                 const focused = focusSec === "recent" && focusIdx === i;
                 const isPinned = pins.includes(app.id);
-                const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
+                const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : (customArt[app.id] || null);
                 const fullApp = allAppsRef.current.find(a => a.id === app.id) || app;
                 const CARD_W = "clamp(76px, 10vw, 110px)";
                 const CARD_H = "clamp(114px, 15vw, 165px)";
@@ -2337,15 +2375,44 @@ export default function App() {
                     </div>
                   );
                 }
+                const color = iconColors[app.id];
+                const tintBg = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : glass.background;
+                const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.35)` : "rgba(255,255,255,0.06)";
+                if (art) {
+                  return (
+                    <div key={app.id} ref={focused ? focusedCardRef : null}
+                      onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
+                      onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                      style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative", transition: "all 0.15s ease",
+                        border: `1px solid ${focused ? accent.glow + "0.6)" : "rgba(255,255,255,0.08)"}`,
+                        boxShadow: focused ? `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)` : "none",
+                        transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" }}>
+                      <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                      </div>
+                      <PinBadge isPinned={isPinned} small />
+                      {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${accent.glow}0.6)`, borderRadius: 12, pointerEvents: "none" }} />}
+                    </div>
+                  );
+                }
                 return (
                   <div key={app.id} ref={focused ? focusedCardRef : null}
                     onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                     onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                    style={{ ...glass, border: focused ? `1px solid ${accent.glow}0.6)` : "1px solid rgba(255,255,255,0.06)", flexShrink: 0, borderRadius: 12, cursor: "pointer", transition: "all 0.15s ease",
+                    style={{ ...glass, background: tintBg, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                      border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${tintBorder}`,
+                      flexShrink: 0, borderRadius: 12, cursor: "pointer", transition: "all 0.15s ease",
                       width: CARD_W, height: CARD_H, boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px", position: "relative",
                       ...(focused ? { background: isDark ? `${accent.glow}0.1)` : `${accent.glow}0.07)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, transform: "scale(1.05) translateY(-3px)" } : {}) }}>
-                    <AppIcon app={fullApp} size={32} />
-                    <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
+                    {color && !focused && (
+                      <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
+                        background: `radial-gradient(circle at center, rgba(${color.r},${color.g},${color.b},0.25), transparent 70%)` }} />
+                    )}
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", position: "relative", zIndex: 1 }}>
+                      <AppIcon app={fullApp} size={40} />
+                      <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
+                    </div>
                     <PinBadge isPinned={isPinned} small />
                   </div>
                 );
@@ -2403,27 +2470,41 @@ export default function App() {
             </div>
           );
         }
-        if (item.type === "cycle") return (
-          <div key={item.key} ref={rowRef} style={rowStyle}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 12, color: accent.primary, fontWeight: 600, textTransform: "capitalize" }}>{settings[item.key]}</span>
-              <span style={{ fontSize: 10, color: theme.textDim }}>◀ ▶</span>
+        if (item.type === "cycle") {
+          const opts = item.options;
+          const cur = opts.indexOf(settings[item.key]);
+          return (
+            <div key={item.key} ref={rowRef} style={rowStyle}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
+                  onClick={() => updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length])}>◀</span>
+                <span style={{ fontSize: 12, color: accent.primary, fontWeight: 600, textTransform: "capitalize" }}>{settings[item.key]}</span>
+                <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
+                  onClick={() => updateSetting(item.key, opts[(cur + 1) % opts.length])}>▶</span>
+              </div>
             </div>
-          </div>
-        );
-        if (item.type === "accent") return (
-          <div key={item.key} ref={rowRef} style={rowStyle}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              {Object.entries(ACCENTS).map(([name, a]) => (
-                <div key={name} onClick={() => updateSetting("accent", name)}
-                  style={{ width: 20, height: 20, borderRadius: "50%", background: a.primary, border: settings.accent === name ? "2px solid white" : "2px solid transparent", boxShadow: settings.accent === name ? `0 0 8px ${a.glow}0.8)` : "none", cursor: "pointer", transition: "all 0.15s ease" }} />
-              ))}
-              <span style={{ fontSize: 10, color: theme.textDim }}>◀ ▶</span>
+          );
+        }
+        if (item.type === "accent") {
+          const accentKeys = Object.keys(ACCENTS);
+          const curIdx = accentKeys.indexOf(settings.accent);
+          return (
+            <div key={item.key} ref={rowRef} style={rowStyle}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
+                  onClick={() => updateSetting("accent", accentKeys[(curIdx - 1 + accentKeys.length) % accentKeys.length])}>◀</span>
+                {Object.entries(ACCENTS).map(([name, a]) => (
+                  <div key={name} onClick={() => updateSetting("accent", name)}
+                    style={{ width: 20, height: 20, borderRadius: "50%", background: a.primary, border: settings.accent === name ? "2px solid white" : "2px solid transparent", boxShadow: settings.accent === name ? `0 0 8px ${a.glow}0.8)` : "none", cursor: "pointer", transition: "all 0.15s ease" }} />
+                ))}
+                <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
+                  onClick={() => updateSetting("accent", accentKeys[(curIdx + 1) % accentKeys.length])}>▶</span>
+              </div>
             </div>
-          </div>
-        );
+          );
+        }
         if (item.type === "refresh") {
           const statusText  = libraryRefreshStatus === "scanning" ? "Scanning..."
                             : libraryRefreshStatus === "done"     ? "✓ Done"
@@ -2439,18 +2520,49 @@ export default function App() {
         }
         if (item.type === "slider") {
           const val = settings[item.key] ?? 1.0;
-          const pct = `${Math.round(val * 100)}%`;
-          const trackPct = ((val - item.min) / (item.max - item.min)) * 100;
+          const displayVal = sliderDraft !== null ? sliderDraft : val;
+          const pct = `${Math.round(displayVal * 100)}%`;
+          const trackPct = ((displayVal - item.min) / (item.max - item.min)) * 100;
+          const isDragging = sliderDraft !== null;
+
+          const handleTrackMouseDown = (e) => {
+            e.preventDefault();
+            const rect = sliderTrackRef.current.getBoundingClientRect();
+            const clamp = (v) => Math.round(Math.max(item.min, Math.min(item.max, v)) * 100) / 100;
+            const snap = (v) => Math.round(v / item.step) * item.step;
+            const calcVal = (clientX) => clamp(snap(item.min + ((clientX - rect.left) / rect.width) * (item.max - item.min)));
+            const initial = calcVal(e.clientX);
+            sliderDraftRef.current = initial;
+            setSliderDraft(initial);
+            const onMove = (me) => {
+              const v = calcVal(me.clientX);
+              sliderDraftRef.current = v;
+              setSliderDraft(v);
+            };
+            const onUp = () => {
+              updateSetting(item.key, sliderDraftRef.current);
+              sliderDraftRef.current = null;
+              setSliderDraft(null);
+              window.removeEventListener("mousemove", onMove);
+              window.removeEventListener("mouseup", onUp);
+            };
+            window.addEventListener("mousemove", onMove);
+            window.addEventListener("mouseup", onUp);
+          };
+
           return (
             <div key={item.key} ref={rowRef} style={rowStyle}>
               <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 11, color: focused ? accent.primary : theme.textDim }}>◀</span>
-                <div style={{ width: 140, height: 4, borderRadius: 2, background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", position: "relative", flexShrink: 0 }}>
-                  <div style={{ height: "100%", borderRadius: 2, background: accent.primary, width: `${trackPct}%`, transition: "width 0.08s ease" }} />
-                  <div style={{ width: 14, height: 14, borderRadius: "50%", background: accent.primary, position: "absolute", top: -5, left: `calc(${trackPct}% - 7px)`, transition: "left 0.08s ease", boxShadow: `0 0 8px ${accent.glow}0.6)` }} />
+                <span style={{ fontSize: 11, color: focused ? accent.primary : theme.textDim, cursor: "pointer", userSelect: "none" }}
+                  onClick={() => updateSetting(item.key, Math.max(item.min, Math.round((val - item.step) * 100) / 100))}>◀</span>
+                <div ref={sliderTrackRef} onMouseDown={handleTrackMouseDown}
+                  style={{ width: 140, height: 4, borderRadius: 2, background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", position: "relative", flexShrink: 0, cursor: "pointer" }}>
+                  <div style={{ height: "100%", borderRadius: 2, background: accent.primary, width: `${trackPct}%`, transition: isDragging ? "none" : "width 0.08s ease" }} />
+                  <div style={{ width: 14, height: 14, borderRadius: "50%", background: accent.primary, position: "absolute", top: -5, left: `calc(${trackPct}% - 7px)`, transition: isDragging ? "none" : "left 0.08s ease", boxShadow: `0 0 8px ${accent.glow}0.6)` }} />
                 </div>
-                <span style={{ fontSize: 11, color: focused ? accent.primary : theme.textDim }}>▶</span>
+                <span style={{ fontSize: 11, color: focused ? accent.primary : theme.textDim, cursor: "pointer", userSelect: "none" }}
+                  onClick={() => updateSetting(item.key, Math.min(item.max, Math.round((val + item.step) * 100) / 100))}>▶</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: accent.primary, minWidth: 40, textAlign: "right" }}>{pct}</span>
               </div>
             </div>
@@ -2527,6 +2639,9 @@ export default function App() {
     <div style={{ position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1 }} ref={outerRef}>
 
       <div style={{ position: "fixed", inset: 0, background: appBg, zIndex: -2 }} />
+      {isDark && settings.stars_enabled && (
+        <div id="star-container" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }} />
+      )}
       {!isDark && settings.stars_enabled && (
         <div id="cloud-container" style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none", overflow: "hidden" }} />
       )}
@@ -2536,6 +2651,7 @@ export default function App() {
           app={artPickerApp}
           currentArt={customArt[artPickerApp.id] || gameArt[artPickerApp.id]}
           hasCustomArt={!!customArt[artPickerApp.id]}
+          cropMode={artPickerApp?.app_type === "game" ? "portrait" : "square"}
           accent={accent} theme={theme} isDark={isDark} glass={glass}
           onClose={closeArtPicker}
           onSet={(id, dataUrl) => {
@@ -2840,16 +2956,41 @@ export default function App() {
                   <div style={{ display: "grid", gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`, gap: 10, paddingTop: 6, marginTop: -6, paddingBottom: 14 }}>
                     {pinnedAppsReactive.map((app, i) => {
                       const focused = focusSection === "pinned" && focusIndex === i;
+                      const color = iconColors[app.id];
+                      const art = customArt[app.id];
+                      const tintBg = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : glass.background;
+                      const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.35)` : "rgba(255,255,255,0.06)";
                       return (
                         <div key={app.id} ref={focused ? focusedCardRef : null}
                           onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
                           onDoubleClick={() => triggerLaunch(app, recent)}
-                          style={{ ...glass, border: focused ? `1px solid ${accent.glow}0.6)` : "1px solid rgba(255,255,255,0.06)", borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative",
-                            ...(focused ? { background: isDark ? `${accent.glow}0.12)` : `${accent.glow}0.08)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, height: "100%", padding: "16px 10px" }}>
-                            <AppIcon app={app} size={48} />
-                            <div style={{ fontSize: 11, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
-                          </div>
+                          onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
+                          style={{ ...glass, background: art ? "transparent" : tintBg, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                            border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${art ? "rgba(255,255,255,0.12)" : tintBorder}`,
+                            borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
+                            ...(focused ? { boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
+                          {art ? (
+                            <>
+                              <img src={art} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent, rgba(0,0,0,0.75))", zIndex: 1 }} />
+                              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "8px 10px", zIndex: 2 }}>
+                                <div style={{ fontSize: 11, fontWeight: 500, color: "white", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              {color && !focused && (
+                                <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
+                                  background: `radial-gradient(circle at center, rgba(${color.r},${color.g},${color.b},0.25), transparent 70%)` }} />
+                              )}
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", position: "relative", zIndex: 1 }}>
+                                <AppIcon app={app} size={64} />
+                              </div>
+                              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 10px 10px", zIndex: 1 }}>
+                                <div style={{ fontSize: 11, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                              </div>
+                            </>
+                          )}
                           <PinBadge isPinned={true} small />
                         </div>
                       );
@@ -2882,17 +3023,41 @@ export default function App() {
                 {filteredApps.map((app, i) => {
                   const focused = isFocused("grid", i);
                   const isPinned = pins.includes(app.id);
+                  const color = iconColors[app.id];
+                  const art = customArt[app.id];
+                  const tintBg = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : glass.background;
+                  const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.35)` : "rgba(255,255,255,0.06)";
                   return (
                     <div key={app.id} ref={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recent)}
-                      style={{ ...glass, border: focused ? `1px solid ${accent.glow}0.6)` : "1px solid rgba(255,255,255,0.06)", borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative",
-                        ...(focused ? { background: isDark ? `${accent.glow}0.12)` : `${accent.glow}0.08)`,
-                          boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, height: "100%", padding: "16px 10px" }}>
-                        <AppIcon app={app} size={48} />
-                        <div style={{ fontSize: 11, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
-                      </div>
+                      onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
+                      style={{ ...glass, background: art ? "transparent" : tintBg, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                        border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${art ? "rgba(255,255,255,0.12)" : tintBorder}`,
+                        borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
+                        ...(focused ? { boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
+                      {art ? (
+                        <>
+                          <img src={art} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent, rgba(0,0,0,0.75))", zIndex: 1 }} />
+                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "8px 10px", zIndex: 2 }}>
+                            <div style={{ fontSize: 11, fontWeight: 500, color: "white", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {color && !focused && (
+                            <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
+                              background: `radial-gradient(circle at center, rgba(${color.r},${color.g},${color.b},0.25), transparent 70%)` }} />
+                          )}
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", position: "relative", zIndex: 1 }}>
+                            <AppIcon app={app} size={64} />
+                          </div>
+                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 10px 10px", zIndex: 1 }}>
+                            <div style={{ fontSize: 11, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                          </div>
+                        </>
+                      )}
                       <PinBadge isPinned={isPinned} small />
                     </div>
                   );
@@ -2934,10 +3099,16 @@ export default function App() {
                       Art
                     </span>
                   </>}
-                  {tab === "Apps" && <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                    <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>MENU</span>
-                    Manage
-                  </span>}
+                  {tab === "Apps" && <>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
+                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>MENU</span>
+                      Manage
+                    </span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
+                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>BACK</span>
+                      Art
+                    </span>
+                  </>}
                 </>
             }
           </div>
@@ -2956,7 +3127,7 @@ export default function App() {
             {[
               { label: "Open", action: () => { triggerLaunch(contextMenu.app, recentRef.current); setContextMenu(null); } },
               { label: pins.includes(contextMenu.app.id) ? "Unpin" : "Pin", action: () => { togglePin(contextMenu.app); setContextMenu(null); } },
-              ...(contextMenu.app.app_type === "game" ? [{ label: "Change Art", action: () => { setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); } }] : []),
+              { label: "Change Art", action: () => { setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); } },
             ].map(({ label, action }) => (
               <div key={label} onClick={action}
                 style={{ padding: "10px 16px", cursor: "pointer", fontSize: 13, fontWeight: 500, color: theme.text,
