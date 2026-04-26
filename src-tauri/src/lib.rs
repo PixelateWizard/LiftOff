@@ -163,6 +163,7 @@ fn hero_animated_cache_path() -> std::path::PathBuf { liftoff_dir().join("hero_a
 fn settings_path() -> std::path::PathBuf { liftoff_dir().join("settings.json") }
 fn pins_path() -> std::path::PathBuf { liftoff_dir().join("pins.json") }
 fn hidden_path() -> std::path::PathBuf { liftoff_dir().join("hidden.json") }
+fn recent_games_path() -> std::path::PathBuf { liftoff_dir().join("recent_games.json") }
 
 fn art_dir() -> std::path::PathBuf { liftoff_dir().join("art") }
 fn grid_art_dir() -> std::path::PathBuf { art_dir().join("grid") }
@@ -214,6 +215,18 @@ fn load_recents() -> Vec<RecentEntry> {
 
 fn save_recents(recents: &Vec<RecentEntry>) {
     let path = recents_path();
+    if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
+    if let Ok(json) = serde_json::to_string(recents) { let _ = std::fs::write(path, json); }
+}
+
+fn load_recent_games() -> Vec<RecentEntry> {
+    let path = recent_games_path();
+    if !path.exists() { return vec![]; }
+    std::fs::read_to_string(&path).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
+}
+
+fn save_recent_games(recents: &Vec<RecentEntry>) {
+    let path = recent_games_path();
     if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
     if let Ok(json) = serde_json::to_string(recents) { let _ = std::fs::write(path, json); }
 }
@@ -327,6 +340,7 @@ fn get_screen_resolution() -> ScreenResolution {
     Ok(())
 }
 #[tauri::command] fn get_recents() -> Vec<RecentEntry> { load_recents() }
+#[tauri::command] fn get_recent_games() -> Vec<RecentEntry> { load_recent_games() }
 #[tauri::command] fn set_gamepad_ready() { GAMEPAD_READY.store(true, Ordering::Relaxed); }
 #[tauri::command] fn get_custom_art() -> HashMap<String, String> { load_custom_art_inner() }
 #[tauri::command]
@@ -1371,9 +1385,18 @@ async fn launch_app(
         .as_secs();
 
     recents.retain(|r| r.id != id);
-    recents.insert(0, RecentEntry { id, name, launch_path: path.clone(), app_type, launched_at: now });
+    recents.insert(0, RecentEntry { id, name, launch_path: path.clone(), app_type: app_type.clone(), launched_at: now });
     recents.truncate(RECENTS_MAX);
     save_recents(&recents);
+
+    if app_type == "game" {
+        let game_entry = recents[0].clone();
+        let mut recent_games = load_recent_games();
+        recent_games.retain(|r| r.id != game_entry.id);
+        recent_games.insert(0, game_entry);
+        recent_games.truncate(20);
+        save_recent_games(&recent_games);
+    }
 
     // Snapshot existing windows before launch so the watcher can detect new ones.
     let existing = snapshot_visible_windows();
@@ -1414,13 +1437,21 @@ async fn launch_app(
             .map_err(|e| e.to_string())?;
         child_pid = 0;
     } else if path.to_lowercase().ends_with(".lnk") {
-        // Windows shortcut — cmd /C start resolves the .lnk target correctly.
-        // Direct spawn treats it as an exe and fails silently.
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", &path])
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        // Windows shortcut — ShellExecuteW with "open" lets Windows resolve the
+        // .lnk natively, including any arguments embedded in the shortcut target.
+        // cmd /C start can drop arguments for complex targets like Discord's updater.
+        unsafe {
+            let op:   Vec<u16> = std::ffi::OsStr::new("open").encode_wide().chain(std::iter::once(0)).collect();
+            let file: Vec<u16> = std::ffi::OsStr::new(&path).encode_wide().chain(std::iter::once(0)).collect();
+            ShellExecuteW(
+                windows::Win32::Foundation::HWND::default(),
+                windows::core::PCWSTR(op.as_ptr()),
+                windows::core::PCWSTR(file.as_ptr()),
+                windows::core::PCWSTR::null(),
+                windows::core::PCWSTR::null(),
+                SW_SHOWNORMAL,
+            );
+        }
         child_pid = 0;
     } else if path.contains("://") {
         // ShellExecuteW for other URI schemes (https://, etc.)
@@ -1446,9 +1477,24 @@ async fn launch_app(
         child_pid = child.id();
     }
 
-    // Watch for the game window in a background thread, then notify the frontend.
+    // Watch for the launched window in a background thread, then notify the frontend.
+    //
+    // For .lnk shortcuts and shell:/URI launches (child_pid == 0 and no reliable
+    // window to detect), we fast-dismiss after a short delay — the window watcher
+    // can't find these reliably (already-running tray apps, indirect spawns, etc.).
+    //
+    // For direct .exe spawns we have a real PID and can do proper detection.
+    // Games always use the full watcher regardless of launch path.
     let handle = app_handle.clone();
+    let is_lnk_or_indirect = child_pid == 0 && app_type == "app";
     std::thread::spawn(move || {
+        if is_lnk_or_indirect {
+            std::thread::sleep(std::time::Duration::from_millis(1500));
+            let _ = handle.emit("launch-success", ());
+            return;
+        }
+
+        // Full window-detection path for direct exe apps and all games.
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
         let mut found: isize = 0;
 
@@ -1506,7 +1552,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec![])))
         .invoke_handler(tauri::generate_handler![
-            get_apps, get_all_apps, launch_app, fetch_game_art, get_cached_art_bulk, get_recents, get_battery,
+            get_apps, get_all_apps, launch_app, fetch_game_art, get_cached_art_bulk, get_recents, get_recent_games, get_battery,
             set_gamepad_ready, get_settings, save_settings, clear_recents,
             clear_art_cache, set_frontend_active, open_osk,
             get_pins, toggle_pin,
