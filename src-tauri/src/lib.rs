@@ -66,6 +66,21 @@ pub struct RecentEntry {
     pub launched_at: u64,
 }
 
+fn default_animated_heroes() -> String { "animated".to_string() }
+fn deser_animated_heroes<'de, D: serde::Deserializer<'de>>(d: D) -> Result<String, D::Error> {
+    struct V;
+    impl<'de> serde::de::Visitor<'de> for V {
+        type Value = String;
+        fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { write!(f, "bool or string") }
+        fn visit_bool<E: serde::de::Error>(self, v: bool) -> Result<String, E> {
+            Ok(if v { "animated" } else { "static" }.to_string())
+        }
+        fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<String, E> { Ok(v.to_owned()) }
+        fn visit_string<E: serde::de::Error>(self, v: String) -> Result<String, E> { Ok(v) }
+    }
+    d.deserialize_any(V)
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Settings {
     pub accent: String,
@@ -79,7 +94,8 @@ pub struct Settings {
     pub scan_battlenet: bool,
     pub repeat_speed: String,
     pub launch_at_startup: bool,
-    pub animated_heroes: bool,
+    #[serde(deserialize_with = "deser_animated_heroes", default = "default_animated_heroes")]
+    pub animated_heroes: String,
     // None means "not yet set by user"; frontend fills in auto-detected value.
     #[serde(default)]
     pub ui_scale: Option<f32>,
@@ -99,7 +115,7 @@ impl Default for Settings {
             scan_battlenet: true,
             repeat_speed: "normal".to_string(),
             launch_at_startup: false,
-            animated_heroes: true,
+            animated_heroes: "animated".to_string(),
             ui_scale: None,
         }
     }
@@ -117,6 +133,7 @@ impl Default for Settings {
 #[derive(Deserialize)] struct SgdbArtItem {
     url: String,
     thumb: Option<String>,
+    mime: Option<String>,
     width: Option<u32>,
     height: Option<u32>,
     author: Option<SgdbArtAuthor>,
@@ -129,6 +146,7 @@ impl Default for Settings {
 pub struct SgdbArtResult {
     pub url: String,
     pub thumb: String,
+    pub is_animated: bool,
     pub width: u32,
     pub height: u32,
     pub author: String,
@@ -363,6 +381,8 @@ fn search_sgdb_art(game_name: String, art_type: String) -> Vec<SgdbArtResult> {
             .unwrap_or_default()
     };
 
+    let mut forced_animated_urls: std::collections::HashSet<String> = std::collections::HashSet::new();
+
     let items: Vec<SgdbArtItem> = if art_type == "grid" {
         let url = format!(
             "https://www.steamgriddb.com/api/v2/grids/game/{}?dimensions=600x900&limit=20",
@@ -372,21 +392,37 @@ fn search_sgdb_art(game_name: String, art_type: String) -> Vec<SgdbArtResult> {
     } else {
         let url1 = format!("https://www.steamgriddb.com/api/v2/heroes/game/{}?limit=20", game_id);
         let url2 = format!("https://www.steamgriddb.com/api/v2/heroes/game/{}?styles=alternate&limit=20", game_id);
+        let url3 = format!("https://www.steamgriddb.com/api/v2/heroes/game/{}?types=animated&limit=20", game_id);
         let mut seen = std::collections::HashSet::new();
         let mut combined = Vec::new();
-        for item in fetch_art(&url1).into_iter().chain(fetch_art(&url2).into_iter()) {
-            if seen.insert(item.url.clone()) {
-                combined.push(item);
-            }
+        for item in fetch_art(&url3) {
+            forced_animated_urls.insert(item.url.clone());
+            if seen.insert(item.url.clone()) { combined.push(item); }
+        }
+        for item in fetch_art(&url1).into_iter().chain(fetch_art(&url2)) {
+            if seen.insert(item.url.clone()) { combined.push(item); }
         }
         combined
     };
 
     items.into_iter().map(|item| {
-        let thumb = item.thumb.unwrap_or_else(|| item.url.clone());
+        let url_base = item.url.split('?').next().unwrap_or(&item.url);
+        let is_animated = forced_animated_urls.contains(&item.url)
+            || item.mime.as_deref().map_or_else(
+                || url_base.ends_with(".mp4") || url_base.ends_with(".webm") || url_base.ends_with(".gif") || url_base.ends_with(".webp"),
+                |m| m.starts_with("video/") || m == "image/gif" || m == "image/webp",
+            );
+        let raw_thumb = item.thumb.unwrap_or_else(|| item.url.clone());
+        let thumb_base = raw_thumb.split('?').next().unwrap_or(&raw_thumb);
+        let thumb = if thumb_base.ends_with(".webm") || thumb_base.ends_with(".mp4") {
+            item.url.clone()
+        } else {
+            raw_thumb
+        };
         SgdbArtResult {
             url: item.url,
             thumb,
+            is_animated,
             width: item.width.unwrap_or(0),
             height: item.height.unwrap_or(0),
             author: item.author.and_then(|a| a.name).unwrap_or_default(),
@@ -394,6 +430,9 @@ fn search_sgdb_art(game_name: String, art_type: String) -> Vec<SgdbArtResult> {
             upvotes: item.upvotes.unwrap_or(0),
             downvotes: item.downvotes.unwrap_or(0),
         }
+    }).filter(|item| {
+        let url_base = item.url.split('?').next().unwrap_or(&item.url);
+        !(item.is_animated && url_base.ends_with(".png"))
     }).collect()
 }
 
@@ -405,28 +444,52 @@ fn download_sgdb_art(game_name: String, url: String, art_type: String) -> Option
 
     let is_animated = url.ends_with(".mp4") || url.ends_with(".webm") || url.ends_with(".gif");
 
-    if art_type == "grid" {
-        let dir = grid_art_dir();
-        let path = download_file(&client, &url, &dir, &game_name)?;
-        let mut cache = load_art_cache();
-        cache.insert(game_name, path.clone());
-        save_art_cache(&cache);
-        Some(path)
+    let dir = if art_type == "grid" {
+        grid_art_dir()
     } else if is_animated {
-        let dir = hero_animated_art_dir();
-        let path = download_file(&client, &url, &dir, &game_name)?;
-        let mut cache = load_hero_animated_cache();
-        cache.insert(game_name, path.clone());
-        save_hero_animated_cache(&cache);
-        Some(path)
+        hero_animated_art_dir()
     } else {
-        let dir = hero_static_art_dir();
-        let path = download_file(&client, &url, &dir, &game_name)?;
-        let mut cache = load_hero_cache();
-        cache.insert(game_name, path.clone());
-        save_hero_cache(&cache);
-        Some(path)
+        hero_static_art_dir()
+    };
+
+    // Use the URL's own filename so each distinct SGDB image gets a unique local file.
+    // This prevents download_file's "return early if exists" from serving stale art when
+    // the user picks a different image for a game that already has a cached cover.
+    let url_base = url.split('?').next().unwrap_or(&url);
+    let url_fname = url_base.rsplit('/').next().unwrap_or("art");
+    let ext = url_ext(url_fname);
+    let safe_stem: String = url_fname
+        .trim_end_matches(&format!(".{}", ext))
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '-' || *c == '_')
+        .take(40)
+        .collect();
+    let file_name = format!("{}.{}", if safe_stem.is_empty() { "art".to_string() } else { safe_stem }, ext);
+    let path = dir.join(&file_name);
+    let _ = std::fs::create_dir_all(&dir);
+    if !path.exists() {
+        let bytes = client.get(&url)
+            .timeout(std::time::Duration::from_secs(60))
+            .send().ok()?
+            .bytes().ok()?;
+        std::fs::write(&path, &bytes).ok()?;
     }
+    let local_path = path.to_string_lossy().into_owned();
+
+    if art_type == "grid" {
+        let mut cache = load_art_cache();
+        cache.insert(game_name, local_path.clone());
+        save_art_cache(&cache);
+    } else if is_animated {
+        let mut cache = load_hero_animated_cache();
+        cache.insert(game_name, local_path.clone());
+        save_hero_animated_cache(&cache);
+    } else {
+        let mut cache = load_hero_cache();
+        cache.insert(game_name, local_path.clone());
+        save_hero_cache(&cache);
+    }
+    Some(local_path)
 }
 
 #[tauri::command]

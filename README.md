@@ -13,11 +13,11 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 - **Automatic library scanning** — Steam games, Xbox/Game Pass titles, UWP Store apps, Desktop shortcuts, and Battle.net games
 - **Live library refresh** — rescan without restarting; auto-refreshes when scan settings change
 - **Game art** — cover art and hero banners fetched automatically from SteamGridDB; cached locally to minimize API calls
-- **Animated hero banners** — animated WebM hero art supported where available, with static fallback
+- **Animated hero banners** — animated WebM/WebP/GIF hero art supported where available, with static fallback; per-game or global control via Hero Art Mode setting
 - **Hero spotlight** — full-width landscape banner art in the Home tab hero section
-- **Tinted app cards** — non-game app cards sample the dominant color from each app's icon and apply a matching tinted glassmorphism background
-- **Custom cover art** — press Select/Back or right-click any game or app to set a custom background image; games use a 2:3 portrait crop, apps use a square crop; reset to default anytime
-- **Context menu** — right-click any card to Open, Pin/Unpin, or Change Art
+- **App cards** — non-game app cards use dark frosted glass with a subtle icon-color border accent
+- **Custom cover art** — right-click or press Menu on any game or app to open the context menu, then choose **Change Art** (or **Change Hero Art** for games); games use a 2:3 portrait crop, apps use a square crop; reset to default anytime
+- **Context menu** — right-click or press Menu on any card to Open, Pin/Unpin, Change Art, or (for games) Change Hero Art
 - **Pinned apps** — pin your most-used games and apps to the top of any tab
 - **Manage visibility** — hide apps from view and restore them anytime from the same menu
 - **Search** — on-screen virtual keyboard for controller-only searching
@@ -48,12 +48,16 @@ Download the latest installer from the [Releases](../../releases) page and run i
 | **B** | Back / cancel |
 | **X** | Pin / unpin |
 | **Y** | Search |
-| **Select / Back** | Replace cover art (focused game or app card) |
+| **Menu (Start)** | Open context menu for focused card (Games / Apps tab) |
+| **Select / Back** | Open Manage modal (Games / Apps tab) |
 | **LB / RB** | Switch tabs |
 | **LT / RT** | Switch game source filter (All / Steam / Xbox / Bnet / Other) |
 | **D-pad / Left stick** | Navigate |
-| **Menu (Start)** | Open Manage on Games or Apps tab |
-| **Right-click** | Context menu — Open, Pin/Unpin, Change Art |
+| **Right-click** | Context menu — Open, Pin/Unpin, Change Art, Change Hero Art |
+
+### Context Menu (controller)
+
+When a card is focused on the Games or Apps tab, press **Menu** to open the context menu. Navigate with **D-pad up/down**, confirm with **A**, and close with **B**. Games also have a **Change Hero Art** option to pick custom hero banner art from SteamGridDB.
 
 ---
 
@@ -85,7 +89,7 @@ Download the latest installer from the [Releases](../../releases) page and run i
 | Stick Repeat Speed | How fast held directions repeat (Slow / Normal / Fast) |
 | Launch at Startup | Start LiftOff with Windows |
 | Animated Stars | Toggle the background star field |
-| Animated Heroes | Use animated WebM hero banners where available |
+| Hero Art Mode | Static / Animated / Custom — Static forces static banners everywhere; Animated uses animated art everywhere; Custom lets you choose per game via Change Hero Art |
 | UI Scale | Override the automatic UI scale (useful for non-standard display sizes) |
 | Controller Test | Live display of button states and axes for your active gamepad |
 | Check for Updates | Check GitHub for a newer release |
@@ -149,6 +153,18 @@ All persistent data is stored in `%LOCALAPPDATA%\LiftOff\`:
 - More customization options
 - System settings controls (brightness, volume, Wi-Fi, Bluetooth)
 - Additional game library support (GOG, Epic Games, etc.)
+
+---
+
+## SmartScreen Warning <a name="smartscreen"></a>
+
+When you first launch LiftOff, Windows SmartScreen may show a warning saying the app is "unrecognized." This is normal for indie software that hasn't yet accumulated enough downloads to build a reputation with Microsoft's systems.
+
+To proceed:
+1. Click **"More info"**
+2. Click **"Run anyway"**
+
+LiftOff is open source — you can inspect every line of code in this repository. No telemetry, no accounts, nothing hidden.
 
 ---
 
