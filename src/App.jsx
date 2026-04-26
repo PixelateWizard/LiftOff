@@ -12,7 +12,7 @@ import appLoadedSound from "./assets/appLoadedSound.wav";
 const COLS = 6;
 const GAME_COLS = 5;
 const TABS = ["Home", "Games", "Apps", "Settings"];
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "1.2.1";
 const GITHUB_REPO = "PixelateWizard/LiftOff"; // owner/repo — update before release
 
 const ACCENTS = {
@@ -860,13 +860,15 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
   const handleSave = () => {
     if (!pendingDataRef.current) return;
     setSaving(true);
-    invoke("set_custom_art", { id: app.id, data: pendingDataRef.current })
+    const storageId = cropMode === "hero" ? "hero:" + app.id : app.id;
+    invoke("set_custom_art", { id: storageId, data: pendingDataRef.current })
       .then(() => { onSet(app.id, pendingDataRef.current); onClose(); })
       .catch(console.error)
       .finally(() => setSaving(false));
   };
   const handleReset = () => {
-    invoke("clear_custom_art", { id: app.id })
+    const storageId = cropMode === "hero" ? "hero:" + app.id : app.id;
+    invoke("clear_custom_art", { id: storageId })
       .then(() => { onReset(app.id); onClose(); })
       .catch(console.error);
   };
@@ -1488,6 +1490,7 @@ export default function App() {
   const [heroStatic, setHeroStatic]                 = useState({});
   const [heroAnimated, setHeroAnimated]             = useState({});
   const [customArt, setCustomArt]                   = useState({});
+  const [customHeroArt, setCustomHeroArt]           = useState({});
   const [artPickerApp, setArtPickerApp]             = useState(null);
   const [artPickerMode, setArtPickerMode]           = useState("grid"); // "grid" | "hero"
   const [contextMenu, setContextMenu]               = useState(null); // { x, y, app, focusedIdx }
@@ -1529,6 +1532,7 @@ export default function App() {
   // ─────────────────────────────────────────────────────────────
 
   const customArtRef          = useRef({});
+  const customHeroArtRef      = useRef({});
   const artPickerAppRef       = useRef(null);
   const artPickerModeRef      = useRef("grid");
   const contextMenuRef        = useRef(null);
@@ -1917,7 +1921,15 @@ export default function App() {
         setTab(s.default_tab || "Home"); tabRef.current = s.default_tab || "Home";
       });
     });
-    invoke("get_custom_art").then(art => { setCustomArt(art); customArtRef.current = art; }).catch(() => {});
+    invoke("get_custom_art").then(art => {
+      const heroArt = {}, gridArt = {};
+      for (const [k, v] of Object.entries(art)) {
+        if (k.startsWith("hero:")) heroArt[k.slice(5)] = v;
+        else gridArt[k] = v;
+      }
+      setCustomArt(gridArt); customArtRef.current = gridArt;
+      setCustomHeroArt(heroArt); customHeroArtRef.current = heroArt;
+    }).catch(() => {});
     invoke("get_recents").then(recents => {
       if (recents.length > 0) { setRecent(recents); recentRef.current = recents; }
     });
@@ -1954,8 +1966,6 @@ export default function App() {
   const toUrl = (pathOrUrl) => {
     if (!pathOrUrl) return null;
     if (pathOrUrl.startsWith("http")) return pathOrUrl;
-    const result = convertFileSrc(pathOrUrl);
-    console.log("toUrl input:", pathOrUrl, "→ output:", result);
     return convertFileSrc(pathOrUrl);
   };
 
@@ -1981,16 +1991,20 @@ export default function App() {
     const total = games.length;
     const BATCH = 4;
     for (let i = 0; i < games.length; i += BATCH) {
+      const batchGrid = {}, batchAnimated = {}, batchStatic = {};
       await Promise.all(games.slice(i, i + BATCH).map(game =>
         invoke("fetch_game_art", { gameName: game.name })
           .then(bundle => {
-            if (bundle.grid)          setGameArt(prev => ({ ...prev, [game.id]: toUrl(bundle.grid) }));
-            if (bundle.hero_animated) setHeroAnimated(prev => ({ ...prev, [game.id]: toUrl(bundle.hero_animated) }));
-            if (bundle.hero_static)   setHeroStatic(prev => ({ ...prev, [game.id]: toUrl(bundle.hero_static) }));
+            if (bundle.grid)          batchGrid[game.id]     = toUrl(bundle.grid);
+            if (bundle.hero_animated) batchAnimated[game.id] = toUrl(bundle.hero_animated);
+            if (bundle.hero_static)   batchStatic[game.id]   = toUrl(bundle.hero_static);
             onProgress?.(++done, total, game.name);
           })
           .catch(() => { onProgress?.(++done, total, game.name); })
       ));
+      if (Object.keys(batchGrid).length)     setGameArt(prev => ({ ...prev, ...batchGrid }));
+      if (Object.keys(batchAnimated).length) setHeroAnimated(prev => ({ ...prev, ...batchAnimated }));
+      if (Object.keys(batchStatic).length)   setHeroStatic(prev => ({ ...prev, ...batchStatic }));
     }
   };
 
@@ -2080,11 +2094,6 @@ export default function App() {
   // IMPORTANT: when navigating TO Home, defer play() by one frame so the browser
   // paints the tab switch first — calling play() synchronously blocks the main thread
   // and causes the visible lag when animated heroes are enabled.
-  useEffect(() => {
-    Object.values(heroVideoRefs.current).forEach(vid => {
-      if (vid) { vid.pause(); vid.currentTime = 0; }
-    });
-  }, []);
 
   useEffect(() => {
     const isHome = tab === "Home";
@@ -2104,10 +2113,8 @@ export default function App() {
       Object.entries(heroVideoRefs.current).forEach(([id, vid]) => {
         if (!vid) return;
         // eslint-disable-next-line eqeqeq
-        const idx = recentGames.findIndex(g => g.id == id);
-        const isNearby = Math.abs(idx - heroIndex) <= 1;
-        if (isNearby) { vid.play().catch(() => {}); }
-        // else: already paused from when we left Home
+        const isActive = recentGames[heroIndex]?.id == id;
+        if (isActive) { vid.play().catch(() => {}); } else { vid.pause(); }
       });
       // Kick off buffering for adjacent heroes
       [heroIndex + 1, heroIndex + 2, heroIndex - 1, heroIndex - 2].forEach(i => {
@@ -2120,6 +2127,29 @@ export default function App() {
 
     return () => cancelAnimationFrame(rafId);
   }, [heroIndex, recentGames, tab]);
+
+  useEffect(() => {
+    const onBlur = () => {
+      Object.values(heroVideoRefs.current).forEach(vid => {
+        if (vid) vid.pause();
+      });
+    };
+
+    const onFocus = () => {
+      if (tab !== "Home") return;
+      const activeGame = recentGames[heroIndex];
+      if (!activeGame) return;
+      const vid = heroVideoRefs.current[activeGame.id];
+      if (vid) vid.play().catch(() => {});
+    };
+
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [tab, heroIndex, recentGames]);
 
   // Pinned apps reactive (for render)
   const pinnedAppsReactive = pins
@@ -2869,33 +2899,42 @@ export default function App() {
           <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: 20, overflow: "hidden" }}>
             {recentGames.map((game, idx) => {
               const isActive = idx === heroIdx;
-              if (Math.abs(idx - heroIdx) > 4) return null;
               const isNearby = Math.abs(idx - heroIdx) <= 1;
 
-              const staticBanner = heroStatic[game.id];
+              const staticBanner = customHeroArt[game.id] || heroStatic[game.id];
               const fallback = customArt[game.id] || gameArt[game.id];
-              // Only fetch animated URL for nearby slots — others always show static
-              const animatedUrl = isNearby && resolveHeroType(game.id) === "animated"
+              const animatedUrl = resolveHeroType(game.id) === "animated"
                 ? heroAnimated[game.id] : null;
-              const showVideo = isNearby && animatedUrl && animatedUrl.endsWith(".webm");
+              const showVideo = animatedUrl && animatedUrl.endsWith(".webm");
 
               const coverStyle = { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" };
               return (
                 <div key={game.id} style={{ position: "absolute", inset: 0, opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
-                  {/* Base layer: static image always present so navigation is instant */}
-                  {staticBanner
-                    ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
-                    : fallback
-                      ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: "scale(1.08)" }} />
-                      : <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${accent.glow}0.25) 0%, ${accent.glow}0.06) 100%)` }} />
+                  {/* Base layer: render images only for active ±1 to reduce GPU texture pressure */}
+                  {isNearby
+                    ? (staticBanner
+                        ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
+                        : fallback
+                          ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: "scale(1.08)" }} />
+                          : <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${accent.glow}0.25) 0%, ${accent.glow}0.06) 100%)` }} />)
+                    : <div style={{ width: "100%", height: "100%" }} />
                   }
-                  {/* Video layer: only rendered for heroIndex ±1 to prevent off-screen autoplay */}
+                  {/* Video layer: always in DOM; only active hero preloads */}
                   {showVideo && (
                     <video
                       ref={el => { if (el) heroVideoRefs.current[game.id] = el; else delete heroVideoRefs.current[game.id]; }}
                       src={animatedUrl}
-                      loop muted playsInline preload="none"
-                      style={{ position: "absolute", inset: 0, ...coverStyle }}
+                      loop muted playsInline preload={idx === heroIdx ? "auto" : "none"}
+                      style={{
+                        position: "absolute",
+                        top: 0, left: 0,
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center top",
+                        transform: "translateZ(0)",
+                        willChange: "opacity",
+                      }}
                     />
                   )}
                 </div>
@@ -3299,8 +3338,10 @@ export default function App() {
       {artPickerApp && (
         <SgdbBrowserModal
           app={artPickerApp}
-          currentArt={customArt[artPickerApp.id] || gameArt[artPickerApp.id]}
-          hasCustomArt={!!customArt[artPickerApp.id]}
+          currentArt={artPickerMode === "hero"
+            ? (customHeroArt[artPickerApp.id] || heroStatic[artPickerApp.id])
+            : (customArt[artPickerApp.id] || gameArt[artPickerApp.id])}
+          hasCustomArt={artPickerMode === "hero" ? !!customHeroArt[artPickerApp.id] : !!customArt[artPickerApp.id]}
           artType={artPickerMode}
           cropMode={artPickerMode === "hero" ? "hero" : artPickerApp?.app_type === "game" ? "portrait" : "square"}
           repeatSpeed={settings.repeat_speed}
@@ -3308,8 +3349,19 @@ export default function App() {
           onClose={closeArtPicker}
           onSet={(id, result) => {
             if (typeof result === "string" && result.startsWith("data:")) {
-              const next = { ...customArtRef.current, [id]: result };
-              setCustomArt(next); customArtRef.current = next;
+              if (artPickerModeRef.current === "hero") {
+                const next = { ...customHeroArtRef.current, [id]: result };
+                setCustomHeroArt(next); customHeroArtRef.current = next;
+                setHeroCustomType(prev => {
+                  const next2 = { ...prev, [id]: "static" };
+                  try { localStorage.setItem("liftoff_heroCustomType", JSON.stringify(next2)); } catch {}
+                  return next2;
+                });
+                if (settings.animated_heroes !== "custom") updateSetting("animated_heroes", "custom");
+              } else {
+                const next = { ...customArtRef.current, [id]: result };
+                setCustomArt(next); customArtRef.current = next;
+              }
             } else {
               const url = convertFileSrc(result);
               if (artPickerModeRef.current === "hero") {
@@ -3330,8 +3382,13 @@ export default function App() {
             }
           }}
           onReset={(id) => {
-            const next = { ...customArtRef.current }; delete next[id];
-            setCustomArt(next); customArtRef.current = next;
+            if (artPickerModeRef.current === "hero") {
+              const next = { ...customHeroArtRef.current }; delete next[id];
+              setCustomHeroArt(next); customHeroArtRef.current = next;
+            } else {
+              const next = { ...customArtRef.current }; delete next[id];
+              setCustomArt(next); customArtRef.current = next;
+            }
           }}
         />
       )}
