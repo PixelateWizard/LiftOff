@@ -20,7 +20,8 @@
         "title": "LiftOff",
         "width": 800,
         "height": 600,
-        "backgroundColor": "#100a06"
+        "backgroundColor": "#100a06",
+        "additionalBrowserArgs": "--autoplay-policy=document-user-activation-required"
       }
     ],
     "security": {

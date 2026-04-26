@@ -12,7 +12,7 @@ import appLoadedSound from "./assets/appLoadedSound.wav";
 const COLS = 6;
 const GAME_COLS = 5;
 const TABS = ["Home", "Games", "Apps", "Settings"];
-const APP_VERSION = "1.1.1";
+const APP_VERSION = "1.2.0";
 const GITHUB_REPO = "PixelateWizard/LiftOff"; // owner/repo — update before release
 
 const ACCENTS = {
@@ -291,7 +291,7 @@ function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
         <div style={{ fontSize: 22, fontWeight: 700, color: "white", marginBottom: 8, letterSpacing: "0.02em" }}>{app?.name}</div>
         {status === "launching" ? (
           <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
-            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Launching</span>
+            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.22)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Launching</span>
             <span style={{ display: "flex", gap: 3 }}>
               {[0,1,2].map(i => <span key={i} className="launch-dot" style={{ width: 4, height: 4, borderRadius: "50%", background: accent.primary, display: "inline-block" }} />)}
             </span>
@@ -477,20 +477,126 @@ function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "portrait", 
 }
 
 // ── SGDB thumbnail card ──────────────────────────────────────
-function ThumbnailCard({ result, selected, accent, theme, thumbW, thumbH, onClick }) {
+// Only one thumbnail video plays at a time — module-level reference to the active element
+let _activeThumbVideo = null;
+
+function ThumbnailCard({ result, selected, isSelected, accent, theme, thumbW, aspect, onClick, ...rest }) {
   const [hovered, setHovered] = useState(false);
+  const [videoSrc, setVideoSrc] = useState(null);
+  const videoRef = useRef(null);
+  const active = isSelected || hovered;
+  // A real static thumbnail exists only when thumb differs from the full content URL
+  const hasStaticThumb = result.thumb !== result.url;
+  const urlLower = result.url.toLowerCase();
+  const isVideoFormat = /\.(webm|mp4)$/i.test(urlLower);
+  const isGifOrWebp = /\.(gif|webp)$/i.test(urlLower);
+
+  // Set src only on first activation — never clears (keeps it buffered for re-hover)
+  useEffect(() => {
+    if (active && !videoSrc) setVideoSrc(result.url);
+  }, [active]);
+
+  // Play/pause imperatively based on active state
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !videoSrc) return;
+    if (active) {
+      if (_activeThumbVideo && _activeThumbVideo !== v) {
+        _activeThumbVideo.pause();
+        _activeThumbVideo.currentTime = 0;
+      }
+      _activeThumbVideo = v;
+      v.play().catch(() => {});
+    } else {
+      if (_activeThumbVideo === v) _activeThumbVideo = null;
+      v.pause();
+      v.currentTime = 0;
+    }
+  }, [active, videoSrc]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      const v = videoRef.current;
+      if (v && _activeThumbVideo === v) _activeThumbVideo = null;
+    };
+  }, []);
+
+  const fillStyle = { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" };
+
   return (
-    <div style={{ position: "relative", width: thumbW, cursor: "pointer", borderRadius: 8, overflow: "hidden",
-      outline: selected ? `2px solid ${accent.primary}` : "2px solid transparent", outlineOffset: -2, transition: "outline 0.1s", flexShrink: 0 }}
+    <div
+      style={{
+        position: "relative", width: thumbW, aspectRatio: aspect, cursor: "pointer",
+        borderRadius: 8, overflow: "hidden",
+        outline: selected ? `2px solid ${accent.primary}` : "2px solid transparent",
+        outlineOffset: -2, transition: "outline 0.1s", flexShrink: 0,
+        transform: "translateZ(0)", willChange: "opacity",
+      }}
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}>
-      <img src={result.thumb} alt="" style={{ width: "100%", height: thumbH, objectFit: "cover", display: "block" }} />
-      {hovered && (
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "4px 6px",
-          background: "rgba(0,0,0,0.72)", display: "flex", gap: 6, alignItems: "center" }}>
-          {result.author && <span style={{ fontSize: 9, color: "rgba(255,255,255,0.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{result.author}</span>}
-          {result.upvotes > 0 && <span style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", flexShrink: 0 }}>▲{result.upvotes}</span>}
+      onMouseLeave={() => setHovered(false)}
+      {...rest}
+    >
+      {/* Bottom layer: static thumb when available, otherwise placeholder when idle */}
+      {hasStaticThumb
+        ? <img src={result.thumb} alt="" style={fillStyle} />
+        : !active && (
+          <div style={{
+            ...fillStyle,
+            background: "linear-gradient(135deg, rgba(30,15,8,0.95) 0%, rgba(50,25,10,0.9) 100%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              Hover to preview
+            </span>
+          </div>
+        )
+      }
+
+      {/* Top layer: animated content — only rendered/loaded when active */}
+      {result.is_animated && (
+        isVideoFormat ? (
+          <video
+            ref={videoRef}
+            src={videoSrc || undefined}
+            muted
+            loop
+            playsInline
+            preload="none"
+            style={{ ...fillStyle, opacity: active ? 1 : 0, transition: "opacity 0.15s" }}
+          />
+        ) : isGifOrWebp ? (
+          <img
+            src={active ? result.url : undefined}
+            alt=""
+            style={{ ...fillStyle, opacity: active ? 1 : 0, transition: "opacity 0.15s" }}
+          />
+        ) : null
+      )}
+
+      {result.is_animated && hasStaticThumb && (
+        <div style={{
+          position: "absolute", top: 5, left: 5, padding: "2px 5px", borderRadius: 4,
+          background: accent.primary, color: "white", fontSize: 8, fontWeight: 700, letterSpacing: "0.05em",
+        }}>
+          ANIM
+        </div>
+      )}
+
+      {active && (
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, right: 0, padding: "4px 6px",
+          background: "rgba(0,0,0,0.72)", display: "flex", gap: 6, alignItems: "center",
+        }}>
+          {result.author && (
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+              {result.author}
+            </span>
+          )}
+          {result.upvotes > 0 && (
+            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", flexShrink: 0 }}>▲{result.upvotes}</span>
+          )}
         </div>
       )}
     </div>
@@ -498,7 +604,9 @@ function ThumbnailCard({ result, selected, accent, theme, thumbW, thumbH, onClic
 }
 
 // ── SgdbBrowser ───────────────────────────────────────────────
-function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose }) {
+const HERO_FILTERS = ["all", "animated", "static"];
+
+function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose, repeatSpeed = "normal" }) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -507,21 +615,34 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose }) {
   const [downloading, setDownloading] = useState(false);
 
   const selectedIdxRef = useRef(null);
+  const heroFilterRef = useRef("all");
   const lastBtnRef = useRef({});
+  const btnPressTimeRef = useRef({});
+  const btnRepeatingRef = useRef({});
+  const btnRepeatTimeRef = useRef({});
   const filteredResultsRef = useRef([]);
-
-  const isAnimatedUrl = (url) => {
-    const l = url.toLowerCase();
-    return l.endsWith(".mp4") || l.endsWith(".webm") || l.endsWith(".gif");
-  };
+  const scrollContainerRef = useRef(null);
 
   const filteredResults = useMemo(() => {
     if (artType !== "hero" || heroFilter === "all") return results;
-    if (heroFilter === "animated") return results.filter(r => isAnimatedUrl(r.url));
-    return results.filter(r => !isAnimatedUrl(r.url));
+    if (heroFilter === "animated") return results.filter(r => r.is_animated);
+    return results.filter(r => !r.is_animated);
   }, [results, heroFilter, artType]);
 
   useEffect(() => { filteredResultsRef.current = filteredResults; }, [filteredResults]);
+  useEffect(() => { heroFilterRef.current = heroFilter; }, [heroFilter]);
+  useEffect(() => {
+    if (selectedIdx === null || !scrollContainerRef.current) return;
+    const el = scrollContainerRef.current.querySelector(`[data-sgdb-idx="${selectedIdx}"]`);
+    if (!el) return;
+    const c = scrollContainerRef.current;
+    const elRect = el.getBoundingClientRect();
+    const cRect  = c.getBoundingClientRect();
+    const elTop    = elRect.top  - cRect.top;
+    const elBottom = elRect.bottom - cRect.top;
+    if (elBottom > c.clientHeight) c.scrollTop += elBottom - c.clientHeight + 8;
+    else if (elTop < 0)            c.scrollTop = Math.max(0, c.scrollTop + elTop - 8);
+  }, [selectedIdx, filteredResults]);
 
   const loadResults = () => {
     setLoading(true);
@@ -535,9 +656,9 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose }) {
 
   useEffect(() => { loadResults(); }, []);
 
-  const GRID_COLS = artType === "grid" ? 4 : 2;
-  const THUMB_W   = artType === "grid" ? 148 : 258;
-  const THUMB_H   = artType === "grid" ? 222 : 145;
+  const GRID_COLS   = artType === "grid" ? 4 : 2;
+  const THUMB_W     = artType === "grid" ? 148 : 258;
+  const THUMB_ASPECT = artType === "grid" ? "2/3" : "16/9";
 
   const handleSelect = () => {
     const idx = selectedIdxRef.current;
@@ -557,36 +678,72 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose }) {
 
   useEffect(() => {
     let rAFId;
-    const poll = () => {
+    const poll = (now) => {
       const gp = getBestGamepad();
       if (gp) {
         const state = readGpState(gp);
-        const list = filteredResultsRef.current;
-        const cur  = selectedIdxRef.current;
+        const list  = filteredResultsRef.current;
+        const cur   = selectedIdxRef.current;
+        const iDelay = repeatSpeed === "slow" ? 500 : repeatSpeed === "fast" ? 250 : 400;
+        const rDelay = repeatSpeed === "slow" ? 150 : repeatSpeed === "fast" ? 60  : 100;
 
-        if (state.ArrowRight && !lastBtnRef.current.ArrowRight) {
-          const next = cur === null ? 0 : Math.min(cur + 1, list.length - 1);
-          if (next !== cur) { setSelectedIdx(next); selectedIdxRef.current = next; }
-        }
-        if (state.ArrowLeft && !lastBtnRef.current.ArrowLeft) {
-          if (cur === null && list.length > 0) { setSelectedIdx(0); selectedIdxRef.current = 0; }
-          else if (cur !== null && cur > 0) { setSelectedIdx(cur - 1); selectedIdxRef.current = cur - 1; }
-        }
-        if (state.ArrowDown && !lastBtnRef.current.ArrowDown) {
-          if (cur === null && list.length > 0) { setSelectedIdx(0); selectedIdxRef.current = 0; }
-          else if (cur !== null) {
-            const next = Math.min(cur + GRID_COLS, list.length - 1);
-            if (next !== cur) { setSelectedIdx(next); selectedIdxRef.current = next; }
+        const fireDir = (key) => {
+          const c = selectedIdxRef.current;
+          const l = filteredResultsRef.current;
+          if (key === "ArrowRight") {
+            const next = c === null ? 0 : Math.min(c + 1, l.length - 1);
+            if (next !== c) { setSelectedIdx(next); selectedIdxRef.current = next; }
+          } else if (key === "ArrowLeft") {
+            if (c === null && l.length > 0) { setSelectedIdx(0); selectedIdxRef.current = 0; }
+            else if (c !== null && c > 0) { setSelectedIdx(c - 1); selectedIdxRef.current = c - 1; }
+          } else if (key === "ArrowDown") {
+            if (c === null && l.length > 0) { setSelectedIdx(0); selectedIdxRef.current = 0; }
+            else if (c !== null) {
+              const next = Math.min(c + GRID_COLS, l.length - 1);
+              if (next !== c) { setSelectedIdx(next); selectedIdxRef.current = next; }
+            }
+          } else if (key === "ArrowUp") {
+            if (c !== null && c - GRID_COLS >= 0) { const next = c - GRID_COLS; setSelectedIdx(next); selectedIdxRef.current = next; }
+          }
+        };
+
+        for (const key of ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"]) {
+          const pressed = state[key], wasPressed = lastBtnRef.current[key];
+          if (pressed && !wasPressed) {
+            btnPressTimeRef.current[key] = now;
+            btnRepeatingRef.current[key] = false;
+            btnRepeatTimeRef.current[key] = now;
+            fireDir(key);
+          } else if (pressed && wasPressed) {
+            const held = now - (btnPressTimeRef.current[key] || now);
+            if (!btnRepeatingRef.current[key] && held >= iDelay) {
+              btnRepeatingRef.current[key] = true;
+              btnRepeatTimeRef.current[key] = now;
+              fireDir(key);
+            } else if (btnRepeatingRef.current[key] && now - (btnRepeatTimeRef.current[key] || 0) >= rDelay) {
+              btnRepeatTimeRef.current[key] = now;
+              fireDir(key);
+            }
+          } else if (!pressed) {
+            btnPressTimeRef.current[key] = 0;
+            btnRepeatingRef.current[key] = false;
           }
         }
-        if (state.ArrowUp && !lastBtnRef.current.ArrowUp) {
-          if (cur !== null && cur - GRID_COLS >= 0) {
-            const next = cur - GRID_COLS;
-            setSelectedIdx(next); selectedIdxRef.current = next;
-          }
-        }
+
         if (state.Enter && !lastBtnRef.current.Enter) handleSelectRef.current();
         if (state.Escape && !lastBtnRef.current.Escape) onClose();
+        if (artType === "hero") {
+          if (state.TriggerLeft && !lastBtnRef.current.TriggerLeft) {
+            const i = HERO_FILTERS.indexOf(heroFilterRef.current);
+            const next = HERO_FILTERS[Math.max(i - 1, 0)];
+            if (next !== heroFilterRef.current) { setHeroFilter(next); heroFilterRef.current = next; setSelectedIdx(null); selectedIdxRef.current = null; }
+          }
+          if (state.TriggerRight && !lastBtnRef.current.TriggerRight) {
+            const i = HERO_FILTERS.indexOf(heroFilterRef.current);
+            const next = HERO_FILTERS[Math.min(i + 1, HERO_FILTERS.length - 1)];
+            if (next !== heroFilterRef.current) { setHeroFilter(next); heroFilterRef.current = next; setSelectedIdx(null); selectedIdxRef.current = null; }
+          }
+        }
 
         lastBtnRef.current = state;
       }
@@ -594,7 +751,7 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose }) {
     };
     rAFId = requestAnimationFrame(poll);
     return () => cancelAnimationFrame(rAFId);
-  }, [artType, GRID_COLS]);
+  }, [artType, GRID_COLS, repeatSpeed]);
 
   if (loading) return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -629,18 +786,21 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose }) {
           ))}
         </div>
       )}
-      <div style={{ flex: 1, overflowY: "auto", display: "grid",
-        gridTemplateColumns: `repeat(${GRID_COLS}, ${THUMB_W}px)`, gap: 8, alignContent: "start", paddingRight: 4 }}>
-        {filteredResults.map((r, i) => (
-          <ThumbnailCard key={r.url} result={r} selected={selectedIdx === i}
-            accent={accent} theme={theme} thumbW={THUMB_W} thumbH={THUMB_H}
-            onClick={() => { setSelectedIdx(i); selectedIdxRef.current = i; }} />
-        ))}
-        {filteredResults.length === 0 && (
-          <div style={{ gridColumn: "1 / -1", textAlign: "center", color: theme.textDim, fontSize: 13, padding: 24 }}>
-            No results found
-          </div>
-        )}
+      <div ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+        <div style={{ display: "grid",
+          gridTemplateColumns: `repeat(${GRID_COLS}, ${THUMB_W}px)`, gap: 8, alignContent: "start", paddingRight: 4, paddingBottom: 4 }}>
+          {filteredResults.map((r, i) => (
+            <ThumbnailCard key={r.url} result={r} selected={selectedIdx === i} isSelected={selectedIdx === i}
+              accent={accent} theme={theme} thumbW={THUMB_W} aspect={THUMB_ASPECT}
+              data-sgdb-idx={i}
+              onClick={() => { setSelectedIdx(i); selectedIdxRef.current = i; }} />
+          ))}
+          {filteredResults.length === 0 && (
+            <div style={{ gridColumn: "1 / -1", textAlign: "center", color: theme.textDim, fontSize: 13, padding: 24 }}>
+              No results found
+            </div>
+          )}
+        </div>
       </div>
       <div style={{ paddingTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ display: "flex", gap: 12, marginRight: "auto" }}>
@@ -650,6 +810,13 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose }) {
               {label.slice(1)}
             </span>
           ))}
+          {artType === "hero" && (
+            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
+              <span style={{ height: 18, minWidth: 20, borderRadius: 4, background: "rgba(255,255,255,0.52)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "white", padding: "0 3px" }}>LT</span>
+              <span style={{ height: 18, minWidth: 20, borderRadius: 4, background: "rgba(255,255,255,0.52)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "white", padding: "0 3px" }}>RT</span>
+              Filter
+            </span>
+          )}
         </div>
         <button onClick={onClose}
           style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none",
@@ -716,8 +883,8 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
     reader.onload = (ev) => {
       const img = new Image();
       img.onload = () => {
-        const TW = cropMode === "square" ? 500 : 600;
-        const TH = cropMode === "square" ? 500 : 900;
+        const TW = cropMode === "square" ? 500 : cropMode === "hero" ? 1920 : 600;
+        const TH = cropMode === "square" ? 500 : cropMode === "hero" ?  620 : 900;
         const canvas = document.createElement("canvas");
         canvas.width = TW; canvas.height = TH;
         const ctx = canvas.getContext("2d");
@@ -738,6 +905,9 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
   };
 
   useEffect(() => {
+    const gp0 = getBestGamepad();
+    if (gp0) lastBtnRef.current = readGpState(gp0);
+
     let rAFId;
     const poll = () => {
       const gp = getBestGamepad();
@@ -791,10 +961,10 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
       <div style={{ width: 380 }}>
         <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 16 }}>Upload a custom image</div>
         <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-          <div style={{ flexShrink: 0, width: 110 }}>
+          <div style={{ flexShrink: 0, width: cropMode === "hero" ? 220 : 110 }}>
             {preview
-              ? <img src={preview} alt="" style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
-              : <div style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>No art</span></div>
+              ? <img src={preview} alt="" style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? "1920/620" : "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
+              : <div style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? "1920/620" : "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>No art</span></div>
             }
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -822,9 +992,9 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
 }
 
 // ── SgdbBrowserModal ──────────────────────────────────────────
-function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait", accent, theme, isDark, glass, onClose, onSet, onReset }) {
-  const artType = cropMode === "portrait" ? "grid" : "hero";
-  const [activeTab, setActiveTab] = useState("browse");
+function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait", artType = "grid", repeatSpeed = "normal", accent, theme, isDark, glass, onClose, onSet, onReset }) {
+  const showSgdb = app?.app_type === "game";
+  const [activeTab, setActiveTab] = useState(showSgdb ? "browse" : "upload");
   const lastBtnRef = useRef({});
 
   useEffect(() => {
@@ -833,8 +1003,8 @@ function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait"
       const gp = getBestGamepad();
       if (gp) {
         const state = readGpState(gp);
-        if (state.BumperLeft  && !lastBtnRef.current.BumperLeft)  setActiveTab("browse");
-        if (state.BumperRight && !lastBtnRef.current.BumperRight) setActiveTab("upload");
+        if (state.BumperLeft  && !lastBtnRef.current.BumperLeft  && showSgdb) setActiveTab("browse");
+        if (state.BumperRight && !lastBtnRef.current.BumperRight && showSgdb) setActiveTab("upload");
         lastBtnRef.current = state;
       }
       rAFId = requestAnimationFrame(poll);
@@ -845,7 +1015,7 @@ function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait"
 
   const badgeStyle = {
     height: 18, minWidth: 24, borderRadius: 4,
-    background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)",
+    background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)",
     display: "inline-flex", alignItems: "center", justifyContent: "center",
     fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px",
   };
@@ -861,19 +1031,19 @@ function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait"
   return (
     <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
       <div style={{ ...glass, borderRadius: 20, padding: 20, width: "min(860px, 92vw)", height: "min(600px, 85vh)", display: "flex", flexDirection: "column",
-        border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.4)` }}>
+        border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.4)`, fontFamily: "'Segoe UI', sans-serif" }}>
         <div style={{ marginBottom: 4 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: theme.text }}>{app.name}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, paddingBottom: 10,
           borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
-          <span style={badgeStyle}>LB</span>
-          <button onClick={() => setActiveTab("browse")} style={tabBtnStyle("browse")}>Browse SteamGridDB</button>
+          {showSgdb && <span style={badgeStyle}>LB</span>}
+          {showSgdb && <button onClick={() => setActiveTab("browse")} style={tabBtnStyle("browse")}>Browse SteamGridDB</button>}
           <button onClick={() => setActiveTab("upload")} style={tabBtnStyle("upload")}>Upload File</button>
-          <span style={badgeStyle}>RB</span>
+          {showSgdb && <span style={badgeStyle}>RB</span>}
         </div>
-        {activeTab === "browse"
-          ? <SgdbBrowser app={app} artType={artType} accent={accent} theme={theme} isDark={isDark}
+        {showSgdb && activeTab === "browse"
+          ? <SgdbBrowser app={app} artType={artType} repeatSpeed={repeatSpeed} accent={accent} theme={theme} isDark={isDark}
               onSet={onSet} onClose={onClose} />
           : <UploadTab app={app} currentArt={currentArt} hasCustomArt={hasCustomArt} cropMode={cropMode}
               accent={accent} theme={theme} isDark={isDark}
@@ -1319,7 +1489,9 @@ export default function App() {
   const [heroAnimated, setHeroAnimated]             = useState({});
   const [customArt, setCustomArt]                   = useState({});
   const [artPickerApp, setArtPickerApp]             = useState(null);
-  const [contextMenu, setContextMenu]               = useState(null); // { x, y, app }
+  const [artPickerMode, setArtPickerMode]           = useState("grid"); // "grid" | "hero"
+  const [contextMenu, setContextMenu]               = useState(null); // { x, y, app, focusedIdx }
+  const [heroCustomType, setHeroCustomType]         = useState(() => { try { return JSON.parse(localStorage.getItem("liftoff_heroCustomType") || "{}"); } catch { return {}; } });
   const [cacheClearLoading, setCacheClearLoading]   = useState(false);
   const [cacheClearStatus, setCacheClearStatus]     = useState({ line1: "", line2: "" });
   const [launchingApp, setLaunchingApp]             = useState(null);
@@ -1327,7 +1499,7 @@ export default function App() {
     accent: "ember", theme: "dark", stars_enabled: true,
     default_tab: "Home", scan_steam: true, scan_xbox: true,
     scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
-    launch_at_startup: false, animated_heroes: true, ui_scale: 1.0,
+    launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
   });
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
   const [heroIndex, setHeroIndex]                   = useState(0);
@@ -1358,6 +1530,8 @@ export default function App() {
 
   const customArtRef          = useRef({});
   const artPickerAppRef       = useRef(null);
+  const artPickerModeRef      = useRef("grid");
+  const contextMenuRef        = useRef(null);
   const focusedCardRef        = useRef(null);
   const searchFocusedCardRef  = useRef(null);   // FIX 3: focused search result card ref
   const settingsFocusedRef    = useRef(null);
@@ -1907,6 +2081,12 @@ export default function App() {
   // paints the tab switch first — calling play() synchronously blocks the main thread
   // and causes the visible lag when animated heroes are enabled.
   useEffect(() => {
+    Object.values(heroVideoRefs.current).forEach(vid => {
+      if (vid) { vid.pause(); vid.currentTime = 0; }
+    });
+  }, []);
+
+  useEffect(() => {
     const isHome = tab === "Home";
 
     if (!isHome) {
@@ -2027,7 +2207,7 @@ export default function App() {
     { key: "default_tab",       label: "Default Tab",            type: "cycle",  options: ["Home","Games","Apps"] },
     { key: "repeat_speed",      label: "Stick Repeat Speed",     type: "cycle",  options: ["slow","normal","fast"] },
     { key: "launch_at_startup", label: "Launch at Startup",      type: "toggle" },
-    { key: "animated_heroes",   label: "Animated Hero Art",      type: "toggle" },
+    { key: "animated_heroes",   label: "Hero Art Mode",          type: "cycle",  options: ["static", "animated", "custom"] },
     { key: "divider_ctrl",      label: "CONTROLLER",             type: "divider" },
     { key: "controller_test",   label: "Controller Test",        type: "controller_test" },
     { key: "divider3",          label: "DATA",                   type: "divider" },
@@ -2055,6 +2235,49 @@ export default function App() {
     // Art picker open — only Escape closes it (user interacts via touch/mouse)
     if (artPickerAppRef.current) {
       if (key === "Escape") closeArtPicker();
+      return;
+    }
+
+    // Context menu open — navigate with D-pad, confirm with A, dismiss with B or bumpers
+    if (contextMenuRef.current) {
+      const menu = contextMenuRef.current;
+      const menuItems = [
+        { label: "Open" },
+        { label: menu.app.app_type === "game" ? (pins.includes(menu.app.id) ? "Unpin" : "Pin") : (pins.includes(menu.app.id) ? "Unpin" : "Pin") },
+        { label: "Change Art" },
+        ...(menu.app.app_type === "game" ? [{ label: "Change Hero Art" }] : []),
+      ];
+      const cur = menu.focusedIdx || 0;
+      if (key === "ArrowDown") {
+        const next = Math.min(cur + 1, menuItems.length - 1);
+        const updated = { ...menu, focusedIdx: next };
+        setContextMenu(updated); contextMenuRef.current = updated;
+        return;
+      }
+      if (key === "ArrowUp") {
+        const next = Math.max(cur - 1, 0);
+        const updated = { ...menu, focusedIdx: next };
+        setContextMenu(updated); contextMenuRef.current = updated;
+        return;
+      }
+      if (key === "Enter") {
+        const label = menuItems[cur]?.label;
+        if (label === "Open") { triggerLaunch(menu.app, recentRef.current); setContextMenu(null); contextMenuRef.current = null; }
+        else if (label === "Pin" || label === "Unpin") { togglePin(menu.app); setContextMenu(null); contextMenuRef.current = null; }
+        else if (label === "Change Art") { setArtPickerMode("grid"); artPickerModeRef.current = "grid"; setArtPickerApp(menu.app); artPickerAppRef.current = menu.app; setContextMenu(null); contextMenuRef.current = null; }
+        else if (label === "Change Hero Art") { setArtPickerMode("hero"); artPickerModeRef.current = "hero"; setArtPickerApp(menu.app); artPickerAppRef.current = menu.app; setContextMenu(null); contextMenuRef.current = null; }
+        return;
+      }
+      if (key === "Escape" || key === "BumperLeft" || key === "BumperRight") {
+        setContextMenu(null); contextMenuRef.current = null;
+        if (key !== "Escape") {
+          // Let bumpers fall through to tab-switching after closing
+          const i = TABS.indexOf(tabRef.current);
+          if (key === "BumperLeft")  switchTab(TABS[(i - 1 + TABS.length) % TABS.length]);
+          if (key === "BumperRight") switchTab(TABS[(i + 1) % TABS.length]);
+        }
+        return;
+      }
       return;
     }
 
@@ -2189,9 +2412,19 @@ export default function App() {
     if (key === "BumperLeft")  { const i = TABS.indexOf(currentTab); switchTab(TABS[(i - 1 + TABS.length) % TABS.length]); return; }
     if (key === "BumperRight") { const i = TABS.indexOf(currentTab); switchTab(TABS[(i + 1) % TABS.length]); return; }
 
-    // Start/Menu opens manage modal on Games or Apps tab
-    if (key === "Start" && (currentTab === "Games" || currentTab === "Apps")) {
+    // BACK (Select) opens Manage modal; MENU (Start) opens context menu for focused card
+    if (key === "Select" && (currentTab === "Games" || currentTab === "Apps")) {
       openHideModal(); return;
+    }
+    if (key === "Start" && (currentTab === "Games" || currentTab === "Apps")) {
+      const focusedApp = section === "pinned" ? fPinned[index] : section === "grid" ? fApps[index] : null;
+      if (focusedApp) {
+        const cx = Math.min(Math.floor(window.innerWidth / 2) - 90, window.innerWidth - 200);
+        const cy = Math.min(Math.floor(window.innerHeight / 2) - 80, window.innerHeight - 180);
+        const menu = { x: cx, y: cy, app: focusedApp, focusedIdx: 0 };
+        setContextMenu(menu); contextMenuRef.current = menu;
+      }
+      return;
     }
 
     if (currentTab === "Settings") {
@@ -2329,7 +2562,7 @@ export default function App() {
         else { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; }
         playSound();
       }
-      else if (key === "Enter" || key === "Start") {
+      else if (key === "Enter") {
         const item = subtabItems[subtabFocusIndexRef.current];
         if (item === "manage") { openHideModal(); }
         // Pills already auto-switched on focus movement — Enter is a no-op for them
@@ -2353,9 +2586,6 @@ export default function App() {
         else { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; }
       }
       if (key === "Enter" && fPinned[index]) triggerLaunch(fPinned[index], rec);
-      if (key === "Select" && fPinned[index]) {
-        setArtPickerApp(fPinned[index]); artPickerAppRef.current = fPinned[index];
-      }
       return;
     }
     if (section === "grid") {
@@ -2376,9 +2606,6 @@ export default function App() {
         } else { const ni = index - cols; setFocusIndex(ni); focusIndexRef.current = ni; }
       }
       if (key === "Enter" && fApps[index]) triggerLaunch(fApps[index], rec);
-      if (key === "Select" && fApps[index]) {
-        setArtPickerApp(fApps[index]); artPickerAppRef.current = fApps[index];
-      }
       return;
     }
   };
@@ -2618,8 +2845,13 @@ export default function App() {
     const focusIdx = focusIndex;
     const heroGame   = recentGames[heroIdx];
     const heroArt    = heroGame ? (customArt[heroGame.id] || gameArt[heroGame.id]) : null;
+    const resolveHeroType = (id) => {
+      if (settings.animated_heroes === "static")   return "static";
+      if (settings.animated_heroes === "animated") return "animated";
+      return heroCustomType[id] || "static";
+    };
     const heroBanner = heroGame
-      ? (settings.animated_heroes
+      ? (resolveHeroType(heroGame.id) === "animated"
           ? (heroAnimated[heroGame.id] || heroStatic[heroGame.id])
           : heroStatic[heroGame.id])
       : null;
@@ -2638,20 +2870,34 @@ export default function App() {
             {recentGames.map((game, idx) => {
               const isActive = idx === heroIdx;
               if (Math.abs(idx - heroIdx) > 4) return null;
-              const banner = settings.animated_heroes
-                ? (heroAnimated[game.id] || heroStatic[game.id])
-                : heroStatic[game.id];
+              const isNearby = Math.abs(idx - heroIdx) <= 1;
+
+              const staticBanner = heroStatic[game.id];
               const fallback = customArt[game.id] || gameArt[game.id];
+              // Only fetch animated URL for nearby slots — others always show static
+              const animatedUrl = isNearby && resolveHeroType(game.id) === "animated"
+                ? heroAnimated[game.id] : null;
+              const showVideo = isNearby && animatedUrl && animatedUrl.endsWith(".webm");
+
+              const coverStyle = { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" };
               return (
                 <div key={game.id} style={{ position: "absolute", inset: 0, opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
-                  {banner
-                    ? (banner.endsWith(".webm")
-                        ? <video ref={el => { heroVideoRefs.current[game.id] = el; }} src={banner} loop muted playsInline preload="auto" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }} />
-                        : <img src={banner} alt="" decoding="async" loading="eager" fetchPriority="high" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", transform: "translateZ(0)" }} />)
+                  {/* Base layer: static image always present so navigation is instant */}
+                  {staticBanner
+                    ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
                     : fallback
-                      ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ width: "100%", height: "100%", objectFit: "cover", filter: `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: "scale(1.08)" }} />
+                      ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: "scale(1.08)" }} />
                       : <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${accent.glow}0.25) 0%, ${accent.glow}0.06) 100%)` }} />
                   }
+                  {/* Video layer: only rendered for heroIndex ±1 to prevent off-screen autoplay */}
+                  {showVideo && (
+                    <video
+                      ref={el => { if (el) heroVideoRefs.current[game.id] = el; else delete heroVideoRefs.current[game.id]; }}
+                      src={animatedUrl}
+                      loop muted playsInline preload="none"
+                      style={{ position: "absolute", inset: 0, ...coverStyle }}
+                    />
+                  )}
                 </div>
               );
             })}
@@ -2685,7 +2931,7 @@ export default function App() {
                         flexShrink: 0, cursor: "pointer", borderRadius: 10, transition: "all 0.15s ease",
                         background: focused ? accent.primary : "rgba(8,4,2,0.55)",
                         backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-                        border: `1px solid ${focused ? accent.primary : "rgba(255,255,255,0.18)"}`,
+                        border: `1px solid ${focused ? accent.primary : "rgba(255,255,255,0.14)"}`,
                         boxShadow: focused ? `0 2px 12px ${accent.glow}0.6)` : "none",
                       }}>
                       {art
@@ -2785,7 +3031,7 @@ export default function App() {
                 }
                 const color = iconColors[app.id];
                 const tintBg = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : glass.background;
-                const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.35)` : "rgba(255,255,255,0.06)";
+                const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : "rgba(255,255,255,0.08)";
                 if (art) {
                   return (
                     <div key={app.id} ref={focused ? focusedCardRef : null}
@@ -2808,15 +3054,11 @@ export default function App() {
                   <div key={app.id} ref={focused ? focusedCardRef : null}
                     onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                     onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                    style={{ ...glass, background: tintBg, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                    style={{ ...glass, background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)", backdropFilter: isDark ? "blur(16px)" : "blur(28px)", WebkitBackdropFilter: isDark ? "blur(16px)" : "blur(28px)",
                       border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${tintBorder}`,
                       flexShrink: 0, borderRadius: 12, cursor: "pointer", transition: "all 0.15s ease",
                       width: CARD_W, height: CARD_H, boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px", position: "relative",
                       ...(focused ? { background: isDark ? `${accent.glow}0.1)` : `${accent.glow}0.07)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, transform: "scale(1.05) translateY(-3px)" } : {}) }}>
-                    {color && !focused && (
-                      <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
-                        background: `radial-gradient(circle at center, rgba(${color.r},${color.g},${color.b},0.25), transparent 70%)` }} />
-                    )}
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", position: "relative", zIndex: 1 }}>
                       <AppIcon app={fullApp} size={40} />
                       <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
@@ -3059,7 +3301,9 @@ export default function App() {
           app={artPickerApp}
           currentArt={customArt[artPickerApp.id] || gameArt[artPickerApp.id]}
           hasCustomArt={!!customArt[artPickerApp.id]}
-          cropMode={artPickerApp?.app_type === "game" ? "portrait" : "square"}
+          artType={artPickerMode}
+          cropMode={artPickerMode === "hero" ? "hero" : artPickerApp?.app_type === "game" ? "portrait" : "square"}
+          repeatSpeed={settings.repeat_speed}
           accent={accent} theme={theme} isDark={isDark} glass={glass}
           onClose={closeArtPicker}
           onSet={(id, result) => {
@@ -3068,9 +3312,18 @@ export default function App() {
               setCustomArt(next); customArtRef.current = next;
             } else {
               const url = convertFileSrc(result);
-              const isHero = artPickerApp?.app_type !== "game";
-              if (isHero) {
-                setHeroStatic(prev => ({ ...prev, [id]: url }));
+              if (artPickerModeRef.current === "hero") {
+                const lower = result.toLowerCase();
+                const isAnim = lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".gif");
+                if (isAnim) setHeroAnimated(prev => ({ ...prev, [id]: url }));
+                else        setHeroStatic(prev => ({ ...prev, [id]: url }));
+                const heroType = isAnim ? "animated" : "static";
+                setHeroCustomType(prev => {
+                  const next = { ...prev, [id]: heroType };
+                  try { localStorage.setItem("liftoff_heroCustomType", JSON.stringify(next)); } catch {}
+                  return next;
+                });
+                if (settings.animated_heroes !== "custom") updateSetting("animated_heroes", "custom");
               } else {
                 setGameArt(prev => ({ ...prev, [id]: url }));
               }
@@ -3377,13 +3630,13 @@ export default function App() {
                       const color = iconColors[app.id];
                       const art = customArt[app.id];
                       const tintBg = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : glass.background;
-                      const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.35)` : "rgba(255,255,255,0.06)";
+                      const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : "rgba(255,255,255,0.08)";
                       return (
                         <div key={app.id} ref={focused ? focusedCardRef : null}
                           onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
                           onDoubleClick={() => triggerLaunch(app, recent)}
                           onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
-                          style={{ ...glass, background: art ? "transparent" : tintBg, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                          style={{ ...glass, background: art ? "transparent" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: isDark ? "blur(16px)" : "blur(28px)", WebkitBackdropFilter: isDark ? "blur(16px)" : "blur(28px)",
                             border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${art ? "rgba(255,255,255,0.12)" : tintBorder}`,
                             borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
                             ...(focused ? { boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
@@ -3397,10 +3650,6 @@ export default function App() {
                             </>
                           ) : (
                             <>
-                              {color && !focused && (
-                                <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
-                                  background: `radial-gradient(circle at center, rgba(${color.r},${color.g},${color.b},0.25), transparent 70%)` }} />
-                              )}
                               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", position: "relative", zIndex: 1 }}>
                                 <AppIcon app={app} size={64} />
                               </div>
@@ -3444,13 +3693,13 @@ export default function App() {
                   const color = iconColors[app.id];
                   const art = customArt[app.id];
                   const tintBg = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : glass.background;
-                  const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.35)` : "rgba(255,255,255,0.06)";
+                  const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : "rgba(255,255,255,0.08)";
                   return (
                     <div key={app.id} ref={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recent)}
                       onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
-                      style={{ ...glass, background: art ? "transparent" : tintBg, backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)",
+                      style={{ ...glass, background: art ? "transparent" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: isDark ? "blur(16px)" : "blur(28px)", WebkitBackdropFilter: isDark ? "blur(16px)" : "blur(28px)",
                         border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${art ? "rgba(255,255,255,0.12)" : tintBorder}`,
                         borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
                         ...(focused ? { boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
@@ -3464,10 +3713,6 @@ export default function App() {
                         </>
                       ) : (
                         <>
-                          {color && !focused && (
-                            <div style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
-                              background: `radial-gradient(circle at center, rgba(${color.r},${color.g},${color.b},0.25), transparent 70%)` }} />
-                          )}
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", position: "relative", zIndex: 1 }}>
                             <AppIcon app={app} size={64} />
                           </div>
@@ -3498,33 +3743,33 @@ export default function App() {
                   <Btn color="#9a7020" label="Y Search" />
                   <Btn color="#3a5a8a" label="X Pin" />
                   <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                    <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>LB</span>
-                    <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>RB</span>
+                    <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>LB</span>
+                    <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>RB</span>
                     Tabs
                   </span>
                   {tab === "Games" && <>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                      <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>LT</span>
-                      <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>RT</span>
+                      <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>LT</span>
+                      <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>RT</span>
                       Source
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>MENU</span>
-                      Manage
+                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>MENU</span>
+                      Options
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>BACK</span>
-                      Art
+                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>BACK</span>
+                      Manage
                     </span>
                   </>}
                   {tab === "Apps" && <>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>MENU</span>
-                      Manage
+                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>MENU</span>
+                      Options
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>BACK</span>
-                      Art
+                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>BACK</span>
+                      Manage
                     </span>
                   </>}
                 </>
@@ -3533,31 +3778,55 @@ export default function App() {
         </div>
       </div>
 
-      {contextMenu && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9000 }} onClick={() => setContextMenu(null)} onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}>
-          <div onClick={(e) => e.stopPropagation()}
-            style={{ position: "fixed", left: Math.min(contextMenu.x, window.innerWidth - 180), top: Math.min(contextMenu.y, window.innerHeight - 100),
-              background: isDark ? "rgba(20,14,10,0.97)" : "rgba(255,255,255,0.97)",
-              backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-              border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-              borderRadius: 10, overflow: "hidden", minWidth: 160, zIndex: 9001,
-              boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
-            {[
-              { label: "Open", action: () => { triggerLaunch(contextMenu.app, recentRef.current); setContextMenu(null); } },
-              { label: pins.includes(contextMenu.app.id) ? "Unpin" : "Pin", action: () => { togglePin(contextMenu.app); setContextMenu(null); } },
-              { label: "Change Art", action: () => { setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); } },
-            ].map(({ label, action }) => (
-              <div key={label} onClick={action}
-                style={{ padding: "10px 16px", cursor: "pointer", fontSize: 13, fontWeight: 500, color: theme.text,
-                  transition: "background 0.1s ease" }}
-                onMouseEnter={(e) => e.currentTarget.style.background = `${accent.glow}0.15)`}
-                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-                {label}
+      {contextMenu && (() => {
+        const ctxItems = [
+          { label: "Open", action: () => { triggerLaunch(contextMenu.app, recentRef.current); setContextMenu(null); contextMenuRef.current = null; } },
+          { label: pins.includes(contextMenu.app.id) ? "Unpin" : "Pin", action: () => { togglePin(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
+          { label: "Change Art", action: () => { setArtPickerMode("grid"); artPickerModeRef.current = "grid"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } },
+          ...(contextMenu.app.app_type === "game"
+            ? [{ label: "Change Hero Art", action: () => { setArtPickerMode("hero"); artPickerModeRef.current = "hero"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
+            : []),
+        ];
+        const ctxFocused = contextMenu.focusedIdx || 0;
+        const menuH = ctxItems.length * 52 + 16;
+        return (
+          <div style={{ position: "fixed", inset: 0, zIndex: 9000 }}
+            onClick={() => { setContextMenu(null); contextMenuRef.current = null; }}
+            onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); contextMenuRef.current = null; }}>
+            <div onClick={(e) => e.stopPropagation()}
+              style={{ position: "fixed",
+                left: Math.min(contextMenu.x, window.innerWidth - 210),
+                top: Math.min(contextMenu.y, window.innerHeight - menuH),
+                background: isDark ? "rgba(18,12,8,0.98)" : "rgba(255,255,255,0.98)",
+                backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
+                border: `1px solid ${isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.14)"}`,
+                borderRadius: 14, overflow: "hidden", minWidth: 200, zIndex: 9001,
+                boxShadow: "0 12px 48px rgba(0,0,0,0.5)", fontFamily: "'Segoe UI', sans-serif" }}>
+              <div style={{ padding: "8px 0" }}>
+                {ctxItems.map(({ label, action }, i) => (
+                  <div key={label} onClick={action}
+                    style={{ padding: "12px 20px", cursor: "pointer", fontSize: 14, fontWeight: 500, color: theme.text,
+                      background: i === ctxFocused ? `${accent.glow}0.18)` : "transparent",
+                      borderLeft: i === ctxFocused ? `3px solid ${accent.primary}` : "3px solid transparent",
+                      transition: "background 0.1s ease" }}
+                    onMouseEnter={(e) => { setContextMenu(prev => { const u = { ...prev, focusedIdx: i }; contextMenuRef.current = u; return u; }); }}
+                    onMouseLeave={(e) => e.currentTarget.style.background = i === ctxFocused ? `${accent.glow}0.18)` : "transparent"}>
+                    {label}
+                  </div>
+                ))}
               </div>
-            ))}
+              <div style={{ padding: "6px 16px 8px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"}`, display: "flex", gap: 10 }}>
+                {[{ bg: "#4a9c4a", label: "A Select" }, { bg: "#b03030", label: "B Close" }].map(({ bg, label }) => (
+                  <span key={label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: theme.textDim }}>
+                    <span style={{ width: 16, height: 16, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "white", flexShrink: 0 }}>{label[0]}</span>
+                    {label.slice(1)}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {cacheClearLoading && (
         <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center" }}>
