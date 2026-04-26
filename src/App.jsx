@@ -1480,6 +1480,7 @@ export default function App() {
   const [tab, setTab]                               = useState("Home");
   const [apps, setApps]                             = useState([]);
   const [recent, setRecent]                         = useState([]);
+  const [recentGames, setRecentGames]               = useState([]);
   const [pins, setPins]                             = useState([]);
   const [hidden, setHidden]                         = useState([]);
   const [iconColors, setIconColors]                 = useState({});
@@ -1557,6 +1558,7 @@ export default function App() {
   const appsRef               = useRef([]);
   const allAppsRef            = useRef([]); // every app ever seen, including hidden ones
   const recentRef             = useRef([]);
+  const recentGamesRef        = useRef([]);
   const pinsRef               = useRef([]);
   const hiddenRef             = useRef([]);
   const gameSourceTabRef      = useRef("All");
@@ -1615,6 +1617,10 @@ export default function App() {
     launchApp(app);
     const updated = [app, ...rec.filter(r => r.id !== app.id)].slice(0, 10);
     setRecent(updated); recentRef.current = updated;
+    if (app.app_type === "game") {
+      const updatedGames = [app, ...recentGamesRef.current.filter(r => r.id !== app.id)].slice(0, 20);
+      setRecentGames(updatedGames); recentGamesRef.current = updatedGames;
+    }
   };
   const _triggerLaunchRef = useRef(_triggerLaunchImpl);
   _triggerLaunchRef.current = _triggerLaunchImpl;
@@ -1941,6 +1947,9 @@ export default function App() {
     invoke("get_recents").then(recents => {
       if (recents.length > 0) { setRecent(recents); recentRef.current = recents; }
     });
+    invoke("get_recent_games").then(games => {
+      if (games.length > 0) { setRecentGames(games); recentGamesRef.current = games; }
+    });
     invoke("get_pins").then(loadedPins => {
       setPins(loadedPins); pinsRef.current = loadedPins;
     });
@@ -1957,6 +1966,10 @@ export default function App() {
       invoke("get_recents").then(recents => {
         if (recents.length === 0) { setRecent(visible.slice(0, 10)); recentRef.current = visible.slice(0, 10); }
       });
+      if (recentGamesRef.current.length === 0) {
+        const gamesFallback = visible.filter(a => a.app_type === "game").slice(0, 6);
+        setRecentGames(gamesFallback); recentGamesRef.current = gamesFallback;
+      }
       fetchGameArt(visible.filter(a => a.app_type === "game"));
       setSplashExiting(true);
       playBuffer("appLoaded");
@@ -2092,9 +2105,6 @@ export default function App() {
   const filteredRecent = recent.filter(a =>
     tab === "Home" ? true : tab === "Games" ? a.app_type === "game" : a.app_type === "app"
   ).slice(0, 8);
-
-  // Games-only recent list — drives the hero on Home (stable ref via useMemo)
-  const recentGames = useMemo(() => recent.filter(a => a.app_type === "game"), [recent]);
 
   // Manage hero video playback: pause all when off Home; on Home keep active + adjacent
   // videos playing so heroIndex transitions feel instant (no play() decode stutter).
@@ -2433,7 +2443,7 @@ export default function App() {
 
     // ── Main nav sections ──────────────────────────────────────
     // Compute filtered data using refs (same as render-time but from refs)
-    const fRecentGames = rec.filter(a => a.app_type === "game");
+    const fRecentGames = recentGamesRef.current;
 
     // X pins/unpins focused app
     if (key === "ButtonX") {
