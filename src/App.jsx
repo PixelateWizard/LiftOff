@@ -1735,7 +1735,7 @@ export default function App() {
 
     const poll = (now) => {
       const gps = navigator.getGamepads();
-      const gp  = gps[0] || gps[1] || gps[2] || gps[3];
+      const gp = getBestGamepad();
       if (gp && isReadyRef.current) {
         const speed = settingsRef.current.repeat_speed;
         const initialDelay = speed === "slow" ? 500 : speed === "fast" ? 250 : 400;

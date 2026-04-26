@@ -1413,6 +1413,15 @@ async fn launch_app(
             .spawn()
             .map_err(|e| e.to_string())?;
         child_pid = 0;
+    } else if path.to_lowercase().ends_with(".lnk") {
+        // Windows shortcut — cmd /C start resolves the .lnk target correctly.
+        // Direct spawn treats it as an exe and fails silently.
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", &path])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        child_pid = 0;
     } else if path.contains("://") {
         // ShellExecuteW for other URI schemes (https://, etc.)
         unsafe {
