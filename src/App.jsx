@@ -12,7 +12,7 @@ import appLoadedSound from "./assets/appLoadedSound.wav";
 const COLS = 6;
 const GAME_COLS = 5;
 const TABS = ["Home", "Games", "Apps", "Settings"];
-const APP_VERSION = "1.2.1";
+const APP_VERSION = "1.2.2";
 const GITHUB_REPO = "PixelateWizard/LiftOff"; // owner/repo — update before release
 
 const ACCENTS = {
@@ -1059,10 +1059,18 @@ function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait"
 // ── Gamepad selector ─────────────────────────────────────────
 // Some USB devices (headset adapters, audio dongles) expose a HID interface
 // that the browser registers as a gamepad. They have 0–2 buttons and no axes.
-// Prefer the first gamepad with ≥4 buttons; fall back to the first connected one.
+// Prefer standard-mapped controllers with ≥4 axes first (rules out audio HID),
+// then fall back to any gamepad with ≥4 buttons and axes, then gps[0].
 function getBestGamepad() {
   const gps = Array.from(navigator.getGamepads()).filter(Boolean);
-  return gps.find(gp => gp.buttons.length >= 4) || gps[0] || null;
+  // Real gamepads always have ≥4 axes (two analog sticks).
+  // Audio HID devices (e.g. Jabra headsets) register as gamepads but expose
+  // buttons (volume/mute) with zero or very few axes — this filter excludes them.
+  return (
+    gps.find(gp => gp.mapping === "standard" && gp.axes.length >= 4) ||
+    gps.find(gp => gp.buttons.length >= 4    && gp.axes.length >= 4) ||
+    gps[0] || null
+  );
 }
 
 // ── Gamepad state reader ──────────────────────────────────────
