@@ -52,6 +52,10 @@
     "theme": "Theme",
     "backgroundStars": "Background Stars",
     "backgroundClouds": "Background Clouds",
+    "wideLayout": "Wide Layout",
+    "transparentBars": "Transparent Bars",
+    "transparentTopbar": "Top Bar",
+    "transparentBottombar": "Bottom Bar",
     "uiScale": "UI Scale",
     "resetScale": "Reset Scale to Auto",
     "homeCoverScale": "Home Cover Scale",
@@ -119,6 +123,8 @@
       "auto": "Auto",
       "en": "English",
       "fr": "Français",
+      "silver": "Silver",
+      "white": "White",
       "12h": "12h",
       "24h": "24h"
     }
