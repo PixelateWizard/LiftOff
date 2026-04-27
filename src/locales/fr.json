@@ -45,7 +45,8 @@
     "noApps": "Aucune app trouvée.",
     "saveChanges_one": "Sauvegarder {{count}} modification",
     "saveChanges_other": "Sauvegarder {{count}} modifications",
-    "save": "Sauvegarder"
+    "save": "Sauvegarder",
+    "shortcutToggle": "Masquer/Afficher"
   },
   "settings": {
     "accentColor": "Couleur d'accent",
@@ -66,6 +67,8 @@
     "scanDesktop": "Scanner les raccourcis Bureau",
     "scanBattlenet": "Scanner Battle.net",
     "refreshLibrary": "Actualiser la bibliothèque",
+    "customFolders": "Dossiers de scan personnalisés",
+    "noCustomFolders": "Aucun dossier personnalisé configuré",
     "defaultTab": "Onglet par défaut",
     "repeatSpeed": "Vitesse de répétition",
     "launchAtStartup": "Lancer au démarrage",
@@ -173,7 +176,11 @@
     "pin": "Épingler",
     "unpin": "Désépingler",
     "changeArt": "Changer l'illustration",
-    "changeHeroArt": "Changer l'art héros"
+    "changeHeroArt": "Changer l'art héros",
+    "collections": "Gérer les collections",
+    "hide": "Masquer",
+    "show": "Afficher",
+    "delete": "Supprimer"
   },
   "gamepad": {
     "aSelect": "A Sélectionner",
@@ -203,6 +210,61 @@
     "clear": "Effacer",
     "close": "Fermer",
     "select": "Sélectionner",
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "add": "Ajouter",
+    "saving": "Sauvegarde…",
+    "back": "Retour",
+    "done": "Terminé",
+    "delete": "Supprimer"
+  },
+  "confirm": {
+    "deleteApp": "Retirer {{name}} de votre bibliothèque ?",
+    "deleteFolder": "Supprimer ce dossier de scan ?",
+    "deleteCollection": "Supprimer la collection « {{name}} » ?",
+    "yes": "Supprimer"
+  },
+  "collections": {
+    "manage": "Gérer les collections",
+    "manageGames": "Collections de jeux",
+    "manageApps": "Collections d'apps",
+    "empty": "Aucune collection",
+    "none": "Aucune collection — créez-en une via Gérer",
+    "newPlaceholder": "Nom de la nouvelle collection…",
+    "assign": "Collections de {{name}}"
+  },
+  "fileBrowser": {
+    "selectFile": "Sélectionner un fichier",
+    "selectFolder": "Sélectionner un dossier",
+    "drives": "Lecteurs",
+    "empty": "Dossier vide",
+    "navigate": "Naviguer",
+    "open": "Ouvrir",
+    "select": "Sélectionner",
+    "selectThis": "↵ Sélectionner ce dossier"
+  },
+  "shortcuts": {
+    "navigate": "Naviguer",
+    "keyboard": "Clavier",
+    "toggle": "Act./Dés.",
+    "confirm": "Confirmer",
+    "save": "Sauvegarder",
+    "select": "Sélectionner"
+  },
+  "addEntry": {
+    "addEntry": "Ajouter un jeu / une app",
+    "addGame": "Ajouter un jeu",
+    "addApp": "Ajouter une app",
+    "addFolder": "Ajouter un dossier à scanner",
+    "path": "Chemin",
+    "name": "Nom",
+    "type": "Type",
+    "typeGame": "Jeu",
+    "typeApp": "App",
+    "source": "Source / Liste",
+    "newSource": "Nouvelle liste",
+    "newSourcePlaceholder": "Nom de la liste…",
+    "collection": "Collection",
+    "newCollection": "Nouvelle collection",
+    "newCollectionPlaceholder": "Nom de la collection…"
   }
 }

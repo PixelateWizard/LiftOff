@@ -45,7 +45,8 @@
     "noApps": "No apps found.",
     "saveChanges_one": "Save {{count}} change",
     "saveChanges_other": "Save {{count}} changes",
-    "save": "Save"
+    "save": "Save",
+    "shortcutToggle": "Hide/Show"
   },
   "settings": {
     "accentColor": "Accent Color",
@@ -66,6 +67,8 @@
     "scanDesktop": "Scan Desktop Shortcuts",
     "scanBattlenet": "Scan Battle.net",
     "refreshLibrary": "Refresh Library",
+    "customFolders": "Custom scan folders",
+    "noCustomFolders": "No custom folders configured",
     "defaultTab": "Default Tab",
     "repeatSpeed": "Stick Repeat Speed",
     "launchAtStartup": "Launch at Startup",
@@ -173,7 +176,11 @@
     "pin": "Pin",
     "unpin": "Unpin",
     "changeArt": "Change Art",
-    "changeHeroArt": "Change Hero Art"
+    "changeHeroArt": "Change Hero Art",
+    "collections": "Manage Collections",
+    "hide": "Hide",
+    "show": "Show",
+    "delete": "Delete"
   },
   "gamepad": {
     "aSelect": "A Select",
@@ -203,6 +210,61 @@
     "clear": "Clear",
     "close": "Close",
     "select": "Select",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "Add",
+    "saving": "Saving…",
+    "back": "Back",
+    "done": "Done",
+    "delete": "Delete"
+  },
+  "confirm": {
+    "deleteApp": "Remove {{name}} from your library?",
+    "deleteFolder": "Remove this scan folder?",
+    "deleteCollection": "Delete collection \"{{name}}\"?",
+    "yes": "Delete"
+  },
+  "collections": {
+    "manage": "Manage Collections",
+    "manageGames": "Game Collections",
+    "manageApps": "App Collections",
+    "empty": "No collections yet",
+    "none": "No collections — create one via Manage",
+    "newPlaceholder": "New collection name…",
+    "assign": "Collections for {{name}}"
+  },
+  "fileBrowser": {
+    "selectFile": "Select a file",
+    "selectFolder": "Select a folder",
+    "drives": "Drives",
+    "empty": "Empty folder",
+    "navigate": "Navigate",
+    "open": "Open",
+    "select": "Select",
+    "selectThis": "↵ Select this folder"
+  },
+  "shortcuts": {
+    "navigate": "Navigate",
+    "keyboard": "Keyboard",
+    "toggle": "Toggle",
+    "confirm": "Confirm",
+    "save": "Save",
+    "select": "Select"
+  },
+  "addEntry": {
+    "addEntry": "Add a game / app",
+    "addGame": "Add a game",
+    "addApp": "Add an app",
+    "addFolder": "Add a scan folder",
+    "path": "Path",
+    "name": "Name",
+    "type": "Type",
+    "typeGame": "Game",
+    "typeApp": "App",
+    "source": "Source / List",
+    "newSource": "New list",
+    "newSourcePlaceholder": "List name…",
+    "collection": "Collection",
+    "newCollection": "New collection",
+    "newCollectionPlaceholder": "Collection name…"
   }
 }
