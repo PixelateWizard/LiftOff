@@ -71,6 +71,10 @@
     "clearRecents": "Effacer l'historique",
     "clearCache": "Vider le cache art",
     "language": "Langue",
+    "timeFormat": "Format de l'heure",
+    "showClock": "Afficher l'heure",
+    "showDate": "Afficher la date",
+    "showBattery": "Afficher la batterie",
     "version": "LiftOff v{{version}}",
     "checkUpdates": "Vérifier les mises à jour",
     "coffee": "☕ Offrir un café",
@@ -114,7 +118,9 @@
       "Apps": "Apps",
       "auto": "Auto",
       "en": "English",
-      "fr": "Français"
+      "fr": "Français",
+      "12h": "12h",
+      "24h": "24h"
     }
   },
   "home": {
