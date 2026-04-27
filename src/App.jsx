@@ -1524,16 +1524,15 @@ export default function App() {
     default_tab: "Home", scan_steam: true, scan_xbox: true,
     scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
     launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
-    language: "auto", time_format: "auto", show_date: true, show_battery: true, show_clock: true,
+    language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, time_format: "auto", show_date: true, show_battery: true, show_clock: true,
   });
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
   const [heroIndex, setHeroIndex]                   = useState(0);
   const [updateStatus, setUpdateStatus]             = useState(null); // null | "checking" | "up_to_date" | "available" | "error"
   const [updateInfo, setUpdateInfo]                 = useState(null);
   const [libraryRefreshStatus, setLibraryRefreshStatus] = useState(null); // null | "scanning" | "done"
-  const [sliderDraft, setSliderDraft] = useState(null);
-  const sliderDraftRef = useRef(null);
-  const sliderTrackRef = useRef(null);
+  const [sliderDraft, setSliderDraft] = useState({ key: null, value: null });
+  const sliderDraftRef = useRef({ key: null, value: null });
 
   // ── Search state ──────────────────────────────────────────────
   const [searchOpen, setSearchOpen]               = useState(false);
@@ -2198,7 +2197,8 @@ export default function App() {
     .filter(Boolean)
     .filter(a => tab === "Home" ? true : tab === "Games" ? a.app_type === "game" : a.app_type === "app");
 
-  const currentCols = tab === "Games" ? GAME_COLS : COLS;
+  const effectiveGameCols = Math.max(2, Math.round(GAME_COLS / (settings.game_cover_scale ?? 1.0)));
+  const currentCols = tab === "Games" ? effectiveGameCols : COLS;
 
   useEffect(() => {
     if (tab === "Settings") return;
@@ -2267,6 +2267,8 @@ export default function App() {
     { key: "divider_display",   label: t('settings.dividers.display'),                      type: "divider" },
     { key: "ui_scale",          label: t('settings.uiScale'),                               type: "slider", min: 0.75, max: 2.0, step: 0.05 },
     { key: "reset_scale",       label: t('settings.resetScale'),                            type: "action" },
+    { key: "home_cover_scale",  label: t('settings.homeCoverScale'),                        type: "slider", min: 0.5, max: 2.0, step: 0.05 },
+    { key: "game_cover_scale",  label: t('settings.gameCoverScale'),                        type: "slider", min: 0.5, max: 2.0, step: 0.05 },
     { key: "divider",           label: t('settings.dividers.library'),                      type: "divider" },
     { key: "scan_steam",        label: t('settings.scanSteam'),                             type: "toggle" },
     { key: "scan_xbox",         label: t('settings.scanXbox'),                              type: "toggle" },
@@ -2363,7 +2365,7 @@ export default function App() {
     const allApps         = appsRef.current;
     const rec             = recentRef.current;
     const currentPins     = pinsRef.current;
-    const cols            = currentTab === "Games" ? GAME_COLS : COLS;
+    const cols            = currentTab === "Games" ? Math.max(2, Math.round(GAME_COLS / (settingsRef.current.game_cover_scale ?? 1.0))) : COLS;
     const currentSettings = settingsRef.current;
 
     const fApps = allApps.filter(a => {
@@ -2647,7 +2649,7 @@ export default function App() {
     }
 
     if (section === "pinned") {
-      const pinnedCols = currentTab === "Games" ? GAME_COLS : COLS;
+      const pinnedCols = currentTab === "Games" ? Math.max(2, Math.round(GAME_COLS / (settingsRef.current.game_cover_scale ?? 1.0))) : COLS;
       if (fPinned.length === 0) { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; return; }
       if (key === "ArrowRight") { const ni = Math.min(index + 1, fPinned.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
       if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                  setFocusIndex(ni); focusIndexRef.current = ni; }
@@ -2665,7 +2667,7 @@ export default function App() {
       return;
     }
     if (section === "grid") {
-      const pinnedCols = currentTab === "Games" ? GAME_COLS : COLS;
+      const pinnedCols = currentTab === "Games" ? Math.max(2, Math.round(GAME_COLS / (settingsRef.current.game_cover_scale ?? 1.0))) : COLS;
       if (fApps.length === 0) return;
       if (key === "ArrowRight") { const ni = Math.min(index + 1, fApps.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
       if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                setFocusIndex(ni); focusIndexRef.current = ni; }
@@ -3091,8 +3093,9 @@ export default function App() {
                 const isPinned = pins.includes(app.id);
                 const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : (customArt[app.id] || null);
                 const fullApp = allAppsRef.current.find(a => a.id === app.id) || app;
-                const CARD_W = "clamp(76px, 10vw, 110px)";
-                const CARD_H = "clamp(114px, 15vw, 165px)";
+                const homeBase = Math.round(110 * (settings.home_cover_scale ?? 1.0));
+                const CARD_W = `${homeBase}px`;
+                const CARD_H = `${Math.round(homeBase * 1.5)}px`;
                 if (app.app_type === "game") {
                   return (
                     <div key={app.id} ref={focused ? focusedCardRef : null}
@@ -3255,29 +3258,29 @@ export default function App() {
         }
         if (item.type === "slider") {
           const val = settings[item.key] ?? 1.0;
-          const displayVal = sliderDraft !== null ? sliderDraft : val;
+          const isDragging = sliderDraft.key === item.key;
+          const displayVal = isDragging ? sliderDraft.value : val;
           const pct = `${Math.round(displayVal * 100)}%`;
           const trackPct = ((displayVal - item.min) / (item.max - item.min)) * 100;
-          const isDragging = sliderDraft !== null;
 
           const handleTrackMouseDown = (e) => {
             e.preventDefault();
-            const rect = sliderTrackRef.current.getBoundingClientRect();
+            const rect = e.currentTarget.getBoundingClientRect();
             const clamp = (v) => Math.round(Math.max(item.min, Math.min(item.max, v)) * 100) / 100;
             const snap = (v) => Math.round(v / item.step) * item.step;
             const calcVal = (clientX) => clamp(snap(item.min + ((clientX - rect.left) / rect.width) * (item.max - item.min)));
             const initial = calcVal(e.clientX);
-            sliderDraftRef.current = initial;
-            setSliderDraft(initial);
+            sliderDraftRef.current = { key: item.key, value: initial };
+            setSliderDraft({ key: item.key, value: initial });
             const onMove = (me) => {
               const v = calcVal(me.clientX);
-              sliderDraftRef.current = v;
-              setSliderDraft(v);
+              sliderDraftRef.current = { key: item.key, value: v };
+              setSliderDraft({ key: item.key, value: v });
             };
             const onUp = () => {
-              updateSetting(item.key, sliderDraftRef.current);
-              sliderDraftRef.current = null;
-              setSliderDraft(null);
+              updateSetting(item.key, sliderDraftRef.current.value);
+              sliderDraftRef.current = { key: null, value: null };
+              setSliderDraft({ key: null, value: null });
               window.removeEventListener("mousemove", onMove);
               window.removeEventListener("mouseup", onUp);
             };
@@ -3291,7 +3294,7 @@ export default function App() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <span style={{ fontSize: 11, color: focused ? accent.primary : theme.textDim, cursor: "pointer", userSelect: "none" }}
                   onClick={() => updateSetting(item.key, Math.max(item.min, Math.round((val - item.step) * 100) / 100))}>◀</span>
-                <div ref={sliderTrackRef} onMouseDown={handleTrackMouseDown}
+                <div onMouseDown={handleTrackMouseDown}
                   style={{ width: 140, height: 4, borderRadius: 2, background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", position: "relative", flexShrink: 0, cursor: "pointer" }}>
                   <div style={{ height: "100%", borderRadius: 2, background: accent.primary, width: `${trackPct}%`, transition: isDragging ? "none" : "width 0.08s ease" }} />
                   <div style={{ width: 14, height: 14, borderRadius: "50%", background: accent.primary, position: "absolute", top: -5, left: `calc(${trackPct}% - 7px)`, transition: isDragging ? "none" : "left 0.08s ease", boxShadow: `0 0 8px ${accent.glow}0.6)` }} />
@@ -3779,7 +3782,7 @@ export default function App() {
             </div>
 
             {tab === "Games" ? (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 12, paddingBottom: 100 }}>
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${effectiveGameCols}, minmax(0, 1fr))`, gap: 12, paddingBottom: 100 }}>
                 {filteredApps.map((app, i) => {
                   const focused = isFocused("grid", i);
                   const isPinned = pins.includes(app.id);

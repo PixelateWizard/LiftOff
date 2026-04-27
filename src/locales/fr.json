@@ -54,6 +54,8 @@
     "backgroundClouds": "Nuages de fond",
     "uiScale": "Échelle UI",
     "resetScale": "Réinitialiser l'échelle",
+    "homeCoverScale": "Taille jaquettes Accueil",
+    "gameCoverScale": "Taille jaquettes Jeux",
     "scanSteam": "Scanner Steam",
     "scanXbox": "Scanner Xbox",
     "scanStoreApps": "Scanner les apps du Store",
