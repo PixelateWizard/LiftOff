@@ -1506,6 +1506,7 @@ export default function App() {
   const [date, setDate]                             = useState("");
   const [battery, setBattery]                       = useState(0);
   const [charging, setCharging]                     = useState(false);
+  const [hasBattery, setHasBattery]                 = useState(false);
   const [gameArt, setGameArt]                       = useState({});
   const [heroStatic, setHeroStatic]                 = useState({});
   const [heroAnimated, setHeroAnimated]             = useState({});
@@ -1523,7 +1524,7 @@ export default function App() {
     default_tab: "Home", scan_steam: true, scan_xbox: true,
     scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
     launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
-    language: "auto",
+    language: "auto", time_format: "auto", show_date: true, show_battery: true, show_clock: true,
   });
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
   const [heroIndex, setHeroIndex]                   = useState(0);
@@ -1874,16 +1875,16 @@ export default function App() {
   useEffect(() => {
     const tick = () => {
       const now = new Date();
-      let h = now.getHours(), m = now.getMinutes();
-      const ampm = h >= 12 ? "PM" : "AM";
-      h = h % 12 || 12;
-      setTime(`${h}:${String(m).padStart(2, "0")} ${ampm}`);
-      setDate(now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }));
+      const locale = i18n.language || "en";
+      const fmt = settingsRef.current.time_format;
+      const use12 = fmt === "12h" || (fmt === "auto" && new Intl.DateTimeFormat(locale, { hour: "numeric" }).resolvedOptions().hour12);
+      setTime(now.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit", hour12: use12 }));
+      setDate(now.toLocaleDateString(locale, { weekday: "short", month: "short", day: "numeric" }));
     };
     tick();
     const id = setInterval(tick, 10000);
     return () => clearInterval(id);
-  }, []);
+  }, [settings.time_format, i18n.language]);
 
   const getAudioCtx = () => {
     if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
@@ -1925,7 +1926,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const fetchBattery = () => { invoke("get_battery").then(info => { if (info.percent > 0) setBattery(info.percent); setCharging(info.charging); }); };
+    const fetchBattery = () => { invoke("get_battery").then(info => { if (info.percent > 0) { setBattery(info.percent); setHasBattery(true); } setCharging(info.charging); }); };
     fetchBattery();
     const id = setInterval(fetchBattery, 10000);
     return () => clearInterval(id);
@@ -2277,6 +2278,10 @@ export default function App() {
     { key: "default_tab",       label: t('settings.defaultTab'),                            type: "cycle",  options: ["Home","Games","Apps"] },
     { key: "repeat_speed",      label: t('settings.repeatSpeed'),                           type: "cycle",  options: ["slow","normal","fast"] },
     { key: "language",          label: t('settings.language'),                               type: "cycle",  options: ["auto","en","fr"] },
+    { key: "time_format",       label: t('settings.timeFormat'),                             type: "cycle",  options: ["auto","12h","24h"] },
+    { key: "show_clock",        label: t('settings.showClock'),                              type: "toggle" },
+    { key: "show_date",         label: t('settings.showDate'),                               type: "toggle" },
+    { key: "show_battery",      label: t('settings.showBattery'),                            type: "toggle" },
     { key: "launch_at_startup", label: t('settings.launchAtStartup'),                       type: "toggle" },
     { key: "animated_heroes",   label: t('settings.heroArtMode'),                           type: "cycle",  options: ["static", "animated", "custom"] },
     { key: "divider_ctrl",      label: t('settings.dividers.controller'),                   type: "divider" },
@@ -3621,8 +3626,9 @@ export default function App() {
               ))}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-              <span style={{ fontSize: 12, color: theme.textDim }}>{date}</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? "rgba(245,237,232,0.7)" : "rgba(42,26,14,0.7)" }}>{time}</span>
+              {settings.show_date && <span style={{ fontSize: 12, color: theme.textDim }}>{date}</span>}
+              {settings.show_clock && <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? "rgba(245,237,232,0.7)" : "rgba(42,26,14,0.7)" }}>{time}</span>}
+              {hasBattery && settings.show_battery && (
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
                   <div style={{ width: 22, height: 11, border: `1.5px solid ${isDark ? "rgba(245,237,232,0.3)" : "rgba(42,26,14,0.3)"}`, borderRadius: 3, padding: "1.5px", display: "flex", alignItems: "center" }}>
@@ -3634,8 +3640,9 @@ export default function App() {
                     </svg>
                   )}
                 </div>
-                <span style={{ fontSize: 11, color: charging ? "#4ae88a" : theme.textDim }}>{battery > 0 ? `${battery}%` : "--"}</span>
+                <span style={{ fontSize: 11, color: charging ? "#4ae88a" : theme.textDim }}>{battery}%</span>
               </div>
+              )}
             </div>
           </div>
         </div>

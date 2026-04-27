@@ -69,6 +69,10 @@
     "clearRecents": "Clear Recently Played",
     "clearCache": "Clear Art Cache",
     "language": "Language",
+    "timeFormat": "Time Format",
+    "showClock": "Show Clock",
+    "showDate": "Show Date",
+    "showBattery": "Show Battery",
     "version": "LiftOff v{{version}}",
     "checkUpdates": "Check for Updates",
     "coffee": "☕ Buy Me a Coffee",
@@ -112,7 +116,9 @@
       "Apps": "Apps",
       "auto": "Auto",
       "en": "English",
-      "fr": "Français"
+      "fr": "Français",
+      "12h": "12h",
+      "24h": "24h"
     }
   },
   "home": {
