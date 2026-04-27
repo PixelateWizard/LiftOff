@@ -52,6 +52,10 @@
     "theme": "Thème",
     "backgroundStars": "Étoiles de fond",
     "backgroundClouds": "Nuages de fond",
+    "wideLayout": "Disposition large",
+    "transparentBars": "Barres transparentes",
+    "transparentTopbar": "Barre supérieure",
+    "transparentBottombar": "Barre inférieure",
     "uiScale": "Échelle UI",
     "resetScale": "Réinitialiser l'échelle",
     "homeCoverScale": "Taille jaquettes Accueil",
@@ -119,6 +123,8 @@
       "auto": "Auto",
       "en": "English",
       "fr": "Français",
+      "silver": "Argent",
+      "white": "Blanc",
       "12h": "12h",
       "24h": "24h"
     }

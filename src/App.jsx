@@ -10,6 +10,7 @@ import uiSoundAlt from "./assets/uiSoundAlt.mp3";
 import startingSound from "./assets/appLaunchSound.wav";
 import appStartSound from "./assets/gameLaunchSound.wav";
 import appLoadedSound from "./assets/appLoadedSound.wav";
+import SettingsSubGroup from "./components/SettingsSubGroup";
 
 const COLS = 6;
 const GAME_COLS = 5;
@@ -23,6 +24,8 @@ const ACCENTS = {
   neon:     { primary: "#4ae88a", lightPrimary: "#15803d", light: "#6cffaa", dark: "#28c96a", glow: "rgba(74,232,138,",  lightBg: "#ddf5e8" },
   rose:     { primary: "#e84a8a", light: "#ff6caa", dark: "#c9286a", glow: "rgba(232,74,138,",  lightBg: "#f5dde8" },
   midnight: { primary: "#8a4ae8", light: "#aa6cff", dark: "#6a28c9", glow: "rgba(138,74,232,",  lightBg: "#e8ddff" },
+  silver:   { primary: "#909090", light: "#c0c0c0", dark: "#606060", glow: "rgba(144,144,144,", lightBg: "#f0f0f0" },
+  white:    { primary: "#d8d8d8", light: "#ffffff", dark: "#aaaaaa", glow: "rgba(220,220,220,", lightBg: "#f8f8f8" },
 };
 
 const THEMES = {
@@ -1233,6 +1236,7 @@ function ControllerTestWidget({ accent, theme, isDark, glass }) {
 // ── Manage Apps Modal ─────────────────────────────────────────
 // Defined outside App so the component type is stable across re-renders.
 // If it were defined inside App, every clock-tick re-render would create a
+
 // new function reference, causing React to unmount/remount and wipe state.
 //
 // Shows all apps (visible + hidden) in one list.
@@ -1520,7 +1524,7 @@ export default function App() {
   const [cacheClearStatus, setCacheClearStatus]     = useState({ line1: "", line2: "" });
   const [launchingApp, setLaunchingApp]             = useState(null);
   const [settings, setSettings]                     = useState({
-    accent: "ember", theme: "dark", stars_enabled: true,
+    accent: "ember", theme: "dark", stars_enabled: true, wide_layout: false, transparent_bars: false, transparent_topbar: false, transparent_bottombar: false,
     default_tab: "Home", scan_steam: true, scan_xbox: true,
     scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
     launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
@@ -2061,6 +2065,7 @@ export default function App() {
   const updateSetting = (key, value) => {
     setSettings(prev => {
       const updated = { ...prev, [key]: value };
+      if (key === "transparent_bars") { updated.transparent_topbar = value; updated.transparent_bottombar = value; }
       settingsRef.current = updated;
       invoke("save_settings", { settings: updated }).catch(console.error);
       return updated;
@@ -2074,6 +2079,15 @@ export default function App() {
         i18n.changeLanguage(value);
       }
     }
+  };
+
+  const updateSettingsBatch = (updates) => {
+    setSettings(prev => {
+      const updated = { ...prev, ...updates };
+      settingsRef.current = updated;
+      invoke("save_settings", { settings: updated }).catch(console.error);
+      return updated;
+    });
   };
 
   const checkForUpdates = () => {
@@ -2264,7 +2278,12 @@ export default function App() {
     { key: "accent",            label: t('settings.accentColor'),                           type: "accent" },
     { key: "theme",             label: t('settings.theme'),                                 type: "cycle",  options: ["dark","light","system"] },
     { key: "stars_enabled",     label: isDark ? t('settings.backgroundStars') : t('settings.backgroundClouds'), type: "toggle" },
-    { key: "divider_display",   label: t('settings.dividers.display'),                      type: "divider" },
+    { key: "wide_layout",          label: t('settings.wideLayout'),                          type: "toggle" },
+    { key: "transparent_bars", label: t('settings.transparentBars'), type: "toggle", subItems: [
+        { key: "transparent_topbar",    label: t('settings.transparentTopbar'),    type: "toggle" },
+        { key: "transparent_bottombar", label: t('settings.transparentBottombar'), type: "toggle" },
+    ]},
+    { key: "divider_display",      label: t('settings.dividers.display'),                    type: "divider" },
     { key: "ui_scale",          label: t('settings.uiScale'),                               type: "slider", min: 0.75, max: 2.0, step: 0.05 },
     { key: "reset_scale",       label: t('settings.resetScale'),                            type: "action" },
     { key: "home_cover_scale",  label: t('settings.homeCoverScale'),                        type: "slider", min: 0.5, max: 2.0, step: 0.05 },
@@ -2303,7 +2322,8 @@ export default function App() {
     { key: "credit3",   label: "Mysterious Sparkle Flourish",      author: "DanaiOuranos", license: "CC0",       url: "https://freesound.org/s/844398/",                        type: "attribution" },
     { key: "credit4",   label: "Universal UI Soundpack",           author: "Nathan Gibson", license: "CC BY 4.0", url: "https://cyrex-studios.itch.io/universal-ui-soundpack",  type: "attribution" },
   ];
-  const navigableSettings = SETTINGS_ITEMS.filter(i => i.type !== "divider" && i.type !== "info" && i.type !== "controller_test");
+  const navigableSettings = SETTINGS_ITEMS.flatMap(i => (i.subItems && settings[i.key]) ? [i, ...i.subItems] : [i])
+    .filter(i => i.type !== "divider" && i.type !== "info" && i.type !== "controller_test");
 
   // ── handleNav ─────────────────────────────────────────────────
   const handleNav = (key) => {
@@ -2936,7 +2956,7 @@ export default function App() {
     const heroFocused = focusSec === "hero";
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", padding: "14px 24px 0", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box", minHeight: "100%" }}>
+      <div style={{ display: "flex", flexDirection: "column", padding: "14px 24px 0", ...(settings.wide_layout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box", minHeight: "100%" }}>
         {/* ── HERO ── */}
         <div style={{ position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: 20, overflow: "hidden", display: "flex", flexDirection: "column", flexShrink: 0,
           border: heroFocused ? `1px solid ${accent.glow}0.5)` : `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
@@ -3184,21 +3204,46 @@ export default function App() {
   );
 
   const SettingsScreen = () => (
-    <div style={{ padding: "14px 24px 160px", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+    <div style={{ padding: "14px 24px 160px", ...(settings.wide_layout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" }}>
       {SETTINGS_ITEMS.map((item) => {
         if (item.type === "divider") return <div key={item.key} style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, padding: "22px 4px 10px" }}>{item.label}</div>;
         const navIdx  = navigableSettings.findIndex(n => n.key === item.key);
         const focused = settingsFocusIndex === navIdx;
-        const rowStyle = {
-          ...glass, borderRadius: 14, padding: "14px 20px", marginBottom: 8,
+        const makeRowStyle = (sub = false) => ({
+          ...glass, borderRadius: 14, padding: "14px 20px", marginBottom: sub ? 6 : 8,
           display: "flex", alignItems: "center", justifyContent: "space-between",
           cursor: "pointer", transition: "all 0.15s ease",
-          ...(focused ? { border: `1px solid ${accent.glow}0.6)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, background: isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)` } : { border: "1px solid rgba(255,255,255,0.06)" }),
-        };
+          ...(focused && !sub ? { border: `1px solid ${accent.glow}0.6)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, background: isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)` } : { border: "1px solid rgba(255,255,255,0.06)" }),
+        });
+        const rowStyle = makeRowStyle();
         const rowRef = focused ? settingsFocusedRef : null;
         if (item.type === "info") return <div key={item.key} ref={rowRef} style={{ ...rowStyle, justifyContent: "center", cursor: "default" }}><span style={{ fontSize: 13, color: theme.textDim }}>{item.label}</span></div>;
         if (item.type === "toggle") {
           const val = settings[item.key];
+          if (item.subItems) {
+            return (
+              <SettingsSubGroup
+                key={item.key}
+                glass={glass} accent={accent} isDark={isDark} theme={theme}
+                label={item.label}
+                value={val}
+                onChange={newVal => updateSetting(item.key, newVal)}
+                focused={focused}
+                focusedRef={rowRef}
+                items={item.subItems.map(sub => {
+                  const subNavIdx = navigableSettings.findIndex(n => n.key === sub.key);
+                  const subFocused = settingsFocusIndex === subNavIdx;
+                  return {
+                    label: sub.label,
+                    value: settings[sub.key],
+                    onChange: newVal => updateSetting(sub.key, newVal),
+                    focused: subFocused,
+                    focusedRef: settingsFocusedRef,
+                  };
+                })}
+              />
+            );
+          }
           return (
             <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => updateSetting(item.key, !val)}>
               <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
@@ -3613,7 +3658,13 @@ export default function App() {
 
         {/* Topbar */}
         <div style={{ position: "sticky", top: 0, zIndex: 100 }}>
-          <div style={{ ...glass, borderRadius: 16, padding: "10px 20px", display: "flex", alignItems: "center", gap: 16, maxWidth: 1400, margin: "14px auto 0", width: "calc(100% - 48px)" }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 16, padding: "10px 20px",
+            ...(settings.transparent_topbar ? {} : { ...glass, borderRadius: 16 }),
+            ...(settings.wide_layout
+              ? (settings.transparent_topbar ? { width: "100%", margin: "14px 0 0", boxSizing: "border-box" } : { width: "calc(100% - 16px)", margin: "14px 8px 0", boxSizing: "border-box" })
+              : { maxWidth: 1400, margin: "14px auto 0", width: "calc(100% - 48px)" }),
+          }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
               <RocketLogo />
               <span key={`${settings.accent}-${settings.theme}`} style={{ fontWeight: 700, fontSize: 16, letterSpacing: "0.04em", background: `linear-gradient(135deg, ${accent.light}, ${accent.primary})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>LiftOff</span>
@@ -3670,7 +3721,7 @@ export default function App() {
           </div>
           {(tab === "Games" || tab === "Apps") && (
             <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
-            <div style={{ padding: "14px 24px 0", maxWidth: 1400, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+            <div style={{ padding: "14px 24px 0", ...(settings.wide_layout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" }}>
 
             {/* ── SOURCE SUB-TABS (Games only) + MANAGE BUTTONS ── */}
             {(() => {
@@ -3842,7 +3893,13 @@ export default function App() {
 
         {/* Bottom bar */}
         <div style={{ position: "sticky", bottom: 0, zIndex: 100 }}>
-          <div style={{ ...glass, borderRadius: 12, padding: "10px 20px", display: "flex", gap: 20, alignItems: "center", maxWidth: 1400, margin: "0 auto 14px", width: "calc(100% - 48px)" }}>
+          <div style={{
+            display: "flex", gap: 20, alignItems: "center", padding: "10px 20px",
+            ...(settings.transparent_bottombar ? {} : { ...glass, borderRadius: 12 }),
+            ...(settings.wide_layout
+              ? (settings.transparent_bottombar ? { width: "100%", margin: "0 0 14px", boxSizing: "border-box" } : { width: "calc(100% - 16px)", margin: "0 8px 14px", boxSizing: "border-box" })
+              : { maxWidth: 1400, margin: "0 auto 14px", width: "calc(100% - 48px)" }),
+          }}>
             {tab === "Settings"
               ? <><Btn color="#4a9c4a" label={t('gamepad.aSelect')} /><Btn color="#b03030" label={t('gamepad.bBack')} /></>
               : <>
