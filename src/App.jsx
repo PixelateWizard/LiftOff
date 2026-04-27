@@ -5,6 +5,17 @@ import { useTranslation } from "react-i18next";
 import i18n from "./i18n";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import FileBrowser from "./components/FileBrowser";
+import GamepadKeyboard from "./components/GamepadKeyboard";
+import { GamepadBtn } from "./components/GamepadBtn";
+import AddEntryModal from "./components/modals/AddEntryModal";
+import ConfirmModal from "./components/modals/ConfirmModal";
+import FolderManagerModal from "./components/modals/FolderManagerModal";
+import ColPickerModal from "./components/modals/ColPickerModal";
+import CollectionManagerModal from "./components/modals/CollectionManagerModal";
+import ModalShell from "./components/modals/ModalShell";
+import ContextMenuModal from "./components/modals/ContextMenuModal";
+import HideModal from "./components/modals/HideModal";
 import uiSound from "./assets/uiSound.mp3";
 import uiSoundAlt from "./assets/uiSoundAlt.mp3";
 import startingSound from "./assets/appLaunchSound.wav";
@@ -1233,237 +1244,6 @@ function ControllerTestWidget({ accent, theme, isDark, glass }) {
   );
 }
 
-// ── Manage Apps Modal ─────────────────────────────────────────
-// Defined outside App so the component type is stable across re-renders.
-// If it were defined inside App, every clock-tick re-render would create a
-
-// new function reference, causing React to unmount/remount and wipe state.
-//
-// Shows all apps (visible + hidden) in one list.
-// Checked = shown in launcher. Uncheck to hide, check to restore.
-function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHideModal, toggleHidden, glass, accent, isDark, theme }) {
-    const { t } = useTranslation();
-    const visibleApps = appsRef.current.filter(a => tab === "Games" ? a.app_type === "game" : a.app_type === "app");
-    const hiddenIds   = hiddenRef.current;
-
-    // Checked = currently visible. Unchecked = hidden.
-    const [localChecked, setLocalChecked] = useState(() => new Set(visibleApps.map(a => a.id)));
-    const [focusIdx, setFocusIdx] = useState(0);
-    const focusIdxRef = useRef(0);
-    const listRef     = useRef(null);
-
-    // Combined list: visible apps first, then hidden apps (with full data looked up from allAppsRef)
-    const hiddenApps = hiddenIds.map(id => {
-      const full = allAppsRef.current.find(a => a.id === id);
-      return full ? { ...full, _hidden: true } : { id, name: id, _hidden: true };
-    }).filter(a => tab === "Games" ? a.app_type === "game" : a.app_type === "app" || !a.app_type);
-    const allItems = [...visibleApps.map(a => ({ ...a, _hidden: false })), ...hiddenApps];
-
-    // Keep refs current so the no-dep effect can always read latest values
-    const allItemsRef     = useRef(allItems);
-    const localCheckedRef = useRef(localChecked);
-    useEffect(() => { allItemsRef.current     = allItems;     });
-    useEffect(() => { localCheckedRef.current = localChecked; });
-
-    // Scroll focused row into view
-    useEffect(() => {
-      if (listRef.current) {
-        const rows = listRef.current.querySelectorAll("[data-modal-row]");
-        if (rows[focusIdx]) rows[focusIdx].scrollIntoView({ block: "nearest", behavior: "smooth" });
-      }
-    }, [focusIdx]);
-
-    // No-dep effect — all mutable state accessed via refs
-    useEffect(() => {
-      let closed = false;
-
-      const toggleItem = (i) => {
-        const item = allItemsRef.current[i];
-        if (!item) return;
-        setLocalChecked(prev => { const n = new Set(prev); n.has(item.id) ? n.delete(item.id) : n.add(item.id); return n; });
-      };
-
-      const doClose = () => { closed = true; closeHideModal(); };
-
-      const doConfirm = () => {
-        closed = true;
-        const checked = localCheckedRef.current;
-        const items   = allItemsRef.current;
-        // Hide visible apps that were unchecked
-        items.filter(a => !a._hidden && !checked.has(a.id)).forEach(a => toggleHidden(a.id));
-        // Restore hidden apps that were checked
-        items.filter(a =>  a._hidden &&  checked.has(a.id)).forEach(a => toggleHidden(a.id));
-        closeHideModal();
-      };
-
-      const handle = (key) => {
-        if (closed) return;
-        const total      = allItemsRef.current.length + 2;
-        const cancelIdx  = allItemsRef.current.length;
-        const confirmIdx = allItemsRef.current.length + 1;
-        if      (key === "ArrowDown" || key === "ArrowRight") { const ni = Math.min(focusIdxRef.current + 1, total - 1); setFocusIdx(ni); focusIdxRef.current = ni; }
-        else if (key === "ArrowUp"   || key === "ArrowLeft")  { const ni = Math.max(focusIdxRef.current - 1, 0);         setFocusIdx(ni); focusIdxRef.current = ni; }
-        else if (key === "Enter") {
-          const i = focusIdxRef.current;
-          if      (i === cancelIdx)  doClose();
-          else if (i === confirmIdx) doConfirm();
-          else                       toggleItem(i);
-        }
-        else if (key === "Start")  doConfirm();
-        else if (key === "Escape") doClose();
-      };
-
-      // Keyboard — capture phase, runs before main handler guard
-      const onKey = (e) => {
-        if (closed) return;
-        const map = { ArrowDown:"ArrowDown", ArrowUp:"ArrowUp", ArrowLeft:"ArrowLeft", ArrowRight:"ArrowRight", Enter:"Enter", Escape:"Escape", " ":"Enter" };
-        if (map[e.key]) { e.preventDefault(); e.stopPropagation(); handle(map[e.key]); }
-      };
-      window.addEventListener("keydown", onKey, true);
-
-      // Gamepad poll with hold-repeat for directions
-      let rAF;
-      const lastBtn   = {};
-      const pressTime = {};
-      const repeating = {};
-      const DIRS      = new Set(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"]);
-      const INIT_MS   = 400;
-      const RPT_MS    = 100;
-      let startReleased = false;
-
-      const pollModal = (now) => {
-        if (closed) return;
-        const gp  = getBestGamepad();
-        if (gp) {
-          const base = readGpState(gp);
-          if (!base.Start) startReleased = true;
-          const state = { ...base, Start: startReleased && base.Start };
-          Object.keys(state).forEach(k => {
-            const pressed = state[k], was = lastBtn[k];
-            if (pressed && !was) {
-              handle(k); pressTime[k] = now; repeating[k] = false;
-            } else if (pressed && was && DIRS.has(k)) {
-              const held = now - (pressTime[k] || now);
-              if (!repeating[k] && held >= INIT_MS) { repeating[k] = true; pressTime[k] = now; handle(k); }
-              else if (repeating[k] && held >= RPT_MS) { pressTime[k] = now; handle(k); }
-            } else if (!pressed && was) { pressTime[k] = 0; repeating[k] = false; }
-            lastBtn[k] = pressed;
-          });
-        }
-        rAF = requestAnimationFrame(pollModal);
-      };
-      rAF = requestAnimationFrame(pollModal);
-
-      return () => { closed = true; window.removeEventListener("keydown", onKey, true); cancelAnimationFrame(rAF); };
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-    const listLen    = allItems.length;
-    const cancelIdx  = listLen;
-    const confirmIdx = listLen + 1;
-
-    const pendingHide    = visibleApps.filter(a => !localChecked.has(a.id)).length;
-    const pendingRestore = hiddenIds.filter(id => localChecked.has(id)).length;
-    const changeCount    = pendingHide + pendingRestore;
-
-    return (
-      <div
-        data-modal-overlay
-        onMouseDown={e => e.stopPropagation()}
-        onClick={e => e.stopPropagation()}
-        onDoubleClick={e => e.stopPropagation()}
-        style={{
-          position: "fixed", inset: 0, zIndex: 8500,
-          background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontFamily: "'Segoe UI', sans-serif",
-          userSelect: "none",
-        }}>
-        <div data-modal-container style={{ ...glass, borderRadius: 20, width: "min(600px, 90vw)", maxHeight: "75vh",
-          display: "flex", flexDirection: "column", overflow: "hidden",
-          border: `1px solid ${accent.glow}0.3)` }}>
-
-          {/* Header */}
-          <div style={{ padding: "20px 24px 14px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`, flexShrink: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: theme.text, marginBottom: 4 }}>
-              {tab === "Games" ? t('hideModal.manageGames') : t('hideModal.manageApps')}
-            </div>
-            <div style={{ fontSize: 12, color: theme.textDim }}>
-              {t('hideModal.hint')}
-            </div>
-          </div>
-
-          {/* List */}
-          <div ref={listRef} style={{ overflowY: "auto", flex: 1, padding: "8px 0" }}>
-            {allItems.length === 0 && (
-              <div style={{ padding: "40px 24px", textAlign: "center", color: theme.textFaint, fontSize: 13 }}>{t('hideModal.noApps')}</div>
-            )}
-            {allItems.map((item, i) => {
-              const checked  = localChecked.has(item.id);
-              const rowFocus = focusIdx === i;
-              const isHidden = item._hidden;
-              return (
-                <div key={item.id} data-modal-row
-                  onClick={() => { setFocusIdx(i); focusIdxRef.current = i; setLocalChecked(prev => { const n = new Set(prev); checked ? n.delete(item.id) : n.add(item.id); return n; }); }}
-                  style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 24px", cursor: "pointer",
-                    background: rowFocus ? `${accent.glow}0.12)` : "transparent",
-                    borderLeft: `3px solid ${rowFocus ? accent.primary : "transparent"}`,
-                    opacity: isHidden && !checked ? 0.5 : 1,
-                    transition: "all 0.1s ease" }}>
-                  <div style={{ width: 20, height: 20, borderRadius: 5, flexShrink: 0,
-                    border: `2px solid ${checked ? accent.primary : (isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.2)")}`,
-                    background: checked ? accent.primary : "transparent",
-                    display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.1s ease" }}>
-                    {checked && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                  </div>
-                  {item.icon_base64
-                    ? <div style={{ width: 28, height: 28, borderRadius: 6, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <img src={`data:image/png;base64,${item.icon_base64}`} alt={item.name} style={{ width: "100%", height: "100%", maxWidth: "100%", maxHeight: "100%", objectFit: "contain", objectPosition: "center", display: "block" }} />
-                      </div>
-                    : <div style={{ width: 28, height: 28, borderRadius: 6, background: `${accent.glow}0.15)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: accent.primary, flexShrink: 0 }}>{(item.name || "?")[0]}</div>
-                  }
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: theme.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {item.name || item.id}
-                    </div>
-                    <div style={{ fontSize: 10, color: theme.textFaint, textTransform: "capitalize" }}>
-                      {isHidden ? `${item.source || "hidden"}` : item.source}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Footer */}
-          <div style={{ padding: "14px 24px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`,
-            display: "flex", gap: 10, justifyContent: "flex-end", flexShrink: 0 }}>
-            <div data-modal-row onClick={closeHideModal}
-              style={{ padding: "9px 20px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600,
-                color: theme.textDim,
-                background: focusIdx === cancelIdx ? (isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)") : (isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"),
-                border: `2px solid ${focusIdx === cancelIdx ? accent.primary : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
-                transition: "all 0.1s ease" }}>
-              {t('common.cancel')}
-            </div>
-            <div data-modal-row onClick={() => {
-                const checked = localChecked;
-                visibleApps.filter(a => !checked.has(a.id)).forEach(a => toggleHidden(a.id));
-                hiddenIds.filter(id => checked.has(id)).forEach(id => toggleHidden(id));
-                closeHideModal();
-              }}
-              style={{ padding: "9px 20px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontWeight: 600,
-                color: "white",
-                background: focusIdx === confirmIdx ? accent.light : accent.primary,
-                border: `2px solid ${focusIdx === confirmIdx ? "white" : accent.primary}`,
-                boxShadow: `0 2px 12px ${accent.glow}0.4)`,
-                transition: "all 0.1s ease" }}>
-              {changeCount > 0 ? t('hideModal.saveChanges', { count: changeCount }) : t('hideModal.save')}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-}
 // ─────────────────────────────────────────────────────────────
 
 async function sampleIconColor(base64) {
@@ -1502,6 +1282,20 @@ export default function App() {
   const [gameSourceTab, setGameSourceTab]           = useState("All"); // "All" | "Steam" | "Xbox" | "Other"
   const [subtabFocusIndex, setSubtabFocusIndex]     = useState(0);    // index within subtab row
   const [showHideModal, setShowHideModal]           = useState(false);
+  const [showFileBrowser, setShowFileBrowser]       = useState(null);  // null | "file" | "folder"
+  const [addAppType, setAddAppType]                 = useState("game"); // "game" | "app"
+  const [pendingFile, setPendingFile]               = useState(null);  // FileEntry from FileBrowser
+  const [customSources, setCustomSources]           = useState([]);    // extra source names
+  const [customFolders, setCustomFolders]           = useState([]);    // { id, path, source, app_type, enabled }
+  const [appCollections, setAppCollections]         = useState([]);    // { id, name }
+  const [appMemberships, setAppMemberships]         = useState({});    // app_id -> [collection_id, ...]
+  const [appCollectionTab, setAppCollectionTab]     = useState("All"); // selected collection in Apps tab
+  const [gameCollections, setGameCollections]       = useState([]);    // { id, name }
+  const [gameMemberships, setGameMemberships]       = useState({});    // game_id -> [collection_id, ...]
+  const [showColModal, setShowColModal]             = useState(false); // collection manager modal
+  const [colPickerApp, setColPickerApp]             = useState(null);  // app whose collections are being edited
+  const [confirmDelete, setConfirmDelete]           = useState(null);  // app pending deletion confirm
+  const [showFolderManager, setShowFolderManager]   = useState(false); // folder manager modal
   const [loading, setLoading]                       = useState(true);
   const [splashExiting, setSplashExiting]           = useState(false);
   const [focusSection, setFocusSection]             = useState("hero");
@@ -1580,6 +1374,18 @@ export default function App() {
   const gameSourceTabRef      = useRef("All");
   const subtabFocusIndexRef   = useRef(0);
   const showHideModalRef      = useRef(false);
+  const showFileBrowserRef    = useRef(null);
+  const pendingFileRef        = useRef(null);
+  const customSourcesRef      = useRef([]);
+  const appCollectionsRef     = useRef([]);
+  const appMembershipsRef     = useRef({});
+  const appCollectionTabRef   = useRef("All");
+  const gameCollectionsRef    = useRef([]);
+  const gameMembershipsRef    = useRef({});
+  const showColModalRef       = useRef(false);
+  const colPickerAppRef       = useRef(null);
+  const confirmDeleteRef      = useRef(null);
+  const showFolderManagerRef  = useRef(false);
   const suppressUntilRelease  = useRef({}); // buttons held when modal closed — suppress until released
   const isReadyRef            = useRef(false);
   const heroVideoRefs         = useRef({});
@@ -1777,7 +1583,7 @@ export default function App() {
           }
 
           if (pressed && !wasPressed) {
-            if (!showHideModalRef.current) handleNavRef.current?.(key);
+            if (!showHideModalRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
             btnPressTime.current[key]  = now;
             btnRepeating.current[key]  = false;
           } else if (pressed && wasPressed && REPEATABLE.has(key)) {
@@ -1785,10 +1591,10 @@ export default function App() {
             if (!btnRepeating.current[key] && heldMs >= initialDelay) {
               btnRepeating.current[key] = true;
               btnPressTime.current[key] = now;
-              if (!showHideModalRef.current) handleNavRef.current?.(key);
+              if (!showHideModalRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
             } else if (btnRepeating.current[key] && heldMs >= repeatDelay) {
               btnPressTime.current[key] = now;
-              if (!showHideModalRef.current) handleNavRef.current?.(key);
+              if (!showHideModalRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
             }
           } else if (!pressed && wasPressed) {
             btnPressTime.current[key]  = 0;
@@ -1835,6 +1641,19 @@ export default function App() {
     document.head.appendChild(style);
     return () => style.remove();
   }, []);
+
+  useEffect(() => { showFileBrowserRef.current = showFileBrowser; }, [showFileBrowser]);
+  useEffect(() => { pendingFileRef.current = pendingFile; }, [pendingFile]);
+  useEffect(() => { customSourcesRef.current = customSources; }, [customSources]);
+  useEffect(() => { appCollectionsRef.current = appCollections; }, [appCollections]);
+  useEffect(() => { appMembershipsRef.current = appMemberships; }, [appMemberships]);
+  useEffect(() => { appCollectionTabRef.current = appCollectionTab; }, [appCollectionTab]);
+  useEffect(() => { gameCollectionsRef.current = gameCollections; }, [gameCollections]);
+  useEffect(() => { gameMembershipsRef.current = gameMemberships; }, [gameMemberships]);
+  useEffect(() => { showColModalRef.current = showColModal; }, [showColModal]);
+  useEffect(() => { colPickerAppRef.current = colPickerApp; }, [colPickerApp]);
+  useEffect(() => { confirmDeleteRef.current = confirmDelete; }, [confirmDelete]);
+  useEffect(() => { showFolderManagerRef.current = showFolderManager; }, [showFolderManager]);
 
   useEffect(() => {
     const currentIsDark = (() => {
@@ -1942,13 +1761,14 @@ export default function App() {
       const auto = Math.min(2.0, Math.max(0.75, Math.min(res.width / 1920, res.height / 1080)));
       autoScaleRef.current = auto;
       // ui_scale is null when never saved; substitute the auto-detected value.
-      const updated = { ...s, ui_scale: s.ui_scale ?? auto };
+      const updated = { ...settingsRef.current, ...s, ui_scale: s.ui_scale ?? auto };
       setSettings(updated); settingsRef.current = updated;
       setTab(s.default_tab || "Home"); tabRef.current = s.default_tab || "Home";
       if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
     }).catch(() => {
       invoke("get_settings").then(s => {
-        setSettings(s); settingsRef.current = s;
+        const merged = { ...settingsRef.current, ...s };
+        setSettings(merged); settingsRef.current = merged;
         setTab(s.default_tab || "Home"); tabRef.current = s.default_tab || "Home";
         if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
       });
@@ -1971,6 +1791,26 @@ export default function App() {
     invoke("get_pins").then(loadedPins => {
       setPins(loadedPins); pinsRef.current = loadedPins;
     });
+    invoke("get_custom_data").then(data => {
+      const sources = [...new Set([
+        ...data.apps.map(a => a.source),
+        ...data.folders.map(f => f.source),
+      ])].filter(s => !["Steam","Xbox","Bnet","Other","steam","xbox","battlenet","desktop","uwp"].includes(s));
+      setCustomSources(sources); customSourcesRef.current = sources;
+      setCustomFolders(data.folders || []);
+    }).catch(() => {});
+    invoke("get_app_collections").then(cols => {
+      setAppCollections(cols); appCollectionsRef.current = cols;
+    }).catch(() => {});
+    invoke("get_app_memberships").then(m => {
+      setAppMemberships(m); appMembershipsRef.current = m;
+    }).catch(() => {});
+    invoke("get_game_collections").then(cols => {
+      setGameCollections(cols); gameCollectionsRef.current = cols;
+    }).catch(() => {});
+    invoke("get_game_memberships").then(m => {
+      setGameMemberships(m); gameMembershipsRef.current = m;
+    }).catch(() => {});
     Promise.all([invoke("get_all_apps"), invoke("get_hidden")]).then(([all, loadedHidden]) => {
       allAppsRef.current = all;
       setHidden(loadedHidden); hiddenRef.current = loadedHidden;
@@ -2132,10 +1972,19 @@ export default function App() {
       if (gameSourceTab === "Steam") return a.source === "steam";
       if (gameSourceTab === "Xbox")  return a.source === "xbox";
       if (gameSourceTab === "Bnet")  return a.source === "battlenet";
-      if (gameSourceTab === "Other") return a.source !== "steam" && a.source !== "xbox" && a.source !== "battlenet";
+      if (gameSourceTab === "Other") return a.source !== "steam" && a.source !== "xbox" && a.source !== "battlenet" && !customSources.includes(a.source);
+      if (customSources.includes(gameSourceTab)) return a.source === gameSourceTab;
+      const gameCol = gameCollections.find(c => c.name === gameSourceTab);
+      if (gameCol) return (gameMemberships[a.id] || []).includes(gameCol.id);
       return true; // "All"
     }
-    if (tab === "Apps") return a.app_type === "app";
+    if (tab === "Apps") {
+      if (a.app_type !== "app") return false;
+      if (appCollectionTab === "All") return true;
+      const col = appCollections.find(c => c.name === appCollectionTab);
+      if (!col) return true;
+      return (appMemberships[a.id] || []).includes(col.id);
+    }
     return true;
   });
   const filteredRecent = recent.filter(a =>
@@ -2294,6 +2143,7 @@ export default function App() {
     { key: "scan_uwp",          label: t('settings.scanStoreApps'),                         type: "toggle" },
     { key: "scan_desktop",      label: t('settings.scanDesktop'),                           type: "toggle" },
     { key: "scan_battlenet",    label: t('settings.scanBattlenet'),                         type: "toggle" },
+    { key: "custom_folders",    label: t('settings.customFolders'),                         type: "custom_folders" },
     { key: "refresh_library",   label: t('settings.refreshLibrary'),                        type: "refresh" },
     { key: "divider2",          label: t('settings.dividers.behavior'),                     type: "divider" },
     { key: "default_tab",       label: t('settings.defaultTab'),                            type: "cycle",  options: ["Home","Games","Apps"] },
@@ -2328,7 +2178,7 @@ export default function App() {
   // ── handleNav ─────────────────────────────────────────────────
   const handleNav = (key) => {
     // Modal intercepts all input via its own poll — main nav must not run
-    if (showHideModalRef.current) return;
+    if (showHideModalRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current) return;
 
     // Art picker open — only Escape closes it (user interacts via touch/mouse)
     if (artPickerAppRef.current) {
@@ -2336,46 +2186,8 @@ export default function App() {
       return;
     }
 
-    // Context menu open — navigate with D-pad, confirm with A, dismiss with B or bumpers
+    // Context menu open — ContextMenuModal owns navigation; main loop just blocks other inputs
     if (contextMenuRef.current) {
-      const menu = contextMenuRef.current;
-      const menuItems = [
-        { key: "open" },
-        { key: pins.includes(menu.app.id) ? "unpin" : "pin" },
-        { key: "changeArt" },
-        ...(menu.app.app_type === "game" ? [{ key: "changeHeroArt" }] : []),
-      ];
-      const cur = menu.focusedIdx || 0;
-      if (key === "ArrowDown") {
-        const next = Math.min(cur + 1, menuItems.length - 1);
-        const updated = { ...menu, focusedIdx: next };
-        setContextMenu(updated); contextMenuRef.current = updated;
-        return;
-      }
-      if (key === "ArrowUp") {
-        const next = Math.max(cur - 1, 0);
-        const updated = { ...menu, focusedIdx: next };
-        setContextMenu(updated); contextMenuRef.current = updated;
-        return;
-      }
-      if (key === "Enter") {
-        const itemKey = menuItems[cur]?.key;
-        if (itemKey === "open") { triggerLaunch(menu.app, recentRef.current); setContextMenu(null); contextMenuRef.current = null; }
-        else if (itemKey === "pin" || itemKey === "unpin") { togglePin(menu.app); setContextMenu(null); contextMenuRef.current = null; }
-        else if (itemKey === "changeArt") { setArtPickerMode("grid"); artPickerModeRef.current = "grid"; setArtPickerApp(menu.app); artPickerAppRef.current = menu.app; setContextMenu(null); contextMenuRef.current = null; }
-        else if (itemKey === "changeHeroArt") { setArtPickerMode("hero"); artPickerModeRef.current = "hero"; setArtPickerApp(menu.app); artPickerAppRef.current = menu.app; setContextMenu(null); contextMenuRef.current = null; }
-        return;
-      }
-      if (key === "Escape" || key === "BumperLeft" || key === "BumperRight") {
-        setContextMenu(null); contextMenuRef.current = null;
-        if (key !== "Escape") {
-          // Let bumpers fall through to tab-switching after closing
-          const i = TABS.indexOf(tabRef.current);
-          if (key === "BumperLeft")  switchTab(TABS[(i - 1 + TABS.length) % TABS.length]);
-          if (key === "BumperRight") switchTab(TABS[(i + 1) % TABS.length]);
-        }
-        return;
-      }
       return;
     }
 
@@ -2396,10 +2208,18 @@ export default function App() {
         if (src === "Steam") return a.source === "steam";
         if (src === "Xbox")  return a.source === "xbox";
         if (src === "Bnet")  return a.source === "battlenet";
-        if (src === "Other") return a.source !== "steam" && a.source !== "xbox" && a.source !== "battlenet";
-        return true;
+        if (src === "Other") return a.source !== "steam" && a.source !== "xbox" && a.source !== "battlenet" && !customSourcesRef.current.includes(a.source);
+        if (customSourcesRef.current.includes(src)) return a.source === src;
+        const gameCol = gameCollectionsRef.current.find(c => c.name === src);
+        if (gameCol) return (gameMembershipsRef.current[a.id] || []).includes(gameCol.id);
+        return true; // "All"
       }
-      return a.app_type === "app";
+      if (a.app_type !== "app") return false;
+      const colTab = appCollectionTabRef.current;
+      if (colTab === "All") return true;
+      const col = appCollectionsRef.current.find(c => c.name === colTab);
+      if (!col) return true;
+      return (appMembershipsRef.current[a.id] || []).includes(col.id);
     });
     const fRecent = rec.filter(a =>
       currentTab === "Home" || currentTab === "All" ? true
@@ -2560,6 +2380,9 @@ export default function App() {
         else if (item.type === "attribution") {
           if (item.url) invoke("launch_app", { path: item.url, id: item.key, name: item.label, appType: "app" }).catch(() => {});
         }
+        else if (item.type === "custom_folders") {
+          setShowFolderManager(true); showFolderManagerRef.current = true;
+        }
       }
       if (key === "ArrowLeft") {
         if (!item) return;
@@ -2609,8 +2432,7 @@ export default function App() {
     // Games / Apps tabs
     // LT/RT cycle source sub-tabs on Games tab (from anywhere)
     if (currentTab === "Games") {
-      const SOURCES = ["All", "Steam", "Xbox", "Bnet", "Other"];
-      // "Manage" is the last item in the subtab row, index = SOURCES.length (for Games) or 0 (for Apps)
+      const SOURCES = ["All", "Steam", "Xbox", "Bnet", "Other", ...customSourcesRef.current, ...gameCollectionsRef.current.map(c => c.name)];
       if (key === "TriggerLeft") {
         const cur = SOURCES.indexOf(gameSourceTabRef.current);
         const next = SOURCES[(cur - 1 + SOURCES.length) % SOURCES.length];
@@ -2630,29 +2452,51 @@ export default function App() {
         playSound(); return;
       }
     }
+    if (currentTab === "Apps") {
+      const APP_COLS = ["All", ...appCollectionsRef.current.map(c => c.name)];
+      if (key === "TriggerLeft") {
+        const cur = APP_COLS.indexOf(appCollectionTabRef.current);
+        const next = APP_COLS[(cur - 1 + APP_COLS.length) % APP_COLS.length];
+        setAppCollectionTab(next); appCollectionTabRef.current = next;
+        setFocusSection("grid"); focusSectionRef.current = "grid";
+        setFocusIndex(0); focusIndexRef.current = 0;
+        playSound(); return;
+      }
+      if (key === "TriggerRight") {
+        const cur = APP_COLS.indexOf(appCollectionTabRef.current);
+        const next = APP_COLS[(cur + 1) % APP_COLS.length];
+        setAppCollectionTab(next); appCollectionTabRef.current = next;
+        setFocusSection("grid"); focusSectionRef.current = "grid";
+        setFocusIndex(0); focusIndexRef.current = 0;
+        playSound(); return;
+      }
+    }
 
-    // subtabs row: source pills + manage button
-    // For Games: indices 0–3 = All/Steam/Xbox/Other, index 4 = "Manage", index 5 = "Restore" (if hidden exist)
-    // For Apps:  index 0 = "Manage", index 1 = "Restore" (if hidden exist)
-    const SOURCES = ["All", "Steam", "Xbox", "Bnet", "Other"];
+    // subtabs row: source pills + game collections + add/folder buttons + manage
+    const SOURCES = ["All", "Steam", "Xbox", "Bnet", "Other", ...customSourcesRef.current, ...gameCollectionsRef.current.map(c => c.name)];
+    const APP_COLS_NAV = ["All", ...appCollectionsRef.current.map(c => c.name)];
     const subtabItems = currentTab === "Games"
-      ? [...SOURCES, "manage"]
-      : ["manage"];
+      ? [...SOURCES, "add_app", "add_folder", "manage", "collections"]
+      : [...APP_COLS_NAV, "add_app", "add_folder", "manage", "collections"];
+
+    const switchSubtabItem = (item) => {
+      if (item === "add_app" || item === "add_folder" || item === "manage" || item === "collections") return;
+      if (currentTab === "Games") { setGameSourceTab(item); gameSourceTabRef.current = item; }
+      else { setAppCollectionTab(item); appCollectionTabRef.current = item; }
+      setFocusIndex(0); focusIndexRef.current = 0;
+    };
 
     if (section === "subtabs") {
       if (key === "ArrowRight") {
         const ni = Math.min(subtabFocusIndexRef.current + 1, subtabItems.length - 1);
         setSubtabFocusIndex(ni); subtabFocusIndexRef.current = ni;
-        // Auto-switch source if the new focus is a pill
-        const item = subtabItems[ni];
-        if (item !== "manage" && item !== "restore") { setGameSourceTab(item); gameSourceTabRef.current = item; setFocusIndex(0); focusIndexRef.current = 0; }
+        switchSubtabItem(subtabItems[ni]);
         playSound();
       }
       else if (key === "ArrowLeft") {
         const ni = Math.max(subtabFocusIndexRef.current - 1, 0);
         setSubtabFocusIndex(ni); subtabFocusIndexRef.current = ni;
-        const item = subtabItems[ni];
-        if (item !== "manage" && item !== "restore") { setGameSourceTab(item); gameSourceTabRef.current = item; setFocusIndex(0); focusIndexRef.current = 0; }
+        switchSubtabItem(subtabItems[ni]);
         playSound();
       }
       else if (key === "ArrowDown") {
@@ -2662,7 +2506,10 @@ export default function App() {
       }
       else if (key === "Enter") {
         const item = subtabItems[subtabFocusIndexRef.current];
-        if (item === "manage") { openHideModal(); }
+        if (item === "manage")          { openHideModal(); }
+        else if (item === "add_app")    { setAddAppType(tabRef.current === "Games" ? "game" : "app"); setShowFileBrowser("file"); }
+        else if (item === "add_folder") { setAddAppType(tabRef.current === "Games" ? "game" : "app"); setShowFileBrowser("folder"); }
+        else if (item === "collections") { setShowColModal(true); showColModalRef.current = true; }
         // Pills already auto-switched on focus movement — Enter is a no-op for them
       }
       return; // always return — never fall through to grid/pinned launch
@@ -2740,7 +2587,7 @@ export default function App() {
   useEffect(() => {
     const onKey = (e) => {
       // Modal has its own capture-phase keyboard handler — don't double-fire
-      if (showHideModalRef.current) return;
+      if (showHideModalRef.current || showFileBrowserRef.current || pendingFileRef.current) return;
       if (e.key === "Escape") {
         e.preventDefault();
         if (searchOpenRef.current) {
@@ -3401,6 +3248,54 @@ export default function App() {
             <ControllerTestWidget accent={accent} theme={theme} isDark={isDark} glass={glass} />
           </div>
         );
+        if (item.type === "custom_folders") {
+          const gameFolders = customFolders.filter(f => f.app_type === "game");
+          const appFolders  = customFolders.filter(f => f.app_type !== "game");
+          const toggleFolder = (folderId, enabled) => {
+            invoke("toggle_custom_folder", { id: folderId, enabled }).then(() => {
+              setCustomFolders(prev => prev.map(f => f.id === folderId ? { ...f, enabled } : f));
+            });
+          };
+          const deleteFolder = (folderId) => {
+            invoke("remove_custom_folder", { id: folderId }).then(() => {
+              setCustomFolders(prev => prev.filter(f => f.id !== folderId));
+            });
+          };
+          const renderFolderGroup = (folders, groupLabel) => folders.length === 0 ? null : (
+            <div key={groupLabel}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: theme.textFaint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4, marginTop: 8 }}>{groupLabel}</div>
+              {folders.map(folder => (
+                <div key={folder.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
+                  <div style={{ fontSize: 11, color: folder.enabled !== false ? theme.text : theme.textFaint, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {folder.path}
+                  </div>
+                  <div style={{ fontSize: 9, color: theme.textFaint, flexShrink: 0 }}>{folder.source}</div>
+                  <div onClick={() => toggleFolder(folder.id, folder.enabled !== false ? false : true)}
+                    style={{ width: 36, height: 20, borderRadius: 10, background: folder.enabled !== false ? accent.primary : (isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"), position: "relative", cursor: "pointer", flexShrink: 0 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: "50%", background: "white", position: "absolute", top: 3, left: folder.enabled !== false ? 19 : 3, transition: "left 0.2s", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+          return (
+            <div key={item.key} ref={rowRef} style={{ ...glass, borderRadius: 14, padding: "14px 20px", marginBottom: 8,
+              border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
+              boxShadow: focused ? `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)` : "none" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: customFolders.length > 0 ? 4 : 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: focused ? accent.primary : theme.textDim, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  {item.label}
+                </div>
+                <span style={{ fontSize: 10, color: theme.textFaint }}>↵ {t('grid.manage')}</span>
+              </div>
+              {customFolders.length === 0 && (
+                <div style={{ fontSize: 12, color: theme.textFaint, fontStyle: "italic" }}>{t('settings.noCustomFolders')}</div>
+              )}
+              {renderFolderGroup(gameFolders, t('tabs.games'))}
+              {renderFolderGroup(appFolders, t('tabs.apps'))}
+            </div>
+          );
+        }
         return null;
       })}
     </div>
@@ -3410,11 +3305,9 @@ export default function App() {
   // NOTE: HideModal is defined outside App (above) to prevent re-mounting on every App re-render
   // ─────────────────────────────────────────────────────────────
 
-  const Btn = ({ color, label }) => (
-    <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11, color: theme.textDim }}>
-      <span style={{ width: 20, height: 20, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "white", background: color, flexShrink: 0 }}>{label[0]}</span>
-      {label.slice(1)}
-    </span>
+  // label format: "A Launch", "B Back" — first char is button, rest is description
+  const Btn = ({ label }) => (
+    <GamepadBtn btn={label[0]} label={label.slice(2)} theme={theme} isDark={isDark} />
   );
 
   // ── Render ────────────────────────────────────────────────────
@@ -3487,6 +3380,189 @@ export default function App() {
         />
       )}
       {showHideModal && <HideModal key="hide-modal" tab={tab} appsRef={appsRef} hiddenRef={hiddenRef} allAppsRef={allAppsRef} closeHideModal={closeHideModal} toggleHidden={toggleHidden} glass={glass} accent={accent} isDark={isDark} theme={theme} />}
+      {showFileBrowser && (
+        <FileBrowser
+          mode={showFileBrowser}
+          glass={glass} accent={accent} theme={theme} isDark={isDark} repeatSpeed={settings.repeat_speed}
+          onSelect={(file) => { setPendingFile(file); setShowFileBrowser(null); }}
+          onClose={() => setShowFileBrowser(null)}
+        />
+      )}
+      {pendingFile && (
+        <AddEntryModal
+          entryFile={pendingFile}
+          mode={pendingFile.is_dir ? "folder" : "app"}
+          appType={addAppType}
+          existingSources={addAppType === "game" ? customSources : []}
+          collections={addAppType === "game" ? gameCollections : appCollections}
+          glass={glass} accent={accent} theme={theme} isDark={isDark} repeatSpeed={settings.repeat_speed}
+          onConfirm={(result, colSelection) => {
+            const wasFolder  = pendingFile?.is_dir;
+            const isGameType = addAppType === "game";
+            setPendingFile(null);
+
+            // Assign a list of app IDs to an existing collection
+            const assignToCollection = (appIds, colId) => {
+              const cmd     = isGameType ? "set_game_memberships" : "set_app_memberships";
+              const setMems = isGameType ? setGameMemberships : setAppMemberships;
+              const memsRef = isGameType ? gameMembershipsRef : appMembershipsRef;
+              appIds.forEach(id => invoke(cmd, { appId: id, collectionIds: [colId] }));
+              setMems(prev => {
+                const updates = Object.fromEntries(appIds.map(id => [id, [colId]]));
+                const n = { ...prev, ...updates };
+                memsRef.current = n;
+                return n;
+              });
+            };
+
+            // Create a new collection (game or app), then assign
+            const createAndAssign = (appIds, name) => {
+              const createCmd = isGameType ? "create_game_collection" : "create_app_collection";
+              const setCols   = isGameType ? setGameCollections : setAppCollections;
+              const colsRef   = isGameType ? gameCollectionsRef : appCollectionsRef;
+              invoke(createCmd, { name }).then(newCol => {
+                setCols(prev => { const n = [...prev, newCol]; colsRef.current = n; return n; });
+                assignToCollection(appIds, newCol.id);
+              });
+            };
+
+            if (wasFolder) {
+              setCustomFolders(prev => [...prev, result]);
+              // get_all_apps rescans all folders; filter by the source tag we just set
+              // on this folder to find which apps it contributed
+              if (colSelection?.colId || colSelection?.newName) {
+                invoke("get_all_apps").then(all => {
+                  const appIds = all
+                    .filter(a => a.source === result.source && a.app_type === result.app_type)
+                    .map(a => a.id);
+                  if (colSelection.colId) assignToCollection(appIds, colSelection.colId);
+                  else                    createAndAssign(appIds, colSelection.newName);
+                });
+              }
+              refreshLibrary();
+              return;
+            }
+
+            // Single entry: track custom source name unless it's a collection name
+            if (isGameType && result.source) {
+              const BUILTIN = new Set(["Steam","Xbox","Bnet","Other","steam","xbox","battlenet","desktop","uwp"]);
+              const isColName = gameCollectionsRef.current.some(c => c.name === result.source);
+              if (!BUILTIN.has(result.source) && !isColName) {
+                setCustomSources(prev => prev.includes(result.source) ? prev : [...prev, result.source]);
+              }
+            }
+            if (result.id) {
+              if (colSelection?.colId)   assignToCollection([result.id], colSelection.colId);
+              else if (colSelection?.newName) createAndAssign([result.id], colSelection.newName);
+            }
+            refreshLibrary();
+          }}
+          onClose={() => setPendingFile(null)}
+        />
+      )}
+      {/* ── Collection assignment picker (right-click → collections) ── */}
+      {colPickerApp && (() => {
+        const isGame = colPickerApp.app_type === "game";
+        const pickerCols = isGame ? gameCollections : appCollections;
+        const pickerMembers = isGame ? gameMemberships : appMemberships;
+        const setPickerMembers = isGame ? setGameMemberships : setAppMemberships;
+        const pickerMembersRef = isGame ? gameMembershipsRef : appMembershipsRef;
+        const memberCmd = isGame ? "set_game_memberships" : "set_app_memberships";
+        return (
+          <ColPickerModal
+            app={colPickerApp}
+            collections={pickerCols}
+            memberships={pickerMembers}
+            onToggle={(col) => {
+              const current = pickerMembersRef.current[colPickerApp.id] || [];
+              const inCol = current.includes(col.id);
+              const newList = inCol ? current.filter(id => id !== col.id) : [...current, col.id];
+              invoke(memberCmd, { appId: colPickerApp.id, collectionIds: newList }).then(() => {
+                setPickerMembers(prev => { const n = { ...prev, [colPickerApp.id]: newList }; pickerMembersRef.current = n; return n; });
+              });
+            }}
+            onClose={() => { setColPickerApp(null); colPickerAppRef.current = null; }}
+            glass={glass} accent={accent} theme={theme} isDark={isDark}
+          />
+        );
+      })()}
+      {/* ── Collection manager modal ── */}
+      {showColModal && (() => {
+        const isGameTab = tab === "Games";
+        return (
+          <CollectionManagerModal
+            key={isGameTab ? "game-col-mgr" : "app-col-mgr"}
+            glass={glass} accent={accent} theme={theme} isDark={isDark}
+            title={t(isGameTab ? 'collections.manageGames' : 'collections.manageApps')}
+            collections={isGameTab ? gameCollections : appCollections}
+            onCreateCollection={(name) => {
+              const cmd = isGameTab ? "create_game_collection" : "create_app_collection";
+              invoke(cmd, { name }).then(col => {
+                if (isGameTab) { setGameCollections(prev => { const n = [...prev, col]; gameCollectionsRef.current = n; return n; }); }
+                else           { setAppCollections(prev => { const n = [...prev, col]; appCollectionsRef.current = n; return n; }); }
+              });
+            }}
+            onDeleteCollection={(id) => {
+              if (isGameTab) {
+                invoke("delete_game_collection", { id }).then(() => {
+                  setGameCollections(prev => { const n = prev.filter(c => c.id !== id); gameCollectionsRef.current = n; return n; });
+                  setGameMemberships(prev => {
+                    const n = { ...prev };
+                    Object.keys(n).forEach(gId => { n[gId] = n[gId].filter(cid => cid !== id); });
+                    gameMembershipsRef.current = n; return n;
+                  });
+                });
+              } else {
+                invoke("delete_app_collection", { id }).then(() => {
+                  setAppCollections(prev => { const n = prev.filter(c => c.id !== id); appCollectionsRef.current = n; return n; });
+                  setAppMemberships(prev => {
+                    const n = { ...prev };
+                    Object.keys(n).forEach(aId => { n[aId] = n[aId].filter(cid => cid !== id); });
+                    appMembershipsRef.current = n; return n;
+                  });
+                  if (appCollectionTab !== "All" && !appCollections.filter(c => c.id !== id).find(c => c.name === appCollectionTab)) {
+                    setAppCollectionTab("All"); appCollectionTabRef.current = "All";
+                  }
+                });
+              }
+            }}
+            onClose={() => { setShowColModal(false); showColModalRef.current = false; }}
+          />
+        );
+      })()}
+      {/* ── Folder manager modal (settings → custom folders → A) ── */}
+      {showFolderManager && (
+        <FolderManagerModal
+          customFolders={customFolders}
+          onToggle={(id, enabled) => {
+            invoke("toggle_custom_folder", { id, enabled }).then(() => {
+              setCustomFolders(prev => prev.map(f => f.id === id ? { ...f, enabled } : f));
+            });
+          }}
+          onDelete={(id) => {
+            invoke("remove_custom_folder", { id }).then(() => {
+              setCustomFolders(prev => prev.filter(f => f.id !== id));
+            });
+          }}
+          glass={glass} accent={accent} theme={theme} isDark={isDark}
+          onClose={() => { setShowFolderManager(false); showFolderManagerRef.current = false; }}
+        />
+      )}
+      {/* ── Confirm delete app modal ── */}
+      {confirmDelete && (
+        <ConfirmModal
+          message={t('confirm.deleteApp', { name: confirmDelete.name })}
+          onConfirm={() => {
+            invoke("remove_custom_app", { id: confirmDelete.id }).then(() => {
+              setApps(prev => prev.filter(a => a.id !== confirmDelete.id));
+              allAppsRef.current = allAppsRef.current.filter(a => a.id !== confirmDelete.id);
+              setConfirmDelete(null); confirmDeleteRef.current = null;
+            });
+          }}
+          onCancel={() => { setConfirmDelete(null); confirmDeleteRef.current = null; }}
+          glass={glass} accent={accent} theme={theme} isDark={isDark}
+        />
+      )}
       {libraryRefreshStatus === "scanning" && (
         <div style={{ position: "fixed", inset: 0, zIndex: 5000, display: "flex", alignItems: "center", justifyContent: "center",
           background: isDark ? "rgba(10,5,2,0.75)" : "rgba(240,230,220,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
@@ -3626,9 +3702,9 @@ export default function App() {
             {searchMode === "results" && (
               <div style={{ position: "sticky", bottom: 0, paddingTop: 8 }}>
                 <div style={{ ...glass, borderRadius: 12, padding: "9px 20px", display: "flex", gap: 16, alignItems: "center" }}>
-                  <Btn color="#4a9c4a" label={t('gamepad.aLaunch')} />
-                  <Btn color="#9a7020" label={t('gamepad.yKeyboard')} />
-                  <Btn color="#b03030" label={t('gamepad.bClose')} />
+                  <Btn label={t('gamepad.aLaunch')} />
+                  <Btn label={t('gamepad.yKeyboard')} />
+                  <Btn label={t('gamepad.bClose')} />
                   <span style={{ marginLeft: "auto", fontSize: 11, color: theme.textFaint }}>↑ from top → Keyboard</span>
                 </div>
               </div>
@@ -3637,8 +3713,8 @@ export default function App() {
             {searchMode === "idle" && (
               <div style={{ position: "sticky", bottom: 0, paddingTop: 8 }}>
                 <div style={{ ...glass, borderRadius: 12, padding: "9px 20px", display: "flex", gap: 16, alignItems: "center" }}>
-                  <Btn color="#9a7020" label={t('gamepad.yKeyboard')} />
-                  <Btn color="#b03030" label={t('gamepad.bClose')} />
+                  <Btn label={t('gamepad.yKeyboard')} />
+                  <Btn label={t('gamepad.bClose')} />
                   {searchResults.length > 0 && <span style={{ fontSize: 11, color: theme.textFaint }}>{t('search.startBrowse')}</span>}
                 </div>
               </div>
@@ -3723,41 +3799,76 @@ export default function App() {
             <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
             <div style={{ padding: "14px 24px 0", ...(settings.wide_layout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" }}>
 
-            {/* ── SOURCE SUB-TABS (Games only) + MANAGE BUTTONS ── */}
+            {/* ── SOURCE SUB-TABS (Games only) + MANAGE + ADD BUTTONS ── */}
             {(() => {
-              const SOURCES = ["All", "Steam", "Xbox", "Bnet", "Other"];
+              const SOURCES = ["All", "Steam", "Xbox", "Bnet", "Other", ...customSources, ...gameCollections.map(c => c.name)];
+              const APP_COLS = ["All", ...appCollections.map(c => c.name)];
               const subtabItems = tab === "Games"
-                ? [...SOURCES, "manage"]
-                : ["manage"];
-              const manageIdx  = tab === "Games" ? SOURCES.length : 0;
+                ? [...SOURCES, "add_app", "add_folder", "manage", "collections"]
+                : [...APP_COLS, "add_app", "add_folder", "manage", "collections"];
+              const addAppIdx    = tab === "Games" ? SOURCES.length     : APP_COLS.length;
+              const addFolderIdx = tab === "Games" ? SOURCES.length + 1 : APP_COLS.length + 1;
+              const manageIdx    = tab === "Games" ? SOURCES.length + 2 : APP_COLS.length + 2;
+              const colModalIdx  = tab === "Games" ? SOURCES.length + 3 : APP_COLS.length + 3;
+              const subtabStyle = (active) => ({
+                fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", padding: "5px 14px", borderRadius: 20, cursor: "pointer", transition: "all 0.15s ease",
+                background: active ? accent.primary : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"),
+                color: active ? "white" : theme.textDim,
+                border: `1px solid ${active ? accent.primary : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
+                boxShadow: active ? `0 2px 10px ${accent.glow}0.35)` : "none",
+              });
               return (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 4 }}>
                   {tab === "Games" ? (
-                    <div style={{ display: "flex", gap: 4 }}>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                       {SOURCES.map((src, i) => {
-                        const active  = gameSourceTab === src;
+                        const active = gameSourceTab === src;
+                        const isCollection = gameCollections.some(c => c.name === src);
                         return (
                           <div key={src} onClick={() => { setGameSourceTab(src); gameSourceTabRef.current = src; setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(i); subtabFocusIndexRef.current = i; setFocusIndex(0); focusIndexRef.current = 0; }}
-                            style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", padding: "5px 14px", borderRadius: 20, cursor: "pointer", transition: "all 0.15s ease",
-                              background: active ? accent.primary : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"),
-                              color: active ? "white" : theme.textDim,
-                              border: `1px solid ${active ? accent.primary : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
-                              boxShadow: active ? `0 2px 10px ${accent.glow}0.35)` : "none",
-                            }}>
+                            style={{ ...subtabStyle(active), ...(isCollection && !active ? { borderStyle: "dashed" } : {}) }}>
                             {src === "All" ? t('sources.all') : src === "Other" ? t('sources.other') : src}
                           </div>
                         );
                       })}
                     </div>
                   ) : (
-                    <div />
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {APP_COLS.map((col, i) => {
+                        const active = appCollectionTab === col;
+                        return (
+                          <div key={col} onClick={() => { setAppCollectionTab(col); appCollectionTabRef.current = col; setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(i); subtabFocusIndexRef.current = i; setFocusIndex(0); focusIndexRef.current = 0; }}
+                            style={subtabStyle(active)}>
+                            {col === "All" ? t('sources.all') : col}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
-                  <div onClick={() => { openHideModal(); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(manageIdx); subtabFocusIndexRef.current = manageIdx; }}
-                    style={{ fontSize: 11, fontWeight: 600, padding: "5px 14px", borderRadius: 20, cursor: "pointer", transition: "all 0.15s ease",
-                      color: theme.textDim, background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
-                      border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-                    }}>
-                    {t('grid.manage')}
+                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    <div onClick={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("file"); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(addAppIdx); subtabFocusIndexRef.current = addAppIdx; }}
+                      style={{ ...subtabStyle(focusSection === "subtabs" && subtabFocusIndex === addAppIdx), padding: "5px 10px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      title={tab === "Games" ? t('addEntry.addGame') : t('addEntry.addApp')}>
+                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                        <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                      </svg>
+                    </div>
+                    <div onClick={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("folder"); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(addFolderIdx); subtabFocusIndexRef.current = addFolderIdx; }}
+                      style={{ ...subtabStyle(focusSection === "subtabs" && subtabFocusIndex === addFolderIdx), padding: "5px 10px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      title={t('addEntry.addFolder')}>
+                      <svg width="16" height="13" viewBox="0 0 16 13" fill="none">
+                        <path d="M1 3.5a1 1 0 011-1h3.8l1.4 1.5H14a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V3.5z" stroke="currentColor" strokeWidth="1.2"/>
+                        <path d="M8 6.5v3M6.5 8h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                      </svg>
+                    </div>
+                    <div onClick={() => { openHideModal(); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(manageIdx); subtabFocusIndexRef.current = manageIdx; }}
+                      style={subtabStyle(focusSection === "subtabs" && subtabFocusIndex === manageIdx)}>
+                      {t('grid.manage')}
+                    </div>
+                    <div onClick={() => { setShowColModal(true); showColModalRef.current = true; setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(colModalIdx); subtabFocusIndexRef.current = colModalIdx; }}
+                      style={subtabStyle(focusSection === "subtabs" && subtabFocusIndex === colModalIdx)}>
+                      {t('collections.manage')}
+                    </div>
                   </div>
                 </div>
               );
@@ -3901,41 +4012,33 @@ export default function App() {
               : { maxWidth: 1400, margin: "0 auto 14px", width: "calc(100% - 48px)" }),
           }}>
             {tab === "Settings"
-              ? <><Btn color="#4a9c4a" label={t('gamepad.aSelect')} /><Btn color="#b03030" label={t('gamepad.bBack')} /></>
+              ? <><Btn label={t('gamepad.aSelect')} /><Btn label={t('gamepad.bBack')} /></>
               : <>
-                  <Btn color="#4a9c4a" label={t('gamepad.aLaunch')} />
-                  <Btn color="#b03030" label={t('gamepad.bBack')} />
-                  <Btn color="#9a7020" label={t('gamepad.ySearch')} />
-                  <Btn color="#3a5a8a" label={t('gamepad.xPin')} />
+                  <Btn label={t('gamepad.aLaunch')} />
+                  <Btn label={t('gamepad.bBack')} />
+                  <Btn label={t('gamepad.ySearch')} />
+                  <Btn label={t('gamepad.xPin')} />
                   <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                    <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>LB</span>
-                    <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>RB</span>
-                    {t('gamepad.tabs')}
+                    <GamepadBtn btn="LB" label="" theme={theme} isDark={isDark} style={{ gap: 3 }} />
+                    <GamepadBtn btn="RB" label={t('gamepad.tabs')} theme={theme} isDark={isDark} />
                   </span>
                   {tab === "Games" && <>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                      <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>LT</span>
-                      <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>RT</span>
-                      {t('gamepad.source')}
+                      <GamepadBtn btn="LT" label="" theme={theme} isDark={isDark} style={{ gap: 3 }} />
+                      <GamepadBtn btn="RT" label={t('gamepad.source')} theme={theme} isDark={isDark} />
                     </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>MENU</span>
-                      {t('gamepad.options')}
-                    </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>BACK</span>
-                      {t('grid.manage')}
-                    </span>
+                    <GamepadBtn btn="MENU" label={t('gamepad.options')} theme={theme} isDark={isDark} />
+                    <GamepadBtn btn="BACK" label={t('grid.manage')}    theme={theme} isDark={isDark} />
                   </>}
                   {tab === "Apps" && <>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>MENU</span>
-                      {t('gamepad.options')}
-                    </span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                      <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>BACK</span>
-                      {t('grid.manage')}
-                    </span>
+                    {appCollections.length > 0 && (
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
+                        <GamepadBtn btn="LT" label="" theme={theme} isDark={isDark} style={{ gap: 3 }} />
+                        <GamepadBtn btn="RT" label={t('gamepad.source')} theme={theme} isDark={isDark} />
+                      </span>
+                    )}
+                    <GamepadBtn btn="MENU" label={t('gamepad.options')} theme={theme} isDark={isDark} />
+                    <GamepadBtn btn="BACK" label={t('grid.manage')}    theme={theme} isDark={isDark} />
                   </>}
                 </>
             }
@@ -3946,50 +4049,26 @@ export default function App() {
       {contextMenu && (() => {
         const ctxItems = [
           { label: t('contextMenu.open'),      action: () => { triggerLaunch(contextMenu.app, recentRef.current); setContextMenu(null); contextMenuRef.current = null; } },
+          { label: t(hidden.includes(contextMenu.app.id) ? 'contextMenu.show' : 'contextMenu.hide'), action: () => { toggleHidden(contextMenu.app.id); setContextMenu(null); contextMenuRef.current = null; } },
           { label: t(pins.includes(contextMenu.app.id) ? 'contextMenu.unpin' : 'contextMenu.pin'), action: () => { togglePin(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
           { label: t('contextMenu.changeArt'), action: () => { setArtPickerMode("grid"); artPickerModeRef.current = "grid"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } },
           ...(contextMenu.app.app_type === "game"
             ? [{ label: t('contextMenu.changeHeroArt'), action: () => { setArtPickerMode("hero"); artPickerModeRef.current = "hero"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
             : []),
+          ...((contextMenu.app.app_type === "game" ? gameCollections.length > 0 : appCollections.length > 0)
+            ? [{ label: t('contextMenu.collections'), action: () => { setColPickerApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } }]
+            : []),
+          ...(contextMenu.app.id.startsWith("custom_")
+            ? [{ label: t('contextMenu.delete'), danger: true, action: () => { setConfirmDelete(contextMenu.app); confirmDeleteRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
+            : []),
         ];
-        const ctxFocused = contextMenu.focusedIdx || 0;
-        const menuH = ctxItems.length * 52 + 16;
         return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 9000 }}
-            onClick={() => { setContextMenu(null); contextMenuRef.current = null; }}
-            onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); contextMenuRef.current = null; }}>
-            <div onClick={(e) => e.stopPropagation()}
-              style={{ position: "fixed",
-                left: Math.min(contextMenu.x, window.innerWidth - 210),
-                top: Math.min(contextMenu.y, window.innerHeight - menuH),
-                background: isDark ? "rgba(18,12,8,0.98)" : "rgba(255,255,255,0.98)",
-                backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
-                border: `1px solid ${isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.14)"}`,
-                borderRadius: 14, overflow: "hidden", minWidth: 200, zIndex: 9001,
-                boxShadow: "0 12px 48px rgba(0,0,0,0.5)", fontFamily: "'Segoe UI', sans-serif" }}>
-              <div style={{ padding: "8px 0" }}>
-                {ctxItems.map(({ label, action }, i) => (
-                  <div key={label} onClick={action}
-                    style={{ padding: "12px 20px", cursor: "pointer", fontSize: 14, fontWeight: 500, color: theme.text,
-                      background: i === ctxFocused ? `${accent.glow}0.18)` : "transparent",
-                      borderLeft: i === ctxFocused ? `3px solid ${accent.primary}` : "3px solid transparent",
-                      transition: "background 0.1s ease" }}
-                    onMouseEnter={(e) => { setContextMenu(prev => { const u = { ...prev, focusedIdx: i }; contextMenuRef.current = u; return u; }); }}
-                    onMouseLeave={(e) => e.currentTarget.style.background = i === ctxFocused ? `${accent.glow}0.18)` : "transparent"}>
-                    {label}
-                  </div>
-                ))}
-              </div>
-              <div style={{ padding: "6px 16px 8px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"}`, display: "flex", gap: 10 }}>
-                {[{ bg: "#4a9c4a", label: t('gamepad.aSelect') }, { bg: "#b03030", label: t('gamepad.bClose') }].map(({ bg, label }) => (
-                  <span key={label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: theme.textDim }}>
-                    <span style={{ width: 16, height: 16, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "white", flexShrink: 0 }}>{label[0]}</span>
-                    {label.slice(1)}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
+          <ContextMenuModal
+            app={contextMenu.app}
+            items={ctxItems}
+            glass={glass} accent={accent} theme={theme} isDark={isDark}
+            onClose={() => { setContextMenu(null); contextMenuRef.current = null; }}
+          />
         );
       })()}
 
