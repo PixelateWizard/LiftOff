@@ -54,6 +54,8 @@
     "backgroundClouds": "Background Clouds",
     "uiScale": "UI Scale",
     "resetScale": "Reset Scale to Auto",
+    "homeCoverScale": "Home Cover Scale",
+    "gameCoverScale": "Games Cover Scale",
     "scanSteam": "Scan Steam",
     "scanXbox": "Scan Xbox",
     "scanStoreApps": "Scan Store Apps",
