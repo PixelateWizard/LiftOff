@@ -1,6 +1,8 @@
 //Copyright (C) 2025 Taylor Denby
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "./i18n";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import uiSound from "./assets/uiSound.mp3";
@@ -205,6 +207,7 @@ const ss = {
 };
 
 function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
+  const { t } = useTranslation();
   const art = app?.app_type === "game" ? (customArt?.[app?.id] || gameArt[app?.id]) : null;
   const [status, setStatus] = useState("launching"); // "launching" | "failed"
   const rafRef   = useRef(null);
@@ -291,14 +294,14 @@ function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
         <div style={{ fontSize: 22, fontWeight: 700, color: "white", marginBottom: 8, letterSpacing: "0.02em" }}>{app?.name}</div>
         {status === "launching" ? (
           <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
-            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.22)", letterSpacing: "0.1em", textTransform: "uppercase" }}>Launching</span>
+            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.22)", letterSpacing: "0.1em", textTransform: "uppercase" }}>{t('launch.launching')}</span>
             <span style={{ display: "flex", gap: 3 }}>
               {[0,1,2].map(i => <span key={i} className="launch-dot" style={{ width: 4, height: 4, borderRadius: "50%", background: accent.primary, display: "inline-block" }} />)}
             </span>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <div style={{ fontSize: 13, color: "rgba(255,90,90,0.95)", letterSpacing: "0.05em" }}>Failed to launch</div>
+            <div style={{ fontSize: 13, color: "rgba(255,90,90,0.95)", letterSpacing: "0.05em" }}>{t('launch.failed')}</div>
             <button
               onClick={onDone}
               style={{
@@ -310,7 +313,7 @@ function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
                 letterSpacing: "0.06em",
               }}
             >
-              Dismiss  ·  B
+              {t('launch.dismiss')}
             </button>
           </div>
         )}
@@ -321,6 +324,7 @@ function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
 
 // ── Custom Art Picker Modal ───────────────────────────────────
 function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "portrait", accent, theme, isDark, glass, onClose, onSet, onReset }) {
+  const { t } = useTranslation();
   const fileRef = useRef(null);
   const [preview, setPreview] = useState(currentArt || null);
   const [pendingData, setPendingData] = useState(null);
@@ -442,26 +446,26 @@ function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "portrait", 
     <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
       <div style={{ ...glass, borderRadius: 20, padding: 24, width: 380 }}>
         <div style={{ fontSize: 16, fontWeight: 700, color: theme.text, marginBottom: 4 }}>{app.name}</div>
-        <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 16 }}>Replace cover art</div>
+        <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 16 }}>{t('artPicker.replaceCoverArt')}</div>
         <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
           {/* Preview — fixed width, 2:3 tall */}
           <div style={{ flexShrink: 0, width: 110 }}>
             {preview
               ? <img src={preview} alt="" style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
-              : <div style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>No art</span></div>
+              : <div style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>{t('artPicker.noArt')}</span></div>
             }
           </div>
           {/* Controls */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
             <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
-            <button onClick={() => fileRef.current?.click()} style={btnStyle("browse", `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, "white")}>Browse Image</button>
-            {pendingData && <button onClick={handleSave} disabled={saving} style={btnStyle("save", "#4a9c4a", "white", { opacity: saving ? 0.6 : 1 })}>{saving ? "Saving…" : "Save"}</button>}
-            {hasCustomArt && !pendingData && <button onClick={handleReset} style={btnStyle("reset", "rgba(255,255,255,0.08)", theme.text)}>Reset to Default</button>}
-            <button onClick={onClose} style={btnStyle("cancel", "rgba(255,255,255,0.05)", theme.textDim)}>Cancel</button>
+            <button onClick={() => fileRef.current?.click()} style={btnStyle("browse", `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, "white")}>{t('artPicker.browseImage')}</button>
+            {pendingData && <button onClick={handleSave} disabled={saving} style={btnStyle("save", "#4a9c4a", "white", { opacity: saving ? 0.6 : 1 })}>{saving ? t('artPicker.saving') : t('common.save')}</button>}
+            {hasCustomArt && !pendingData && <button onClick={handleReset} style={btnStyle("reset", "rgba(255,255,255,0.08)", theme.text)}>{t('artPicker.resetToDefault')}</button>}
+            <button onClick={onClose} style={btnStyle("cancel", "rgba(255,255,255,0.05)", theme.textDim)}>{t('common.cancel')}</button>
             <div style={{ display: "flex", justifyContent: "center", gap: 12, paddingTop: 4 }}>
               {[
-                { bg: "#4a9c4a", label: "A Confirm" },
-                { bg: "#b03030", label: "B Cancel" },
+                { bg: "#4a9c4a", label: t('gamepad.aConfirm') },
+                { bg: "#b03030", label: t('gamepad.bCancel') },
               ].map(({ bg, label }) => (
                 <span key={label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
                   <span style={{ width: 18, height: 18, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "white", flexShrink: 0 }}>{label[0]}</span>
@@ -481,6 +485,7 @@ function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "portrait", 
 let _activeThumbVideo = null;
 
 function ThumbnailCard({ result, selected, isSelected, accent, theme, thumbW, aspect, onClick, ...rest }) {
+  const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
   const [videoSrc, setVideoSrc] = useState(null);
   const videoRef = useRef(null);
@@ -548,7 +553,7 @@ function ThumbnailCard({ result, selected, isSelected, accent, theme, thumbW, as
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-              Hover to preview
+              {t('sgdb.hoverToPreview')}
             </span>
           </div>
         )
@@ -607,6 +612,7 @@ function ThumbnailCard({ result, selected, isSelected, accent, theme, thumbW, as
 const HERO_FILTERS = ["all", "animated", "static"];
 
 function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose, repeatSpeed = "normal" }) {
+  const { t } = useTranslation();
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -763,10 +769,10 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose, repe
 
   if (error) return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
-      <span style={{ color: theme.textDim, fontSize: 13 }}>Failed to load results</span>
+      <span style={{ color: theme.textDim, fontSize: 13 }}>{t('sgdb.failedToLoad')}</span>
       <button onClick={loadResults}
         style={{ padding: "8px 20px", borderRadius: 8, background: `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, color: "white", fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer" }}>
-        Retry
+        {t('common.retry')}
       </button>
     </div>
   );
@@ -781,7 +787,7 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose, repe
               style={{ padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "none",
                 background: heroFilter === f ? accent.primary : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"),
                 color: heroFilter === f ? "white" : theme.text }}>
-              {f.charAt(0).toUpperCase() + f.slice(1)}
+              {t(`sgdb.filter.${f}`)}
             </button>
           ))}
         </div>
@@ -797,14 +803,14 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose, repe
           ))}
           {filteredResults.length === 0 && (
             <div style={{ gridColumn: "1 / -1", textAlign: "center", color: theme.textDim, fontSize: 13, padding: 24 }}>
-              No results found
+              {t('sgdb.noResults')}
             </div>
           )}
         </div>
       </div>
       <div style={{ paddingTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ display: "flex", gap: 12, marginRight: "auto" }}>
-          {[{ bg: "#4a9c4a", label: "A Select" }, { bg: "#b03030", label: "B Cancel" }].map(({ bg, label }) => (
+          {[{ bg: "#4a9c4a", label: t('gamepad.aSelect') }, { bg: "#b03030", label: t('gamepad.bCancel') }].map(({ bg, label }) => (
             <span key={label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
               <span style={{ width: 18, height: 18, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "white", flexShrink: 0 }}>{label[0]}</span>
               {label.slice(1)}
@@ -814,14 +820,14 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose, repe
             <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
               <span style={{ height: 18, minWidth: 20, borderRadius: 4, background: "rgba(255,255,255,0.52)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "white", padding: "0 3px" }}>LT</span>
               <span style={{ height: 18, minWidth: 20, borderRadius: 4, background: "rgba(255,255,255,0.52)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "white", padding: "0 3px" }}>RT</span>
-              Filter
+              {t('sgdb.filter.label')}
             </span>
           )}
         </div>
         <button onClick={onClose}
           style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none",
             background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", color: theme.text }}>
-          Cancel
+          {t('common.cancel')}
         </button>
         <button onClick={handleSelect} disabled={selectedIdx === null || downloading}
           style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600,
@@ -830,7 +836,7 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose, repe
               ? `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`
               : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"),
             color: selectedIdx !== null && !downloading ? "white" : theme.textDim, transition: "all 0.15s" }}>
-          {downloading ? "Downloading…" : "Select"}
+          {downloading ? t('sgdb.downloading') : t('common.select')}
         </button>
       </div>
     </div>
@@ -839,6 +845,7 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose, repe
 
 // ── UploadTab ─────────────────────────────────────────────────
 function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accent, theme, isDark, onClose, onSet, onReset }) {
+  const { t } = useTranslation();
   const fileRef = useRef(null);
   const [preview, setPreview] = useState(currentArt || null);
   const [pendingData, setPendingData] = useState(null);
@@ -961,24 +968,24 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
   return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ width: 380 }}>
-        <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 16 }}>Upload a custom image</div>
+        <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 16 }}>{t('artPicker.uploadCustomImage')}</div>
         <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
           <div style={{ flexShrink: 0, width: cropMode === "hero" ? 220 : 110 }}>
             {preview
               ? <img src={preview} alt="" style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? "1920/620" : "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
-              : <div style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? "1920/620" : "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>No art</span></div>
+              : <div style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? "1920/620" : "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>{t('artPicker.noArt')}</span></div>
             }
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
             <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
-            <button onClick={() => fileRef.current?.click()} style={btnStyle("browse", `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, "white")}>Browse Image</button>
-            {pendingData && <button onClick={handleSave} disabled={saving} style={btnStyle("save", "#4a9c4a", "white", { opacity: saving ? 0.6 : 1 })}>{saving ? "Saving…" : "Save"}</button>}
-            {hasCustomArt && !pendingData && <button onClick={handleReset} style={btnStyle("reset", "rgba(255,255,255,0.08)", theme.text)}>Reset to Default</button>}
-            <button onClick={onClose} style={btnStyle("cancel", "rgba(255,255,255,0.05)", theme.textDim)}>Cancel</button>
+            <button onClick={() => fileRef.current?.click()} style={btnStyle("browse", `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, "white")}>{t('artPicker.browseImage')}</button>
+            {pendingData && <button onClick={handleSave} disabled={saving} style={btnStyle("save", "#4a9c4a", "white", { opacity: saving ? 0.6 : 1 })}>{saving ? t('artPicker.saving') : t('common.save')}</button>}
+            {hasCustomArt && !pendingData && <button onClick={handleReset} style={btnStyle("reset", "rgba(255,255,255,0.08)", theme.text)}>{t('artPicker.resetToDefault')}</button>}
+            <button onClick={onClose} style={btnStyle("cancel", "rgba(255,255,255,0.05)", theme.textDim)}>{t('common.cancel')}</button>
             <div style={{ display: "flex", justifyContent: "center", gap: 12, paddingTop: 4 }}>
               {[
-                { bg: "#4a9c4a", label: "A Confirm" },
-                { bg: "#b03030", label: "B Cancel" },
+                { bg: "#4a9c4a", label: t('gamepad.aConfirm') },
+                { bg: "#b03030", label: t('gamepad.bCancel') },
               ].map(({ bg, label }) => (
                 <span key={label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
                   <span style={{ width: 18, height: 18, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "white", flexShrink: 0 }}>{label[0]}</span>
@@ -995,6 +1002,7 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
 
 // ── SgdbBrowserModal ──────────────────────────────────────────
 function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait", artType = "grid", repeatSpeed = "normal", accent, theme, isDark, glass, onClose, onSet, onReset }) {
+  const { t } = useTranslation();
   const showSgdb = app?.app_type === "game";
   const [activeTab, setActiveTab] = useState(showSgdb ? "browse" : "upload");
   const lastBtnRef = useRef({});
@@ -1040,8 +1048,8 @@ function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait"
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, paddingBottom: 10,
           borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
           {showSgdb && <span style={badgeStyle}>LB</span>}
-          {showSgdb && <button onClick={() => setActiveTab("browse")} style={tabBtnStyle("browse")}>Browse SteamGridDB</button>}
-          <button onClick={() => setActiveTab("upload")} style={tabBtnStyle("upload")}>Upload File</button>
+          {showSgdb && <button onClick={() => setActiveTab("browse")} style={tabBtnStyle("browse")}>{t('artModal.browseSgdb')}</button>}
+          <button onClick={() => setActiveTab("upload")} style={tabBtnStyle("upload")}>{t('artModal.uploadFile')}</button>
           {showSgdb && <span style={badgeStyle}>RB</span>}
         </div>
         {showSgdb && activeTab === "browse"
@@ -1119,6 +1127,7 @@ let _cachedGpSnap = null;
 // Shows the controller name, mapping type, every button (lit when pressed),
 // and every axis as a bar — lets users identify index offsets on odd hardware.
 function ControllerTestWidget({ accent, theme, isDark, glass }) {
+  const { t } = useTranslation();
   const [gpSnap, setGpSnap] = useState(_cachedGpSnap);
   const rAFRef = useRef(null);
   useEffect(() => {
@@ -1142,7 +1151,7 @@ function ControllerTestWidget({ accent, theme, isDark, glass }) {
 
   if (!gpSnap) return (
     <div style={{ fontSize: 13, color: theme.textDim, padding: "4px 0 8px" }}>
-      No controller detected — connect a gamepad and press any button.
+      {t('settings.noController')}
     </div>
   );
 
@@ -1229,6 +1238,7 @@ function ControllerTestWidget({ accent, theme, isDark, glass }) {
 // Shows all apps (visible + hidden) in one list.
 // Checked = shown in launcher. Uncheck to hide, check to restore.
 function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHideModal, toggleHidden, glass, accent, isDark, theme }) {
+    const { t } = useTranslation();
     const visibleApps = appsRef.current.filter(a => tab === "Games" ? a.app_type === "game" : a.app_type === "app");
     const hiddenIds   = hiddenRef.current;
 
@@ -1371,17 +1381,17 @@ function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHideModal, toggle
           {/* Header */}
           <div style={{ padding: "20px 24px 14px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`, flexShrink: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: theme.text, marginBottom: 4 }}>
-              Manage {tab === "Games" ? "games" : "apps"}
+              {tab === "Games" ? t('hideModal.manageGames') : t('hideModal.manageApps')}
             </div>
             <div style={{ fontSize: 12, color: theme.textDim }}>
-              Checked = visible · Uncheck to hide · A to toggle · ↑↓ navigate · Menu to save · B to cancel
+              {t('hideModal.hint')}
             </div>
           </div>
 
           {/* List */}
           <div ref={listRef} style={{ overflowY: "auto", flex: 1, padding: "8px 0" }}>
             {allItems.length === 0 && (
-              <div style={{ padding: "40px 24px", textAlign: "center", color: theme.textFaint, fontSize: 13 }}>No apps found.</div>
+              <div style={{ padding: "40px 24px", textAlign: "center", color: theme.textFaint, fontSize: 13 }}>{t('hideModal.noApps')}</div>
             )}
             {allItems.map((item, i) => {
               const checked  = localChecked.has(item.id);
@@ -1429,7 +1439,7 @@ function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHideModal, toggle
                 background: focusIdx === cancelIdx ? (isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)") : (isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"),
                 border: `2px solid ${focusIdx === cancelIdx ? accent.primary : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
                 transition: "all 0.1s ease" }}>
-              Cancel
+              {t('common.cancel')}
             </div>
             <div data-modal-row onClick={() => {
                 const checked = localChecked;
@@ -1443,7 +1453,7 @@ function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHideModal, toggle
                 border: `2px solid ${focusIdx === confirmIdx ? "white" : accent.primary}`,
                 boxShadow: `0 2px 12px ${accent.glow}0.4)`,
                 transition: "all 0.1s ease" }}>
-              {changeCount > 0 ? `Save ${changeCount} change${changeCount !== 1 ? "s" : ""}` : "Save"}
+              {changeCount > 0 ? t('hideModal.saveChanges', { count: changeCount }) : t('hideModal.save')}
             </div>
           </div>
         </div>
@@ -1477,6 +1487,7 @@ async function sampleIconColor(base64) {
 }
 
 export default function App() {
+  const { t } = useTranslation();
   const [tab, setTab]                               = useState("Home");
   const [apps, setApps]                             = useState([]);
   const [recent, setRecent]                         = useState([]);
@@ -1512,6 +1523,7 @@ export default function App() {
     default_tab: "Home", scan_steam: true, scan_xbox: true,
     scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
     launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
+    language: "auto",
   });
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
   const [heroIndex, setHeroIndex]                   = useState(0);
@@ -1929,10 +1941,12 @@ export default function App() {
       const updated = { ...s, ui_scale: s.ui_scale ?? auto };
       setSettings(updated); settingsRef.current = updated;
       setTab(s.default_tab || "Home"); tabRef.current = s.default_tab || "Home";
+      if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
     }).catch(() => {
       invoke("get_settings").then(s => {
         setSettings(s); settingsRef.current = s;
         setTab(s.default_tab || "Home"); tabRef.current = s.default_tab || "Home";
+        if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
       });
     });
     invoke("get_custom_art").then(art => {
@@ -2031,13 +2045,13 @@ export default function App() {
 
   const handleClearCache = async () => {
     setCacheClearLoading(true);
-    setCacheClearStatus({ line1: "Clearing Cache", line2: "Removing cached artwork files…" });
+    setCacheClearStatus({ line1: t('cache.clearing'), line2: t('cache.removingFiles') });
     await invoke("clear_art_cache");
     setGameArt({}); setHeroAnimated({}); setHeroStatic({});
     const games = appsRef.current.filter(a => a.app_type === "game");
-    setCacheClearStatus({ line1: "Downloading Artwork", line2: `Starting download for ${games.length} games…` });
+    setCacheClearStatus({ line1: t('cache.downloadingArtwork'), line2: t('cache.startingDownload', { count: games.length }) });
     await fetchGameArt(games, (done, total, lastName) => {
-      setCacheClearStatus({ line1: "Downloading Artwork", line2: `${lastName ? `${lastName} — ` : ""}${done} / ${total} games` });
+      setCacheClearStatus({ line1: t('cache.downloadingArtwork'), line2: t('cache.progress', { name: lastName ? `${lastName} — ` : "", done, total }) });
     });
     setCacheClearLoading(false);
   };
@@ -2052,6 +2066,14 @@ export default function App() {
       return updated;
     });
     if (SCAN_KEYS.includes(key)) setTimeout(refreshLibrary, 50);
+    if (key === "language") {
+      if (value === "auto") {
+        const detected = navigator.language?.split("-")[0] || "en";
+        i18n.changeLanguage(detected);
+      } else {
+        i18n.changeLanguage(value);
+      }
+    }
   };
 
   const checkForUpdates = () => {
@@ -2238,36 +2260,37 @@ export default function App() {
   };
 
   const SETTINGS_ITEMS = [
-    { key: "accent",            label: "Accent Color",           type: "accent" },
-    { key: "theme",             label: "Theme",                  type: "cycle",  options: ["dark","light","system"] },
-    { key: "stars_enabled",     label: isDark ? "Background Stars" : "Background Clouds", type: "toggle" },
-    { key: "divider_display",   label: "DISPLAY",                type: "divider" },
-    { key: "ui_scale",          label: "UI Scale",               type: "slider", min: 0.75, max: 2.0, step: 0.05 },
-    { key: "reset_scale",       label: "Reset Scale to Auto",    type: "action" },
-    { key: "divider",           label: "LIBRARY",                type: "divider" },
-    { key: "scan_steam",        label: "Scan Steam",             type: "toggle" },
-    { key: "scan_xbox",         label: "Scan Xbox",              type: "toggle" },
-    { key: "scan_uwp",          label: "Scan Store Apps",        type: "toggle" },
-    { key: "scan_desktop",      label: "Scan Desktop Shortcuts", type: "toggle" },
-    { key: "scan_battlenet",    label: "Scan Battle.net",        type: "toggle" },
-    { key: "refresh_library",   label: "Refresh Library",        type: "refresh" },
-    { key: "divider2",          label: "BEHAVIOR",               type: "divider" },
-    { key: "default_tab",       label: "Default Tab",            type: "cycle",  options: ["Home","Games","Apps"] },
-    { key: "repeat_speed",      label: "Stick Repeat Speed",     type: "cycle",  options: ["slow","normal","fast"] },
-    { key: "launch_at_startup", label: "Launch at Startup",      type: "toggle" },
-    { key: "animated_heroes",   label: "Hero Art Mode",          type: "cycle",  options: ["static", "animated", "custom"] },
-    { key: "divider_ctrl",      label: "CONTROLLER",             type: "divider" },
-    { key: "controller_test",   label: "Controller Test",        type: "controller_test" },
-    { key: "divider3",          label: "DATA",                   type: "divider" },
-    { key: "clear_recents",     label: "Clear Recently Played",  type: "action" },
-    { key: "clear_cache",       label: "Clear Art Cache",        type: "action" },
-    { key: "divider4",          label: "ABOUT",                  type: "divider" },
-    { key: "version",           label: `LiftOff v${APP_VERSION}`, type: "info" },
-    { key: "check_updates",     label: "Check for Updates",       type: "update" },
-    { key: "coffee",            label: "☕ Buy Me a Coffee",      type: "link" },
-    { key: "github",            label: "⭐ GitHub",               type: "link" },
-    { key: "discord",           label: "💬 Discord",              type: "link" },
-    { key: "divider5",  label: "CREDITS",                         type: "divider" },
+    { key: "accent",            label: t('settings.accentColor'),                           type: "accent" },
+    { key: "theme",             label: t('settings.theme'),                                 type: "cycle",  options: ["dark","light","system"] },
+    { key: "stars_enabled",     label: isDark ? t('settings.backgroundStars') : t('settings.backgroundClouds'), type: "toggle" },
+    { key: "divider_display",   label: t('settings.dividers.display'),                      type: "divider" },
+    { key: "ui_scale",          label: t('settings.uiScale'),                               type: "slider", min: 0.75, max: 2.0, step: 0.05 },
+    { key: "reset_scale",       label: t('settings.resetScale'),                            type: "action" },
+    { key: "divider",           label: t('settings.dividers.library'),                      type: "divider" },
+    { key: "scan_steam",        label: t('settings.scanSteam'),                             type: "toggle" },
+    { key: "scan_xbox",         label: t('settings.scanXbox'),                              type: "toggle" },
+    { key: "scan_uwp",          label: t('settings.scanStoreApps'),                         type: "toggle" },
+    { key: "scan_desktop",      label: t('settings.scanDesktop'),                           type: "toggle" },
+    { key: "scan_battlenet",    label: t('settings.scanBattlenet'),                         type: "toggle" },
+    { key: "refresh_library",   label: t('settings.refreshLibrary'),                        type: "refresh" },
+    { key: "divider2",          label: t('settings.dividers.behavior'),                     type: "divider" },
+    { key: "default_tab",       label: t('settings.defaultTab'),                            type: "cycle",  options: ["Home","Games","Apps"] },
+    { key: "repeat_speed",      label: t('settings.repeatSpeed'),                           type: "cycle",  options: ["slow","normal","fast"] },
+    { key: "language",          label: t('settings.language'),                               type: "cycle",  options: ["auto","en","fr"] },
+    { key: "launch_at_startup", label: t('settings.launchAtStartup'),                       type: "toggle" },
+    { key: "animated_heroes",   label: t('settings.heroArtMode'),                           type: "cycle",  options: ["static", "animated", "custom"] },
+    { key: "divider_ctrl",      label: t('settings.dividers.controller'),                   type: "divider" },
+    { key: "controller_test",   label: t('settings.controllerTest'),                        type: "controller_test" },
+    { key: "divider3",          label: t('settings.dividers.data'),                         type: "divider" },
+    { key: "clear_recents",     label: t('settings.clearRecents'),                          type: "action" },
+    { key: "clear_cache",       label: t('settings.clearCache'),                            type: "action" },
+    { key: "divider4",          label: t('settings.dividers.about'),                        type: "divider" },
+    { key: "version",           label: t('settings.version', { version: APP_VERSION }),     type: "info" },
+    { key: "check_updates",     label: t('settings.checkUpdates'),                          type: "update" },
+    { key: "coffee",            label: t('settings.coffee'),                                type: "link" },
+    { key: "github",            label: t('settings.github'),                                type: "link" },
+    { key: "discord",           label: t('settings.discord'),                               type: "link" },
+    { key: "divider5",  label: t('settings.dividers.credits'),                              type: "divider" },
     { key: "credit1",   label: "Mysterious Magical Bell Flourish", author: "DanaiOuranos", license: "CC0",       url: "https://freesound.org/s/848847/",                        type: "attribution" },
     { key: "credit2",   label: "Achievement Sparkle",              author: "DanaiOuranos", license: "CC0",       url: "https://freesound.org/s/715067/",                        type: "attribution" },
     { key: "credit3",   label: "Mysterious Sparkle Flourish",      author: "DanaiOuranos", license: "CC0",       url: "https://freesound.org/s/844398/",                        type: "attribution" },
@@ -2290,10 +2313,10 @@ export default function App() {
     if (contextMenuRef.current) {
       const menu = contextMenuRef.current;
       const menuItems = [
-        { label: "Open" },
-        { label: menu.app.app_type === "game" ? (pins.includes(menu.app.id) ? "Unpin" : "Pin") : (pins.includes(menu.app.id) ? "Unpin" : "Pin") },
-        { label: "Change Art" },
-        ...(menu.app.app_type === "game" ? [{ label: "Change Hero Art" }] : []),
+        { key: "open" },
+        { key: pins.includes(menu.app.id) ? "unpin" : "pin" },
+        { key: "changeArt" },
+        ...(menu.app.app_type === "game" ? [{ key: "changeHeroArt" }] : []),
       ];
       const cur = menu.focusedIdx || 0;
       if (key === "ArrowDown") {
@@ -2309,11 +2332,11 @@ export default function App() {
         return;
       }
       if (key === "Enter") {
-        const label = menuItems[cur]?.label;
-        if (label === "Open") { triggerLaunch(menu.app, recentRef.current); setContextMenu(null); contextMenuRef.current = null; }
-        else if (label === "Pin" || label === "Unpin") { togglePin(menu.app); setContextMenu(null); contextMenuRef.current = null; }
-        else if (label === "Change Art") { setArtPickerMode("grid"); artPickerModeRef.current = "grid"; setArtPickerApp(menu.app); artPickerAppRef.current = menu.app; setContextMenu(null); contextMenuRef.current = null; }
-        else if (label === "Change Hero Art") { setArtPickerMode("hero"); artPickerModeRef.current = "hero"; setArtPickerApp(menu.app); artPickerAppRef.current = menu.app; setContextMenu(null); contextMenuRef.current = null; }
+        const itemKey = menuItems[cur]?.key;
+        if (itemKey === "open") { triggerLaunch(menu.app, recentRef.current); setContextMenu(null); contextMenuRef.current = null; }
+        else if (itemKey === "pin" || itemKey === "unpin") { togglePin(menu.app); setContextMenu(null); contextMenuRef.current = null; }
+        else if (itemKey === "changeArt") { setArtPickerMode("grid"); artPickerModeRef.current = "grid"; setArtPickerApp(menu.app); artPickerAppRef.current = menu.app; setContextMenu(null); contextMenuRef.current = null; }
+        else if (itemKey === "changeHeroArt") { setArtPickerMode("hero"); artPickerModeRef.current = "hero"; setArtPickerApp(menu.app); artPickerAppRef.current = menu.app; setContextMenu(null); contextMenuRef.current = null; }
         return;
       }
       if (key === "Escape" || key === "BumperLeft" || key === "BumperRight") {
@@ -2821,7 +2844,7 @@ export default function App() {
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase",
             color: accent.primary, background: `${accent.glow}0.12)`, borderRadius: 20,
             padding: "3px 14px", border: `1px solid ${accent.glow}0.25)` }}>
-            {kbNumMode ? "Numbers & Symbols" : "Letters"}
+            {kbNumMode ? t('keyboard.numbersAndSymbols') : t('keyboard.letters')}
           </div>
         </div>
         {layout.map((row, rIdx) => (
@@ -2856,12 +2879,12 @@ export default function App() {
         <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 8, paddingTop: 8,
           borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}` }}>
           {[
-            { bg: "#4a9c4a", label: "A",  desc: "Type",       circle: true },
-            { bg: "#3a5a8a", label: "X",  desc: "Delete",     circle: true },
-            { bg: "#9a7020", label: "Y",  desc: "Space",      circle: true },
-            { bg: "#b03030", label: "B",  desc: "Results",    circle: true },
+            { bg: "#4a9c4a", label: "A",  desc: t('keyboard.type'),    circle: true },
+            { bg: "#3a5a8a", label: "X",  desc: t('keyboard.delete'),  circle: true },
+            { bg: "#9a7020", label: "Y",  desc: t('keyboard.space'),   circle: true },
+            { bg: "#b03030", label: "B",  desc: t('keyboard.results'), circle: true },
             { bg: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)", label: "RT", desc: kbNumMode ? "→ ABC" : "→ 123", circle: false },
-            { bg: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)", label: "⊞",  desc: "Results",    circle: false },
+            { bg: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)", label: "⊞",  desc: t('keyboard.results'), circle: false },
           ].map(({ bg, label, desc, circle }) => (
             <div key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <div style={{ width: circle ? 18 : "auto", height: 18, minWidth: 18, borderRadius: circle ? "50%" : 4,
@@ -3000,7 +3023,7 @@ export default function App() {
                 })}
               </div>
             ) : (
-              <div style={{ fontSize: 10, color: "rgba(245,237,232,0.25)", letterSpacing: "0.1em" }}>Pin apps with X to show them here</div>
+              <div style={{ fontSize: 10, color: "rgba(245,237,232,0.25)", letterSpacing: "0.1em" }}>{t('home.pinHint')}</div>
             )}
           </div>
 
@@ -3017,10 +3040,10 @@ export default function App() {
             {heroGame ? (
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: accent.primary, marginBottom: 6, fontWeight: 600 }}>
-                  {heroIdx === 0 ? "▶ Resume playing" : "▶ Recently played"}
+                  {heroIdx === 0 ? t('home.resumePlaying') : t('home.recentlyPlayed')}
                 </div>
                 <div style={{ fontSize: "clamp(22px, 3.2vw, 48px)", fontWeight: 700, color: theme.text, marginBottom: 4, lineHeight: 1.05, textShadow: isDark ? "0 2px 20px rgba(0,0,0,0.8)" : "none" }}>{heroGame.name}</div>
-                <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 16 }}>Game</div>
+                <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 16 }}>{t('home.game')}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div onClick={() => triggerLaunch(heroGame, recentRef.current)}
                     style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 24px", borderRadius: 10, cursor: "pointer", transition: "all 0.15s ease", fontWeight: 600, fontSize: 14,
@@ -3031,7 +3054,7 @@ export default function App() {
                       boxShadow: heroFocused ? `0 4px 24px ${accent.glow}0.5)` : "none",
                     }}>
                     <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5l7 3.5-7 3.5z"/></svg>
-                    Launch
+                    {t('home.launch')}
                   </div>
                   {recentGames.length > 1 && (
                     <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
@@ -3045,7 +3068,7 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <div style={{ fontSize: 14, color: theme.textFaint }}>Launch a game to see it here</div>
+              <div style={{ fontSize: 14, color: theme.textFaint }}>{t('home.noGames')}</div>
             )}
           </div>
           {heroFocused && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: `linear-gradient(to right, ${accent.primary}, ${accent.glow}0))`, pointerEvents: "none", zIndex: 3 }} />}
@@ -3055,7 +3078,7 @@ export default function App() {
         <div style={{ paddingTop: 0 }}>
           <div style={{ paddingTop: 14 }} />
           {homeFilteredRecent.length === 0 ? (
-            <div style={{ fontSize: 13, color: theme.textFaint, paddingBottom: 100 }}>Nothing here yet — launch something!</div>
+            <div style={{ fontSize: 13, color: theme.textFaint, paddingBottom: 100 }}>{t('home.noRecents')}</div>
           ) : (
             <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 100, paddingTop: 8, marginTop: -8, paddingLeft: 6, paddingRight: 6 }}>
               {homeFilteredRecent.map((app, i) => {
@@ -3186,7 +3209,7 @@ export default function App() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
                   onClick={() => updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length])}>◀</span>
-                <span style={{ fontSize: 12, color: accent.primary, fontWeight: 600, textTransform: "capitalize" }}>{settings[item.key]}</span>
+                <span style={{ fontSize: 12, color: accent.primary, fontWeight: 600 }}>{t(`settings.values.${settings[item.key]}`, settings[item.key])}</span>
                 <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
                   onClick={() => updateSetting(item.key, opts[(cur + 1) % opts.length])}>▶</span>
               </div>
@@ -3213,9 +3236,9 @@ export default function App() {
           );
         }
         if (item.type === "refresh") {
-          const statusText  = libraryRefreshStatus === "scanning" ? "Scanning..."
-                            : libraryRefreshStatus === "done"     ? "✓ Done"
-                            : "↵ Refresh";
+          const statusText  = libraryRefreshStatus === "scanning" ? t('settings.status.scanning')
+                            : libraryRefreshStatus === "done"     ? t('settings.status.done')
+                            : t('settings.status.refresh');
           const statusColor = libraryRefreshStatus === "done" ? "#4ae88a"
                             : theme.textDim;
           return (
@@ -3282,15 +3305,15 @@ export default function App() {
             if (item.key === "reset_scale")   updateSetting("ui_scale", autoScaleRef.current);
           }}>
             <span style={{ fontSize: 14, fontWeight: 500, color: item.key === "reset_scale" ? theme.text : "#e84a4a" }}>{item.label}</span>
-            <span style={{ fontSize: 12, color: theme.textDim }}>{item.key === "reset_scale" ? "↵ Apply" : "↵ Confirm"}</span>
+            <span style={{ fontSize: 12, color: theme.textDim }}>{item.key === "reset_scale" ? t('settings.status.apply') : t('settings.status.confirm')}</span>
           </div>
         );
         if (item.type === "update") {
-          const statusText = updateStatus === "checking"   ? "Checking..."
-                           : updateStatus === "up_to_date" ? "✓ Up to date"
-                           : updateStatus === "available"  ? `↓ v${updateInfo} available`
-                           : updateStatus === "error"      ? "⚠ Check failed"
-                           : "↵ Check";
+          const statusText = updateStatus === "checking"   ? t('settings.status.checking')
+                           : updateStatus === "up_to_date" ? t('settings.status.upToDate')
+                           : updateStatus === "available"  ? t('settings.status.updateAvailable', { version: updateInfo })
+                           : updateStatus === "error"      ? t('settings.status.checkFailed')
+                           : t('settings.status.check');
           const statusColor = updateStatus === "up_to_date" ? "#4ae88a"
                             : updateStatus === "available"  ? accent.primary
                             : updateStatus === "error"      ? "#e84a4a"
@@ -3308,16 +3331,16 @@ export default function App() {
         if (item.type === "link") return (
           <div key={item.key} ref={rowRef} style={rowStyle}>
             <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
-            <span style={{ fontSize: 12, color: theme.textDim }}>↵ Open</span>
+            <span style={{ fontSize: 12, color: theme.textDim }}>{t('settings.status.open')}</span>
           </div>
         );
         if (item.type === "attribution") return (
           <div key={item.key} ref={rowRef} style={rowStyle}>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>{item.label}</span>
-              <span style={{ fontSize: 11, color: theme.textDim }}>by {item.author} · {item.license}</span>
+              <span style={{ fontSize: 11, color: theme.textDim }}>{t('settings.attribution', { author: item.author, license: item.license })}</span>
             </div>
-            <span style={{ fontSize: 12, color: theme.textDim }}>↵ Open</span>
+            <span style={{ fontSize: 12, color: theme.textDim }}>{t('settings.status.open')}</span>
           </div>
         );
         if (item.type === "controller_test") return (
@@ -3419,8 +3442,8 @@ export default function App() {
             <div className="splash-dots" style={{ opacity: 1 }}>
               <div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" />
             </div>
-            <span style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>Refreshing library…</span>
-            <span style={{ fontSize: 12, color: theme.textDim }}>Scanning for apps and games</span>
+            <span style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{t('library.refreshing')}</span>
+            <span style={{ fontSize: 12, color: theme.textDim }}>{t('library.scanning')}</span>
           </div>
         </div>
       )}
@@ -3447,7 +3470,7 @@ export default function App() {
               <div style={{ flex: 1, fontSize: 20, fontWeight: 500, minWidth: 0, overflow: "hidden",
                 whiteSpace: "nowrap", textOverflow: "ellipsis",
                 color: searchQuery ? theme.text : theme.textFaint }}>
-                {searchQuery || "Search games & apps…"}
+                {searchQuery || t('search.placeholder')}
                 {searchMode === "keyboard" && (
                   <span className="kb-cursor" style={{ display: "inline-block", width: 2, height: "0.9em",
                     background: accent.primary, marginLeft: 1, verticalAlign: "text-bottom", borderRadius: 1 }} />
@@ -3457,19 +3480,19 @@ export default function App() {
                 <div onClick={() => { setSearchQuery(""); searchQueryRef.current = ""; setSearchFocusIndex(0); searchFocusIndexRef.current = 0; }}
                   style={{ fontSize: 12, color: theme.textDim, cursor: "pointer", padding: "3px 10px", borderRadius: 6, flexShrink: 0,
                     background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)" }}>
-                  Clear
+                  {t('common.clear')}
                 </div>
               )}
               <div style={{ fontSize: 11, fontWeight: 600, color: accent.primary, padding: "3px 10px",
                 borderRadius: 20, flexShrink: 0, background: `${accent.glow}0.12)`,
                 border: `1px solid ${accent.glow}0.25)` }}>
-                {searchMode === "keyboard" ? "Typing" : searchMode === "results" ? "Browsing" : "Idle"}
+                {searchMode === "keyboard" ? t('search.mode.typing') : searchMode === "results" ? t('search.mode.browsing') : t('search.mode.idle')}
               </div>
               <div onClick={closeSearch}
                 style={{ fontSize: 12, color: theme.textDim, cursor: "pointer", padding: "3px 10px", borderRadius: 6, flexShrink: 0,
                   background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
                   border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}` }}>
-                Close
+                {t('common.close')}
               </div>
             </div>
           </div>
@@ -3480,15 +3503,15 @@ export default function App() {
               <>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase",
                   color: theme.textFaint, padding: "4px 4px 10px", display: "flex", alignItems: "center", gap: 10 }}>
-                  <span>{searchResults.length} result{searchResults.length !== 1 ? "s" : ""}</span>
+                  <span>{t('search.results', { count: searchResults.length })}</span>
                   {searchMode === "keyboard" && (
                     <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", fontSize: 11, color: theme.textFaint }}>
-                      — <strong style={{ color: theme.textDim }}>⊞ Start</strong> to browse
+                      {t('search.startToBrowse')}
                     </span>
                   )}
                   {searchMode === "idle" && (
                     <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", fontSize: 11, color: theme.textFaint }}>
-                      — <strong style={{ color: theme.textDim }}>Y</strong> to type · <strong style={{ color: theme.textDim }}>⊞</strong> to browse
+                      {t('search.idleHint')}
                     </span>
                   )}
                 </div>
@@ -3550,9 +3573,9 @@ export default function App() {
             {searchMode === "results" && (
               <div style={{ position: "sticky", bottom: 0, paddingTop: 8 }}>
                 <div style={{ ...glass, borderRadius: 12, padding: "9px 20px", display: "flex", gap: 16, alignItems: "center" }}>
-                  <Btn color="#4a9c4a" label="A Launch" />
-                  <Btn color="#9a7020" label="Y Keyboard" />
-                  <Btn color="#b03030" label="B Close" />
+                  <Btn color="#4a9c4a" label={t('gamepad.aLaunch')} />
+                  <Btn color="#9a7020" label={t('gamepad.yKeyboard')} />
+                  <Btn color="#b03030" label={t('gamepad.bClose')} />
                   <span style={{ marginLeft: "auto", fontSize: 11, color: theme.textFaint }}>↑ from top → Keyboard</span>
                 </div>
               </div>
@@ -3561,9 +3584,9 @@ export default function App() {
             {searchMode === "idle" && (
               <div style={{ position: "sticky", bottom: 0, paddingTop: 8 }}>
                 <div style={{ ...glass, borderRadius: 12, padding: "9px 20px", display: "flex", gap: 16, alignItems: "center" }}>
-                  <Btn color="#9a7020" label="Y Keyboard" />
-                  <Btn color="#b03030" label="B Close" />
-                  {searchResults.length > 0 && <span style={{ fontSize: 11, color: theme.textFaint }}>⊞ Start → Browse</span>}
+                  <Btn color="#9a7020" label={t('gamepad.yKeyboard')} />
+                  <Btn color="#b03030" label={t('gamepad.bClose')} />
+                  {searchResults.length > 0 && <span style={{ fontSize: 11, color: theme.textFaint }}>{t('search.startBrowse')}</span>}
                 </div>
               </div>
             )}
@@ -3588,13 +3611,13 @@ export default function App() {
               <span key={`${settings.accent}-${settings.theme}`} style={{ fontWeight: 700, fontSize: 16, letterSpacing: "0.04em", background: `linear-gradient(135deg, ${accent.light}, ${accent.primary})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>LiftOff</span>
             </div>
             <div style={{ display: "flex", gap: 2, flex: 1, justifyContent: "center" }}>
-              {TABS.map((t) => (
-                <div key={t} onClick={() => switchTab(t)} style={{
+              {TABS.map((tabName) => (
+                <div key={tabName} onClick={() => switchTab(tabName)} style={{
                   fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
-                  color: tab === t ? theme.text : theme.textDim, padding: "6px 16px", borderRadius: 8, cursor: "pointer",
-                  border: `1px solid ${tab === t ? `${accent.glow}0.35)` : "transparent"}`,
-                  background: tab === t ? `${accent.glow}0.15)` : "transparent",
-                }}>{t}</div>
+                  color: tab === tabName ? theme.text : theme.textDim, padding: "6px 16px", borderRadius: 8, cursor: "pointer",
+                  border: `1px solid ${tab === tabName ? `${accent.glow}0.35)` : "transparent"}`,
+                  background: tab === tabName ? `${accent.glow}0.15)` : "transparent",
+                }}>{t(`tabs.${tabName.toLowerCase()}`)}</div>
               ))}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
@@ -3660,7 +3683,7 @@ export default function App() {
                               border: `1px solid ${active ? accent.primary : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
                               boxShadow: active ? `0 2px 10px ${accent.glow}0.35)` : "none",
                             }}>
-                            {src}
+                            {src === "All" ? t('sources.all') : src === "Other" ? t('sources.other') : src}
                           </div>
                         );
                       })}
@@ -3673,7 +3696,7 @@ export default function App() {
                       color: theme.textDim, background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
                       border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
                     }}>
-                    Manage
+                    {t('grid.manage')}
                   </div>
                 </div>
               );
@@ -3683,8 +3706,8 @@ export default function App() {
             {pinnedAppsReactive.length > 0 && !(tab === "Games" && gameSourceTab !== "All") && (
               <>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 0 10px" }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint }}>Pinned</div>
-                  <div style={{ fontSize: 10, color: theme.textFaint, opacity: 0.6 }}>X to unpin</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint }}>{t('grid.pinned')}</div>
+                  <div style={{ fontSize: 10, color: theme.textFaint, opacity: 0.6 }}>{t('grid.unpinHint')}</div>
                 </div>
                 {tab === "Games" ? (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 12, paddingTop: 6, marginTop: -6, paddingBottom: 14 }}>
@@ -3811,40 +3834,40 @@ export default function App() {
         <div style={{ position: "sticky", bottom: 0, zIndex: 100 }}>
           <div style={{ ...glass, borderRadius: 12, padding: "10px 20px", display: "flex", gap: 20, alignItems: "center", maxWidth: 1400, margin: "0 auto 14px", width: "calc(100% - 48px)" }}>
             {tab === "Settings"
-              ? <><Btn color="#4a9c4a" label="A Select" /><Btn color="#b03030" label="B Back" /></>
+              ? <><Btn color="#4a9c4a" label={t('gamepad.aSelect')} /><Btn color="#b03030" label={t('gamepad.bBack')} /></>
               : <>
-                  <Btn color="#4a9c4a" label="A Launch" />
-                  <Btn color="#b03030" label="B Back" />
-                  <Btn color="#9a7020" label="Y Search" />
-                  <Btn color="#3a5a8a" label="X Pin" />
+                  <Btn color="#4a9c4a" label={t('gamepad.aLaunch')} />
+                  <Btn color="#b03030" label={t('gamepad.bBack')} />
+                  <Btn color="#9a7020" label={t('gamepad.ySearch')} />
+                  <Btn color="#3a5a8a" label={t('gamepad.xPin')} />
                   <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
                     <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>LB</span>
                     <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>RB</span>
-                    Tabs
+                    {t('gamepad.tabs')}
                   </span>
                   {tab === "Games" && <>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
                       <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>LT</span>
                       <span style={{ height: 18, minWidth: 24, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>RT</span>
-                      Source
+                      {t('gamepad.source')}
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
                       <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>MENU</span>
-                      Options
+                      {t('gamepad.options')}
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
                       <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>BACK</span>
-                      Manage
+                      {t('grid.manage')}
                     </span>
                   </>}
                   {tab === "Apps" && <>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
                       <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>MENU</span>
-                      Options
+                      {t('gamepad.options')}
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
                       <span style={{ height: 18, minWidth: 28, borderRadius: 4, background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px" }}>BACK</span>
-                      Manage
+                      {t('grid.manage')}
                     </span>
                   </>}
                 </>
@@ -3855,11 +3878,11 @@ export default function App() {
 
       {contextMenu && (() => {
         const ctxItems = [
-          { label: "Open", action: () => { triggerLaunch(contextMenu.app, recentRef.current); setContextMenu(null); contextMenuRef.current = null; } },
-          { label: pins.includes(contextMenu.app.id) ? "Unpin" : "Pin", action: () => { togglePin(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
-          { label: "Change Art", action: () => { setArtPickerMode("grid"); artPickerModeRef.current = "grid"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } },
+          { label: t('contextMenu.open'),      action: () => { triggerLaunch(contextMenu.app, recentRef.current); setContextMenu(null); contextMenuRef.current = null; } },
+          { label: t(pins.includes(contextMenu.app.id) ? 'contextMenu.unpin' : 'contextMenu.pin'), action: () => { togglePin(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
+          { label: t('contextMenu.changeArt'), action: () => { setArtPickerMode("grid"); artPickerModeRef.current = "grid"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } },
           ...(contextMenu.app.app_type === "game"
-            ? [{ label: "Change Hero Art", action: () => { setArtPickerMode("hero"); artPickerModeRef.current = "hero"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
+            ? [{ label: t('contextMenu.changeHeroArt'), action: () => { setArtPickerMode("hero"); artPickerModeRef.current = "hero"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
             : []),
         ];
         const ctxFocused = contextMenu.focusedIdx || 0;
@@ -3891,7 +3914,7 @@ export default function App() {
                 ))}
               </div>
               <div style={{ padding: "6px 16px 8px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"}`, display: "flex", gap: 10 }}>
-                {[{ bg: "#4a9c4a", label: "A Select" }, { bg: "#b03030", label: "B Close" }].map(({ bg, label }) => (
+                {[{ bg: "#4a9c4a", label: t('gamepad.aSelect') }, { bg: "#b03030", label: t('gamepad.bClose') }].map(({ bg, label }) => (
                   <span key={label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: theme.textDim }}>
                     <span style={{ width: 16, height: 16, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "white", flexShrink: 0 }}>{label[0]}</span>
                     {label.slice(1)}
