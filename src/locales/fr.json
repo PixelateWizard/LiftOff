@@ -1,0 +1,194 @@
+{
+  "tabs": {
+    "home": "Accueil",
+    "games": "Jeux",
+    "apps": "Apps",
+    "settings": "Paramètres"
+  },
+  "sources": {
+    "all": "Tous",
+    "other": "Autres"
+  },
+  "launch": {
+    "launching": "Lancement",
+    "failed": "Échec du lancement",
+    "dismiss": "Ignorer  ·  B"
+  },
+  "artPicker": {
+    "replaceCoverArt": "Remplacer la couverture",
+    "uploadCustomImage": "Télécharger une image",
+    "noArt": "Pas d'image",
+    "browseImage": "Parcourir",
+    "saving": "Sauvegarde…",
+    "resetToDefault": "Réinitialiser"
+  },
+  "sgdb": {
+    "hoverToPreview": "Survoler pour prévisualiser",
+    "failedToLoad": "Échec du chargement",
+    "noResults": "Aucun résultat",
+    "downloading": "Téléchargement…",
+    "filter": {
+      "all": "Tous",
+      "animated": "Animés",
+      "static": "Statiques",
+      "label": "Filtrer"
+    }
+  },
+  "artModal": {
+    "browseSgdb": "Parcourir SteamGridDB",
+    "uploadFile": "Télécharger un fichier"
+  },
+  "hideModal": {
+    "manageGames": "Gérer les jeux",
+    "manageApps": "Gérer les apps",
+    "hint": "Coché = visible · Décocher pour masquer · A = basculer · ↑↓ naviguer · Menu = sauvegarder · B = annuler",
+    "noApps": "Aucune app trouvée.",
+    "saveChanges_one": "Sauvegarder {{count}} modification",
+    "saveChanges_other": "Sauvegarder {{count}} modifications",
+    "save": "Sauvegarder"
+  },
+  "settings": {
+    "accentColor": "Couleur d'accent",
+    "theme": "Thème",
+    "backgroundStars": "Étoiles de fond",
+    "backgroundClouds": "Nuages de fond",
+    "uiScale": "Échelle UI",
+    "resetScale": "Réinitialiser l'échelle",
+    "scanSteam": "Scanner Steam",
+    "scanXbox": "Scanner Xbox",
+    "scanStoreApps": "Scanner les apps du Store",
+    "scanDesktop": "Scanner les raccourcis Bureau",
+    "scanBattlenet": "Scanner Battle.net",
+    "refreshLibrary": "Actualiser la bibliothèque",
+    "defaultTab": "Onglet par défaut",
+    "repeatSpeed": "Vitesse de répétition",
+    "launchAtStartup": "Lancer au démarrage",
+    "heroArtMode": "Mode art héros",
+    "controllerTest": "Test manette",
+    "noController": "Aucune manette détectée — connectez un contrôleur et appuyez sur un bouton.",
+    "clearRecents": "Effacer l'historique",
+    "clearCache": "Vider le cache art",
+    "language": "Langue",
+    "version": "LiftOff v{{version}}",
+    "checkUpdates": "Vérifier les mises à jour",
+    "coffee": "☕ Offrir un café",
+    "github": "⭐ GitHub",
+    "discord": "💬 Discord",
+    "dividers": {
+      "display": "AFFICHAGE",
+      "library": "BIBLIOTHÈQUE",
+      "behavior": "COMPORTEMENT",
+      "controller": "MANETTE",
+      "data": "DONNÉES",
+      "about": "À PROPOS",
+      "credits": "CRÉDITS"
+    },
+    "status": {
+      "scanning": "Analyse...",
+      "done": "✓ Terminé",
+      "refresh": "↵ Actualiser",
+      "apply": "↵ Appliquer",
+      "confirm": "↵ Confirmer",
+      "open": "↵ Ouvrir",
+      "checking": "Vérification...",
+      "upToDate": "✓ À jour",
+      "updateAvailable": "↓ v{{version}} disponible",
+      "checkFailed": "⚠ Échec de la vérification",
+      "check": "↵ Vérifier"
+    },
+    "attribution": "par {{author}} · {{license}}",
+    "values": {
+      "dark": "Sombre",
+      "light": "Clair",
+      "system": "Système",
+      "slow": "Lent",
+      "normal": "Normal",
+      "fast": "Rapide",
+      "static": "Statique",
+      "animated": "Animé",
+      "custom": "Personnalisé",
+      "Home": "Accueil",
+      "Games": "Jeux",
+      "Apps": "Apps",
+      "auto": "Auto",
+      "en": "English",
+      "fr": "Français"
+    }
+  },
+  "home": {
+    "resumePlaying": "▶ Reprendre",
+    "recentlyPlayed": "▶ Joué récemment",
+    "game": "Jeu",
+    "launch": "Lancer",
+    "noGames": "Lancez un jeu pour le voir ici",
+    "noRecents": "Rien ici pour l'instant — lancez quelque chose !",
+    "pinHint": "Épinglez des apps avec X pour les afficher ici"
+  },
+  "grid": {
+    "pinned": "Épinglés",
+    "unpinHint": "X pour désépingler",
+    "manage": "Gérer"
+  },
+  "library": {
+    "refreshing": "Actualisation…",
+    "scanning": "Recherche d'apps et de jeux"
+  },
+  "cache": {
+    "clearing": "Nettoyage du cache",
+    "removingFiles": "Suppression des fichiers d'art en cache…",
+    "downloadingArtwork": "Téléchargement des illustrations",
+    "startingDownload_one": "Démarrage pour {{count}} jeu…",
+    "startingDownload_other": "Démarrage pour {{count}} jeux…",
+    "progress": "{{name}}{{done}} / {{total}} jeux"
+  },
+  "search": {
+    "placeholder": "Rechercher jeux et apps…",
+    "mode": {
+      "typing": "Saisie",
+      "browsing": "Navigation",
+      "idle": "Inactif"
+    },
+    "results_one": "{{count}} résultat",
+    "results_other": "{{count}} résultats",
+    "startToBrowse": "— ⊞ Start pour naviguer",
+    "idleHint": "— Y pour saisir · ⊞ pour naviguer",
+    "startBrowse": "⊞ Start → Naviguer"
+  },
+  "contextMenu": {
+    "open": "Ouvrir",
+    "pin": "Épingler",
+    "unpin": "Désépingler",
+    "changeArt": "Changer l'illustration",
+    "changeHeroArt": "Changer l'art héros"
+  },
+  "gamepad": {
+    "aSelect": "A Sélectionner",
+    "aLaunch": "A Lancer",
+    "aConfirm": "A Confirmer",
+    "bBack": "B Retour",
+    "bCancel": "B Annuler",
+    "bClose": "B Fermer",
+    "ySearch": "Y Rechercher",
+    "yKeyboard": "Y Clavier",
+    "xPin": "X Épingler",
+    "tabs": "Onglets",
+    "source": "Source",
+    "options": "Options"
+  },
+  "keyboard": {
+    "numbersAndSymbols": "Chiffres et symboles",
+    "letters": "Lettres",
+    "type": "Taper",
+    "delete": "Supprimer",
+    "space": "Espace",
+    "results": "Résultats"
+  },
+  "common": {
+    "save": "Sauvegarder",
+    "cancel": "Annuler",
+    "clear": "Effacer",
+    "close": "Fermer",
+    "select": "Sélectionner",
+    "retry": "Réessayer"
+  }
+}
