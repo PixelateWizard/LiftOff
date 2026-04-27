@@ -1,0 +1,194 @@
+{
+  "tabs": {
+    "home": "Home",
+    "games": "Games",
+    "apps": "Apps",
+    "settings": "Settings"
+  },
+  "sources": {
+    "all": "All",
+    "other": "Other"
+  },
+  "launch": {
+    "launching": "Launching",
+    "failed": "Failed to launch",
+    "dismiss": "Dismiss  ·  B"
+  },
+  "artPicker": {
+    "replaceCoverArt": "Replace cover art",
+    "uploadCustomImage": "Upload a custom image",
+    "noArt": "No art",
+    "browseImage": "Browse Image",
+    "saving": "Saving…",
+    "resetToDefault": "Reset to Default"
+  },
+  "sgdb": {
+    "hoverToPreview": "Hover to preview",
+    "failedToLoad": "Failed to load results",
+    "noResults": "No results found",
+    "downloading": "Downloading…",
+    "filter": {
+      "all": "All",
+      "animated": "Animated",
+      "static": "Static",
+      "label": "Filter"
+    }
+  },
+  "artModal": {
+    "browseSgdb": "Browse SteamGridDB",
+    "uploadFile": "Upload File"
+  },
+  "hideModal": {
+    "manageGames": "Manage games",
+    "manageApps": "Manage apps",
+    "hint": "Checked = visible · Uncheck to hide · A to toggle · ↑↓ navigate · Menu to save · B to cancel",
+    "noApps": "No apps found.",
+    "saveChanges_one": "Save {{count}} change",
+    "saveChanges_other": "Save {{count}} changes",
+    "save": "Save"
+  },
+  "settings": {
+    "accentColor": "Accent Color",
+    "theme": "Theme",
+    "backgroundStars": "Background Stars",
+    "backgroundClouds": "Background Clouds",
+    "uiScale": "UI Scale",
+    "resetScale": "Reset Scale to Auto",
+    "scanSteam": "Scan Steam",
+    "scanXbox": "Scan Xbox",
+    "scanStoreApps": "Scan Store Apps",
+    "scanDesktop": "Scan Desktop Shortcuts",
+    "scanBattlenet": "Scan Battle.net",
+    "refreshLibrary": "Refresh Library",
+    "defaultTab": "Default Tab",
+    "repeatSpeed": "Stick Repeat Speed",
+    "launchAtStartup": "Launch at Startup",
+    "heroArtMode": "Hero Art Mode",
+    "controllerTest": "Controller Test",
+    "noController": "No controller detected — connect a gamepad and press any button.",
+    "clearRecents": "Clear Recently Played",
+    "clearCache": "Clear Art Cache",
+    "language": "Language",
+    "version": "LiftOff v{{version}}",
+    "checkUpdates": "Check for Updates",
+    "coffee": "☕ Buy Me a Coffee",
+    "github": "⭐ GitHub",
+    "discord": "💬 Discord",
+    "dividers": {
+      "display": "DISPLAY",
+      "library": "LIBRARY",
+      "behavior": "BEHAVIOR",
+      "controller": "CONTROLLER",
+      "data": "DATA",
+      "about": "ABOUT",
+      "credits": "CREDITS"
+    },
+    "status": {
+      "scanning": "Scanning...",
+      "done": "✓ Done",
+      "refresh": "↵ Refresh",
+      "apply": "↵ Apply",
+      "confirm": "↵ Confirm",
+      "open": "↵ Open",
+      "checking": "Checking...",
+      "upToDate": "✓ Up to date",
+      "updateAvailable": "↓ v{{version}} available",
+      "checkFailed": "⚠ Check failed",
+      "check": "↵ Check"
+    },
+    "attribution": "by {{author}} · {{license}}",
+    "values": {
+      "dark": "Dark",
+      "light": "Light",
+      "system": "System",
+      "slow": "Slow",
+      "normal": "Normal",
+      "fast": "Fast",
+      "static": "Static",
+      "animated": "Animated",
+      "custom": "Custom",
+      "Home": "Home",
+      "Games": "Games",
+      "Apps": "Apps",
+      "auto": "Auto",
+      "en": "English",
+      "fr": "Français"
+    }
+  },
+  "home": {
+    "resumePlaying": "▶ Resume playing",
+    "recentlyPlayed": "▶ Recently played",
+    "game": "Game",
+    "launch": "Launch",
+    "noGames": "Launch a game to see it here",
+    "noRecents": "Nothing here yet — launch something!",
+    "pinHint": "Pin apps with X to show them here"
+  },
+  "grid": {
+    "pinned": "Pinned",
+    "unpinHint": "X to unpin",
+    "manage": "Manage"
+  },
+  "library": {
+    "refreshing": "Refreshing library…",
+    "scanning": "Scanning for apps and games"
+  },
+  "cache": {
+    "clearing": "Clearing Cache",
+    "removingFiles": "Removing cached artwork files…",
+    "downloadingArtwork": "Downloading Artwork",
+    "startingDownload_one": "Starting download for {{count}} game…",
+    "startingDownload_other": "Starting download for {{count}} games…",
+    "progress": "{{name}}{{done}} / {{total}} games"
+  },
+  "search": {
+    "placeholder": "Search games & apps…",
+    "mode": {
+      "typing": "Typing",
+      "browsing": "Browsing",
+      "idle": "Idle"
+    },
+    "results_one": "{{count}} result",
+    "results_other": "{{count}} results",
+    "startToBrowse": "— ⊞ Start to browse",
+    "idleHint": "— Y to type · ⊞ to browse",
+    "startBrowse": "⊞ Start → Browse"
+  },
+  "contextMenu": {
+    "open": "Open",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "changeArt": "Change Art",
+    "changeHeroArt": "Change Hero Art"
+  },
+  "gamepad": {
+    "aSelect": "A Select",
+    "aLaunch": "A Launch",
+    "aConfirm": "A Confirm",
+    "bBack": "B Back",
+    "bCancel": "B Cancel",
+    "bClose": "B Close",
+    "ySearch": "Y Search",
+    "yKeyboard": "Y Keyboard",
+    "xPin": "X Pin",
+    "tabs": "Tabs",
+    "source": "Source",
+    "options": "Options"
+  },
+  "keyboard": {
+    "numbersAndSymbols": "Numbers & Symbols",
+    "letters": "Letters",
+    "type": "Type",
+    "delete": "Delete",
+    "space": "Space",
+    "results": "Results"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "clear": "Clear",
+    "close": "Close",
+    "select": "Select",
+    "retry": "Retry"
+  }
+}
