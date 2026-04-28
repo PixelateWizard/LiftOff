@@ -2,7 +2,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import { CollapsibleGroup, ToggleKnob, GamepadIconPreview } from "../components/ui";
 import { ControllerTestWidget } from "../components/ControllerTestWidget";
-import { SectionTabHeader } from "../components/SectionTabHeader";
 
 // ── Section definitions ────────────────────────────────────────
 export const SETTINGS_SECTIONS = [
@@ -44,11 +43,15 @@ export function buildSettingsItems(t: any, isDark: boolean) {
       { key: "transparent_topbar",    label: t("settings.transparentTopbar"),    type: "toggle" },
       { key: "transparent_bottombar", label: t("settings.transparentBottombar"), type: "toggle" },
     ]},
-    { key: "topbar_show_bumpers",    section: 0, label: t("settings.topbarShowBumpers"),   type: "toggle" },
+    { key: "nav_bumpers_pos",         section: 0, label: t("settings.navBumpersPos"),        type: "cycle",  options: ["header", "bottom", "hidden"] },
     D("tabbar", 0),
-    { key: "tabbar_show_buttons",    section: 0, label: t("settings.tabbarBadges"),         type: "toggle" },
-    { key: "tabbar_text_tabs",       section: 0, label: t("settings.tabbarTextTabs"),        type: "toggle" },
-    { key: "tabbar_with_background", section: 0, label: t("settings.tabbarWithBackground"),  type: "toggle" },
+    { key: "tabbar_show_buttons",    section: 0, label: t("settings.tabbarBadges"),          type: "cycle",  options: ["tabbar", "bottom", "hidden"] },
+    { key: "tabbar_label_case",      section: 0, label: t("settings.tabbarLabelCase"),        type: "cycle",  options: ["default", "ucfirst", "uppercase"] },
+    { key: "tabbar_text_tabs",       section: 0, label: t("settings.tabbarTextTabs"),         type: "toggle", subItems: [
+      { key: "tabbar_font_weight", label: t("settings.tabbarFontWeight"), type: "cycle", options: ["thin", "medium", "bold"] },
+    ]},
+    { key: "tabbar_with_background", section: 0, label: t("settings.tabbarWithBackground"),   type: "toggle" },
+    { key: "bottombar_alignment",     section: 0, label: t("settings.bottombarAlignment"),     type: "cycle",  options: ["left", "center", "right"] },
 
     // ── Library ──────────────────────────────────────────────────
     D("sources", 1),
@@ -80,9 +83,11 @@ export function buildSettingsItems(t: any, isDark: boolean) {
 
     // ── Controller ───────────────────────────────────────────────
     { key: "gamepad_platform",       section: 3, label: t("settings.gamepadPlatform"),     type: "cycle",  options: ["xbox","ps","switch"] },
+    { key: "gamepad_auto_detect",    section: 3, label: t("settings.gamepadAutoDetect"),    type: "toggle" },
     { key: "gamepad_icons_colored",     section: 3, label: t("settings.gamepadIconsColored"),    type: "toggle" },
     { key: "gamepad_icons_filled",      section: 3, label: t("settings.gamepadIconsFilled"),     type: "toggle" },
     { key: "gamepad_icons_theme_color", section: 3, label: t("settings.gamepadIconsThemeColor"), type: "toggle" },
+    { key: "gamepad_btn_size",          section: 3, label: t("settings.gamepadBtnSize"),          type: "cycle",  options: ["small", "medium", "large"] },
     { key: "gamepad_icon_preview",      section: 3, label: "",                                   type: "icon_preview" },
     { key: "controller_test",        section: 3, label: t("settings.controllerTest"),      type: "controller_test" },
 
@@ -151,7 +156,6 @@ export interface SettingsScreenProps {
   sliderDraft: { key: string | null; value: number | null };
   sliderDraftRef: React.RefObject<{ key: string | null; value: number | null }>;
   setSliderDraft: (v: { key: string | null; value: number | null }) => void;
-  onSectionChange: (index: number) => void;
   ACCENTS: Record<string, any>;
   wideLayout: boolean;
 }
@@ -179,7 +183,6 @@ export function SettingsScreen({
   sliderDraft,
   sliderDraftRef,
   setSliderDraft,
-  onSectionChange,
   ACCENTS,
   wideLayout,
 }: SettingsScreenProps) {
@@ -250,11 +253,24 @@ export function SettingsScreen({
             focusedRef={rowRef}
             items={item.subItems.map((sub: any) => {
               const subNavIdx = navigableItems.findIndex((n) => n.key === sub.key);
+              const subFocused = settingsFocusIndex === subNavIdx && subNavIdx !== -1;
+              if (sub.type === "cycle") {
+                return {
+                  type: "cycle" as const,
+                  label: sub.label,
+                  cycleValue: settings[sub.key],
+                  cycleOptions: sub.options,
+                  onCycleChange: (newVal: any) => updateSetting(sub.key, newVal),
+                  cycleLabel: (v: string) => String(t(`settings.values.${v}`, v)),
+                  focused: subFocused,
+                  focusedRef: settingsFocusedRef,
+                };
+              }
               return {
                 label: sub.label,
                 value: settings[sub.key],
                 onChange: (newVal: any) => updateSetting(sub.key, newVal),
-                focused: settingsFocusIndex === subNavIdx && subNavIdx !== -1,
+                focused: subFocused,
                 focusedRef: settingsFocusedRef,
               };
             })}
@@ -491,24 +507,8 @@ export function SettingsScreen({
     return null;
   };
 
-  const sectionLabels = SETTINGS_SECTIONS.map((s) => ({ label: t(s.labelKey) }));
-
   return (
     <div style={{ ...(wideLayout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" as const }}>
-      <SectionTabHeader
-        items={sectionLabels}
-        activeIndex={settingsSection}
-        onSelect={onSectionChange}
-        showButtons={settings.tabbar_show_buttons ?? true}
-        textTabs={settings.tabbar_text_tabs ?? false}
-        withBackground={settings.tabbar_with_background ?? false}
-        transparent={settings.transparent_topbar ?? false}
-        glass={glass}
-        accent={accent}
-        theme={theme}
-        isDark={isDark}
-        sticky
-      />
       <div style={{ padding: "0 24px 160px" }}>
         {sectionItems.map(renderItem)}
       </div>

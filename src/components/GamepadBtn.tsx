@@ -25,14 +25,17 @@ interface Props {
   style?: CSSProperties;
 }
 
+const BTN_SIZES: Record<string, number> = { small: 18, medium: 22, large: 28 };
+
 export function GamepadBtn({ btn, label, theme, isDark: _isDark = true, style }: Props) {
-  const { platform, colored, filled } = useGamepadIcons();
+  const { platform, colored, filled, btnSize } = useGamepadIcons();
+  const iconSize = BTN_SIZES[btnSize ?? "medium"];
 
   let badge: React.ReactNode;
   const IconComp = ICON_MAP[platform]?.[btn];
 
   if (IconComp) {
-    badge = <IconComp size={18} colored={colored} filled={filled} />;
+    badge = <IconComp size={iconSize} colored={colored} filled={filled} />;
   } else if (btn === "↑↓") {
     badge = <TbArrowsUpDown size={14} color={theme.textDim} style={{ flexShrink: 0 }} />;
   } else if (btn === "←→") {

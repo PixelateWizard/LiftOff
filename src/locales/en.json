@@ -59,9 +59,13 @@
     },
     "immersiveHome": "Immersive Home",
     "hideBottomBar": "Hide Bottom Bar",
-    "tabbarBadges": "Show Trigger Badges",
+    "navBumpersPos": "Bumper Badges (LB/RB)",
+    "tabbarBadges": "Trigger Badges (LT/RT)",
     "tabbarTextTabs": "Text-Only Tabs",
     "tabbarWithBackground": "Tab Bar Background",
+    "bottombarAlignment": "Bottom Bar Button Alignment",
+    "tabbarLabelCase": "Tab Label Format",
+    "tabbarFontWeight": "Label Weight",
     "gamepadIconsFilled": "Filled Icons",
     "gamepadIconsThemeColor": "Theme Color for Buttons",
     "showHomeCollections": "Show Collections on Home",
@@ -102,7 +106,9 @@
     "showBattery": "Show Battery",
     "version": "LiftOff v{{version}}",
     "gamepadPlatform": "Gamepad Icons",
+    "gamepadAutoDetect": "Auto-detect Controller",
     "gamepadIconsColored": "Colored Icons",
+    "gamepadBtnSize": "Button Size",
     "checkUpdates": "Check for Updates",
     "coffee": "☕ Buy Me a Coffee",
     "github": "⭐ GitHub",
@@ -163,7 +169,22 @@
       "ps": "PlayStation",
       "switch": "Switch",
       "12h": "12h",
-      "24h": "24h"
+      "24h": "24h",
+      "header": "Header",
+      "bottom": "Bottom Bar",
+      "hidden": "Hidden",
+      "left": "Left",
+      "center": "Center",
+      "right": "Right",
+      "default": "Default",
+      "ucfirst": "Capitalize",
+      "uppercase": "Uppercase",
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large",
+      "thin": "Light",
+      "bold": "Bold",
+      "tabbar": "Tab Bar"
     }
   },
   "home": {
@@ -214,7 +235,8 @@
     "collections": "Manage Collections",
     "hide": "Hide",
     "show": "Show",
-    "delete": "Delete"
+    "delete": "Delete",
+    "rename": "Rename"
   },
   "gamepad": {
     "aSelect": "A Select",
@@ -256,6 +278,7 @@
     "deleteApp": "Remove {{name}} from your library?",
     "deleteFolder": "Remove this scan folder?",
     "deleteCollection": "Delete collection \"{{name}}\"?",
+    "deleteSource": "Delete source \"{{name}}\"? Games will move to Other.",
     "yes": "Delete"
   },
   "collections": {
@@ -265,7 +288,8 @@
     "empty": "No collections yet",
     "none": "No collections — create one via Manage",
     "newPlaceholder": "New collection name…",
-    "assign": "Collections for {{name}}"
+    "assign": "Collections for {{name}}",
+    "customSources": "Custom Sources"
   },
   "fileBrowser": {
     "selectFile": "Select a file",

@@ -17,12 +17,14 @@ interface SectionTabBarProps {
   showButtons?: boolean;
   /** true = text-only tabs, active item gets accent color | false (default) = pill tabs */
   textTabs?: boolean;
-  withBackground?: boolean;
-  glass?: CSSProperties;
+  /** Tab label weight: thin (300) | medium (600/500) | bold (700) */
+  fontWeight?: "thin" | "medium" | "bold";
   accent: { primary: string; glow: string };
   theme: { text: string; textDim: string; textFaint: string };
   isDark: boolean;
   style?: CSSProperties;
+  /** Label text casing: default | ucfirst (capitalize) | uppercase */
+  labelCase?: "default" | "ucfirst" | "uppercase";
 }
 
 type IconComp = (props: GamepadIconProps) => React.JSX.Element;
@@ -33,11 +35,13 @@ const TRIGGER_ICONS: Record<GamepadPlatform, [IconComp, IconComp]> = {
   switch: [SwZL,   SwZR  ],
 };
 
+const TRIGGER_SIZES: Record<string, number> = { small: 18, medium: 22, large: 28 };
+
 function TriggerBadge({ side }: { side: "left" | "right" }) {
-  const { platform, colored, filled } = useGamepadIcons();
+  const { platform, colored, filled, btnSize } = useGamepadIcons();
   const [LeftIcon, RightIcon] = TRIGGER_ICONS[platform];
   const Icon = side === "left" ? LeftIcon : RightIcon;
-  return <Icon size={22} colored={colored} filled={filled} />;
+  return <Icon size={TRIGGER_SIZES[btnSize ?? "small"]} colored={colored} filled={filled} />;
 }
 
 export function SectionTabBar({
@@ -46,22 +50,38 @@ export function SectionTabBar({
   onSelect,
   showButtons = true,
   textTabs = false,
-  withBackground = false,
-  glass,
+  fontWeight = "medium",
   accent,
   theme,
   isDark,
   style,
+  labelCase = "default",
 }: SectionTabBarProps) {
+  const textTransform: CSSProperties["textTransform"] =
+    labelCase === "uppercase" ? "uppercase" :
+    labelCase === "ucfirst"   ? "capitalize" :
+    "none";
+
+  const PILL_W = { thin: 300, medium: 600, bold: 700 } as const;
+  const TEXT_W = {
+    thin:   { base: 300, active: 500 },
+    medium: { base: 500, active: 700 },
+    bold:   { base: 700, active: 700 },
+  } as const;
+
   const makePillTabStyle = (active: boolean, isDashed?: boolean): CSSProperties => ({
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: PILL_W[fontWeight],
     letterSpacing: "0.06em",
     padding: "5px 14px",
+    lineHeight: 1,
+    display: "flex",
+    alignItems: "center",
     borderRadius: 20,
     cursor: "pointer",
     transition: "all 0.15s ease",
     userSelect: "none",
+    textTransform,
     background: active
       ? accent.primary
       : isDark
@@ -82,13 +102,14 @@ export function SectionTabBar({
 
   const makeTextTabStyle = (active: boolean): CSSProperties => ({
     fontSize: 12,
-    fontWeight: active ? 700 : 500,
+    fontWeight: active ? TEXT_W[fontWeight].active : TEXT_W[fontWeight].base,
     letterSpacing: "0.04em",
     padding: "4px 10px",
     borderRadius: 20,
     cursor: "pointer",
     transition: "color 0.15s ease",
     userSelect: "none",
+    textTransform,
     color: active ? accent.primary : theme.textDim,
     background: "transparent",
     border: "1px solid transparent",
@@ -116,16 +137,6 @@ export function SectionTabBar({
       {showButtons && <TriggerBadge side="right" />}
     </div>
   );
-
-  if (withBackground) {
-    return (
-      <div style={{ paddingTop: 10, paddingBottom: 10, ...style }}>
-        <div style={{ ...(glass ?? {}), borderRadius: 14, padding: "8px 16px" }}>
-          {inner}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={{ paddingTop: 10, paddingBottom: 10, ...style }}>
