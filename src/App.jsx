@@ -1318,11 +1318,11 @@ export default function App() {
   const [cacheClearStatus, setCacheClearStatus]     = useState({ line1: "", line2: "" });
   const [launchingApp, setLaunchingApp]             = useState(null);
   const [settings, setSettings]                     = useState({
-    accent: "ember", theme: "dark", stars_enabled: true, wide_layout: false, transparent_bars: false, transparent_topbar: false, transparent_bottombar: false,
+    accent: "ember", theme: "dark", stars_enabled: true, wide_layout: false, transparent_bars: false, transparent_topbar: false, transparent_bottombar: false, hide_bottom_bar: false,
     default_tab: "Home", scan_steam: true, scan_xbox: true,
     scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
     launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
-    language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, time_format: "auto", show_date: true, show_battery: true, show_clock: true,
+    language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false,
   });
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
   const [heroIndex, setHeroIndex]                   = useState(0);
@@ -2128,10 +2128,12 @@ export default function App() {
     { key: "theme",             label: t('settings.theme'),                                 type: "cycle",  options: ["dark","light","system"] },
     { key: "stars_enabled",     label: isDark ? t('settings.backgroundStars') : t('settings.backgroundClouds'), type: "toggle" },
     { key: "wide_layout",          label: t('settings.wideLayout'),                          type: "toggle" },
+    { key: "cinematic_home",        label: t('settings.immersiveHome'),                       type: "toggle" },
     { key: "transparent_bars", label: t('settings.transparentBars'), type: "toggle", subItems: [
         { key: "transparent_topbar",    label: t('settings.transparentTopbar'),    type: "toggle" },
         { key: "transparent_bottombar", label: t('settings.transparentBottombar'), type: "toggle" },
     ]},
+    { key: "hide_bottom_bar",       label: t('settings.hideBottomBar'),                        type: "toggle" },
     { key: "divider_display",      label: t('settings.dividers.display'),                    type: "divider" },
     { key: "ui_scale",          label: t('settings.uiScale'),                               type: "slider", min: 0.75, max: 2.0, step: 0.05 },
     { key: "reset_scale",       label: t('settings.resetScale'),                            type: "action" },
@@ -2402,10 +2404,14 @@ export default function App() {
         if (key === "ArrowLeft")  { const ni = Math.max(heroIndexRef.current - 1, 0); setHeroIndex(ni); heroIndexRef.current = ni; }
         if (key === "ArrowRight") { const ni = Math.min(heroIndexRef.current + 1, Math.min(fRecentGames.length, 6) - 1); setHeroIndex(ni); heroIndexRef.current = ni; }
         if (key === "ArrowUp") {
-          if (fPinned.length > 0) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
+          if (!settingsRef.current.cinematic_home && fPinned.length > 0) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
         }
         if (key === "ArrowDown") {
-          if (fRecent.length > 0) { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(0); focusIndexRef.current = 0; }
+          if (settingsRef.current.cinematic_home) {
+            if (fPinned.length > 0) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
+          } else {
+            if (fRecent.length > 0) { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(0); focusIndexRef.current = 0; }
+          }
         }
         if (key === "Enter" && fRecentGames[heroIndexRef.current]) triggerLaunch(fRecentGames[heroIndexRef.current], rec);
         return;
@@ -2413,8 +2419,10 @@ export default function App() {
       if (section === "pinned") {
         if (key === "ArrowRight") { const ni = Math.min(index + 1, fPinned.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
         if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                  setFocusIndex(ni); focusIndexRef.current = ni; }
-        if (key === "ArrowDown")  { setFocusSection("hero"); focusSectionRef.current = "hero"; }
-        if (key === "ArrowUp"  && fRecent.length > 0) { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(Math.min(focusIndexRef.current, fRecent.length - 1)); }
+        if (key === "ArrowUp")    { setFocusSection("hero"); focusSectionRef.current = "hero"; }
+        if (key === "ArrowDown") {
+          if (!settingsRef.current.cinematic_home && fRecent.length > 0) { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(Math.min(focusIndexRef.current, fRecent.length - 1)); }
+        }
         if (key === "Enter" && fPinned[index]) triggerLaunch(fPinned[index], rec);
         return;
       }
@@ -2803,11 +2811,16 @@ export default function App() {
     const heroFocused = focusSec === "hero";
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", padding: "14px 24px 0", ...(settings.wide_layout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box", minHeight: "100%" }}>
+      <div style={{ display: "flex", flexDirection: "column", padding: settings.cinematic_home ? "0" : "0 24px 0", ...(settings.wide_layout || settings.cinematic_home ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box",
+        ...(settings.cinematic_home ? { position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none" } : { minHeight: "100%" }) }}>
         {/* ── HERO ── */}
-        <div style={{ position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: 20, overflow: "hidden", display: "flex", flexDirection: "column", flexShrink: 0,
-          border: heroFocused ? `1px solid ${accent.glow}0.5)` : `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-          boxShadow: heroFocused ? `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)` : "0 4px 24px rgba(0,0,0,0.15)",
+        <div style={{
+          ...(settings.cinematic_home
+            ? { position: "fixed", inset: 0, zIndex: 0 }
+            : { position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: 20, flexShrink: 0 }),
+          overflow: "hidden", display: "flex", flexDirection: "column",
+          border: settings.cinematic_home ? "none" : heroFocused ? `1px solid ${accent.glow}0.5)` : `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+          boxShadow: settings.cinematic_home ? "none" : heroFocused ? `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)` : "0 4px 24px rgba(0,0,0,0.15)",
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
           background: isDark ? "#0a0502" : appBg,
         }}>
@@ -2869,8 +2882,8 @@ export default function App() {
             }} />
           </div>
 
-          {/* Pinned bar */}
-          <div style={{ position: "relative", zIndex: 2, padding: "16px 20px 0", flexShrink: 0 }}>
+          {/* Pinned bar — hidden in cinematic mode, shown separately below hero */}
+          {!settings.cinematic_home && <div style={{ position: "relative", zIndex: 2, padding: "16px 20px 0", flexShrink: 0 }}>
             {homePinnedApps.length > 0 ? (
               <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 4, paddingBottom: 4 }}>
                 {homePinnedApps.map((app, i) => {
@@ -2899,10 +2912,12 @@ export default function App() {
             ) : (
               <div style={{ fontSize: 10, color: "rgba(245,237,232,0.25)", letterSpacing: "0.1em" }}>{t('home.pinHint')}</div>
             )}
-          </div>
+          </div>}
 
           {/* Hero content */}
-          <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", alignItems: "flex-end", padding: "0 20px 20px" }}>
+          <div style={settings.cinematic_home
+            ? { position: "fixed", left: 0, right: 0, bottom: "120px", zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
+            : { position: "relative", zIndex: 1, flex: 1, display: "flex", alignItems: "flex-end", padding: "0 20px 20px" }}>
             <div style={{ flexShrink: 0, width: "clamp(80px, 10vw, 150px)", aspectRatio: "2/3", marginRight: 20 }}>
               {heroArt
                 ? <img key={heroGame?.id} src={heroArt} alt={heroGame?.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.7)", animation: "heroArtFade 0.3s ease forwards" }} />
@@ -2945,11 +2960,38 @@ export default function App() {
               <div style={{ fontSize: 14, color: theme.textFaint }}>{t('home.noGames')}</div>
             )}
           </div>
-          {heroFocused && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: `linear-gradient(to right, ${accent.primary}, ${accent.glow}0))`, pointerEvents: "none", zIndex: 3 }} />}
+          {heroFocused && !settings.cinematic_home && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: `linear-gradient(to right, ${accent.primary}, ${accent.glow}0))`, pointerEvents: "none", zIndex: 3 }} />}
         </div>
 
+        {/* ── CINEMATIC PINNED SHELF — fixed overlay above bottom bar ── */}
+        {settings.cinematic_home && homePinnedApps.length > 0 && (
+          <div style={{ position: "fixed", left: 0, right: 0, bottom: "60px", zIndex: 2, padding: "0 24px 12px", display: "flex", gap: 8, overflowX: "auto", pointerEvents: "auto" }}>
+              {homePinnedApps.map((app, i) => {
+                const focused = focusSec === "pinned" && focusIdx === i;
+                const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
+                return (
+                  <div key={app.id} ref={focused ? focusedCardRef : null}
+                    onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
+                    onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
+                      flexShrink: 0, cursor: "pointer", borderRadius: 10, transition: "all 0.15s ease",
+                      background: focused ? accent.primary : "rgba(255,255,255,0.08)",
+                      border: `1px solid ${focused ? accent.primary : "rgba(255,255,255,0.14)"}`,
+                      boxShadow: focused ? `0 2px 12px ${accent.glow}0.5)` : "none",
+                    }}>
+                    {art
+                      ? <img src={art} alt={app.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
+                      : <AppIcon app={app} size={24} />}
+                    <div style={{ fontSize: 12, fontWeight: 500, color: focused ? "white" : "rgba(245,237,232,0.9)", whiteSpace: "nowrap", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                  </div>
+                );
+              })}
+          </div>
+        )}
+
         {/* ── RECENTS ── */}
-        <div style={{ paddingTop: 0 }}>
+        {!settings.cinematic_home && <div style={{ paddingTop: 0 }}>
           <div style={{ paddingTop: 14 }} />
           {homeFilteredRecent.length === 0 ? (
             <div style={{ fontSize: 13, color: theme.textFaint, paddingBottom: 100 }}>{t('home.noRecents')}</div>
@@ -3024,7 +3066,7 @@ export default function App() {
               })}
             </div>
           )}
-        </div>
+        </div>}
       </div>
     );
   })();
@@ -3778,7 +3820,7 @@ export default function App() {
         </div>
         {/* Tab content area — Home always mounted; cover layer hides it when elsewhere;
              clouds sit above cover, below all tab UI. */}
-        <div style={{ position: "relative", flex: 1, overflow: "hidden" }}>
+        <div style={{ position: "relative", flex: 1, overflow: (settings.transparent_topbar && tab === "Home") || (settings.cinematic_home && tab === "Home") ? "auto" : "hidden" }}>
 
           {tab === "Settings" && (
             <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
@@ -3788,7 +3830,7 @@ export default function App() {
           <div
             ref={homeScrollRef}
             style={{
-              position: "absolute", inset: 0, overflowY: "auto",
+              position: "absolute", inset: 0, overflowY: settings.cinematic_home ? "visible" : "auto",
               zIndex: 2,
               pointerEvents: tab === "Home" ? "auto" : "none",
               contentVisibility: tab === "Home" ? "visible" : "hidden",
@@ -4003,10 +4045,10 @@ export default function App() {
         </div>
 
         {/* Bottom bar */}
-        <div style={{ position: "sticky", bottom: 0, zIndex: 100 }}>
+        {!settings.hide_bottom_bar && <div style={{ position: "sticky", bottom: 0, zIndex: 100 }}>
           <div style={{
             display: "flex", gap: 20, alignItems: "center", padding: "10px 20px",
-            ...(settings.transparent_bottombar ? {} : { ...glass, borderRadius: 12 }),
+            ...((settings.transparent_bottombar || (settings.cinematic_home && tab === "Home")) ? {} : { ...glass, borderRadius: 12 }),
             ...(settings.wide_layout
               ? (settings.transparent_bottombar ? { width: "100%", margin: "0 0 14px", boxSizing: "border-box" } : { width: "calc(100% - 16px)", margin: "0 8px 14px", boxSizing: "border-box" })
               : { maxWidth: 1400, margin: "0 auto 14px", width: "calc(100% - 48px)" }),
@@ -4043,7 +4085,7 @@ export default function App() {
                 </>
             }
           </div>
-        </div>
+        </div>}
       </div>
 
       {contextMenu && (() => {
