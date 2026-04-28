@@ -1,14 +1,21 @@
 import type { CSSProperties } from "react";
 import { TbArrowsUpDown, TbArrowsLeftRight } from "react-icons/tb";
+import { useGamepadIcons } from "../contexts/GamepadContext";
+import type { GamepadPlatform } from "./ui/Gamepad";
+import {
+  XboxA, XboxB, XboxX, XboxY, XboxLB, XboxRB, XboxLT, XboxRT, XboxMenu, XboxView, XboxGuide,
+  PsCross, PsCircle, PsSquare, PsTriangle, PsL1, PsR1, PsL2, PsR2, PsOptions, PsCreate, PsHome,
+  SwA, SwB, SwX, SwY, SwL, SwR, SwZL, SwZR, SwPlus, SwMinus, SwHome,
+} from "./ui/Gamepad";
+import type { GamepadIconProps } from "./ui/Gamepad";
 
-const CIRCLE_COLORS: Record<string, string> = {
-  A: "#4a9c4a",
-  B: "#b03030",
-  X: "#3a5a8a",
-  Y: "#8a6a00",
+type IconComp = (props: GamepadIconProps) => React.JSX.Element;
+
+const ICON_MAP: Record<GamepadPlatform, Record<string, IconComp>> = {
+  xbox:   { A: XboxA, B: XboxB, X: XboxX, Y: XboxY, LB: XboxLB, RB: XboxRB, LT: XboxLT, RT: XboxRT, MENU: XboxMenu, BACK: XboxView, HOME: XboxGuide },
+  ps:     { A: PsCross, B: PsCircle, X: PsSquare, Y: PsTriangle, LB: PsL1, RB: PsR1, LT: PsL2, RT: PsR2, MENU: PsOptions, BACK: PsCreate, HOME: PsHome },
+  switch: { A: SwA, B: SwB, X: SwX, Y: SwY, LB: SwL, RB: SwR, LT: SwZL, RT: SwZR, MENU: SwPlus, BACK: SwMinus, HOME: SwHome },
 };
-
-const PILL_BTNS = new Set(["LB", "RB", "LT", "RT", "MENU", "BACK", "START", "⊞"]);
 
 interface Props {
   btn: string;
@@ -18,38 +25,14 @@ interface Props {
   style?: CSSProperties;
 }
 
-export function GamepadBtn({ btn, label, theme, isDark = true, style }: Props) {
-  const circleColor = CIRCLE_COLORS[btn];
-  const isPill = PILL_BTNS.has(btn);
+export function GamepadBtn({ btn, label, theme, isDark: _isDark = true, style }: Props) {
+  const { platform, colored, filled } = useGamepadIcons();
 
   let badge: React.ReactNode;
+  const IconComp = ICON_MAP[platform]?.[btn];
 
-  if (circleColor) {
-    badge = (
-      <span style={{
-        width: 20, height: 20, borderRadius: "50%",
-        background: circleColor,
-        display: "inline-flex", alignItems: "center", justifyContent: "center",
-        fontSize: 8, fontWeight: 700, color: "white", flexShrink: 0,
-      }}>
-        {btn}
-      </span>
-    );
-  } else if (isPill) {
-    badge = (
-      <span style={{
-        height: 18,
-        minWidth: btn.length > 2 ? 28 : 24,
-        borderRadius: 4,
-        background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)",
-        display: "inline-flex", alignItems: "center", justifyContent: "center",
-        fontSize: btn.length > 2 ? 7 : 8, fontWeight: 700,
-        color: isDark ? "white" : "#333",
-        padding: "0 4px", flexShrink: 0,
-      }}>
-        {btn}
-      </span>
-    );
+  if (IconComp) {
+    badge = <IconComp size={18} colored={colored} filled={filled} />;
   } else if (btn === "↑↓") {
     badge = <TbArrowsUpDown size={14} color={theme.textDim} style={{ flexShrink: 0 }} />;
   } else if (btn === "←→") {
