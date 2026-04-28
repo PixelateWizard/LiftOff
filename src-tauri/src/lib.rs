@@ -303,6 +303,55 @@ fn save_hidden_inner(hidden: &Vec<String>) {
     if let Ok(json) = serde_json::to_string(hidden) { let _ = std::fs::write(path, json); }
 }
 
+// ── Custom entries (manually added apps + scan folders) ────────────────────────
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct CustomFolder {
+    pub id: String,
+    pub path: String,
+    pub source: String,
+    pub app_type: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+fn default_true() -> bool { true }
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct AppCollection {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct CustomData {
+    #[serde(default)]
+    pub apps: Vec<AppEntry>,
+    #[serde(default)]
+    pub folders: Vec<CustomFolder>,
+    #[serde(default)]
+    pub app_collections: Vec<AppCollection>,
+    #[serde(default)]
+    pub app_memberships: HashMap<String, Vec<String>>,
+    #[serde(default)]
+    pub game_collections: Vec<AppCollection>,
+    #[serde(default)]
+    pub game_memberships: HashMap<String, Vec<String>>,
+}
+
+fn custom_data_path() -> std::path::PathBuf { liftoff_dir().join("custom_data.json") }
+
+fn load_custom_data() -> CustomData {
+    let path = custom_data_path();
+    if !path.exists() { return CustomData::default(); }
+    std::fs::read_to_string(&path).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
+}
+
+fn save_custom_data(data: &CustomData) {
+    let path = custom_data_path();
+    if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
+    if let Ok(json) = serde_json::to_string(data) { let _ = std::fs::write(path, json); }
+}
+
 fn custom_art_path() -> std::path::PathBuf { liftoff_dir().join("custom_art.json") }
 
 fn load_custom_art_inner() -> HashMap<String, String> {
@@ -315,6 +364,196 @@ fn save_custom_art_inner(map: &HashMap<String, String>) {
     let path = custom_art_path();
     if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
     if let Ok(json) = serde_json::to_string(map) { let _ = std::fs::write(path, json); }
+}
+
+// ── File browser ───────────────────────────────────────────────────────────────
+
+#[derive(Serialize)]
+pub struct FileEntry {
+    pub name: String,
+    pub path: String,
+    pub is_dir: bool,
+    pub extension: String,
+}
+
+#[tauri::command]
+fn list_dir(path: String) -> Vec<FileEntry> {
+    let p = std::path::Path::new(&path);
+    if !p.exists() || !p.is_dir() { return vec![]; }
+    let mut dirs: Vec<FileEntry> = Vec::new();
+    let mut files: Vec<FileEntry> = Vec::new();
+    if let Ok(rd) = std::fs::read_dir(p) {
+        for entry in rd.flatten() {
+            let ep = entry.path();
+            let name = ep.file_name().and_then(|n| n.to_str()).unwrap_or("").to_string();
+            if name.starts_with('$') { continue; }
+            let path_str = ep.to_string_lossy().to_string();
+            let ext = ep.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
+            if ep.is_dir() {
+                dirs.push(FileEntry { name, path: path_str, is_dir: true, extension: String::new() });
+            } else if ext == "exe" || ext == "lnk" {
+                files.push(FileEntry { name, path: path_str, is_dir: false, extension: ext });
+            }
+        }
+    }
+    dirs.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    dirs.extend(files);
+    dirs
+}
+
+#[tauri::command]
+fn get_drives() -> Vec<FileEntry> {
+    let mut drives = Vec::new();
+    for c in b'A'..=b'Z' {
+        let drive = format!("{}:\\", c as char);
+        if std::path::Path::new(&drive).exists() {
+            drives.push(FileEntry { name: drive.clone(), path: drive, is_dir: true, extension: String::new() });
+        }
+    }
+    drives
+}
+
+#[tauri::command]
+fn get_custom_data() -> CustomData { load_custom_data() }
+
+#[tauri::command]
+fn add_custom_app(name: String, path: String, app_type: String, source: String) -> Result<AppEntry, String> {
+    let mut data = load_custom_data();
+    let id = format!("custom_{}", std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis());
+    let icon = extract_icon_base64(&path);
+    let entry = AppEntry { id, name, icon_base64: icon, launch_path: path, app_type, source };
+    data.apps.push(entry.clone());
+    save_custom_data(&data);
+    Ok(entry)
+}
+
+#[tauri::command]
+fn remove_custom_app(id: String) -> Result<(), String> {
+    let mut data = load_custom_data();
+    data.apps.retain(|a| a.id != id);
+    save_custom_data(&data);
+    Ok(())
+}
+
+#[tauri::command]
+fn add_custom_folder(path: String, source: String, app_type: String) -> Result<CustomFolder, String> {
+    let mut data = load_custom_data();
+    let id = format!("folder_{}", std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis());
+    let folder = CustomFolder { id, path, source, app_type, enabled: true };
+    data.folders.push(folder.clone());
+    save_custom_data(&data);
+    Ok(folder)
+}
+
+#[tauri::command]
+fn remove_custom_folder(id: String) -> Result<(), String> {
+    let mut data = load_custom_data();
+    data.folders.retain(|f| f.id != id);
+    save_custom_data(&data);
+    Ok(())
+}
+
+#[tauri::command]
+fn toggle_custom_folder(id: String, enabled: bool) -> Result<(), String> {
+    let mut data = load_custom_data();
+    if let Some(f) = data.folders.iter_mut().find(|f| f.id == id) { f.enabled = enabled; }
+    save_custom_data(&data);
+    Ok(())
+}
+
+#[tauri::command]
+fn get_app_collections() -> Vec<AppCollection> { load_custom_data().app_collections }
+
+#[tauri::command]
+fn create_app_collection(name: String) -> Result<AppCollection, String> {
+    let mut data = load_custom_data();
+    let id = format!("col_{}", std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis());
+    let col = AppCollection { id, name };
+    data.app_collections.push(col.clone());
+    save_custom_data(&data);
+    Ok(col)
+}
+
+#[tauri::command]
+fn delete_app_collection(id: String) -> Result<(), String> {
+    let mut data = load_custom_data();
+    data.app_collections.retain(|c| c.id != id);
+    data.app_memberships.retain(|_, v| { v.retain(|cid| cid != &id); true });
+    save_custom_data(&data);
+    Ok(())
+}
+
+#[tauri::command]
+fn rename_app_collection(id: String, name: String) -> Result<(), String> {
+    let mut data = load_custom_data();
+    if let Some(c) = data.app_collections.iter_mut().find(|c| c.id == id) { c.name = name; }
+    save_custom_data(&data);
+    Ok(())
+}
+
+#[tauri::command]
+fn get_app_memberships() -> HashMap<String, Vec<String>> { load_custom_data().app_memberships }
+
+#[tauri::command]
+fn set_app_memberships(app_id: String, collection_ids: Vec<String>) -> Result<(), String> {
+    let mut data = load_custom_data();
+    if collection_ids.is_empty() {
+        data.app_memberships.remove(&app_id);
+    } else {
+        data.app_memberships.insert(app_id, collection_ids);
+    }
+    save_custom_data(&data);
+    Ok(())
+}
+
+#[tauri::command]
+fn get_game_collections() -> Vec<AppCollection> { load_custom_data().game_collections }
+
+#[tauri::command]
+fn create_game_collection(name: String) -> Result<AppCollection, String> {
+    let mut data = load_custom_data();
+    let id = format!("gcol_{}", std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis());
+    let col = AppCollection { id, name };
+    data.game_collections.push(col.clone());
+    save_custom_data(&data);
+    Ok(col)
+}
+
+#[tauri::command]
+fn delete_game_collection(id: String) -> Result<(), String> {
+    let mut data = load_custom_data();
+    data.game_collections.retain(|c| c.id != id);
+    data.game_memberships.retain(|_, v| { v.retain(|cid| cid != &id); true });
+    save_custom_data(&data);
+    Ok(())
+}
+
+#[tauri::command]
+fn rename_game_collection(id: String, name: String) -> Result<(), String> {
+    let mut data = load_custom_data();
+    if let Some(c) = data.game_collections.iter_mut().find(|c| c.id == id) { c.name = name; }
+    save_custom_data(&data);
+    Ok(())
+}
+
+#[tauri::command]
+fn get_game_memberships() -> HashMap<String, Vec<String>> { load_custom_data().game_memberships }
+
+#[tauri::command]
+fn set_game_memberships(app_id: String, collection_ids: Vec<String>) -> Result<(), String> {
+    let mut data = load_custom_data();
+    if collection_ids.is_empty() {
+        data.game_memberships.remove(&app_id);
+    } else {
+        data.game_memberships.insert(app_id, collection_ids);
+    }
+    save_custom_data(&data);
+    Ok(())
 }
 
 #[derive(Serialize)]
@@ -802,15 +1041,26 @@ fn extract_uwp_icon_base64(install_location: &str, logo_hint: &str) -> Option<St
 }
 
 fn scan_folder(folder: &str, app_type: &str) -> Vec<AppEntry> {
+    scan_folder_with_source(folder, app_type, "desktop")
+}
+
+fn scan_folder_with_source(folder: &str, app_type: &str, source: &str) -> Vec<AppEntry> {
     let mut entries = Vec::new();
-    let path = Path::new(folder);
-    if !path.exists() { return entries; }
-    if let Ok(dir) = std::fs::read_dir(path) {
-        for entry in dir.flatten() {
-            let p = entry.path();
-            let path_str = p.to_string_lossy().to_string();
-            // Exclude LiftOff's own build artifacts
-            if path_str.contains("target\\release") || path_str.contains("target/release") { continue; }
+    scan_folder_recursive(Path::new(folder), app_type, source, 0, &mut entries);
+    entries
+}
+
+fn scan_folder_recursive(path: &Path, app_type: &str, source: &str, depth: u32, entries: &mut Vec<AppEntry>) {
+    if depth > 4 { return; }
+    if !path.exists() { return; }
+    let Ok(dir) = std::fs::read_dir(path) else { return; };
+    for entry in dir.flatten() {
+        let p = entry.path();
+        let path_str = p.to_string_lossy().to_string();
+        if path_str.contains("target\\release") || path_str.contains("target/release") { continue; }
+        if p.is_dir() {
+            scan_folder_recursive(&p, app_type, source, depth + 1, entries);
+        } else {
             let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
             if ext == "lnk" || ext == "exe" {
                 let name = p.file_stem().and_then(|n| n.to_str()).unwrap_or("Unknown").to_string();
@@ -821,12 +1071,11 @@ fn scan_folder(folder: &str, app_type: &str) -> Vec<AppEntry> {
                     icon_base64: icon,
                     launch_path: path_str,
                     app_type: app_type.to_string(),
-                    source: "desktop".to_string(),
+                    source: source.to_string(),
                 });
             }
         }
     }
-    entries
 }
 
 fn is_valid_display_name(name: &str) -> bool {
@@ -1286,6 +1535,27 @@ fn get_all_apps() -> Vec<AppEntry> {
     // Deduplicate only — no hidden filter
     let mut seen = std::collections::HashSet::new();
     apps.retain(|a| seen.insert(a.id.clone()));
+
+    // Merge custom entries (manually added apps + scanned custom folders)
+    let custom = load_custom_data();
+    // Build a set of known launch paths (lowercase) from manually-added apps
+    // so that folder scans don't produce duplicates for the same executable.
+    let mut known_paths: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for app in &custom.apps {
+        known_paths.insert(app.launch_path.to_lowercase());
+        if seen.insert(app.id.clone()) { apps.push(app.clone()); }
+    }
+    for folder in custom.folders {
+        if !folder.enabled { continue; }
+        for app in scan_folder_with_source(&folder.path, &folder.app_type, &folder.source) {
+            if known_paths.contains(&app.launch_path.to_lowercase()) { continue; }
+            if seen.insert(app.id.clone()) {
+                known_paths.insert(app.launch_path.to_lowercase());
+                apps.push(app);
+            }
+        }
+    }
+
     apps
 }
 
@@ -1559,7 +1829,14 @@ pub fn run() {
             get_hidden, toggle_hidden,
             get_custom_art, set_custom_art, clear_custom_art,
             get_screen_resolution,
-            search_sgdb_art, download_sgdb_art
+            search_sgdb_art, download_sgdb_art,
+            list_dir, get_drives,
+            get_custom_data, add_custom_app, remove_custom_app,
+            add_custom_folder, remove_custom_folder, toggle_custom_folder,
+            get_app_collections, create_app_collection, delete_app_collection, rename_app_collection,
+            get_app_memberships, set_app_memberships,
+            get_game_collections, create_game_collection, delete_game_collection, rename_game_collection,
+            get_game_memberships, set_game_memberships
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
