@@ -1,25 +1,23 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getBestGamepad, readGpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
 import ModalShell from "./ModalShell";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface Props {
   message: string;
   confirmLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
-  glass: any;
-  accent: any;
-  theme: any;
-  isDark: boolean;
 }
 
-export default function ConfirmModal({ message, confirmLabel, onConfirm, onCancel, glass, accent, theme, isDark }: Props) {
+export default function ConfirmModal({ message, confirmLabel, onConfirm, onCancel }: Props) {
+  const { glass, accent, theme, isDark } = useTheme();
   const { t } = useTranslation();
   const label = confirmLabel ?? t("confirm.yes");
 
   useEffect(() => {
-    const last: any = {};
+    const last: Partial<GpState> = {};
     let rafId: number;
     let suppressFrames = 20;
     const poll = () => {
@@ -46,7 +44,6 @@ export default function ConfirmModal({ message, confirmLabel, onConfirm, onCance
     <ModalShell
       title={message}
       shortcuts={shortcuts}
-      glass={glass} accent={accent} theme={theme} isDark={isDark}
       width={380}
       zIndex={2500}
     />

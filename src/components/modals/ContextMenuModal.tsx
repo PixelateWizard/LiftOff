@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { getBestGamepad, readGpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
 import ModalShell from "./ModalShell";
+import { useTheme } from "../../contexts/ThemeContext";
+import type { App } from "../../types";
 
 interface MenuItem {
   label: string;
@@ -9,23 +11,14 @@ interface MenuItem {
   danger?: boolean;
 }
 
-interface App {
-  id: string;
-  name: string;
-  [key: string]: any;
-}
-
 interface Props {
   app: App;
   items: MenuItem[];
-  glass: any;
-  accent: any;
-  theme: any;
-  isDark: boolean;
   onClose: () => void;
 }
 
-export default function ContextMenuModal({ app, items, glass, accent, theme, isDark, onClose }: Props) {
+export default function ContextMenuModal({ app, items, onClose }: Props) {
+  const { glass, accent, theme, isDark } = useTheme();
   const { t } = useTranslation();
   const [focusIdx, setFocusIdx] = useState(0);
   const focusIdxRef = useRef(0);
@@ -33,7 +26,7 @@ export default function ContextMenuModal({ app, items, glass, accent, theme, isD
   useEffect(() => { itemsRef.current = items; }, [items]);
 
   useEffect(() => {
-    const last: any = {};
+    const last: Partial<GpState> = {};
     let rafId: number;
     let suppressFrames = 20;
     const poll = () => {
@@ -70,7 +63,6 @@ export default function ContextMenuModal({ app, items, glass, accent, theme, isD
     <ModalShell
       title={app.name}
       shortcuts={shortcuts}
-      glass={glass} accent={accent} theme={theme} isDark={isDark}
       width={280}
       zIndex={9000}
       onOverlayClick={onClose}

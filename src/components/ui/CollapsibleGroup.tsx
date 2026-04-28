@@ -1,5 +1,6 @@
 import type { CSSProperties, RefObject } from "react";
 import { ToggleKnob } from "./ToggleKnob";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface ToggleSubItem {
   type?: "toggle";
@@ -14,7 +15,7 @@ interface CycleSubItem {
   type: "cycle";
   label: string;
   cycleValue: string;
-  cycleOptions: string[];
+  cycleOptions: readonly string[];
   onCycleChange: (next: string) => void;
   cycleLabel?: (v: string) => string;
   focused?: boolean;
@@ -24,10 +25,6 @@ interface CycleSubItem {
 type SubItem = ToggleSubItem | CycleSubItem;
 
 interface CollapsibleGroupProps {
-  glass?: CSSProperties;
-  accent: { primary: string; glow: string };
-  isDark: boolean;
-  theme: { text: string; textDim: string };
   label: string;
   value: boolean;
   onChange: (next: boolean) => void;
@@ -37,10 +34,6 @@ interface CollapsibleGroupProps {
 }
 
 export function CollapsibleGroup({
-  glass,
-  accent,
-  isDark,
-  theme,
   label,
   value,
   onChange,
@@ -48,6 +41,7 @@ export function CollapsibleGroup({
   focusedRef,
   items,
 }: CollapsibleGroupProps) {
+  const { glass, accent, isDark, theme } = useTheme();
   const parentStyle: CSSProperties = {
     ...glass,
     borderRadius: value ? "14px 14px 0 0" : 14,
@@ -80,7 +74,7 @@ export function CollapsibleGroup({
     <div>
       <div ref={focusedRef} style={parentStyle} onClick={() => onChange(!value)}>
         <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{label}</span>
-        <ToggleKnob value={value} accent={accent} isDark={isDark} />
+        <ToggleKnob value={value} />
       </div>
 
       {value && (
@@ -131,7 +125,7 @@ export function CollapsibleGroup({
                 <span style={{ fontSize: 13, fontWeight: 500, color: theme.textDim }}>
                   {item.label}
                 </span>
-                <ToggleKnob value={item.value} accent={accent} isDark={isDark} />
+                <ToggleKnob value={item.value} />
               </div>
             );
           })}

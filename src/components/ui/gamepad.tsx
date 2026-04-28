@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { SiPlaystation } from "react-icons/si";
 import { FaXbox } from "react-icons/fa6";
 import { useGamepadIcons } from "../../contexts/GamepadContext";
+import { useTheme } from "../../contexts/ThemeContext";
 
 export type GamepadPlatform = "xbox" | "ps" | "switch";
 
@@ -233,11 +234,6 @@ export const PLATFORM_TRIGGER_LABELS: Record<GamepadPlatform, [string, string]> 
 
 // ── Settings preview panel ────────────────────────────────────────────────────
 
-interface PreviewProps {
-  isDark: boolean;
-  theme: { text: string; textDim: string; textFaint: string };
-}
-
 type BtnComponent = (props: GamepadIconProps) => React.JSX.Element;
 
 const PLATFORM_BUTTONS: Record<GamepadPlatform, {
@@ -266,46 +262,47 @@ const PLATFORM_BUTTONS: Record<GamepadPlatform, {
   },
 };
 
-function BtnCell({ label, Btn, colored, filled, theme }: {
-  label: string; Btn: BtnComponent; colored: boolean; filled: boolean; isDark: boolean; theme: PreviewProps["theme"];
+function BtnCell({ label, Btn, colored, filled, textFaint }: {
+  label: string; Btn: BtnComponent; colored: boolean; filled: boolean; textFaint: string;
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "8px 10px" }}>
       <Btn size={28} colored={colored} filled={filled} />
-      <span style={{ fontSize: 9, color: theme.textFaint, fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: 9, color: textFaint, fontWeight: 600 }}>{label}</span>
     </div>
   );
 }
 
-function PreviewSection({ title, buttons, colored, filled, isDark, theme }: {
+function PreviewSection({ title, buttons, colored, filled, textFaint }: {
   title: string;
   buttons: Array<{ label: string; Btn: BtnComponent }>;
-  colored: boolean; filled: boolean; isDark: boolean; theme: PreviewProps["theme"];
+  colored: boolean; filled: boolean; textFaint: string;
 }) {
   return (
     <div>
-      <div style={{ fontSize: 9, fontWeight: 700, color: theme.textFaint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>
+      <div style={{ fontSize: 9, fontWeight: 700, color: textFaint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>
         {title}
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
         {buttons.map(({ label, Btn }) => (
-          <BtnCell key={label} label={label} Btn={Btn} colored={colored} filled={filled} isDark={isDark} theme={theme} />
+          <BtnCell key={label} label={label} Btn={Btn} colored={colored} filled={filled} textFaint={textFaint} />
         ))}
       </div>
     </div>
   );
 }
 
-export function GamepadIconPreview({ isDark, theme }: PreviewProps) {
+export function GamepadIconPreview() {
+  const { theme } = useTheme();
   const { platform, colored, filled } = useGamepadIcons();
   const set = PLATFORM_BUTTONS[platform];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <PreviewSection title="Face buttons" buttons={set.face}     colored={colored} filled={filled} isDark={isDark} theme={theme} />
-      <PreviewSection title="Bumpers"      buttons={set.bumpers}  colored={colored} filled={filled} isDark={isDark} theme={theme} />
-      <PreviewSection title="Triggers"     buttons={set.triggers} colored={colored} filled={filled} isDark={isDark} theme={theme} />
-      <PreviewSection title="System"       buttons={set.system}   colored={colored} filled={filled} isDark={isDark} theme={theme} />
+      <PreviewSection title="Face buttons" buttons={set.face}     colored={colored} filled={filled} textFaint={theme.textFaint} />
+      <PreviewSection title="Bumpers"      buttons={set.bumpers}  colored={colored} filled={filled} textFaint={theme.textFaint} />
+      <PreviewSection title="Triggers"     buttons={set.triggers} colored={colored} filled={filled} textFaint={theme.textFaint} />
+      <PreviewSection title="System"       buttons={set.system}   colored={colored} filled={filled} textFaint={theme.textFaint} />
     </div>
   );
 }

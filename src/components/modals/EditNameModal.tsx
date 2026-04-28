@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getBestGamepad, readGpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
 import ModalShell from "./ModalShell";
 import GamepadKeyboard from "../GamepadKeyboard";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface App {
   id: string;
@@ -11,15 +12,12 @@ interface App {
 
 interface Props {
   app: App;
-  glass: any;
-  accent: any;
-  theme: any;
-  isDark: boolean;
   onConfirm: (name: string) => void;
   onClose: () => void;
 }
 
-export default function EditNameModal({ app, glass, accent, theme, isDark, onConfirm, onClose }: Props) {
+export default function EditNameModal({ app, onConfirm, onClose }: Props) {
+  const { glass, accent, theme, isDark } = useTheme();
   const { t } = useTranslation();
   const [kbValue, setKbValue] = useState(app.name);
   const [showKb, setShowKb]   = useState(false);
@@ -36,7 +34,7 @@ export default function EditNameModal({ app, glass, accent, theme, isDark, onCon
   }, []);
 
   useEffect(() => {
-    const last: any = {};
+    const last: Partial<GpState> = {};
     let rafId: number;
     let suppressFrames = 20;
     const poll = () => {
@@ -71,7 +69,6 @@ export default function EditNameModal({ app, glass, accent, theme, isDark, onCon
       <ModalShell
         title={t("contextMenu.rename")}
         shortcuts={shortcuts}
-        glass={glass} accent={accent} theme={theme} isDark={isDark}
         width={400}
         zIndex={2000}
         onOverlayClick={onClose}
@@ -111,7 +108,6 @@ export default function EditNameModal({ app, glass, accent, theme, isDark, onCon
             showKbRef.current = false;
           }}
           title={t("contextMenu.rename")}
-          accent={accent} theme={theme} isDark={isDark} glass={glass}
         />
       )}
     </>
