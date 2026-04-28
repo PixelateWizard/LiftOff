@@ -3,45 +3,13 @@ import { useTranslation } from "react-i18next";
 import { GamepadBtn } from "../GamepadBtn";
 import { SectionTabHeader } from "../SectionTabHeader";
 import type { TabItem } from "../SectionTabBar";
-
-interface AccentPalette {
-  primary: string;
-  light: string;
-  dark: string;
-  glow: string;
-}
-
-interface ThemePalette {
-  text: string;
-  textDim: string;
-  textFaint: string;
-}
-
-interface AppHeaderSettings {
-  accent?: string;
-  theme?: string;
-  transparent_topbar?: boolean;
-  wide_layout?: boolean;
-  nav_bumpers_pos?: string;
-  tabbar_show_buttons?: string | boolean;
-  tabbar_text_tabs?: boolean;
-  tabbar_with_background?: boolean;
-  tabbar_font_weight?: string;
-  tabbar_label_case?: "default" | "ucfirst" | "uppercase";
-  show_date?: boolean;
-  show_clock?: boolean;
-  show_battery?: boolean;
-}
+import { useTheme } from "../../contexts/ThemeContext";
+import { useSettings } from "../../contexts/SettingsContext";
 
 interface Props {
   tab: string;
   tabs: string[];
   switchTab: (tab: string) => void;
-  settings: AppHeaderSettings;
-  glass: CSSProperties;
-  accent: AccentPalette;
-  theme: ThemePalette;
-  isDark: boolean;
   date: string;
   time: string;
   hasBattery: boolean;
@@ -54,7 +22,7 @@ interface Props {
   headerOnSelect: (i: number) => void;
 }
 
-function RocketLogo({ accent }: { accent: AccentPalette }) {
+function RocketLogo({ accent }: { accent: { primary: string; light: string; dark: string } }) {
   return (
     <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
       <path d="M16 2 L21 9 L22 19 Q22 22 19 22 L13 22 Q10 22 10 19 L11 9 Z" fill="url(#rocketGrad)"/>
@@ -85,11 +53,13 @@ function widthConstraints(wideLayout: boolean, transparent: boolean, topMargin: 
 }
 
 export function AppHeader({
-  tab, tabs, switchTab, settings, glass, accent, theme, isDark,
+  tab, tabs, switchTab,
   date, time, hasBattery, battery, batteryWidth, batteryColor, charging,
   headerTabItems, headerActiveIndex, headerOnSelect,
 }: Props) {
   const { t } = useTranslation();
+  const { glass, accent, theme, isDark } = useTheme();
+  const { settings } = useSettings();
 
   const transparentNav = settings.transparent_topbar ?? false;
   const tabbarBg       = settings.tabbar_with_background ?? false;
@@ -108,7 +78,7 @@ export function AppHeader({
       </div>
       <div style={{ display: "flex", gap: "40px", justifyContent: "center", alignItems: "center" }}>
         {settings.nav_bumpers_pos === "header" && (
-          <GamepadBtn btn="LB" label="" theme={theme} isDark={isDark} style={{ gap: 0 }} />
+          <GamepadBtn btn="LB" label="" style={{ gap: 0 }} />
         )}
         <div style={{ display: "flex", gap: 2 }}>
           {tabs.map((tabName) => (
@@ -122,7 +92,7 @@ export function AppHeader({
           ))}
         </div>
         {settings.nav_bumpers_pos === "header" && (
-          <GamepadBtn btn="RB" label="" theme={theme} isDark={isDark} style={{ gap: 0 }} />
+          <GamepadBtn btn="RB" label="" style={{ gap: 0 }} />
         )}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, justifyContent: "flex-end" }}>
@@ -158,13 +128,10 @@ export function AppHeader({
       items={headerTabItems}
       activeIndex={headerActiveIndex}
       onSelect={headerOnSelect}
-      showButtons={settings.tabbar_show_buttons === "tabbar" || settings.tabbar_show_buttons === true}
-      textTabs={settings.tabbar_text_tabs ?? false}
-      fontWeight={settings.tabbar_font_weight as "thin" | "medium" | "bold" ?? "medium"}
-      labelCase={settings.tabbar_label_case ?? "default"}
-      accent={accent}
-      theme={theme}
-      isDark={isDark}
+      showButtons={settings.tabbar_show_buttons === "tabbar"}
+      textTabs={settings.tabbar_text_tabs}
+      fontWeight={settings.tabbar_font_weight}
+      labelCase={settings.tabbar_label_case}
     />
   );
 

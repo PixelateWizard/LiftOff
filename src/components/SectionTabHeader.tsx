@@ -8,9 +8,6 @@ interface Props {
   showButtons?: boolean;
   textTabs?: boolean;
   fontWeight?: "thin" | "medium" | "bold";
-  accent: { primary: string; glow: string };
-  theme: { text: string; textDim: string; textFaint: string };
-  isDark: boolean;
   style?: CSSProperties;
   /** Optional content rendered on the right side, absolutely positioned */
   rightActions?: ReactNode;
@@ -19,7 +16,6 @@ interface Props {
 }
 
 export function SectionTabHeader({
-  isDark,
   style,
   rightActions,
   labelCase,
@@ -28,7 +24,6 @@ export function SectionTabHeader({
   return (
     <div style={{ position: "relative", ...style }}>
       <SectionTabBar
-        isDark={isDark}
         labelCase={labelCase}
         {...tabBarProps}
       />

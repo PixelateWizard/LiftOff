@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { TbArrowsUpDown, TbArrowsLeftRight } from "react-icons/tb";
 import { useGamepadIcons } from "../contexts/GamepadContext";
+import { useTheme } from "../contexts/ThemeContext";
 import type { GamepadPlatform } from "./ui/Gamepad";
 import {
   XboxA, XboxB, XboxX, XboxY, XboxLB, XboxRB, XboxLT, XboxRT, XboxMenu, XboxView, XboxGuide,
@@ -20,14 +21,13 @@ const ICON_MAP: Record<GamepadPlatform, Record<string, IconComp>> = {
 interface Props {
   btn: string;
   label: string;
-  theme: any;
-  isDark?: boolean;
   style?: CSSProperties;
 }
 
 const BTN_SIZES: Record<string, number> = { small: 18, medium: 22, large: 28 };
 
-export function GamepadBtn({ btn, label, theme, isDark: _isDark = true, style }: Props) {
+export function GamepadBtn({ btn, label, style }: Props) {
+  const { theme } = useTheme();
   const { platform, colored, filled, btnSize } = useGamepadIcons();
   const iconSize = BTN_SIZES[btnSize ?? "medium"];
 

@@ -3,7 +3,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import GamepadKeyboard from "../GamepadKeyboard";
 import ModalShell from "./ModalShell";
-import { getBestGamepad, readGpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
+import { useTheme } from "../../contexts/ThemeContext";
+import type { CSSProperties } from "react";
 
 // Built-in game sources (shown as filter tabs in Games, cannot be deleted)
 export const BUILTIN_GAME_SOURCES = ["Steam", "Xbox", "Bnet"];
@@ -25,17 +27,16 @@ interface Props {
   appType?: "game" | "app";
   existingSources?: string[];
   collections?: Collection[];
-  glass: any; accent: any; theme: any; isDark: boolean;
-  onConfirm: (result: any, colSelection: { colId?: string; newName?: string | null }) => void;
+  onConfirm: (result: unknown, colSelection: { colId?: string; newName?: string | null }) => void;
   onClose: () => void;
 }
 
 export default function AddEntryModal({
   entryFile, mode, appType = "game",
   existingSources = [], collections = [],
-  glass, accent, theme, isDark,
   onConfirm, onClose,
 }: Props) {
+  const { glass, accent, theme, isDark } = useTheme();
   const { t } = useTranslation();
   const isFolderMode = mode === "folder";
   const isGame       = appType === "game";
@@ -116,7 +117,7 @@ export default function AddEntryModal({
   useEffect(() => { confirmFnRef.current = confirm; });
 
   useEffect(() => {
-    const last: any = {};
+    const last: Partial<GpState> = {};
     let rafId: number;
     let suppressFrames = 20;
     const FIRST = isFolderMode ? SECTION_PICKER : SECTION_NAME;
@@ -124,7 +125,7 @@ export default function AddEntryModal({
     const poll = () => {
       if (suppressFrames > 0) { suppressFrames--; rafId = requestAnimationFrame(poll); return; }
       const gp = getBestGamepad();
-      const state: any = gp ? readGpState(gp) : {};
+      const state: Partial<GpState> = gp ? readGpState(gp) : {};
       if (showKeyboardRef.current) { if (gp) Object.assign(last, state); rafId = requestAnimationFrame(poll); return; }
 
       if (gp) {
@@ -183,7 +184,7 @@ export default function AddEntryModal({
 
   const isPickFocused = (i: number) => gpSection === SECTION_PICKER && gpPickIdx === i;
 
-  const pillStyle = (active: boolean, focused: boolean): any => ({
+  const pillStyle = (active: boolean, focused: boolean): CSSProperties => ({
     padding: "5px 12px", borderRadius: 8, cursor: "pointer", fontSize: 12, fontWeight: 500,
     background: active
       ? accent.primary
@@ -220,7 +221,6 @@ export default function AddEntryModal({
     <>
       <ModalShell
         title={modalTitle} shortcuts={shortcuts}
-        glass={glass} accent={accent} theme={theme} isDark={isDark}
         width={480} zIndex={1001}
       >
         <div style={{ padding: "16px 28px", display: "flex", flexDirection: "column", gap: 18 }}>
@@ -303,7 +303,6 @@ export default function AddEntryModal({
           onChange={val => { if (keyboardField === "name") setName(val); else setNewColName(val); }}
           onClose={() => { setShowKeyboard(false); showKeyboardRef.current = false; }}
           title={keyboardField === "name" ? t("addEntry.name") : t("addEntry.newCollection")}
-          accent={accent} theme={theme} isDark={isDark} glass={glass}
         />
       )}
     </>

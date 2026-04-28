@@ -1,39 +1,23 @@
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { GamepadBtn } from "../GamepadBtn";
-
-interface ThemePalette {
-  text: string;
-  textDim: string;
-  textFaint: string;
-}
-
-interface AppBottomBarSettings {
-  hide_bottom_bar?: boolean;
-  transparent_bottombar?: boolean;
-  cinematic_home?: boolean;
-  wide_layout?: boolean;
-  bottombar_alignment?: string;
-  nav_bumpers_pos?: string;
-  tabbar_show_buttons?: string | boolean;
-}
+import { useTheme } from "../../contexts/ThemeContext";
+import { useSettings } from "../../contexts/SettingsContext";
 
 interface Props {
   tab: string;
-  settings: AppBottomBarSettings;
-  glass: CSSProperties;
-  theme: ThemePalette;
-  isDark: boolean;
   appCollectionsCount: number;
 }
 
-export function AppBottomBar({ tab, settings, glass, theme, isDark, appCollectionsCount }: Props) {
+export function AppBottomBar({ tab, appCollectionsCount }: Props) {
   const { t } = useTranslation();
+  const { glass, theme, isDark } = useTheme();
+  const { settings } = useSettings();
 
   if (settings.hide_bottom_bar) return null;
 
   const Btn = ({ label }: { label: string }) => (
-    <GamepadBtn btn={label[0]} label={label.slice(2)} theme={theme} isDark={isDark} />
+    <GamepadBtn btn={label[0]} label={label.slice(2)} />
   );
 
   const isTransparent = settings.transparent_bottombar || (settings.cinematic_home && tab === "Home");
@@ -47,15 +31,15 @@ export function AppBottomBar({ tab, settings, glass, theme, isDark, appCollectio
 
   const bumpersHint = showBumpersInBottom && (
     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-      <GamepadBtn btn="LB" label="" theme={theme} isDark={isDark} style={{ gap: 3 }} />
-      <GamepadBtn btn="RB" label={t('gamepad.tabs')} theme={theme} isDark={isDark} />
+      <GamepadBtn btn="LB" label="" style={{ gap: 3 }} />
+      <GamepadBtn btn="RB" label={t('gamepad.tabs')} />
     </span>
   );
 
   const triggersHint = (label: string) => showTriggersInBottom && (
     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-      <GamepadBtn btn="LT" label="" theme={theme} isDark={isDark} style={{ gap: 3 }} />
-      <GamepadBtn btn="RT" label={t(label)} theme={theme} isDark={isDark} />
+      <GamepadBtn btn="LT" label="" style={{ gap: 3 }} />
+      <GamepadBtn btn="RT" label={t(label)} />
     </span>
   );
 
@@ -77,8 +61,8 @@ export function AppBottomBar({ tab, settings, glass, theme, isDark, appCollectio
             <Btn label={t('gamepad.bBack')} />
             {bumpersHint}
             <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-              <GamepadBtn btn="LT" label="" theme={theme} isDark={isDark} style={{ gap: 3 }} />
-              <GamepadBtn btn="RT" label={t('gamepad.sections')} theme={theme} isDark={isDark} />
+              <GamepadBtn btn="LT" label="" style={{ gap: 3 }} />
+              <GamepadBtn btn="RT" label={t('gamepad.sections')} />
             </span>
           </>
         ) : (
@@ -91,15 +75,15 @@ export function AppBottomBar({ tab, settings, glass, theme, isDark, appCollectio
             {tab === "Games" && (
               <>
                 {triggersHint('gamepad.source')}
-                <GamepadBtn btn="MENU" label={t('gamepad.options')} theme={theme} isDark={isDark} />
-                <GamepadBtn btn="BACK" label={t('grid.manage')}    theme={theme} isDark={isDark} />
+                <GamepadBtn btn="MENU" label={t('gamepad.options')} />
+                <GamepadBtn btn="BACK" label={t('grid.manage')}    />
               </>
             )}
             {tab === "Apps" && (
               <>
                 {appCollectionsCount > 0 && triggersHint('gamepad.source')}
-                <GamepadBtn btn="MENU" label={t('gamepad.options')} theme={theme} isDark={isDark} />
-                <GamepadBtn btn="BACK" label={t('grid.manage')}    theme={theme} isDark={isDark} />
+                <GamepadBtn btn="MENU" label={t('gamepad.options')} />
+                <GamepadBtn btn="BACK" label={t('grid.manage')}    />
               </>
             )}
           </>
