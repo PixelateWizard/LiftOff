@@ -7,6 +7,7 @@ export interface GamepadIconConfig {
   filled: boolean;
   /** When set, bumpers/triggers use this accent color instead of the default light grey */
   themeColor?: string;
+  btnSize?: "small" | "medium" | "large";
 }
 
 const DEFAULT: GamepadIconConfig = {

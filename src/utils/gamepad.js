@@ -30,3 +30,15 @@ export function readGpState(gp) {
     Start:        btn(9),
   };
 }
+
+// Detect controller platform from gamepad ID string
+export function detectPlatform(gpId) {
+  const id = (gpId || "").toLowerCase();
+  if (id.includes("054c") || id.includes("dualshock") || id.includes("dualsense") ||
+      id.includes("playstation") || id.includes("sony")) return "ps";
+  if (id.includes("057e") || id.includes("nintendo") || id.includes("switch") ||
+      id.includes("pro controller") || id.includes("joycon")) return "switch";
+  if (id.includes("xbox") || id.includes("xinput") || id.includes("045e") ||
+      id.includes("microsoft")) return "xbox";
+  return null; // unknown
+}
