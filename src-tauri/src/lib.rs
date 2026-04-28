@@ -99,7 +99,39 @@ pub struct Settings {
     // None means "not yet set by user"; frontend fills in auto-detected value.
     #[serde(default)]
     pub ui_scale: Option<f32>,
+    // Display settings (PR #4)
+    #[serde(default = "default_language")]
+    pub language: String,
+    #[serde(default = "default_time_format")]
+    pub time_format: String,
+    #[serde(default = "default_true")]
+    pub show_clock: bool,
+    #[serde(default = "default_true")]
+    pub show_date: bool,
+    #[serde(default = "default_true")]
+    pub show_battery: bool,
+    // Layout settings (PR #5 / moi952)
+    #[serde(default)]
+    pub wide_layout: bool,
+    #[serde(default)]
+    pub cinematic_home: bool,
+    #[serde(default)]
+    pub hide_bottom_bar: bool,
+    #[serde(default)]
+    pub transparent_bars: bool,
+    #[serde(default)]
+    pub transparent_topbar: bool,
+    #[serde(default)]
+    pub transparent_bottombar: bool,
+    #[serde(default = "default_cover_scale")]
+    pub home_cover_scale: f32,
+    #[serde(default = "default_cover_scale")]
+    pub game_cover_scale: f32,
 }
+
+fn default_language()    -> String { "auto".to_string() }
+fn default_time_format() -> String { "auto".to_string() }
+fn default_cover_scale() -> f32    { 1.0 }
 
 impl Default for Settings {
     fn default() -> Self {
@@ -117,6 +149,19 @@ impl Default for Settings {
             launch_at_startup: false,
             animated_heroes: "animated".to_string(),
             ui_scale: None,
+            language: "auto".to_string(),
+            time_format: "auto".to_string(),
+            show_clock: true,
+            show_date: true,
+            show_battery: true,
+            wide_layout: false,
+            cinematic_home: false,
+            hide_bottom_bar: false,
+            transparent_bars: false,
+            transparent_topbar: false,
+            transparent_bottombar: false,
+            home_cover_scale: 1.0,
+            game_cover_scale: 1.0,
         }
     }
 }
