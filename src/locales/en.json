@@ -49,6 +49,23 @@
     "shortcutToggle": "Hide/Show"
   },
   "settings": {
+    "sections": {
+      "appearance": "Appearance",
+      "library": "Library",
+      "behavior": "Behavior",
+      "controller": "Controller",
+      "data": "Data",
+      "about": "About"
+    },
+    "immersiveHome": "Immersive Home",
+    "hideBottomBar": "Hide Bottom Bar",
+    "tabbarBadges": "Show Trigger Badges",
+    "tabbarTextTabs": "Text-Only Tabs",
+    "tabbarWithBackground": "Tab Bar Background",
+    "gamepadIconsFilled": "Filled Icons",
+    "gamepadIconsThemeColor": "Theme Color for Buttons",
+    "showHomeCollections": "Show Collections on Home",
+    "showHomeCollectionNames": "Show Collection Names",
     "accentColor": "Accent Color",
     "theme": "Theme",
     "backgroundStars": "Background Stars",
@@ -57,6 +74,7 @@
     "transparentBars": "Transparent Bars",
     "transparentTopbar": "Top Bar",
     "transparentBottombar": "Bottom Bar",
+    "topbarShowBumpers": "Show Bumper Badges in Nav Bar",
     "uiScale": "UI Scale",
     "resetScale": "Reset Scale to Auto",
     "homeCoverScale": "Home Cover Scale",
@@ -83,6 +101,8 @@
     "showDate": "Show Date",
     "showBattery": "Show Battery",
     "version": "LiftOff v{{version}}",
+    "gamepadPlatform": "Gamepad Icons",
+    "gamepadIconsColored": "Colored Icons",
     "checkUpdates": "Check for Updates",
     "coffee": "☕ Buy Me a Coffee",
     "github": "⭐ GitHub",
@@ -94,7 +114,18 @@
       "controller": "CONTROLLER",
       "data": "DATA",
       "about": "ABOUT",
-      "credits": "CREDITS"
+      "credits": "CREDITS",
+      "theme": "THEME",
+      "home": "HOME",
+      "layout": "LAYOUT",
+      "navbar": "NAVIGATION BAR",
+      "sources": "SOURCES",
+      "customFolders": "CUSTOM FOLDERS",
+      "navigation": "NAVIGATION",
+      "localization": "LANGUAGE & TIME",
+      "media": "MEDIA",
+      "community": "COMMUNITY",
+      "tabbar": "SECTION TAB BAR"
     },
     "status": {
       "scanning": "Scanning...",
@@ -128,6 +159,9 @@
       "fr": "Français",
       "silver": "Silver",
       "white": "White",
+      "xbox": "Xbox",
+      "ps": "PlayStation",
+      "switch": "Switch",
       "12h": "12h",
       "24h": "24h"
     }
@@ -194,6 +228,7 @@
     "xPin": "X Pin",
     "tabs": "Tabs",
     "source": "Source",
+    "sections": "Sections",
     "options": "Options"
   },
   "keyboard": {

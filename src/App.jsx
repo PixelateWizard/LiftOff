@@ -21,7 +21,9 @@ import uiSoundAlt from "./assets/uiSoundAlt.mp3";
 import startingSound from "./assets/appLaunchSound.wav";
 import appStartSound from "./assets/gameLaunchSound.wav";
 import appLoadedSound from "./assets/appLoadedSound.wav";
-import SettingsSubGroup from "./components/SettingsSubGroup";
+import { SectionTabHeader } from "./components/SectionTabHeader";
+import { SettingsScreen, buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "./views/settings";
+import { GamepadProvider } from "./contexts/GamepadContext";
 
 const COLS = 6;
 const GAME_COLS = 5;
@@ -1132,118 +1134,6 @@ function readGpState(gp) {
   };
 }
 
-// ── Controller Test Widget ─────────────────────────────────────
-// Live gamepad debug display rendered in the Settings screen.
-// Persists last-known gamepad snapshot across remounts so there's no blank
-// flash when SettingsScreen re-creates itself on each navigation keypress.
-let _cachedGpSnap = null;
-
-// Shows the controller name, mapping type, every button (lit when pressed),
-// and every axis as a bar — lets users identify index offsets on odd hardware.
-function ControllerTestWidget({ accent, theme, isDark, glass }) {
-  const { t } = useTranslation();
-  const [gpSnap, setGpSnap] = useState(_cachedGpSnap);
-  const rAFRef = useRef(null);
-  useEffect(() => {
-    const poll = () => {
-      const all  = Array.from(navigator.getGamepads()).filter(Boolean);
-      const best = getBestGamepad();
-      const next = best ? {
-        name:    best.id,
-        mapping: best.mapping,
-        buttons: Array.from(best.buttons).map(b => b.pressed),
-        axes:    Array.from(best.axes).map(v => (typeof v === "number" && isFinite(v)) ? v : 0),
-        allDevices: all.map((gp, i) => ({ index: i, name: gp.id, btnCount: gp.buttons.length, isBest: gp === best })),
-      } : null;
-      _cachedGpSnap = next;
-      setGpSnap(next);
-      rAFRef.current = requestAnimationFrame(poll);
-    };
-    rAFRef.current = requestAnimationFrame(poll);
-    return () => cancelAnimationFrame(rAFRef.current);
-  }, []);
-
-  if (!gpSnap) return (
-    <div style={{ fontSize: 13, color: theme.textDim, padding: "4px 0 8px" }}>
-      {t('settings.noController')}
-    </div>
-  );
-
-  const isStandard = gpSnap.mapping === "standard";
-  const BUTTON_LABELS = { 0:"A",1:"B",2:"X",3:"Y",4:"LB",5:"RB",6:"LT",7:"RT",8:"⊞",9:"☰",10:"LS",11:"RS",12:"↑",13:"↓",14:"←",15:"→" };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ fontSize: 12, color: theme.textDim, wordBreak: "break-all" }}>
-        <span style={{ fontWeight: 600, color: theme.text }}>{gpSnap.name}</span>
-        <span style={{
-          marginLeft: 10, fontSize: 11, fontWeight: 600, padding: "2px 7px", borderRadius: 6,
-          background: isStandard ? `${accent.glow}0.15)` : (isDark ? "rgba(255,165,0,0.15)" : "rgba(180,100,0,0.12)"),
-          color: isStandard ? accent.primary : (isDark ? "#ffa040" : "#a06000"),
-        }}>
-          {isStandard ? "standard mapping ✓" : `non-standard${gpSnap.mapping ? ` (${gpSnap.mapping})` : ""}`}
-        </span>
-      </div>
-
-      {/* Buttons */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-        {gpSnap.buttons.map((pressed, i) => (
-          <div key={i} style={{
-            minWidth: 36, height: 30, borderRadius: 7, fontSize: 9, fontWeight: 700, padding: "0 4px",
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
-            background: pressed ? accent.primary : (isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"),
-            color: pressed ? "white" : theme.textDim,
-            border: `1px solid ${pressed ? accent.primary : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
-            transition: "background 0.05s, color 0.05s, border-color 0.05s",
-          }}>
-            <span style={{ fontSize: 8, opacity: 0.7 }}>{BUTTON_LABELS[i] ?? ""}</span>
-            <span>{i}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Axes */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "5px 14px" }}>
-        {gpSnap.axes.map((val, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-            <span style={{ fontSize: 10, color: theme.textFaint, width: 52, flexShrink: 0 }}>
-              A{i}: {val >= 0 ? " " : ""}{val.toFixed(2)}
-            </span>
-            <div style={{ flex: 1, height: 6, borderRadius: 3, background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)", position: "relative" }}>
-              <div style={{
-                position: "absolute",
-                left:  val >= 0 ? "50%" : `${(1 + val) * 50}%`,
-                width: `${Math.abs(val) * 50}%`,
-                height: "100%", borderRadius: 3,
-                background: accent.primary,
-              }} />
-              <div style={{ position: "absolute", left: "50%", top: 0, width: 1, height: "100%", background: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)" }} />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {gpSnap.allDevices?.length > 1 && (
-        <div style={{ fontSize: 11, color: theme.textDim, lineHeight: 1.6 }}>
-          <span style={{ fontWeight: 600, color: theme.textDim }}>All HID devices: </span>
-          {gpSnap.allDevices.map(d => (
-            <span key={d.index} style={{ marginRight: 12, color: d.isBest ? accent.primary : theme.textFaint }}>
-              [{d.index}] {d.name.split('(')[0].trim()} ({d.btnCount} btns){d.isBest ? " ←" : ""}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {!isStandard && (
-        <div style={{ fontSize: 11, color: isDark ? "#ffa040" : "#a06000", lineHeight: 1.5 }}>
-          Non-standard mapping detected. If navigation isn't working, try switching your controller to XInput mode (hold the GameSir / mode button until the indicator changes).
-          D-pad may be on axes 6 &amp; 7 — check the bars above.
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────
 
 async function sampleIconColor(base64) {
@@ -1323,8 +1213,13 @@ export default function App() {
     scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
     launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
     language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false,
+    topbar_show_bumpers: false,
+    tabbar_show_buttons: true, tabbar_text_tabs: false, tabbar_with_background: false,
+    show_home_collections: false, show_home_collection_names: true,
+    gamepad_platform: "xbox", gamepad_icons_colored: false, gamepad_icons_filled: true, gamepad_icons_theme_color: false,
   });
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
+  const [settingsSection, setSettingsSection]       = useState(0);
   const [heroIndex, setHeroIndex]                   = useState(0);
   const [updateStatus, setUpdateStatus]             = useState(null); // null | "checking" | "up_to_date" | "available" | "error"
   const [updateInfo, setUpdateInfo]                 = useState(null);
@@ -1358,6 +1253,7 @@ export default function App() {
   const focusedCardRef        = useRef(null);
   const searchFocusedCardRef  = useRef(null);   // FIX 3: focused search result card ref
   const settingsFocusedRef    = useRef(null);
+  const settingsSectionRef    = useRef(0);
   const outerRef              = useRef(null);
   const homeScrollRef         = useRef(null);
   const tabScrollRef          = useRef(null);
@@ -2115,6 +2011,7 @@ export default function App() {
     setFocusIndex(0); focusIndexRef.current = 0;
     setHeroIndex(0); heroIndexRef.current = 0;
     setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
+    setSettingsSection(0); settingsSectionRef.current = 0;
     setGameSourceTab("All"); gameSourceTabRef.current = "All";
     setSubtabFocusIndex(0); subtabFocusIndexRef.current = 0;
     setTimeout(() => {
@@ -2123,59 +2020,8 @@ export default function App() {
     }, 50);
   };
 
-  const SETTINGS_ITEMS = [
-    { key: "accent",            label: t('settings.accentColor'),                           type: "accent" },
-    { key: "theme",             label: t('settings.theme'),                                 type: "cycle",  options: ["dark","light","system"] },
-    { key: "stars_enabled",     label: isDark ? t('settings.backgroundStars') : t('settings.backgroundClouds'), type: "toggle" },
-    { key: "wide_layout",          label: t('settings.wideLayout'),                          type: "toggle" },
-    { key: "cinematic_home",        label: t('settings.immersiveHome'),                       type: "toggle" },
-    { key: "transparent_bars", label: t('settings.transparentBars'), type: "toggle", subItems: [
-        { key: "transparent_topbar",    label: t('settings.transparentTopbar'),    type: "toggle" },
-        { key: "transparent_bottombar", label: t('settings.transparentBottombar'), type: "toggle" },
-    ]},
-    { key: "hide_bottom_bar",       label: t('settings.hideBottomBar'),                        type: "toggle" },
-    { key: "divider_display",      label: t('settings.dividers.display'),                    type: "divider" },
-    { key: "ui_scale",          label: t('settings.uiScale'),                               type: "slider", min: 0.75, max: 2.0, step: 0.05 },
-    { key: "reset_scale",       label: t('settings.resetScale'),                            type: "action" },
-    { key: "home_cover_scale",  label: t('settings.homeCoverScale'),                        type: "slider", min: 0.5, max: 2.0, step: 0.05 },
-    { key: "game_cover_scale",  label: t('settings.gameCoverScale'),                        type: "slider", min: 0.5, max: 2.0, step: 0.05 },
-    { key: "divider",           label: t('settings.dividers.library'),                      type: "divider" },
-    { key: "scan_steam",        label: t('settings.scanSteam'),                             type: "toggle" },
-    { key: "scan_xbox",         label: t('settings.scanXbox'),                              type: "toggle" },
-    { key: "scan_uwp",          label: t('settings.scanStoreApps'),                         type: "toggle" },
-    { key: "scan_desktop",      label: t('settings.scanDesktop'),                           type: "toggle" },
-    { key: "scan_battlenet",    label: t('settings.scanBattlenet'),                         type: "toggle" },
-    { key: "custom_folders",    label: t('settings.customFolders'),                         type: "custom_folders" },
-    { key: "refresh_library",   label: t('settings.refreshLibrary'),                        type: "refresh" },
-    { key: "divider2",          label: t('settings.dividers.behavior'),                     type: "divider" },
-    { key: "default_tab",       label: t('settings.defaultTab'),                            type: "cycle",  options: ["Home","Games","Apps"] },
-    { key: "repeat_speed",      label: t('settings.repeatSpeed'),                           type: "cycle",  options: ["slow","normal","fast"] },
-    { key: "language",          label: t('settings.language'),                               type: "cycle",  options: ["auto","en","fr"] },
-    { key: "time_format",       label: t('settings.timeFormat'),                             type: "cycle",  options: ["auto","12h","24h"] },
-    { key: "show_clock",        label: t('settings.showClock'),                              type: "toggle" },
-    { key: "show_date",         label: t('settings.showDate'),                               type: "toggle" },
-    { key: "show_battery",      label: t('settings.showBattery'),                            type: "toggle" },
-    { key: "launch_at_startup", label: t('settings.launchAtStartup'),                       type: "toggle" },
-    { key: "animated_heroes",   label: t('settings.heroArtMode'),                           type: "cycle",  options: ["static", "animated", "custom"] },
-    { key: "divider_ctrl",      label: t('settings.dividers.controller'),                   type: "divider" },
-    { key: "controller_test",   label: t('settings.controllerTest'),                        type: "controller_test" },
-    { key: "divider3",          label: t('settings.dividers.data'),                         type: "divider" },
-    { key: "clear_recents",     label: t('settings.clearRecents'),                          type: "action" },
-    { key: "clear_cache",       label: t('settings.clearCache'),                            type: "action" },
-    { key: "divider4",          label: t('settings.dividers.about'),                        type: "divider" },
-    { key: "version",           label: t('settings.version', { version: APP_VERSION }),     type: "info" },
-    { key: "check_updates",     label: t('settings.checkUpdates'),                          type: "update" },
-    { key: "coffee",            label: t('settings.coffee'),                                type: "link" },
-    { key: "github",            label: t('settings.github'),                                type: "link" },
-    { key: "discord",           label: t('settings.discord'),                               type: "link" },
-    { key: "divider5",  label: t('settings.dividers.credits'),                              type: "divider" },
-    { key: "credit1",   label: "Mysterious Magical Bell Flourish", author: "DanaiOuranos", license: "CC0",       url: "https://freesound.org/s/848847/",                        type: "attribution" },
-    { key: "credit2",   label: "Achievement Sparkle",              author: "DanaiOuranos", license: "CC0",       url: "https://freesound.org/s/715067/",                        type: "attribution" },
-    { key: "credit3",   label: "Mysterious Sparkle Flourish",      author: "DanaiOuranos", license: "CC0",       url: "https://freesound.org/s/844398/",                        type: "attribution" },
-    { key: "credit4",   label: "Universal UI Soundpack",           author: "Nathan Gibson", license: "CC BY 4.0", url: "https://cyrex-studios.itch.io/universal-ui-soundpack",  type: "attribution" },
-  ];
-  const navigableSettings = SETTINGS_ITEMS.flatMap(i => (i.subItems && settings[i.key]) ? [i, ...i.subItems] : [i])
-    .filter(i => i.type !== "divider" && i.type !== "info" && i.type !== "controller_test");
+  const ALL_SETTINGS_ITEMS = buildSettingsItems(t, isDark);
+  const navigableSettings = getSectionNavigableItems(settingsSection, ALL_SETTINGS_ITEMS, settings);
 
   // ── handleNav ─────────────────────────────────────────────────
   const handleNav = (key) => {
@@ -2348,6 +2194,26 @@ export default function App() {
     }
 
     if (currentTab === "Settings") {
+      if (key === "TriggerLeft") {
+        const ni = Math.max(0, settingsSectionRef.current - 1);
+        if (ni !== settingsSectionRef.current) {
+          setSettingsSection(ni); settingsSectionRef.current = ni;
+          setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
+          if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+          playSound();
+        }
+        return;
+      }
+      if (key === "TriggerRight") {
+        const ni = Math.min(SETTINGS_SECTIONS.length - 1, settingsSectionRef.current + 1);
+        if (ni !== settingsSectionRef.current) {
+          setSettingsSection(ni); settingsSectionRef.current = ni;
+          setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
+          if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+          playSound();
+        }
+        return;
+      }
       const sfIndex = settingsFocusIndexRef.current;
       const item    = navigableSettings[sfIndex];
       if (key === "ArrowDown") { const ni = Math.min(sfIndex + 1, navigableSettings.length - 1); setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni; }
@@ -2994,9 +2860,9 @@ export default function App() {
         {!settings.cinematic_home && <div style={{ paddingTop: 0 }}>
           <div style={{ paddingTop: 14 }} />
           {homeFilteredRecent.length === 0 ? (
-            <div style={{ fontSize: 13, color: theme.textFaint, paddingBottom: 100 }}>{t('home.noRecents')}</div>
+            <div style={{ fontSize: 13, color: theme.textFaint, paddingBottom: settings.show_home_collections ? 16 : 100 }}>{t('home.noRecents')}</div>
           ) : (
-            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 100, paddingTop: 8, marginTop: -8, paddingLeft: 6, paddingRight: 6 }}>
+            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: settings.show_home_collections ? 16 : 100, paddingTop: 8, marginTop: -8, paddingLeft: 6, paddingRight: 6 }}>
               {homeFilteredRecent.map((app, i) => {
                 const focused = focusSec === "recent" && focusIdx === i;
                 const isPinned = pins.includes(app.id);
@@ -3067,6 +2933,63 @@ export default function App() {
             </div>
           )}
         </div>}
+
+        {/* ── HOME COLLECTIONS ── */}
+        {settings.show_home_collections && !settings.cinematic_home && (() => {
+          const homeBase = Math.round(110 * (settings.home_cover_scale ?? 1.0));
+          const CARD_W = `${homeBase}px`;
+          const CARD_H = `${Math.round(homeBase * 1.5)}px`;
+          const allCols = [
+            ...gameCollections.map(col => ({
+              id: col.id, name: col.name, type: "game",
+              items: apps.filter(a => a.app_type === "game" && (gameMemberships[a.id] || []).includes(col.id)).slice(0, 20),
+            })),
+            ...appCollections.map(col => ({
+              id: col.id, name: col.name, type: "app",
+              items: apps.filter(a => a.app_type === "app" && (appMemberships[a.id] || []).includes(col.id)).slice(0, 20),
+            })),
+          ].filter(c => c.items.length > 0);
+          if (allCols.length === 0) return null;
+          return (
+            <div style={{ paddingBottom: 100 }}>
+              {allCols.map(col => (
+                <div key={col.id} style={{ marginBottom: 28 }}>
+                  {settings.show_home_collection_names && (
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, paddingBottom: 10, paddingLeft: 4 }}>
+                      {col.name}
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, paddingLeft: 4, paddingRight: 4 }}>
+                    {col.items.map(app => {
+                      const art = customArt[app.id] || (app.app_type === "game" ? gameArt[app.id] : null);
+                      if (app.app_type === "game") {
+                        return (
+                          <div key={app.id} onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                            style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative", transition: "all 0.15s ease", border: "1px solid rgba(255,255,255,0.08)" }}>
+                            {art
+                              ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                              : <div style={{ width: "100%", height: "100%", background: `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={app} size={36} /></div>
+                            }
+                            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
+                              <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={app.id} onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                          style={{ ...glass, flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px" }}>
+                          <AppIcon app={app} size={40} />
+                          <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
     );
   })();
@@ -3092,255 +3015,34 @@ export default function App() {
     </svg>
   );
 
-  const SettingsScreen = () => (
-    <div style={{ padding: "14px 24px 160px", ...(settings.wide_layout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" }}>
-      {SETTINGS_ITEMS.map((item) => {
-        if (item.type === "divider") return <div key={item.key} style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, padding: "22px 4px 10px" }}>{item.label}</div>;
-        const navIdx  = navigableSettings.findIndex(n => n.key === item.key);
-        const focused = settingsFocusIndex === navIdx;
-        const makeRowStyle = (sub = false) => ({
-          ...glass, borderRadius: 14, padding: "14px 20px", marginBottom: sub ? 6 : 8,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          cursor: "pointer", transition: "all 0.15s ease",
-          ...(focused && !sub ? { border: `1px solid ${accent.glow}0.6)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, background: isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)` } : { border: "1px solid rgba(255,255,255,0.06)" }),
-        });
-        const rowStyle = makeRowStyle();
-        const rowRef = focused ? settingsFocusedRef : null;
-        if (item.type === "info") return <div key={item.key} ref={rowRef} style={{ ...rowStyle, justifyContent: "center", cursor: "default" }}><span style={{ fontSize: 13, color: theme.textDim }}>{item.label}</span></div>;
-        if (item.type === "toggle") {
-          const val = settings[item.key];
-          if (item.subItems) {
-            return (
-              <SettingsSubGroup
-                key={item.key}
-                glass={glass} accent={accent} isDark={isDark} theme={theme}
-                label={item.label}
-                value={val}
-                onChange={newVal => updateSetting(item.key, newVal)}
-                focused={focused}
-                focusedRef={rowRef}
-                items={item.subItems.map(sub => {
-                  const subNavIdx = navigableSettings.findIndex(n => n.key === sub.key);
-                  const subFocused = settingsFocusIndex === subNavIdx;
-                  return {
-                    label: sub.label,
-                    value: settings[sub.key],
-                    onChange: newVal => updateSetting(sub.key, newVal),
-                    focused: subFocused,
-                    focusedRef: settingsFocusedRef,
-                  };
-                })}
-              />
-            );
-          }
-          return (
-            <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => updateSetting(item.key, !val)}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
-              <div style={{ width: 44, height: 24, borderRadius: 12, background: val ? accent.primary : (isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"), position: "relative", transition: "background 0.2s ease", flexShrink: 0 }}>
-                <div style={{ width: 18, height: 18, borderRadius: "50%", background: "white", position: "absolute", top: 3, left: val ? 23 : 3, transition: "left 0.2s ease", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
-              </div>
-            </div>
-          );
-        }
-        if (item.type === "cycle") {
-          const opts = item.options;
-          const cur = opts.indexOf(settings[item.key]);
-          return (
-            <div key={item.key} ref={rowRef} style={rowStyle}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
-                  onClick={() => updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length])}>◀</span>
-                <span style={{ fontSize: 12, color: accent.primary, fontWeight: 600 }}>{t(`settings.values.${settings[item.key]}`, settings[item.key])}</span>
-                <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
-                  onClick={() => updateSetting(item.key, opts[(cur + 1) % opts.length])}>▶</span>
-              </div>
-            </div>
-          );
-        }
-        if (item.type === "accent") {
-          const accentKeys = Object.keys(ACCENTS);
-          const curIdx = accentKeys.indexOf(settings.accent);
-          return (
-            <div key={item.key} ref={rowRef} style={rowStyle}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
-                  onClick={() => updateSetting("accent", accentKeys[(curIdx - 1 + accentKeys.length) % accentKeys.length])}>◀</span>
-                {Object.entries(ACCENTS).map(([name, a]) => (
-                  <div key={name} onClick={() => updateSetting("accent", name)}
-                    style={{ width: 20, height: 20, borderRadius: "50%", background: a.primary, border: settings.accent === name ? "2px solid white" : "2px solid transparent", boxShadow: settings.accent === name ? `0 0 8px ${a.glow}0.8)` : "none", cursor: "pointer", transition: "all 0.15s ease" }} />
-                ))}
-                <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
-                  onClick={() => updateSetting("accent", accentKeys[(curIdx + 1) % accentKeys.length])}>▶</span>
-              </div>
-            </div>
-          );
-        }
-        if (item.type === "refresh") {
-          const statusText  = libraryRefreshStatus === "scanning" ? t('settings.status.scanning')
-                            : libraryRefreshStatus === "done"     ? t('settings.status.done')
-                            : t('settings.status.refresh');
-          const statusColor = libraryRefreshStatus === "done" ? "#4ae88a"
-                            : theme.textDim;
-          return (
-            <div key={item.key} ref={rowRef} style={rowStyle} onClick={refreshLibrary}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
-              <span style={{ fontSize: 12, color: statusColor }}>{statusText}</span>
-            </div>
-          );
-        }
-        if (item.type === "slider") {
-          const val = settings[item.key] ?? 1.0;
-          const isDragging = sliderDraft.key === item.key;
-          const displayVal = isDragging ? sliderDraft.value : val;
-          const pct = `${Math.round(displayVal * 100)}%`;
-          const trackPct = ((displayVal - item.min) / (item.max - item.min)) * 100;
-
-          const handleTrackMouseDown = (e) => {
-            e.preventDefault();
-            const rect = e.currentTarget.getBoundingClientRect();
-            const clamp = (v) => Math.round(Math.max(item.min, Math.min(item.max, v)) * 100) / 100;
-            const snap = (v) => Math.round(v / item.step) * item.step;
-            const calcVal = (clientX) => clamp(snap(item.min + ((clientX - rect.left) / rect.width) * (item.max - item.min)));
-            const initial = calcVal(e.clientX);
-            sliderDraftRef.current = { key: item.key, value: initial };
-            setSliderDraft({ key: item.key, value: initial });
-            const onMove = (me) => {
-              const v = calcVal(me.clientX);
-              sliderDraftRef.current = { key: item.key, value: v };
-              setSliderDraft({ key: item.key, value: v });
-            };
-            const onUp = () => {
-              updateSetting(item.key, sliderDraftRef.current.value);
-              sliderDraftRef.current = { key: null, value: null };
-              setSliderDraft({ key: null, value: null });
-              window.removeEventListener("mousemove", onMove);
-              window.removeEventListener("mouseup", onUp);
-            };
-            window.addEventListener("mousemove", onMove);
-            window.addEventListener("mouseup", onUp);
-          };
-
-          return (
-            <div key={item.key} ref={rowRef} style={rowStyle}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 11, color: focused ? accent.primary : theme.textDim, cursor: "pointer", userSelect: "none" }}
-                  onClick={() => updateSetting(item.key, Math.max(item.min, Math.round((val - item.step) * 100) / 100))}>◀</span>
-                <div onMouseDown={handleTrackMouseDown}
-                  style={{ width: 140, height: 4, borderRadius: 2, background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", position: "relative", flexShrink: 0, cursor: "pointer" }}>
-                  <div style={{ height: "100%", borderRadius: 2, background: accent.primary, width: `${trackPct}%`, transition: isDragging ? "none" : "width 0.08s ease" }} />
-                  <div style={{ width: 14, height: 14, borderRadius: "50%", background: accent.primary, position: "absolute", top: -5, left: `calc(${trackPct}% - 7px)`, transition: isDragging ? "none" : "left 0.08s ease", boxShadow: `0 0 8px ${accent.glow}0.6)` }} />
-                </div>
-                <span style={{ fontSize: 11, color: focused ? accent.primary : theme.textDim, cursor: "pointer", userSelect: "none" }}
-                  onClick={() => updateSetting(item.key, Math.min(item.max, Math.round((val + item.step) * 100) / 100))}>▶</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: accent.primary, minWidth: 40, textAlign: "right" }}>{pct}</span>
-              </div>
-            </div>
-          );
-        }
-        if (item.type === "action") return (
-          <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => {
-            if (item.key === "clear_recents") invoke("clear_recents").then(() => { setRecent([]); recentRef.current = []; });
-            if (item.key === "clear_cache")   handleClearCache();
-            if (item.key === "reset_scale")   updateSetting("ui_scale", autoScaleRef.current);
-          }}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: item.key === "reset_scale" ? theme.text : "#e84a4a" }}>{item.label}</span>
-            <span style={{ fontSize: 12, color: theme.textDim }}>{item.key === "reset_scale" ? t('settings.status.apply') : t('settings.status.confirm')}</span>
-          </div>
-        );
-        if (item.type === "update") {
-          const statusText = updateStatus === "checking"   ? t('settings.status.checking')
-                           : updateStatus === "up_to_date" ? t('settings.status.upToDate')
-                           : updateStatus === "available"  ? t('settings.status.updateAvailable', { version: updateInfo })
-                           : updateStatus === "error"      ? t('settings.status.checkFailed')
-                           : t('settings.status.check');
-          const statusColor = updateStatus === "up_to_date" ? "#4ae88a"
-                            : updateStatus === "available"  ? accent.primary
-                            : updateStatus === "error"      ? "#e84a4a"
-                            : theme.textDim;
-          return (
-            <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => {
-              if (updateStatus === "available") invoke("launch_app", { path: `https://github.com/${GITHUB_REPO}/releases/latest`, id: "releases", name: "LiftOff Releases", appType: "app" }).catch(() => {});
-              else checkForUpdates();
-            }}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
-              <span style={{ fontSize: 12, color: statusColor, fontWeight: updateStatus === "available" ? 600 : 400 }}>{statusText}</span>
-            </div>
-          );
-        }
-        if (item.type === "link") return (
-          <div key={item.key} ref={rowRef} style={rowStyle}>
-            <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
-            <span style={{ fontSize: 12, color: theme.textDim }}>{t('settings.status.open')}</span>
-          </div>
-        );
-        if (item.type === "attribution") return (
-          <div key={item.key} ref={rowRef} style={rowStyle}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>{item.label}</span>
-              <span style={{ fontSize: 11, color: theme.textDim }}>{t('settings.attribution', { author: item.author, license: item.license })}</span>
-            </div>
-            <span style={{ fontSize: 12, color: theme.textDim }}>{t('settings.status.open')}</span>
-          </div>
-        );
-        if (item.type === "controller_test") return (
-          <div key={item.key} style={{ ...glass, borderRadius: 14, padding: "14px 20px", marginBottom: 8, border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
-            <ControllerTestWidget accent={accent} theme={theme} isDark={isDark} glass={glass} />
-          </div>
-        );
-        if (item.type === "custom_folders") {
-          const gameFolders = customFolders.filter(f => f.app_type === "game");
-          const appFolders  = customFolders.filter(f => f.app_type !== "game");
-          const toggleFolder = (folderId, enabled) => {
-            invoke("toggle_custom_folder", { id: folderId, enabled }).then(() => {
-              setCustomFolders(prev => prev.map(f => f.id === folderId ? { ...f, enabled } : f));
-            });
-          };
-          const deleteFolder = (folderId) => {
-            invoke("remove_custom_folder", { id: folderId }).then(() => {
-              setCustomFolders(prev => prev.filter(f => f.id !== folderId));
-            });
-          };
-          const renderFolderGroup = (folders, groupLabel) => folders.length === 0 ? null : (
-            <div key={groupLabel}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: theme.textFaint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4, marginTop: 8 }}>{groupLabel}</div>
-              {folders.map(folder => (
-                <div key={folder.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
-                  <div style={{ fontSize: 11, color: folder.enabled !== false ? theme.text : theme.textFaint, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {folder.path}
-                  </div>
-                  <div style={{ fontSize: 9, color: theme.textFaint, flexShrink: 0 }}>{folder.source}</div>
-                  <div onClick={() => toggleFolder(folder.id, folder.enabled !== false ? false : true)}
-                    style={{ width: 36, height: 20, borderRadius: 10, background: folder.enabled !== false ? accent.primary : (isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"), position: "relative", cursor: "pointer", flexShrink: 0 }}>
-                    <div style={{ width: 14, height: 14, borderRadius: "50%", background: "white", position: "absolute", top: 3, left: folder.enabled !== false ? 19 : 3, transition: "left 0.2s", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-          return (
-            <div key={item.key} ref={rowRef} style={{ ...glass, borderRadius: 14, padding: "14px 20px", marginBottom: 8,
-              border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`,
-              boxShadow: focused ? `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)` : "none" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: customFolders.length > 0 ? 4 : 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: focused ? accent.primary : theme.textDim, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                  {item.label}
-                </div>
-                <span style={{ fontSize: 10, color: theme.textFaint }}>↵ {t('grid.manage')}</span>
-              </div>
-              {customFolders.length === 0 && (
-                <div style={{ fontSize: 12, color: theme.textFaint, fontStyle: "italic" }}>{t('settings.noCustomFolders')}</div>
-              )}
-              {renderFolderGroup(gameFolders, t('tabs.games'))}
-              {renderFolderGroup(appFolders, t('tabs.apps'))}
-            </div>
-          );
-        }
-        return null;
-      })}
-    </div>
+  const SettingsScreenWrapper = () => (
+    <SettingsScreen
+      settings={settings}
+      updateSetting={updateSetting}
+      accent={accent}
+      glass={glass}
+      isDark={isDark}
+      theme={theme}
+      settingsFocusIndex={settingsFocusIndex}
+      settingsSection={settingsSection}
+      settingsFocusedRef={settingsFocusedRef}
+      customFolders={customFolders}
+      onOpenFolderManager={() => { setShowFolderManager(true); showFolderManagerRef.current = true; }}
+      libraryRefreshStatus={libraryRefreshStatus}
+      refreshLibrary={refreshLibrary}
+      updateStatus={updateStatus}
+      updateInfo={updateInfo}
+      checkForUpdates={checkForUpdates}
+      onClearRecents={() => { invoke("clear_recents").then(() => { setRecent([]); recentRef.current = []; }); }}
+      handleClearCache={handleClearCache}
+      autoScale={autoScaleRef.current}
+      sliderDraft={sliderDraft}
+      sliderDraftRef={sliderDraftRef}
+      setSliderDraft={setSliderDraft}
+      onSectionChange={(idx) => { setSettingsSection(idx); settingsSectionRef.current = idx; setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0; if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" }); }}
+      ACCENTS={ACCENTS}
+      wideLayout={settings.wide_layout}
+    />
   );
 
   // ── Hide/Show Modal ───────────────────────────────────────────
@@ -3354,6 +3056,7 @@ export default function App() {
 
   // ── Render ────────────────────────────────────────────────────
   return (
+    <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined }}>
     <div style={{ position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1 }} ref={outerRef}>
 
       <div style={{ position: "fixed", inset: 0, background: appBg, zIndex: -2 }} />
@@ -3787,15 +3490,23 @@ export default function App() {
               <RocketLogo />
               <span key={`${settings.accent}-${settings.theme}`} style={{ fontWeight: 700, fontSize: 16, letterSpacing: "0.04em", background: `linear-gradient(135deg, ${accent.light}, ${accent.primary})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>LiftOff</span>
             </div>
-            <div style={{ display: "flex", gap: 2, flex: 1, justifyContent: "center" }}>
-              {TABS.map((tabName) => (
-                <div key={tabName} onClick={() => switchTab(tabName)} style={{
-                  fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
-                  color: tab === tabName ? theme.text : theme.textDim, padding: "6px 16px", borderRadius: 8, cursor: "pointer",
-                  border: `1px solid ${tab === tabName ? `${accent.glow}0.35)` : "transparent"}`,
-                  background: tab === tabName ? `${accent.glow}0.15)` : "transparent",
-                }}>{t(`tabs.${tabName.toLowerCase()}`)}</div>
-              ))}
+            <div style={{ display: "flex", gap: "40px", flex: 1, justifyContent: "center", alignItems: "center" }}>
+              {settings.topbar_show_bumpers && (
+                <GamepadBtn btn="LB" label="" theme={theme} isDark={isDark} style={{ gap: 0 }} />
+              )}
+              <div style={{ display: "flex", gap: 2 }}>
+                {TABS.map((tabName) => (
+                  <div key={tabName} onClick={() => switchTab(tabName)} style={{
+                    fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
+                    color: tab === tabName ? theme.text : theme.textDim, padding: "6px 16px", borderRadius: 8, cursor: "pointer",
+                    border: `1px solid ${tab === tabName ? `${accent.glow}0.35)` : "transparent"}`,
+                    background: tab === tabName ? `${accent.glow}0.15)` : "transparent",
+                  }}>{t(`tabs.${tabName.toLowerCase()}`)}</div>
+                ))}
+              </div>
+              {settings.topbar_show_bumpers && (
+                <GamepadBtn btn="RB" label="" theme={theme} isDark={isDark} style={{ gap: 0 }} />
+              )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
               {settings.show_date && <span style={{ fontSize: 12, color: theme.textDim }}>{date}</span>}
@@ -3824,7 +3535,7 @@ export default function App() {
 
           {tab === "Settings" && (
             <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
-              <SettingsScreen />
+              <SettingsScreenWrapper />
             </div>
           )}
           <div
@@ -3837,12 +3548,7 @@ export default function App() {
             }}>
             {homeContent}
           </div>
-          {(tab === "Games" || tab === "Apps") && (
-            <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
-            <div style={{ padding: "14px 24px 0", ...(settings.wide_layout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" }}>
-
-            {/* ── SOURCE SUB-TABS (Games only) + MANAGE + ADD BUTTONS ── */}
-            {(() => {
+          {(tab === "Games" || tab === "Apps") && (() => {
               const SOURCES = ["All", "Steam", "Xbox", "Bnet", "Other", ...customSources, ...gameCollections.map(c => c.name)];
               const APP_COLS = ["All", ...appCollections.map(c => c.name)];
               const subtabItems = tab === "Games"
@@ -3852,51 +3558,67 @@ export default function App() {
               const addFolderIdx = tab === "Games" ? SOURCES.length + 1 : APP_COLS.length + 1;
               const manageIdx    = tab === "Games" ? SOURCES.length + 2 : APP_COLS.length + 2;
               const colModalIdx  = tab === "Games" ? SOURCES.length + 3 : APP_COLS.length + 3;
-              const subtabStyle = (active) => ({
-                fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", padding: "5px 14px", borderRadius: 20, cursor: "pointer", transition: "all 0.15s ease",
+              const actionBtnStyle = (active) => ({
+                fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", padding: "5px 12px", borderRadius: 20, cursor: "pointer", transition: "all 0.15s ease",
                 background: active ? accent.primary : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"),
                 color: active ? "white" : theme.textDim,
                 border: `1px solid ${active ? accent.primary : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
                 boxShadow: active ? `0 2px 10px ${accent.glow}0.35)` : "none",
+                display: "flex", alignItems: "center", justifyContent: "center",
               });
+
+              // Build tab items for SectionTabBar
+              const tabItems = tab === "Games"
+                ? SOURCES.map(src => ({
+                    label: src === "All" ? t('sources.all') : src === "Other" ? t('sources.other') : src,
+                    isDashed: gameCollections.some(c => c.name === src),
+                  }))
+                : APP_COLS.map(col => ({ label: col === "All" ? t('sources.all') : col }));
+
+              const activeTabIndex = tab === "Games"
+                ? SOURCES.indexOf(gameSourceTab)
+                : APP_COLS.indexOf(appCollectionTab);
+
               return (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingBottom: 4 }}>
-                  {tab === "Games" ? (
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                      {SOURCES.map((src, i) => {
-                        const active = gameSourceTab === src;
-                        const isCollection = gameCollections.some(c => c.name === src);
-                        return (
-                          <div key={src} onClick={() => { setGameSourceTab(src); gameSourceTabRef.current = src; setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(i); subtabFocusIndexRef.current = i; setFocusIndex(0); focusIndexRef.current = 0; }}
-                            style={{ ...subtabStyle(active), ...(isCollection && !active ? { borderStyle: "dashed" } : {}) }}>
-                            {src === "All" ? t('sources.all') : src === "Other" ? t('sources.other') : src}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                      {APP_COLS.map((col, i) => {
-                        const active = appCollectionTab === col;
-                        return (
-                          <div key={col} onClick={() => { setAppCollectionTab(col); appCollectionTabRef.current = col; setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(i); subtabFocusIndexRef.current = i; setFocusIndex(0); focusIndexRef.current = 0; }}
-                            style={subtabStyle(active)}>
-                            {col === "All" ? t('sources.all') : col}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
+              {/* Collection / source tab bar — full width, outside padded div */}
+              <SectionTabHeader
+                items={tabItems}
+                activeIndex={activeTabIndex}
+                onSelect={(i) => {
+                  if (tab === "Games") {
+                    const src = SOURCES[i];
+                    setGameSourceTab(src); gameSourceTabRef.current = src;
+                  } else {
+                    const col = APP_COLS[i];
+                    setAppCollectionTab(col); appCollectionTabRef.current = col;
+                  }
+                  setFocusSection("subtabs"); focusSectionRef.current = "subtabs";
+                  setSubtabFocusIndex(i); subtabFocusIndexRef.current = i;
+                  setFocusIndex(0); focusIndexRef.current = 0;
+                }}
+                showButtons={settings.tabbar_show_buttons ?? true}
+                textTabs={settings.tabbar_text_tabs ?? false}
+                withBackground={settings.tabbar_with_background ?? false}
+                transparent={settings.transparent_topbar ?? false}
+                glass={glass}
+                accent={accent}
+                theme={theme}
+                isDark={isDark}
+                sticky
+              />
+              <div style={{ padding: `0 24px 0`, ...(settings.wide_layout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" }}>
+                {/* Management buttons row */}
+                <div style={{ display: "flex", gap: 8, alignItems: "center", paddingTop: 4, paddingBottom: 8 }}>
                     <div onClick={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("file"); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(addAppIdx); subtabFocusIndexRef.current = addAppIdx; }}
-                      style={{ ...subtabStyle(focusSection === "subtabs" && subtabFocusIndex === addAppIdx), padding: "5px 10px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      style={{ ...actionBtnStyle(focusSection === "subtabs" && subtabFocusIndex === addAppIdx), padding: "5px 10px" }}
                       title={tab === "Games" ? t('addEntry.addGame') : t('addEntry.addApp')}>
                       <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
                         <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
                       </svg>
                     </div>
                     <div onClick={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("folder"); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(addFolderIdx); subtabFocusIndexRef.current = addFolderIdx; }}
-                      style={{ ...subtabStyle(focusSection === "subtabs" && subtabFocusIndex === addFolderIdx), padding: "5px 10px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      style={{ ...actionBtnStyle(focusSection === "subtabs" && subtabFocusIndex === addFolderIdx), padding: "5px 10px" }}
                       title={t('addEntry.addFolder')}>
                       <svg width="16" height="13" viewBox="0 0 16 13" fill="none">
                         <path d="M1 3.5a1 1 0 011-1h3.8l1.4 1.5H14a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V3.5z" stroke="currentColor" strokeWidth="1.2"/>
@@ -3904,17 +3626,14 @@ export default function App() {
                       </svg>
                     </div>
                     <div onClick={() => { openHideModal(); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(manageIdx); subtabFocusIndexRef.current = manageIdx; }}
-                      style={subtabStyle(focusSection === "subtabs" && subtabFocusIndex === manageIdx)}>
+                      style={actionBtnStyle(focusSection === "subtabs" && subtabFocusIndex === manageIdx)}>
                       {t('grid.manage')}
                     </div>
                     <div onClick={() => { setShowColModal(true); showColModalRef.current = true; setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(colModalIdx); subtabFocusIndexRef.current = colModalIdx; }}
-                      style={subtabStyle(focusSection === "subtabs" && subtabFocusIndex === colModalIdx)}>
+                      style={actionBtnStyle(focusSection === "subtabs" && subtabFocusIndex === colModalIdx)}>
                       {t('collections.manage')}
                     </div>
-                  </div>
                 </div>
-              );
-            })()}
 
             {/* ── PINNED — same card size/style as main grid ── */}
             {pinnedAppsReactive.length > 0 && !(tab === "Games" && gameSourceTab !== "All") && (
@@ -4041,7 +3760,7 @@ export default function App() {
             )}
           </div>
             </div>
-          )}
+          ); })()}
         </div>
 
         {/* Bottom bar */}
@@ -4054,7 +3773,14 @@ export default function App() {
               : { maxWidth: 1400, margin: "0 auto 14px", width: "calc(100% - 48px)" }),
           }}>
             {tab === "Settings"
-              ? <><Btn label={t('gamepad.aSelect')} /><Btn label={t('gamepad.bBack')} /></>
+              ? <>
+                  <Btn label={t('gamepad.aSelect')} />
+                  <Btn label={t('gamepad.bBack')} />
+                  <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
+                    <GamepadBtn btn="LT" label="" theme={theme} isDark={isDark} style={{ gap: 3 }} />
+                    <GamepadBtn btn="RT" label={t('gamepad.sections')} theme={theme} isDark={isDark} />
+                  </span>
+                </>
               : <>
                   <Btn label={t('gamepad.aLaunch')} />
                   <Btn label={t('gamepad.bBack')} />
@@ -4125,5 +3851,6 @@ export default function App() {
         </div>
       )}
     </div>
+    </GamepadProvider>
   );
 }
