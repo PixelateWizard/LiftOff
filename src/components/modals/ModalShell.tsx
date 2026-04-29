@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { GamepadBtn } from "../GamepadBtn";
+import { useTheme } from "../../contexts/ThemeContext";
 
 export interface ShortcutItem {
   btn: string;
@@ -10,10 +11,6 @@ interface ModalShellProps {
   title: string;
   children?: ReactNode;
   shortcuts?: ShortcutItem[];
-  glass: any;
-  accent: any;
-  theme: any;
-  isDark: boolean;
   width?: number;
   maxHeight?: string;
   zIndex?: number;
@@ -24,15 +21,12 @@ export default function ModalShell({
   title,
   children,
   shortcuts = [],
-  glass,
-  accent,
-  theme,
-  isDark,
   width = 480,
   maxHeight,
   zIndex = 2000,
   onOverlayClick,
 }: ModalShellProps) {
+  const { glass, accent, theme, isDark } = useTheme();
   const hasBody = children != null && children !== false;
 
   return (
@@ -79,7 +73,7 @@ export default function ModalShell({
             display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center",
           }}>
             {shortcuts.map(({ btn, label }, i) => (
-              <GamepadBtn key={`${btn}-${i}`} btn={btn} label={label} theme={theme} isDark={isDark} />
+              <GamepadBtn key={`${btn}-${i}`} btn={btn} label={label} />
             ))}
           </div>
         )}

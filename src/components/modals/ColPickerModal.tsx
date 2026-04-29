@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getBestGamepad, readGpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
 import ModalShell from "./ModalShell";
 import GamepadKeyboard from "../GamepadKeyboard";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface Collection {
   id: string;
@@ -20,14 +21,11 @@ interface Props {
   memberships: Record<string, string[]>;
   onToggle: (col: Collection) => void;
   onClose: () => void;
-  glass: any;
-  accent: any;
-  theme: any;
-  isDark: boolean;
   onCreateCollection?: (name: string) => void;
 }
 
-export default function ColPickerModal({ app, collections, memberships, onToggle, onClose, glass, accent, theme, isDark, onCreateCollection }: Props) {
+export default function ColPickerModal({ app, collections, memberships, onToggle, onClose, onCreateCollection }: Props) {
+  const { glass, accent, theme, isDark } = useTheme();
   const { t } = useTranslation();
   const [focusIdx, setFocusIdx] = useState(0);
   const [showKb, setShowKb] = useState(false);
@@ -47,7 +45,7 @@ export default function ColPickerModal({ app, collections, memberships, onToggle
   const isAddRow  = (i: number) => !!onCreateCollectionRef.current && i === colsRef.current.length;
 
   useEffect(() => {
-    const last: any = {};
+    const last: Partial<GpState> = {};
     let rafId: number;
     let suppressFrames = 20;
     const poll = () => {
@@ -97,7 +95,6 @@ export default function ColPickerModal({ app, collections, memberships, onToggle
       <ModalShell
         title={t("collections.assign", { name: app.name })}
         shortcuts={shortcuts}
-        glass={glass} accent={accent} theme={theme} isDark={isDark}
         width={380}
         zIndex={2000}
         onOverlayClick={onClose}
@@ -175,7 +172,6 @@ export default function ColPickerModal({ app, collections, memberships, onToggle
             if (name && onCreateCollectionRef.current) onCreateCollectionRef.current(name);
           }}
           title={t("collections.newPlaceholder")}
-          accent={accent} theme={theme} isDark={isDark} glass={glass}
         />
       )}
     </>

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { getBestGamepad, readGpState } from "../utils/gamepad";
+import { useTheme } from "../contexts/ThemeContext";
 
 const KB_ALPHA = [
   ["q","w","e","r","t","y","u","i","o","p"],
@@ -19,13 +20,10 @@ interface Props {
   onClose: () => void;
   onConfirm?: () => void;
   title?: string;
-  accent: any;
-  theme: any;
-  isDark: boolean;
-  glass: any;
 }
 
-export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, title = "", accent, theme, isDark, glass }: Props) {
+export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, title = "" }: Props) {
+  const { glass, accent, theme, isDark } = useTheme();
   const [row,     setRow]     = useState(0);
   const [col,     setCol]     = useState(0);
   const [numMode, setNumMode] = useState(false);

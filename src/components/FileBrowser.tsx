@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import { GamepadBtn } from "./GamepadBtn";
+import { useTheme } from "../contexts/ThemeContext";
 
 function getBestGamepad() {
   const gps = Array.from(navigator.getGamepads()).filter(Boolean);
@@ -35,16 +36,13 @@ interface FileEntry {
 
 interface Props {
   mode?: "file" | "folder";
-  glass: any;
-  accent: any;
-  theme: any;
-  isDark: boolean;
   repeatSpeed?: string;
   onSelect: (entry: FileEntry) => void;
   onClose: () => void;
 }
 
-export default function FileBrowser({ mode = "file", glass, accent, theme, isDark, repeatSpeed = "normal", onSelect, onClose }: Props) {
+export default function FileBrowser({ mode = "file", repeatSpeed = "normal", onSelect, onClose }: Props) {
+  const { glass, accent, theme, isDark } = useTheme();
   const { t } = useTranslation();
   const [entries, setEntries]   = useState<FileEntry[]>([]);
   const [path, setPath]         = useState<string | null>(null);
@@ -109,8 +107,8 @@ export default function FileBrowser({ mode = "file", glass, accent, theme, isDar
   useEffect(() => { pathRef.current         = path; },         [path]);
 
   useEffect(() => {
-    const pressTime: any = {};
-    const repeating: any = {};
+    const pressTime: Record<string, number>  = {};
+    const repeating: Record<string, boolean> = {};
 
     const handle = (key: string) => {
       if (key === "ArrowDown") {
@@ -163,9 +161,10 @@ export default function FileBrowser({ mode = "file", glass, accent, theme, isDar
   }, [iDelay, rDelay]);
 
   useEffect(() => {
-    const last: any = {};
-    const gpPress: any = {};
-    const gpRepeat: any = {};
+    type GpSnapshot = ReturnType<typeof readGpState>;
+    const last: Partial<GpSnapshot>          = {};
+    const gpPress: Record<string, number>    = {};
+    const gpRepeat: Record<string, boolean>  = {};
     const REPEATABLE = new Set(["ArrowUp", "ArrowDown"]);
     let suppressFrames = 20;
 
@@ -196,8 +195,8 @@ export default function FileBrowser({ mode = "file", glass, accent, theme, isDar
         const iDelayCur = 400;
         const rDelayCur = 100;
         for (const key of Object.keys(state)) {
-          const pressed = (state as any)[key];
-          const was = last[key];
+          const pressed = state[key as keyof GpSnapshot];
+          const was = last[key as keyof GpSnapshot];
           if (pressed && !was) {
             handle(key);
             gpPress[key] = now;
@@ -209,7 +208,7 @@ export default function FileBrowser({ mode = "file", glass, accent, theme, isDar
           } else if (!pressed && was) {
             gpPress[key] = 0; gpRepeat[key] = false;
           }
-          last[key] = pressed;
+          last[key as keyof GpSnapshot] = pressed;
         }
       }
       rafId = requestAnimationFrame(poll);
@@ -293,15 +292,15 @@ export default function FileBrowser({ mode = "file", glass, accent, theme, isDar
           padding: "12px 20px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
           display: "flex", gap: 16, alignItems: "center",
         }}>
-          <GamepadBtn btn="A"  label={mode === "folder" ? t("fileBrowser.open") : t("fileBrowser.select")} theme={theme} isDark={isDark} />
+          <GamepadBtn btn="A"  label={mode === "folder" ? t("fileBrowser.open") : t("fileBrowser.select")} />
           {mode === "folder" && path !== null && (
             <span style={{ cursor: "pointer" }} onClick={selectFolder}>
-              <GamepadBtn btn="X" label={t("fileBrowser.selectThis")} theme={theme} isDark={isDark}
+              <GamepadBtn btn="X" label={t("fileBrowser.selectThis")}
                 style={{ color: accent.primary }} />
             </span>
           )}
           <span style={{ marginLeft: "auto", cursor: "pointer" }} onClick={goUp}>
-            <GamepadBtn btn="B" label={t("common.back")} theme={theme} isDark={isDark} />
+            <GamepadBtn btn="B" label={t("common.back")} />
           </span>
         </div>
       </div>

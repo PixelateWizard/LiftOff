@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { useGamepadIcons } from "../contexts/GamepadContext";
+import { useTheme } from "../contexts/ThemeContext";
 import type { GamepadPlatform } from "./ui/Gamepad";
 import { XboxLT, XboxRT, PsL2, PsR2, SwZL, SwZR } from "./ui/Gamepad";
 import type { GamepadIconProps } from "./ui/Gamepad";
@@ -19,9 +20,6 @@ interface SectionTabBarProps {
   textTabs?: boolean;
   /** Tab label weight: thin (300) | medium (600/500) | bold (700) */
   fontWeight?: "thin" | "medium" | "bold";
-  accent: { primary: string; glow: string };
-  theme: { text: string; textDim: string; textFaint: string };
-  isDark: boolean;
   style?: CSSProperties;
   /** Label text casing: default | ucfirst (capitalize) | uppercase */
   labelCase?: "default" | "ucfirst" | "uppercase";
@@ -51,12 +49,10 @@ export function SectionTabBar({
   showButtons = true,
   textTabs = false,
   fontWeight = "medium",
-  accent,
-  theme,
-  isDark,
   style,
   labelCase = "default",
 }: SectionTabBarProps) {
+  const { theme, accent, isDark } = useTheme();
   const textTransform: CSSProperties["textTransform"] =
     labelCase === "uppercase" ? "uppercase" :
     labelCase === "ucfirst"   ? "capitalize" :

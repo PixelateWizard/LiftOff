@@ -1,12 +1,13 @@
 import type { CSSProperties } from "react";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface ToggleKnobProps {
   value: boolean;
-  accent: { primary: string };
-  isDark: boolean;
 }
 
-export function ToggleKnob({ value, accent, isDark }: ToggleKnobProps) {
+export function ToggleKnob({ value }: ToggleKnobProps) {
+  const { accent, isDark } = useTheme();
+
   const trackStyle: CSSProperties = {
     width: 44,
     height: 24,
