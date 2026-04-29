@@ -1266,7 +1266,11 @@ export default function App() {
   const theme = useMemo(() => THEMES[resolvedTheme] || THEMES.dark, [resolvedTheme]);
   const accent = useMemo(() => {
     const base = ACCENTS[settings.accent] || ACCENTS.ember;
-    return (!isDark && base.lightPrimary) ? { ...base, primary: base.lightPrimary } : base;
+    const resolved = (!isDark && base.lightPrimary) ? { ...base, primary: base.lightPrimary } : base;
+    const darkText = isDark
+      ? !!resolved.darkText
+      : (resolved.lightDarkText !== undefined ? resolved.lightDarkText : !!resolved.darkText);
+    return { ...resolved, darkText };
   }, [settings.accent, isDark]);
   const appBg  = isDark ? "#100a06" : accent.lightBg;
 
