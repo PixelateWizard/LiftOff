@@ -59,9 +59,13 @@
     },
     "immersiveHome": "Accueil immersif",
     "hideBottomBar": "Masquer la barre inférieure",
-    "tabbarBadges": "Afficher les badges gâchettes",
+    "navBumpersPos": "Badges palettes (LB/RB)",
+    "tabbarBadges": "Badges gâchettes (LT/RT)",
     "tabbarTextTabs": "Onglets en texte seul",
     "tabbarWithBackground": "Fond de la barre d'onglets",
+    "bottombarAlignment": "Alignement des boutons de la barre inférieure",
+    "tabbarLabelCase": "Format des noms des onglets",
+    "tabbarFontWeight": "Épaisseur des labels",
     "gamepadIconsFilled": "Icônes remplies",
     "gamepadIconsThemeColor": "Couleur du thème pour les boutons",
     "showHomeCollections": "Collections sur l'accueil",
@@ -102,7 +106,9 @@
     "showBattery": "Afficher la batterie",
     "version": "LiftOff v{{version}}",
     "gamepadPlatform": "Icônes manette",
+    "gamepadAutoDetect": "Détection auto manette",
     "gamepadIconsColored": "Icônes colorées",
+    "gamepadBtnSize": "Taille des boutons",
     "checkUpdates": "Vérifier les mises à jour",
     "coffee": "☕ Offrir un café",
     "github": "⭐ GitHub",
@@ -163,7 +169,22 @@
       "ps": "PlayStation",
       "switch": "Switch",
       "12h": "12h",
-      "24h": "24h"
+      "24h": "24h",
+      "header": "En-tête",
+      "bottom": "Barre inférieure",
+      "hidden": "Masqué",
+      "left": "Gauche",
+      "center": "Centré",
+      "right": "Droite",
+      "default": "Défaut",
+      "ucfirst": "Première lettre",
+      "uppercase": "Majuscules",
+      "small": "Petit",
+      "medium": "Moyen",
+      "large": "Grand",
+      "thin": "Fin",
+      "bold": "Gras",
+      "tabbar": "Barre d'onglets"
     }
   },
   "home": {
@@ -214,7 +235,8 @@
     "collections": "Gérer les collections",
     "hide": "Masquer",
     "show": "Afficher",
-    "delete": "Supprimer"
+    "delete": "Supprimer",
+    "rename": "Renommer"
   },
   "gamepad": {
     "aSelect": "A Sélectionner",
@@ -256,6 +278,7 @@
     "deleteApp": "Retirer {{name}} de votre bibliothèque ?",
     "deleteFolder": "Supprimer ce dossier de scan ?",
     "deleteCollection": "Supprimer la collection « {{name}} » ?",
+    "deleteSource": "Supprimer la source « {{name}} » ? Les jeux seront déplacés vers Autre.",
     "yes": "Supprimer"
   },
   "collections": {
@@ -265,7 +288,8 @@
     "empty": "Aucune collection",
     "none": "Aucune collection — créez-en une via Gérer",
     "newPlaceholder": "Nom de la nouvelle collection…",
-    "assign": "Collections de {{name}}"
+    "assign": "Collections de {{name}}",
+    "customSources": "Sources personnalisées"
   },
   "fileBrowser": {
     "selectFile": "Sélectionner un fichier",

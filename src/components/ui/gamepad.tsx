@@ -57,7 +57,7 @@ function makeBumperBtn(label: string) {
         {filled
           ? <path d={BUMPER_PATH} fill={fillColor} />
           : <path d={BUMPER_PATH} stroke={outlineColor} strokeWidth="1.5" fill="none" />}
-        <text x="14" y="10.5" textAnchor="middle" fontSize="7.5" fontWeight="700"
+        <text x="14" y="8" textAnchor="middle" dy="0.35em" fontSize="7.5" fontWeight="700"
           fill={filled ? textColor : outlineColor}
           fontFamily="system-ui, -apple-system, sans-serif">{label}</text>
       </svg>
@@ -81,7 +81,7 @@ function makeTriggerBtn(label: string) {
         {filled
           ? <rect x="1" y="1" width="20" height="26" rx="6" fill={fillColor} />
           : <rect x="1.5" y="1.5" width="19" height="25" rx="5.5" stroke={outlineColor} strokeWidth="1.5" fill="none" />}
-        <text x="11" y="16.5" textAnchor="middle" fontSize="9" fontWeight="700"
+        <text x="11" y="14" textAnchor="middle" dy="0.35em" fontSize="9" fontWeight="700"
           fill={filled ? textColor : outlineColor}
           fontFamily="system-ui, -apple-system, sans-serif">{label}</text>
       </svg>
@@ -112,16 +112,19 @@ function makeSquareBtn(symbol: SymbolFn) {
 
 // ── Circle button with custom symbol ─────────────────────────────────────────
 
-function makeCircleBtn(brandColor: string, symbol: SymbolFn) {
-  return function CircleBtn({ size = 24, colored = false, filled = true, style }: GamepadIconProps) {
-    const fg = colored ? brandColor : "white";
-    const ic = filled ? (colored ? "white" : NEUTRAL_TEXT) : fg;
+function makeCircleBtn(symbol: SymbolFn) {
+  return function CircleBtn({ size = 24, colored: _c = false, filled = true, style }: GamepadIconProps) {
+    const { themeColor } = useGamepadIcons();
+    const fillColor    = themeColor ?? "white";
+    const textColor    = themeColor ? "white" : NEUTRAL_TEXT;
+    const outlineColor = themeColor ?? "white";
+    const ic = filled ? textColor : outlineColor;
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
         style={{ display: "inline-block", flexShrink: 0, verticalAlign: "middle", ...style }}>
         {filled
-          ? <circle cx="12" cy="12" r="11" fill={fg} />
-          : <circle cx="12" cy="12" r="10.25" stroke={fg} strokeWidth="1.5" />}
+          ? <circle cx="12" cy="12" r="11" fill={fillColor} />
+          : <circle cx="12" cy="12" r="10.25" stroke={outlineColor} strokeWidth="1.5" />}
         {symbol(ic)}
       </svg>
     );
@@ -131,7 +134,7 @@ function makeCircleBtn(brandColor: string, symbol: SymbolFn) {
 // ── Shared symbols ────────────────────────────────────────────────────────────
 
 const letter = (l: string) => (ic: string) => (
-  <text x="12" y="16.5" textAnchor="middle" fontSize="11" fontWeight="700" fill={ic}
+  <text x="12" y="12" textAnchor="middle" dy="0.35em" fontSize="11" fontWeight="700" fill={ic}
     fontFamily="system-ui, -apple-system, sans-serif">{l}</text>
 );
 
@@ -161,7 +164,7 @@ const symShare = (ic: string) => (
 
 const symPlus    = (ic: string) => <path d="M12 7V17M7 12H17" stroke={ic} strokeWidth="2" strokeLinecap="round"/>;
 const symMinus   = (ic: string) => <path d="M7 12H17" stroke={ic} strokeWidth="2" strokeLinecap="round"/>;
-const symHome    = (ic: string) => <path d="M12 8.5L18.5 14V20H14.5V16.5H9.5V20H5.5V14L12 8.5Z" fill={ic}/>;
+const symHome    = (ic: string) => <path d="M12 6.25L18.5 11.75V17.75H14.5V14.25H9.5V17.75H5.5V11.75L12 6.25Z" fill={ic}/>;
 const symCapture = (ic: string) => (
   <>
     <circle cx="12" cy="12" r="4.5" stroke={ic} strokeWidth="1.5" fill="none"/>
@@ -217,10 +220,10 @@ export const SwL  = makeBumperBtn("L");
 export const SwR  = makeBumperBtn("R");
 export const SwZL = makeTriggerBtn("ZL");
 export const SwZR = makeTriggerBtn("ZR");
-export const SwPlus    = makeCircleBtn("white", symPlus);
-export const SwMinus   = makeCircleBtn("white", symMinus);
-export const SwHome    = makeCircleBtn("white", symHome);
-export const SwCapture = makeCircleBtn("white", symCapture);
+export const SwPlus    = makeCircleBtn(symPlus);
+export const SwMinus   = makeCircleBtn(symMinus);
+export const SwHome    = makeCircleBtn(symHome);
+export const SwCapture = makeCircleBtn(symCapture);
 
 export const PLATFORM_TRIGGER_LABELS: Record<GamepadPlatform, [string, string]> = {
   xbox:   ["LT", "RT"],
@@ -259,7 +262,7 @@ const PLATFORM_BUTTONS: Record<GamepadPlatform, {
     face:     [{ label: "A", Btn: SwA }, { label: "B", Btn: SwB }, { label: "X", Btn: SwX }, { label: "Y", Btn: SwY }],
     bumpers:  [{ label: "L",  Btn: SwL  }, { label: "R",  Btn: SwR  }],
     triggers: [{ label: "ZL", Btn: SwZL }, { label: "ZR", Btn: SwZR }],
-    system:   [{ label: "Home", Btn: SwHome }, { label: "+", Btn: SwPlus }, { label: "−", Btn: SwMinus }, { label: "Capture", Btn: SwCapture }],
+    system:   [{ label: "Home", Btn: SwHome }, { label: "START", Btn: SwPlus }, { label: "SELECT", Btn: SwMinus }, { label: "Capture", Btn: SwCapture }],
   },
 };
 

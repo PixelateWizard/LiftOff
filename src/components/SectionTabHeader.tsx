@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { SectionTabBar, type TabItem } from "./SectionTabBar";
 
 interface Props {
@@ -7,51 +7,44 @@ interface Props {
   onSelect?: (index: number) => void;
   showButtons?: boolean;
   textTabs?: boolean;
-  withBackground?: boolean;
+  fontWeight?: "thin" | "medium" | "bold";
   accent: { primary: string; glow: string };
   theme: { text: string; textDim: string; textFaint: string };
   isDark: boolean;
-  glass: CSSProperties;
-  sticky?: boolean;
-  /** When true the header takes on the nav-bar glass background and sticks to the top */
-  transparent?: boolean;
   style?: CSSProperties;
+  /** Optional content rendered on the right side, absolutely positioned */
+  rightActions?: ReactNode;
+  /** Label text casing */
+  labelCase?: "default" | "ucfirst" | "uppercase";
 }
 
 export function SectionTabHeader({
   isDark,
-  glass,
-  sticky = false,
-  transparent = false,
   style,
-  withBackground,
+  rightActions,
+  labelCase,
   ...tabBarProps
 }: Props) {
-  const glassStyle: CSSProperties = transparent
-    ? {
-        // background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.75)",
-        // backdropFilter: "blur(24px)",
-        // WebkitBackdropFilter: "blur(24px)",
-      }
-    : {};
-
-  const outer: CSSProperties = {
-    ...(sticky ? { position: "sticky", top: 0, zIndex: 10 } : {}),
-    ...glassStyle,
-    ...style,
-  };
-
-  const marginY = "3px";
-  const paddingY = "10px";
-
   return (
-    <div style={{ ...outer, ...(!withBackground ? { paddingTop: paddingY, paddingBottom: paddingY } : { marginLeft: marginY, marginRight: marginY }) }}>
+    <div style={{ position: "relative", ...style }}>
       <SectionTabBar
         isDark={isDark}
-        glass={withBackground ? glass : undefined}
-        withBackground={withBackground}
+        labelCase={labelCase}
         {...tabBarProps}
       />
+      {rightActions && (
+        <div style={{
+          position: "absolute",
+          right: 12,
+          top: "50%",
+          transform: "translateY(-50%)",
+          display: "flex",
+          gap: 6,
+          alignItems: "center",
+        }}>
+          {rightActions}
+        </div>
+      )}
     </div>
   );
 }

@@ -16,14 +16,16 @@ import CollectionManagerModal from "./components/modals/CollectionManagerModal";
 import ModalShell from "./components/modals/ModalShell";
 import ContextMenuModal from "./components/modals/ContextMenuModal";
 import HideModal from "./components/modals/HideModal";
+import EditNameModal from "./components/modals/EditNameModal";
 import uiSound from "./assets/uiSound.mp3";
 import uiSoundAlt from "./assets/uiSoundAlt.mp3";
 import startingSound from "./assets/appLaunchSound.wav";
 import appStartSound from "./assets/gameLaunchSound.wav";
 import appLoadedSound from "./assets/appLoadedSound.wav";
-import { SectionTabHeader } from "./components/SectionTabHeader";
 import { SettingsScreen, buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "./views/settings";
 import { GamepadProvider } from "./contexts/GamepadContext";
+import { AppHeader } from "./components/layout/AppHeader";
+import { AppBottomBar } from "./components/layout/AppBottomBar";
 
 const COLS = 6;
 const GAME_COLS = 5;
@@ -1134,6 +1136,18 @@ function readGpState(gp) {
   };
 }
 
+// Detect controller platform from gamepad ID string
+function detectPlatform(gpId) {
+  const id = (gpId || "").toLowerCase();
+  if (id.includes("054c") || id.includes("dualshock") || id.includes("dualsense") ||
+      id.includes("playstation") || id.includes("sony")) return "ps";
+  if (id.includes("057e") || id.includes("nintendo") || id.includes("switch") ||
+      id.includes("pro controller") || id.includes("joycon")) return "switch";
+  if (id.includes("xbox") || id.includes("xinput") || id.includes("045e") ||
+      id.includes("microsoft")) return "xbox";
+  return null; // unknown
+}
+
 // ─────────────────────────────────────────────────────────────
 
 async function sampleIconColor(base64) {
@@ -1213,10 +1227,12 @@ export default function App() {
     scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
     launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
     language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false,
-    topbar_show_bumpers: false,
-    tabbar_show_buttons: true, tabbar_text_tabs: false, tabbar_with_background: false,
+    nav_bumpers_pos: "bottom",
+    tabbar_show_buttons: "tabbar", tabbar_text_tabs: false, tabbar_with_background: false, tabbar_font_weight: "medium",
+    bottombar_alignment: "left", tabbar_label_case: "default",
     show_home_collections: false, show_home_collection_names: true,
     gamepad_platform: "xbox", gamepad_icons_colored: false, gamepad_icons_filled: true, gamepad_icons_theme_color: false,
+    gamepad_btn_size: "small", gamepad_auto_detect: true,
   });
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
   const [settingsSection, setSettingsSection]       = useState(0);
@@ -1226,6 +1242,8 @@ export default function App() {
   const [libraryRefreshStatus, setLibraryRefreshStatus] = useState(null); // null | "scanning" | "done"
   const [sliderDraft, setSliderDraft] = useState({ key: null, value: null });
   const sliderDraftRef = useRef({ key: null, value: null });
+  const [editNameApp, setEditNameApp] = useState(null);
+  const editNameAppRef = useRef(null);
 
   // ── Search state ──────────────────────────────────────────────
   const [searchOpen, setSearchOpen]               = useState(false);
@@ -1550,6 +1568,20 @@ export default function App() {
   useEffect(() => { colPickerAppRef.current = colPickerApp; }, [colPickerApp]);
   useEffect(() => { confirmDeleteRef.current = confirmDelete; }, [confirmDelete]);
   useEffect(() => { showFolderManagerRef.current = showFolderManager; }, [showFolderManager]);
+  useEffect(() => { editNameAppRef.current = editNameApp; }, [editNameApp]);
+
+  // Auto-detect controller platform on gamepad connect
+  useEffect(() => {
+    const handleConnected = (e) => {
+      if (!(settingsRef.current?.gamepad_auto_detect ?? true)) return;
+      const platform = detectPlatform(e.gamepad.id);
+      if (platform) {
+        setSettings(prev => ({ ...prev, gamepad_platform: platform }));
+      }
+    };
+    window.addEventListener("gamepadconnected", handleConnected);
+    return () => window.removeEventListener("gamepadconnected", handleConnected);
+  }, []);
 
   useEffect(() => {
     const currentIsDark = (() => {
@@ -1691,7 +1723,7 @@ export default function App() {
       const sources = [...new Set([
         ...data.apps.map(a => a.source),
         ...data.folders.map(f => f.source),
-      ])].filter(s => !["Steam","Xbox","Bnet","Other","steam","xbox","battlenet","desktop","uwp"].includes(s));
+      ])].filter(s => !["Steam","Xbox","Battle.net","Other","steam","xbox","battlenet","desktop","uwp"].includes(s));
       setCustomSources(sources); customSourcesRef.current = sources;
       setCustomFolders(data.folders || []);
     }).catch(() => {});
@@ -1867,7 +1899,7 @@ export default function App() {
       if (a.app_type !== "game") return false;
       if (gameSourceTab === "Steam") return a.source === "steam";
       if (gameSourceTab === "Xbox")  return a.source === "xbox";
-      if (gameSourceTab === "Bnet")  return a.source === "battlenet";
+      if (gameSourceTab === "Battle.net")  return a.source === "battlenet";
       if (gameSourceTab === "Other") return a.source !== "steam" && a.source !== "xbox" && a.source !== "battlenet" && !customSources.includes(a.source);
       if (customSources.includes(gameSourceTab)) return a.source === gameSourceTab;
       const gameCol = gameCollections.find(c => c.name === gameSourceTab);
@@ -2026,7 +2058,7 @@ export default function App() {
   // ── handleNav ─────────────────────────────────────────────────
   const handleNav = (key) => {
     // Modal intercepts all input via its own poll — main nav must not run
-    if (showHideModalRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current) return;
+    if (showHideModalRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current) return;
 
     // Art picker open — only Escape closes it (user interacts via touch/mouse)
     if (artPickerAppRef.current) {
@@ -2055,7 +2087,7 @@ export default function App() {
         const src = gameSourceTabRef.current;
         if (src === "Steam") return a.source === "steam";
         if (src === "Xbox")  return a.source === "xbox";
-        if (src === "Bnet")  return a.source === "battlenet";
+        if (src === "Battle.net")  return a.source === "battlenet";
         if (src === "Other") return a.source !== "steam" && a.source !== "xbox" && a.source !== "battlenet" && !customSourcesRef.current.includes(a.source);
         if (customSourcesRef.current.includes(src)) return a.source === src;
         const gameCol = gameCollectionsRef.current.find(c => c.name === src);
@@ -2306,7 +2338,7 @@ export default function App() {
     // Games / Apps tabs
     // LT/RT cycle source sub-tabs on Games tab (from anywhere)
     if (currentTab === "Games") {
-      const SOURCES = ["All", "Steam", "Xbox", "Bnet", "Other", ...customSourcesRef.current, ...gameCollectionsRef.current.map(c => c.name)];
+      const SOURCES = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSourcesRef.current, ...gameCollectionsRef.current.map(c => c.name)];
       if (key === "TriggerLeft") {
         const cur = SOURCES.indexOf(gameSourceTabRef.current);
         const next = SOURCES[(cur - 1 + SOURCES.length) % SOURCES.length];
@@ -2347,7 +2379,7 @@ export default function App() {
     }
 
     // subtabs row: source pills + game collections + add/folder buttons + manage
-    const SOURCES = ["All", "Steam", "Xbox", "Bnet", "Other", ...customSourcesRef.current, ...gameCollectionsRef.current.map(c => c.name)];
+    const SOURCES = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSourcesRef.current, ...gameCollectionsRef.current.map(c => c.name)];
     const APP_COLS_NAV = ["All", ...appCollectionsRef.current.map(c => c.name)];
     const subtabItems = currentTab === "Games"
       ? [...SOURCES, "add_app", "add_folder", "manage", "collections"]
@@ -2997,24 +3029,6 @@ export default function App() {
 
     if (loading) return <SplashScreen exiting={splashExiting} />;
 
-  const RocketLogo = () => (
-    <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
-      <path d="M16 2 L21 9 L22 19 Q22 22 19 22 L13 22 Q10 22 10 19 L11 9 Z" fill="url(#rocketGrad)"/>
-      <circle cx="16" cy="13" r="3.5" fill="white" opacity="0.9"/>
-      <circle cx="16" cy="13" r="2" fill="#bde0ff" opacity="0.7"/>
-      <circle cx="17" cy="12" r="0.7" fill="white"/>
-      <path d="M10 18 L5 25 L11 21 Z" fill={accent.dark}/>
-      <path d="M22 18 L27 25 L21 21 Z" fill={accent.dark}/>
-      <path d="M12 22 Q14 30 16 27 Q18 30 20 22" fill="#ffb347" opacity="0.95"/>
-      <path d="M13.5 22 Q15 28 16 26 Q17 28 18.5 22" fill="#fff176" opacity="0.75"/>
-      <defs>
-        <linearGradient id="rocketGrad" x1="16" y1="2" x2="16" y2="22" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor={accent.light}/><stop offset="100%" stopColor={accent.dark}/>
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-
   const SettingsScreenWrapper = () => (
     <SettingsScreen
       settings={settings}
@@ -3039,7 +3053,6 @@ export default function App() {
       sliderDraft={sliderDraft}
       sliderDraftRef={sliderDraftRef}
       setSliderDraft={setSliderDraft}
-      onSectionChange={(idx) => { setSettingsSection(idx); settingsSectionRef.current = idx; setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0; if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" }); }}
       ACCENTS={ACCENTS}
       wideLayout={settings.wide_layout}
     />
@@ -3054,9 +3067,28 @@ export default function App() {
     <GamepadBtn btn={label[0]} label={label.slice(2)} theme={theme} isDark={isDark} />
   );
 
+  // ── Section tab bar data for the unified sticky header ────────
+  const _hdrSources = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSources, ...gameCollections.map(c => c.name)];
+  const _hdrAppCols = ["All", ...appCollections.map(c => c.name)];
+  const headerTabItems =
+    tab === "Games"    ? _hdrSources.map(src => ({ label: src === "All" ? t('sources.all') : src === "Other" ? t('sources.other') : src, isDashed: gameCollections.some(c => c.name === src) }))
+    : tab === "Apps"    ? _hdrAppCols.map(col => ({ label: col === "All" ? t('sources.all') : col }))
+    : tab === "Settings" ? SETTINGS_SECTIONS.map(s => ({ label: t(s.labelKey) }))
+    : [];
+  const headerActiveIndex =
+    tab === "Games"    ? _hdrSources.indexOf(gameSourceTab)
+    : tab === "Apps"    ? _hdrAppCols.indexOf(appCollectionTab)
+    : tab === "Settings" ? settingsSection : 0;
+  const headerOnSelect = (i) => {
+    if (tab === "Games") { const src = _hdrSources[i]; setGameSourceTab(src); gameSourceTabRef.current = src; }
+    else if (tab === "Apps") { const col = _hdrAppCols[i]; setAppCollectionTab(col); appCollectionTabRef.current = col; }
+    else if (tab === "Settings") { setSettingsSection(i); settingsSectionRef.current = i; setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0; if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" }); }
+    if (tab !== "Settings") { setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(i); subtabFocusIndexRef.current = i; setFocusIndex(0); focusIndexRef.current = 0; }
+  };
+
   // ── Render ────────────────────────────────────────────────────
   return (
-    <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined }}>
+    <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, btnSize: settings.gamepad_btn_size ?? "medium" }}>
     <div style={{ position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1 }} ref={outerRef}>
 
       <div style={{ position: "fixed", inset: 0, background: appBg, zIndex: -2 }} />
@@ -3190,7 +3222,7 @@ export default function App() {
 
             // Single entry: track custom source name unless it's a collection name
             if (isGameType && result.source) {
-              const BUILTIN = new Set(["Steam","Xbox","Bnet","Other","steam","xbox","battlenet","desktop","uwp"]);
+              const BUILTIN = new Set(["Steam","Xbox","Battle.net","Other","steam","xbox","battlenet","desktop","uwp"]);
               const isColName = gameCollectionsRef.current.some(c => c.name === result.source);
               if (!BUILTIN.has(result.source) && !isColName) {
                 setCustomSources(prev => prev.includes(result.source) ? prev : [...prev, result.source]);
@@ -3224,6 +3256,13 @@ export default function App() {
               const newList = inCol ? current.filter(id => id !== col.id) : [...current, col.id];
               invoke(memberCmd, { appId: colPickerApp.id, collectionIds: newList }).then(() => {
                 setPickerMembers(prev => { const n = { ...prev, [colPickerApp.id]: newList }; pickerMembersRef.current = n; return n; });
+              });
+            }}
+            onCreateCollection={(name) => {
+              const cmd = isGame ? "create_game_collection" : "create_app_collection";
+              invoke(cmd, { name }).then(col => {
+                if (isGame) { setGameCollections(prev => { const n = [...prev, col]; gameCollectionsRef.current = n; return n; }); }
+                else        { setAppCollections(prev => { const n = [...prev, col]; appCollectionsRef.current = n; return n; }); }
               });
             }}
             onClose={() => { setColPickerApp(null); colPickerAppRef.current = null; }}
@@ -3272,6 +3311,14 @@ export default function App() {
               }
             }}
             onClose={() => { setShowColModal(false); showColModalRef.current = false; }}
+            customSources={isGameTab ? customSources : []}
+            onDeleteCustomSource={(source) => {
+              invoke("remove_custom_source", { source }).then(() => {
+                setCustomSources(prev => prev.filter(s => s !== source));
+                customSourcesRef.current = customSourcesRef.current.filter(s => s !== source);
+                refreshLibrary();
+              });
+            }}
           />
         );
       })()}
@@ -3306,6 +3353,18 @@ export default function App() {
           }}
           onCancel={() => { setConfirmDelete(null); confirmDeleteRef.current = null; }}
           glass={glass} accent={accent} theme={theme} isDark={isDark}
+        />
+      )}
+      {/* ── Rename custom app modal ── */}
+      {editNameApp && (
+        <EditNameModal
+          app={editNameApp}
+          glass={glass} accent={accent} theme={theme} isDark={isDark}
+          onConfirm={(name) => {
+            invoke("rename_custom_app", { id: editNameApp.id, name }).then(() => refreshLibrary());
+            setEditNameApp(null);
+          }}
+          onClose={() => setEditNameApp(null)}
         />
       )}
       {libraryRefreshStatus === "scanning" && (
@@ -3478,57 +3537,26 @@ export default function App() {
       <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: showHideModal ? "none" : "auto" }}>
 
         {/* Topbar */}
-        <div style={{ position: "sticky", top: 0, zIndex: 100 }}>
-          <div style={{
-            display: "flex", alignItems: "center", gap: 16, padding: "10px 20px",
-            ...(settings.transparent_topbar ? {} : { ...glass, borderRadius: 16 }),
-            ...(settings.wide_layout
-              ? (settings.transparent_topbar ? { width: "100%", margin: "14px 0 0", boxSizing: "border-box" } : { width: "calc(100% - 16px)", margin: "14px 8px 0", boxSizing: "border-box" })
-              : { maxWidth: 1400, margin: "14px auto 0", width: "calc(100% - 48px)" }),
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-              <RocketLogo />
-              <span key={`${settings.accent}-${settings.theme}`} style={{ fontWeight: 700, fontSize: 16, letterSpacing: "0.04em", background: `linear-gradient(135deg, ${accent.light}, ${accent.primary})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>LiftOff</span>
-            </div>
-            <div style={{ display: "flex", gap: "40px", flex: 1, justifyContent: "center", alignItems: "center" }}>
-              {settings.topbar_show_bumpers && (
-                <GamepadBtn btn="LB" label="" theme={theme} isDark={isDark} style={{ gap: 0 }} />
-              )}
-              <div style={{ display: "flex", gap: 2 }}>
-                {TABS.map((tabName) => (
-                  <div key={tabName} onClick={() => switchTab(tabName)} style={{
-                    fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
-                    color: tab === tabName ? theme.text : theme.textDim, padding: "6px 16px", borderRadius: 8, cursor: "pointer",
-                    border: `1px solid ${tab === tabName ? `${accent.glow}0.35)` : "transparent"}`,
-                    background: tab === tabName ? `${accent.glow}0.15)` : "transparent",
-                  }}>{t(`tabs.${tabName.toLowerCase()}`)}</div>
-                ))}
-              </div>
-              {settings.topbar_show_bumpers && (
-                <GamepadBtn btn="RB" label="" theme={theme} isDark={isDark} style={{ gap: 0 }} />
-              )}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-              {settings.show_date && <span style={{ fontSize: 12, color: theme.textDim }}>{date}</span>}
-              {settings.show_clock && <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? "rgba(245,237,232,0.7)" : "rgba(42,26,14,0.7)" }}>{time}</span>}
-              {hasBattery && settings.show_battery && (
-              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                  <div style={{ width: 22, height: 11, border: `1.5px solid ${isDark ? "rgba(245,237,232,0.3)" : "rgba(42,26,14,0.3)"}`, borderRadius: 3, padding: "1.5px", display: "flex", alignItems: "center" }}>
-                    <div style={{ height: "100%", width: batteryWidth, background: batteryColor, borderRadius: 1, transition: "width 0.3s ease, background 0.3s ease" }} />
-                  </div>
-                  {charging && (
-                    <svg width="8" height="11" viewBox="0 0 8 12" fill="none" style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", pointerEvents: "none" }}>
-                      <path d="M5 1L1 7h3l-1 4 4-6H4l1-4z" fill="#4ae88a" stroke="#4ae88a" strokeWidth="0.3" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                </div>
-                <span style={{ fontSize: 11, color: charging ? "#4ae88a" : theme.textDim }}>{battery}%</span>
-              </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <AppHeader
+          tab={tab}
+          tabs={TABS}
+          switchTab={switchTab}
+          settings={settings}
+          glass={glass}
+          accent={accent}
+          theme={theme}
+          isDark={isDark}
+          date={date}
+          time={time}
+          hasBattery={hasBattery}
+          battery={battery}
+          batteryWidth={batteryWidth}
+          batteryColor={batteryColor}
+          charging={charging}
+          headerTabItems={headerTabItems}
+          headerActiveIndex={headerActiveIndex}
+          headerOnSelect={headerOnSelect}
+        />
         {/* Tab content area — Home always mounted; cover layer hides it when elsewhere;
              clouds sit above cover, below all tab UI. */}
         <div style={{ position: "relative", flex: 1, overflow: (settings.transparent_topbar && tab === "Home") || (settings.cinematic_home && tab === "Home") ? "auto" : "hidden" }}>
@@ -3549,7 +3577,7 @@ export default function App() {
             {homeContent}
           </div>
           {(tab === "Games" || tab === "Apps") && (() => {
-              const SOURCES = ["All", "Steam", "Xbox", "Bnet", "Other", ...customSources, ...gameCollections.map(c => c.name)];
+              const SOURCES = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSources, ...gameCollections.map(c => c.name)];
               const APP_COLS = ["All", ...appCollections.map(c => c.name)];
               const subtabItems = tab === "Games"
                 ? [...SOURCES, "add_app", "add_folder", "manage", "collections"]
@@ -3581,58 +3609,32 @@ export default function App() {
 
               return (
             <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
-              {/* Collection / source tab bar — full width, outside padded div */}
-              <SectionTabHeader
-                items={tabItems}
-                activeIndex={activeTabIndex}
-                onSelect={(i) => {
-                  if (tab === "Games") {
-                    const src = SOURCES[i];
-                    setGameSourceTab(src); gameSourceTabRef.current = src;
-                  } else {
-                    const col = APP_COLS[i];
-                    setAppCollectionTab(col); appCollectionTabRef.current = col;
-                  }
-                  setFocusSection("subtabs"); focusSectionRef.current = "subtabs";
-                  setSubtabFocusIndex(i); subtabFocusIndexRef.current = i;
-                  setFocusIndex(0); focusIndexRef.current = 0;
-                }}
-                showButtons={settings.tabbar_show_buttons ?? true}
-                textTabs={settings.tabbar_text_tabs ?? false}
-                withBackground={settings.tabbar_with_background ?? false}
-                transparent={settings.transparent_topbar ?? false}
-                glass={glass}
-                accent={accent}
-                theme={theme}
-                isDark={isDark}
-                sticky
-              />
               <div style={{ padding: `0 24px 0`, ...(settings.wide_layout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" }}>
-                {/* Management buttons row */}
-                <div style={{ display: "flex", gap: 8, alignItems: "center", paddingTop: 4, paddingBottom: 8 }}>
-                    <div onClick={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("file"); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(addAppIdx); subtabFocusIndexRef.current = addAppIdx; }}
-                      style={{ ...actionBtnStyle(focusSection === "subtabs" && subtabFocusIndex === addAppIdx), padding: "5px 10px" }}
-                      title={tab === "Games" ? t('addEntry.addGame') : t('addEntry.addApp')}>
-                      <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                        <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-                      </svg>
-                    </div>
-                    <div onClick={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("folder"); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(addFolderIdx); subtabFocusIndexRef.current = addFolderIdx; }}
-                      style={{ ...actionBtnStyle(focusSection === "subtabs" && subtabFocusIndex === addFolderIdx), padding: "5px 10px" }}
-                      title={t('addEntry.addFolder')}>
-                      <svg width="16" height="13" viewBox="0 0 16 13" fill="none">
-                        <path d="M1 3.5a1 1 0 011-1h3.8l1.4 1.5H14a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V3.5z" stroke="currentColor" strokeWidth="1.2"/>
-                        <path d="M8 6.5v3M6.5 8h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                      </svg>
-                    </div>
-                    <div onClick={() => { openHideModal(); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(manageIdx); subtabFocusIndexRef.current = manageIdx; }}
-                      style={actionBtnStyle(focusSection === "subtabs" && subtabFocusIndex === manageIdx)}>
-                      {t('grid.manage')}
-                    </div>
-                    <div onClick={() => { setShowColModal(true); showColModalRef.current = true; setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(colModalIdx); subtabFocusIndexRef.current = colModalIdx; }}
-                      style={actionBtnStyle(focusSection === "subtabs" && subtabFocusIndex === colModalIdx)}>
-                      {t('collections.manage')}
-                    </div>
+                {/* Action buttons — below the tab bar, aligned right */}
+                <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end", paddingTop: 8, paddingBottom: 8 }}>
+                  <div onClick={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("file"); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(addAppIdx); subtabFocusIndexRef.current = addAppIdx; }}
+                    style={{ ...actionBtnStyle(focusSection === "subtabs" && subtabFocusIndex === addAppIdx), padding: "5px 10px" }}
+                    title={tab === "Games" ? t('addEntry.addGame') : t('addEntry.addApp')}>
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                      <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <div onClick={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("folder"); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(addFolderIdx); subtabFocusIndexRef.current = addFolderIdx; }}
+                    style={{ ...actionBtnStyle(focusSection === "subtabs" && subtabFocusIndex === addFolderIdx), padding: "5px 10px" }}
+                    title={t('addEntry.addFolder')}>
+                    <svg width="16" height="13" viewBox="0 0 16 13" fill="none">
+                      <path d="M1 3.5a1 1 0 011-1h3.8l1.4 1.5H14a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V3.5z" stroke="currentColor" strokeWidth="1.2"/>
+                      <path d="M8 6.5v3M6.5 8h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <div onClick={() => { openHideModal(); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(manageIdx); subtabFocusIndexRef.current = manageIdx; }}
+                    style={actionBtnStyle(focusSection === "subtabs" && subtabFocusIndex === manageIdx)}>
+                    {t('grid.manage')}
+                  </div>
+                  <div onClick={() => { setShowColModal(true); showColModalRef.current = true; setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(colModalIdx); subtabFocusIndexRef.current = colModalIdx; }}
+                    style={actionBtnStyle(focusSection === "subtabs" && subtabFocusIndex === colModalIdx)}>
+                    {t('collections.manage')}
+                  </div>
                 </div>
 
             {/* ── PINNED — same card size/style as main grid ── */}
@@ -3764,54 +3766,14 @@ export default function App() {
         </div>
 
         {/* Bottom bar */}
-        {!settings.hide_bottom_bar && <div style={{ position: "sticky", bottom: 0, zIndex: 100 }}>
-          <div style={{
-            display: "flex", gap: 20, alignItems: "center", padding: "10px 20px",
-            ...((settings.transparent_bottombar || (settings.cinematic_home && tab === "Home")) ? {} : { ...glass, borderRadius: 12 }),
-            ...(settings.wide_layout
-              ? (settings.transparent_bottombar ? { width: "100%", margin: "0 0 14px", boxSizing: "border-box" } : { width: "calc(100% - 16px)", margin: "0 8px 14px", boxSizing: "border-box" })
-              : { maxWidth: 1400, margin: "0 auto 14px", width: "calc(100% - 48px)" }),
-          }}>
-            {tab === "Settings"
-              ? <>
-                  <Btn label={t('gamepad.aSelect')} />
-                  <Btn label={t('gamepad.bBack')} />
-                  <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                    <GamepadBtn btn="LT" label="" theme={theme} isDark={isDark} style={{ gap: 3 }} />
-                    <GamepadBtn btn="RT" label={t('gamepad.sections')} theme={theme} isDark={isDark} />
-                  </span>
-                </>
-              : <>
-                  <Btn label={t('gamepad.aLaunch')} />
-                  <Btn label={t('gamepad.bBack')} />
-                  <Btn label={t('gamepad.ySearch')} />
-                  <Btn label={t('gamepad.xPin')} />
-                  <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                    <GamepadBtn btn="LB" label="" theme={theme} isDark={isDark} style={{ gap: 3 }} />
-                    <GamepadBtn btn="RB" label={t('gamepad.tabs')} theme={theme} isDark={isDark} />
-                  </span>
-                  {tab === "Games" && <>
-                    <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                      <GamepadBtn btn="LT" label="" theme={theme} isDark={isDark} style={{ gap: 3 }} />
-                      <GamepadBtn btn="RT" label={t('gamepad.source')} theme={theme} isDark={isDark} />
-                    </span>
-                    <GamepadBtn btn="MENU" label={t('gamepad.options')} theme={theme} isDark={isDark} />
-                    <GamepadBtn btn="BACK" label={t('grid.manage')}    theme={theme} isDark={isDark} />
-                  </>}
-                  {tab === "Apps" && <>
-                    {appCollections.length > 0 && (
-                      <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                        <GamepadBtn btn="LT" label="" theme={theme} isDark={isDark} style={{ gap: 3 }} />
-                        <GamepadBtn btn="RT" label={t('gamepad.source')} theme={theme} isDark={isDark} />
-                      </span>
-                    )}
-                    <GamepadBtn btn="MENU" label={t('gamepad.options')} theme={theme} isDark={isDark} />
-                    <GamepadBtn btn="BACK" label={t('grid.manage')}    theme={theme} isDark={isDark} />
-                  </>}
-                </>
-            }
-          </div>
-        </div>}
+        <AppBottomBar
+          tab={tab}
+          settings={settings}
+          glass={glass}
+          theme={theme}
+          isDark={isDark}
+          appCollectionsCount={appCollections.length}
+        />
       </div>
 
       {contextMenu && (() => {
@@ -3823,8 +3785,9 @@ export default function App() {
           ...(contextMenu.app.app_type === "game"
             ? [{ label: t('contextMenu.changeHeroArt'), action: () => { setArtPickerMode("hero"); artPickerModeRef.current = "hero"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
             : []),
-          ...((contextMenu.app.app_type === "game" ? gameCollections.length > 0 : appCollections.length > 0)
-            ? [{ label: t('contextMenu.collections'), action: () => { setColPickerApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } }]
+          { label: t('contextMenu.collections'), action: () => { setColPickerApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
+          ...(contextMenu.app.id.startsWith("custom_")
+            ? [{ label: t('contextMenu.rename'), action: () => { setEditNameApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } }]
             : []),
           ...(contextMenu.app.id.startsWith("custom_")
             ? [{ label: t('contextMenu.delete'), danger: true, action: () => { setConfirmDelete(contextMenu.app); confirmDeleteRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
