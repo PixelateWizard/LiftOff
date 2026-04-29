@@ -191,7 +191,7 @@ export default function AddEntryModal({
       : focused
         ? (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)")
         : (isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"),
-    color: active ? "white" : theme.text,
+    color: active ? (accent.darkText ? "#1a1a1a" : "white") : theme.text,
     border: focused ? `1px solid ${accent.primary}` : `1px solid ${active ? accent.primary : "transparent"}`,
     boxShadow: focused ? `0 0 0 2px ${accent.glow}0.25)` : "none",
     transition: "all 0.15s",

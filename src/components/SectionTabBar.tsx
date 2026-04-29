@@ -83,7 +83,7 @@ export function SectionTabBar({
       : isDark
       ? "rgba(255,255,255,0.06)"
       : "rgba(0,0,0,0.06)",
-    color: active ? "white" : theme.textDim,
+    color: active ? (accent.darkText ? "#1a1a1a" : "white") : theme.textDim,
     border: `1px ${isDashed && !active ? "dashed" : "solid"} ${
       active
         ? accent.primary

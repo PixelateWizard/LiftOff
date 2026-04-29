@@ -127,7 +127,7 @@ export default function ColPickerModal({ app, collections, memberships, onToggle
                     }}>
                       {inCol && (
                         <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
-                          <path d="M1 4l4 4L11 1" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M1 4l4 4L11 1" stroke={accent.darkText ? "#1a1a1a" : "white"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                       )}
                     </div>

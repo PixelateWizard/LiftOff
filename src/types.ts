@@ -24,6 +24,7 @@ export interface AccentColors {
   glow: string;
   lightBg: string;
   lightPrimary?: string;
+  darkText?: boolean;
 }
 
 // ── Settings value union types ─────────────────────────────────

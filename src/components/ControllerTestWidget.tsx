@@ -88,7 +88,7 @@ export function ControllerTestWidget() {
             minWidth: 36, height: 30, borderRadius: 7, fontSize: 9, fontWeight: 700, padding: "0 4px",
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 1,
             background: pressed ? accent.primary : isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)",
-            color: pressed ? "white" : theme.textDim,
+            color: pressed ? (accent.darkText ? "#1a1a1a" : "white") : theme.textDim,
             border: `1px solid ${pressed ? accent.primary : isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
             transition: "background 0.05s, color 0.05s, border-color 0.05s",
           }}>

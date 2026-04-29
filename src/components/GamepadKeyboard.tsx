@@ -156,7 +156,7 @@ export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, t
                       borderRadius: 7, cursor: "pointer", userSelect: "none", flexShrink: 0,
                       fontSize: 14, fontWeight: active ? 700 : 500,
                       background: active ? `linear-gradient(135deg, ${accent.primary}, ${accent.dark})` : (isDark ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.8)"),
-                      color: active ? "white" : theme.text,
+                      color: active ? (accent.darkText ? "#1a1a1a" : "white") : theme.text,
                       border: active ? `1px solid ${accent.glow}0.7)` : `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}`,
                       boxShadow: active ? `0 0 14px ${accent.glow}0.5)` : "none",
                       transform: active ? "scale(1.14)" : "scale(1)",
