@@ -49,6 +49,23 @@
     "shortcutToggle": "Masquer/Afficher"
   },
   "settings": {
+    "sections": {
+      "appearance": "Apparence",
+      "library": "Bibliothèque",
+      "behavior": "Comportement",
+      "controller": "Manette",
+      "data": "Données",
+      "about": "À propos"
+    },
+    "immersiveHome": "Accueil immersif",
+    "hideBottomBar": "Masquer la barre inférieure",
+    "tabbarBadges": "Afficher les badges gâchettes",
+    "tabbarTextTabs": "Onglets en texte seul",
+    "tabbarWithBackground": "Fond de la barre d'onglets",
+    "gamepadIconsFilled": "Icônes remplies",
+    "gamepadIconsThemeColor": "Couleur du thème pour les boutons",
+    "showHomeCollections": "Collections sur l'accueil",
+    "showHomeCollectionNames": "Afficher le nom des collections",
     "accentColor": "Couleur d'accent",
     "theme": "Thème",
     "backgroundStars": "Étoiles de fond",
@@ -57,6 +74,7 @@
     "transparentBars": "Barres transparentes",
     "transparentTopbar": "Barre supérieure",
     "transparentBottombar": "Barre inférieure",
+    "topbarShowBumpers": "Badges palette dans la barre principale",
     "uiScale": "Échelle UI",
     "resetScale": "Réinitialiser l'échelle",
     "homeCoverScale": "Taille jaquettes Accueil",
@@ -83,6 +101,8 @@
     "showDate": "Afficher la date",
     "showBattery": "Afficher la batterie",
     "version": "LiftOff v{{version}}",
+    "gamepadPlatform": "Icônes manette",
+    "gamepadIconsColored": "Icônes colorées",
     "checkUpdates": "Vérifier les mises à jour",
     "coffee": "☕ Offrir un café",
     "github": "⭐ GitHub",
@@ -94,7 +114,18 @@
       "controller": "MANETTE",
       "data": "DONNÉES",
       "about": "À PROPOS",
-      "credits": "CRÉDITS"
+      "credits": "CRÉDITS",
+      "theme": "THÈME",
+      "home": "ACCUEIL",
+      "layout": "DISPOSITION",
+      "navbar": "BARRE DE NAVIGATION",
+      "sources": "SOURCES",
+      "customFolders": "DOSSIERS PERSONNALISÉS",
+      "navigation": "NAVIGATION",
+      "localization": "LANGUE & HEURE",
+      "media": "MÉDIAS",
+      "community": "COMMUNAUTÉ",
+      "tabbar": "BARRE D'ONGLETS"
     },
     "status": {
       "scanning": "Analyse...",
@@ -128,6 +159,9 @@
       "fr": "Français",
       "silver": "Argent",
       "white": "Blanc",
+      "xbox": "Xbox",
+      "ps": "PlayStation",
+      "switch": "Switch",
       "12h": "12h",
       "24h": "24h"
     }
@@ -194,6 +228,7 @@
     "xPin": "X Épingler",
     "tabs": "Onglets",
     "source": "Source",
+    "sections": "Sections",
     "options": "Options"
   },
   "keyboard": {
