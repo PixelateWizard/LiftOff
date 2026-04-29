@@ -1,16 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getBestGamepad, readGpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
 import ModalShell from "./ModalShell";
+import { useTheme } from "../../contexts/ThemeContext";
+import type { App } from "../../types";
 
-interface App {
-  id: string;
-  name: string;
-  app_type?: string;
-  source?: string;
-  icon_base64?: string;
-  [key: string]: any;
-}
+type HideableApp = App & { _hidden: boolean };
 
 interface Props {
   tab: string;
@@ -19,13 +14,10 @@ interface Props {
   allAppsRef: React.RefObject<App[]>;
   closeHideModal: () => void;
   toggleHidden: (id: string) => void;
-  glass: any;
-  accent: any;
-  isDark: boolean;
-  theme: any;
 }
 
-export default function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHideModal, toggleHidden, glass, accent, isDark, theme }: Props) {
+export default function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHideModal, toggleHidden }: Props) {
+  const { accent, theme, isDark } = useTheme();
   const { t } = useTranslation();
   const visibleApps = appsRef.current.filter(a => tab === "Games" ? a.app_type === "game" : a.app_type === "app");
   const hiddenIds   = hiddenRef.current;
@@ -37,9 +29,9 @@ export default function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHi
 
   const hiddenApps = hiddenIds.map(id => {
     const full = allAppsRef.current.find(a => a.id === id);
-    return full ? { ...full, _hidden: true } : { id, name: id, _hidden: true };
-  }).filter((a: any) => tab === "Games" ? a.app_type === "game" : a.app_type === "app" || !a.app_type);
-  const allItems = [...visibleApps.map(a => ({ ...a, _hidden: false })), ...hiddenApps];
+    return (full ? { ...full, _hidden: true } : { id, name: id, _hidden: true }) as HideableApp;
+  }).filter(a => tab === "Games" ? a.app_type === "game" : a.app_type === "app" || !a.app_type);
+  const allItems: HideableApp[] = [...visibleApps.map(a => ({ ...a, _hidden: false } as HideableApp)), ...hiddenApps];
 
   const allItemsRef     = useRef(allItems);
   const localCheckedRef = useRef(localChecked);
@@ -68,8 +60,8 @@ export default function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHi
       closed = true;
       const checked = localCheckedRef.current;
       const items   = allItemsRef.current;
-      items.filter((a: any) => !a._hidden && !checked.has(a.id)).forEach((a: any) => toggleHidden(a.id));
-      items.filter((a: any) =>  a._hidden &&  checked.has(a.id)).forEach((a: any) => toggleHidden(a.id));
+      items.filter(a => !a._hidden && !checked.has(a.id)).forEach(a => toggleHidden(a.id));
+      items.filter(a =>  a._hidden &&  checked.has(a.id)).forEach(a => toggleHidden(a.id));
       closeHideModal();
     };
 
@@ -91,9 +83,9 @@ export default function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHi
     window.addEventListener("keydown", onKey, true);
 
     let rAF: number;
-    const lastBtn: any   = {};
-    const pressTime: any = {};
-    const repeating: any = {};
+    const lastBtn: Partial<GpState>      = {};
+    const pressTime: Record<string, number>  = {};
+    const repeating: Record<string, boolean> = {};
     const DIRS      = new Set(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"]);
     const INIT_MS   = 400;
     const RPT_MS    = 100;
@@ -109,7 +101,7 @@ export default function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHi
         if (!base.Enter) enterReleased = true;
         const state = { ...base, Start: startReleased && base.Start, Enter: enterReleased && base.Enter };
         Object.keys(state).forEach(k => {
-          const pressed = (state as any)[k], was = lastBtn[k];
+          const pressed = state[k as keyof GpState], was = lastBtn[k as keyof GpState];
           if (pressed && !was) {
             handle(k); pressTime[k] = now; repeating[k] = false;
           } else if (pressed && was && DIRS.has(k)) {
@@ -117,7 +109,7 @@ export default function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHi
             if (!repeating[k] && held >= INIT_MS) { repeating[k] = true; pressTime[k] = now; handle(k); }
             else if (repeating[k] && held >= RPT_MS) { pressTime[k] = now; handle(k); }
           } else if (!pressed && was) { pressTime[k] = 0; repeating[k] = false; }
-          lastBtn[k] = pressed;
+          lastBtn[k as keyof GpState] = pressed;
         });
       }
       rAF = requestAnimationFrame(pollModal);
@@ -137,7 +129,6 @@ export default function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHi
     <ModalShell
       title={tab === "Games" ? t("hideModal.manageGames") : t("hideModal.manageApps")}
       shortcuts={shortcuts}
-      glass={glass} accent={accent} theme={theme} isDark={isDark}
       width={600}
       maxHeight="75vh"
       zIndex={8500}
@@ -146,7 +137,7 @@ export default function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHi
         {allItems.length === 0 && (
           <div style={{ padding: "40px 24px", textAlign: "center", color: theme.textFaint, fontSize: 13 }}>{t("hideModal.noApps")}</div>
         )}
-        {allItems.map((item: any, i) => {
+        {allItems.map((item, i) => {
           const checked  = localChecked.has(item.id);
           const rowFocus = focusIdx === i;
           const isHidden = item._hidden;

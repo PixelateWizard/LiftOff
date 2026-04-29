@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getBestGamepad, readGpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
 import ConfirmModal from "./ConfirmModal";
 import ModalShell from "./ModalShell";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface Folder {
   id: string;
@@ -16,14 +17,11 @@ interface Props {
   customFolders: Folder[];
   onToggle: (id: string, enabled: boolean) => void;
   onDelete: (id: string) => void;
-  glass: any;
-  accent: any;
-  theme: any;
-  isDark: boolean;
   onClose: () => void;
 }
 
-export default function FolderManagerModal({ customFolders, onToggle, onDelete, glass, accent, theme, isDark, onClose }: Props) {
+export default function FolderManagerModal({ customFolders, onToggle, onDelete, onClose }: Props) {
+  const { glass, accent, theme, isDark } = useTheme();
   const { t } = useTranslation();
   const [focusIdx, setFocusIdx]           = useState(0);
   const [confirmFolder, setConfirmFolder] = useState<Folder | null>(null);
@@ -38,7 +36,7 @@ export default function FolderManagerModal({ customFolders, onToggle, onDelete, 
   useEffect(() => { allFoldersRef.current = allFolders; });
 
   useEffect(() => {
-    const last: any = {};
+    const last: Partial<GpState> = {};
     let rafId: number;
     let suppressFrames = 20;
     const poll = () => {
@@ -136,8 +134,7 @@ export default function FolderManagerModal({ customFolders, onToggle, onDelete, 
       <ModalShell
         title={t("settings.customFolders")}
         shortcuts={shortcuts}
-        glass={glass} accent={accent} theme={theme} isDark={isDark}
-        width={560}
+          width={560}
         maxHeight="70vh"
         zIndex={2000}
       >
@@ -155,7 +152,6 @@ export default function FolderManagerModal({ customFolders, onToggle, onDelete, 
           message={t("confirm.deleteFolder")}
           onConfirm={() => { onDelete(confirmFolder!.id); setConfirmFolder(null); confirmRef.current = null; }}
           onCancel={() => { setConfirmFolder(null); confirmRef.current = null; }}
-          glass={glass} accent={accent} theme={theme} isDark={isDark}
         />
       )}
     </>

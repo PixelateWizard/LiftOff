@@ -1,7 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { CollapsibleGroup, ToggleKnob, GamepadIconPreview } from "../components/ui";
 import { ControllerTestWidget } from "../components/ControllerTestWidget";
+import { useTheme } from "../contexts/ThemeContext";
+import { useSettings } from "../contexts/SettingsContext";
+import { ACCENTS, APP_VERSION, GITHUB_REPO } from "../constants";
+import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder } from "../types";
 
 // ── Section definitions ────────────────────────────────────────
 export const SETTINGS_SECTIONS = [
@@ -14,9 +19,8 @@ export const SETTINGS_SECTIONS = [
 ] as const;
 
 /** Build full SETTINGS_ITEMS array with translated labels, annotated with section index. */
-export function buildSettingsItems(t: any, isDark: boolean) {
-  const APP_VERSION = "1.2.2";
-  const D = (key: string, section: number) => ({ key: `div_${key}`, section, type: "divider", label: t(`settings.dividers.${key}`) });
+export function buildSettingsItems(t: TFunction, isDark: boolean): SettingsItem[] {
+  const D = (key: string, section: number): SettingsDividerItem => ({ key: `div_${key}`, section, type: "divider", label: t(`settings.dividers.${key}`) as string });
   return [
     // ── Appearance ───────────────────────────────────────────────
     D("theme", 0),
@@ -115,13 +119,13 @@ export function buildSettingsItems(t: any, isDark: boolean) {
 /** Returns the navigable items for a given section index. */
 export function getSectionNavigableItems(
   sectionIndex: number,
-  allItems: any[],
-  settings: Record<string, any>
-) {
+  allItems: SettingsItem[],
+  settings: Settings
+): (SettingsItem | SettingsSubItem)[] {
   return allItems
     .filter((i) => i.section === sectionIndex)
-    .flatMap((i) =>
-      i.subItems && settings[i.key] ? [i, ...i.subItems] : [i]
+    .flatMap((i): (SettingsItem | SettingsSubItem)[] =>
+      i.type === "toggle" && i.subItems && settings[i.key] ? [i, ...i.subItems] : [i]
     )
     .filter(
       (i) =>
@@ -134,16 +138,10 @@ export function getSectionNavigableItems(
 
 // ── SettingsScreen props ───────────────────────────────────────
 export interface SettingsScreenProps {
-  settings: Record<string, any>;
-  updateSetting: (key: string, value: any) => void;
-  accent: any;
-  glass: any;
-  isDark: boolean;
-  theme: any;
   settingsFocusIndex: number;
   settingsSection: number;
   settingsFocusedRef: React.RefObject<any>;
-  customFolders: Array<{ id: string; path: string; source: string; app_type: string; enabled: boolean }>;
+  customFolders: CustomFolder[];
   onOpenFolderManager: () => void;
   libraryRefreshStatus: string | null;
   refreshLibrary: () => void;
@@ -156,17 +154,9 @@ export interface SettingsScreenProps {
   sliderDraft: { key: string | null; value: number | null };
   sliderDraftRef: React.RefObject<{ key: string | null; value: number | null }>;
   setSliderDraft: (v: { key: string | null; value: number | null }) => void;
-  ACCENTS: Record<string, any>;
-  wideLayout: boolean;
 }
 
 export function SettingsScreen({
-  settings,
-  updateSetting,
-  accent,
-  glass,
-  isDark,
-  theme,
   settingsFocusIndex,
   settingsSection,
   settingsFocusedRef,
@@ -183,11 +173,11 @@ export function SettingsScreen({
   sliderDraft,
   sliderDraftRef,
   setSliderDraft,
-  ACCENTS,
-  wideLayout,
 }: SettingsScreenProps) {
   const { t } = useTranslation();
-  const GITHUB_REPO = "PixelateWizard/LiftOff";
+  const { glass, accent, theme, isDark } = useTheme();
+  const { settings, updateSetting } = useSettings();
+  const wideLayout = settings.wide_layout ?? false;
 
   const ALL_ITEMS = buildSettingsItems(t, isDark);
   const sectionItems = ALL_ITEMS.filter((i) => i.section === settingsSection);
@@ -212,7 +202,7 @@ export function SettingsScreen({
       : { border: "1px solid rgba(255,255,255,0.06)" }),
   });
 
-  const renderItem = (item: any) => {
+  const renderItem = (item: SettingsItem) => {
     if (item.type === "divider") {
       return (
         <div key={item.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "22px 4px 6px" }}>
@@ -237,30 +227,26 @@ export function SettingsScreen({
       );
 
     if (item.type === "toggle") {
-      const val = settings[item.key];
+      const val = settings[item.key] as boolean;
       if (item.subItems) {
         return (
           <CollapsibleGroup
             key={item.key}
-            glass={glass}
-            accent={accent}
-            isDark={isDark}
-            theme={theme}
             label={item.label}
             value={val}
-            onChange={(newVal: any) => updateSetting(item.key, newVal)}
+            onChange={(newVal: boolean) => updateSetting(item.key, newVal)}
             focused={focused}
             focusedRef={rowRef}
-            items={item.subItems.map((sub: any) => {
+            items={item.subItems.map((sub) => {
               const subNavIdx = navigableItems.findIndex((n) => n.key === sub.key);
               const subFocused = settingsFocusIndex === subNavIdx && subNavIdx !== -1;
               if (sub.type === "cycle") {
                 return {
                   type: "cycle" as const,
                   label: sub.label,
-                  cycleValue: settings[sub.key],
+                  cycleValue: settings[sub.key] as string,
                   cycleOptions: sub.options,
-                  onCycleChange: (newVal: any) => updateSetting(sub.key, newVal),
+                  onCycleChange: (newVal: string) => updateSetting(sub.key, newVal),
                   cycleLabel: (v: string) => String(t(`settings.values.${v}`, v)),
                   focused: subFocused,
                   focusedRef: settingsFocusedRef,
@@ -268,8 +254,8 @@ export function SettingsScreen({
               }
               return {
                 label: sub.label,
-                value: settings[sub.key],
-                onChange: (newVal: any) => updateSetting(sub.key, newVal),
+                value: settings[sub.key] as boolean,
+                onChange: (newVal: boolean) => updateSetting(sub.key, newVal),
                 focused: subFocused,
                 focusedRef: settingsFocusedRef,
               };
@@ -280,14 +266,15 @@ export function SettingsScreen({
       return (
         <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => updateSetting(item.key, !val)}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
-          <ToggleKnob value={val} accent={accent} isDark={isDark} />
+          <ToggleKnob value={val} />
         </div>
       );
     }
 
     if (item.type === "cycle") {
       const opts = item.options;
-      const cur = opts.indexOf(settings[item.key]);
+      const curVal = settings[item.key] as string;
+      const cur = opts.indexOf(curVal);
       return (
         <div key={item.key} ref={rowRef} style={rowStyle}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
@@ -295,7 +282,7 @@ export function SettingsScreen({
             <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
               onClick={() => updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length])}>◀</span>
             <span style={{ fontSize: 12, color: accent.primary, fontWeight: 600 }}>
-              {String(t(`settings.values.${settings[item.key]}`, settings[item.key]))}
+              {String(t(`settings.values.${curVal}`, curVal))}
             </span>
             <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
               onClick={() => updateSetting(item.key, opts[(cur + 1) % opts.length])}>▶</span>
@@ -313,7 +300,7 @@ export function SettingsScreen({
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
               onClick={() => updateSetting("accent", accentKeys[(curIdx - 1 + accentKeys.length) % accentKeys.length])}>◀</span>
-            {Object.entries(ACCENTS).map(([name, a]: [string, any]) => (
+            {Object.entries(ACCENTS).map(([name, a]) => (
               <div key={name} onClick={() => updateSetting("accent", name)}
                 style={{ width: 20, height: 20, borderRadius: "50%", background: a.primary, border: settings.accent === name ? "2px solid white" : "2px solid transparent", boxShadow: settings.accent === name ? `0 0 8px ${a.glow}0.8)` : "none", cursor: "pointer", transition: "all 0.15s ease" }} />
             ))}
@@ -338,7 +325,7 @@ export function SettingsScreen({
     }
 
     if (item.type === "slider") {
-      const val = settings[item.key] ?? 1.0;
+      const val = (settings[item.key] as number) ?? 1.0;
       const isDragging = sliderDraft.key === item.key;
       const displayVal = isDragging ? sliderDraft.value! : val;
       const pct = `${Math.round(displayVal * 100)}%`;
@@ -455,14 +442,14 @@ export function SettingsScreen({
     if (item.type === "icon_preview")
       return (
         <div key={item.key} style={{ ...glass, borderRadius: 14, padding: "16px 20px", marginBottom: 8, border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
-          <GamepadIconPreview isDark={isDark} theme={theme} />
+          <GamepadIconPreview />
         </div>
       );
 
     if (item.type === "controller_test")
       return (
         <div key={item.key} style={{ ...glass, borderRadius: 14, padding: "14px 20px", marginBottom: 8, border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
-          <ControllerTestWidget accent={accent} theme={theme} isDark={isDark} glass={glass} />
+          <ControllerTestWidget />
         </div>
       );
 
@@ -474,11 +461,11 @@ export function SettingsScreen({
           // state update handled in parent via onOpenFolderManager
         });
       };
-      const renderFolderGroup = (folders: any[], groupLabel: string) =>
+      const renderFolderGroup = (folders: CustomFolder[], groupLabel: string) =>
         folders.length === 0 ? null : (
           <div key={groupLabel}>
             <div style={{ fontSize: 10, fontWeight: 700, color: theme.textFaint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4, marginTop: 8 }}>{groupLabel}</div>
-            {folders.map((folder: any) => (
+            {folders.map((folder) => (
               <div key={folder.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
                 <div style={{ fontSize: 11, color: folder.enabled !== false ? theme.text : theme.textFaint, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{folder.path}</div>
                 <div style={{ fontSize: 9, color: theme.textFaint, flexShrink: 0 }}>{folder.source}</div>

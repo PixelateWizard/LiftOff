@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getBestGamepad, readGpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
 import ConfirmModal from "./ConfirmModal";
 import GamepadKeyboard from "../GamepadKeyboard";
 import ModalShell from "./ModalShell";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface Collection {
   id: string;
@@ -16,10 +17,6 @@ type ListItem =
   | { type: "source"; id?: undefined; name: string };
 
 interface Props {
-  glass: any;
-  accent: any;
-  theme: any;
-  isDark: boolean;
   collections: Collection[];
   onCreateCollection: (name: string) => void;
   onDeleteCollection: (id: string) => void;
@@ -29,7 +26,8 @@ interface Props {
   onDeleteCustomSource?: (source: string) => void;
 }
 
-export default function CollectionManagerModal({ glass, accent, theme, isDark, collections, onCreateCollection, onDeleteCollection, onClose, title, customSources, onDeleteCustomSource }: Props) {
+export default function CollectionManagerModal({ collections, onCreateCollection, onDeleteCollection, onClose, title, customSources, onDeleteCustomSource }: Props) {
+  const { accent, theme, isDark } = useTheme();
   const { t } = useTranslation();
   const [showKb, setShowKb]         = useState(false);
   const [kbValue, setKbValue]       = useState("");
@@ -64,7 +62,7 @@ export default function CollectionManagerModal({ glass, accent, theme, isDark, c
   const isAddRow  = (i: number) => i === allItemsRef.current.length;
 
   useEffect(() => {
-    const last: any = {};
+    const last: Partial<GpState> = {};
     let rafId: number;
     let suppressFrames = 20;
 
@@ -125,7 +123,6 @@ export default function CollectionManagerModal({ glass, accent, theme, isDark, c
       <ModalShell
         title={title || t("collections.manage")}
         shortcuts={shortcuts}
-        glass={glass} accent={accent} theme={theme} isDark={isDark}
         width={320}
         zIndex={2000}
         onOverlayClick={onClose}
@@ -199,7 +196,6 @@ export default function CollectionManagerModal({ glass, accent, theme, isDark, c
           }
           onConfirm={() => handleDelete(confirmDelete)}
           onCancel={() => { setConfirmDelete(null); confirmDeleteRef.current = null; }}
-          glass={glass} accent={accent} theme={theme} isDark={isDark}
         />
       )}
 
@@ -216,7 +212,6 @@ export default function CollectionManagerModal({ glass, accent, theme, isDark, c
             if (name) onCreateRef.current(name);
           }}
           title={t("collections.newPlaceholder")}
-          accent={accent} theme={theme} isDark={isDark} glass={glass}
         />
       )}
     </>
