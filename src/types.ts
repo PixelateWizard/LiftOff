@@ -25,6 +25,7 @@ export interface AccentColors {
   lightBg: string;
   lightPrimary?: string;
   darkText?: boolean;
+  lightDarkText?: boolean;
 }
 
 // ── Settings value union types ─────────────────────────────────
