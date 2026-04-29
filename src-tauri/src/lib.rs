@@ -483,6 +483,29 @@ fn remove_custom_app(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn rename_custom_app(id: String, name: String) -> Result<(), String> {
+    let mut data = load_custom_data();
+    if let Some(app) = data.apps.iter_mut().find(|a| a.id == id) {
+        app.name = name;
+    }
+    save_custom_data(&data);
+    Ok(())
+}
+
+#[tauri::command]
+fn remove_custom_source(source: String) -> Result<(), String> {
+    let mut data = load_custom_data();
+    for app in data.apps.iter_mut() {
+        if app.source == source { app.source = "other".to_string(); }
+    }
+    for folder in data.folders.iter_mut() {
+        if folder.source == source { folder.source = "other".to_string(); }
+    }
+    save_custom_data(&data);
+    Ok(())
+}
+
+#[tauri::command]
 fn add_custom_folder(path: String, source: String, app_type: String) -> Result<CustomFolder, String> {
     let mut data = load_custom_data();
     let id = format!("folder_{}", std::time::SystemTime::now()
@@ -1876,7 +1899,7 @@ pub fn run() {
             get_screen_resolution,
             search_sgdb_art, download_sgdb_art,
             list_dir, get_drives,
-            get_custom_data, add_custom_app, remove_custom_app,
+            get_custom_data, add_custom_app, remove_custom_app, rename_custom_app, remove_custom_source,
             add_custom_folder, remove_custom_folder, toggle_custom_folder,
             get_app_collections, create_app_collection, delete_app_collection, rename_app_collection,
             get_app_memberships, set_app_memberships,
