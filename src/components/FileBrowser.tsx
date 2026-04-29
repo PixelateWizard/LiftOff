@@ -293,7 +293,6 @@ export default function FileBrowser({ mode = "file", glass, accent, theme, isDar
           padding: "12px 20px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
           display: "flex", gap: 16, alignItems: "center",
         }}>
-          <GamepadBtn btn="↑↓" label={t("fileBrowser.navigate")} theme={theme} isDark={isDark} />
           <GamepadBtn btn="A"  label={mode === "folder" ? t("fileBrowser.open") : t("fileBrowser.select")} theme={theme} isDark={isDark} />
           {mode === "folder" && path !== null && (
             <span style={{ cursor: "pointer" }} onClick={selectFolder}>
