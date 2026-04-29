@@ -127,11 +127,54 @@ pub struct Settings {
     pub home_cover_scale: f32,
     #[serde(default = "default_cover_scale")]
     pub game_cover_scale: f32,
+    // Navigation bar settings (moi952 PRs)
+    #[serde(default = "default_nav_bumpers_pos")]
+    pub nav_bumpers_pos: String,
+    #[serde(default = "default_tabbar_show_buttons")]
+    pub tabbar_show_buttons: String,
+    #[serde(default)]
+    pub tabbar_text_tabs: bool,
+    #[serde(default)]
+    pub tabbar_with_background: bool,
+    #[serde(default = "default_tabbar_font_weight")]
+    pub tabbar_font_weight: String,
+    #[serde(default = "default_tabbar_label_case")]
+    pub tabbar_label_case: String,
+    #[serde(default = "default_bottombar_alignment")]
+    pub bottombar_alignment: String,
+    // Home collections
+    #[serde(default)]
+    pub show_home_collections: bool,
+    #[serde(default = "default_true")]
+    pub show_home_collection_names: bool,
+    // Gamepad icon settings (moi952 PRs)
+    #[serde(default = "default_gamepad_platform")]
+    pub gamepad_platform: String,
+    #[serde(default)]
+    pub gamepad_icons_colored: bool,
+    #[serde(default = "default_true")]
+    pub gamepad_icons_filled: bool,
+    #[serde(default)]
+    pub gamepad_icons_theme_color: bool,
+    #[serde(default = "default_gamepad_btn_size")]
+    pub gamepad_btn_size: String,
+    #[serde(default = "default_true")]
+    pub gamepad_auto_detect: bool,
+    #[serde(default = "default_topbar_show_bumpers")]
+    pub topbar_show_bumpers: bool,
 }
 
-fn default_language()    -> String { "auto".to_string() }
-fn default_time_format() -> String { "auto".to_string() }
-fn default_cover_scale() -> f32    { 1.0 }
+fn default_language()             -> String { "auto".to_string() }
+fn default_time_format()          -> String { "auto".to_string() }
+fn default_cover_scale()          -> f32    { 1.0 }
+fn default_nav_bumpers_pos()      -> String { "bottom".to_string() }
+fn default_tabbar_show_buttons()  -> String { "tabbar".to_string() }
+fn default_tabbar_font_weight()   -> String { "medium".to_string() }
+fn default_tabbar_label_case()    -> String { "default".to_string() }
+fn default_bottombar_alignment()  -> String { "left".to_string() }
+fn default_gamepad_platform()     -> String { "xbox".to_string() }
+fn default_gamepad_btn_size()     -> String { "small".to_string() }
+fn default_topbar_show_bumpers()  -> bool   { false }
 
 impl Default for Settings {
     fn default() -> Self {
@@ -162,6 +205,22 @@ impl Default for Settings {
             transparent_bottombar: false,
             home_cover_scale: 1.0,
             game_cover_scale: 1.0,
+            nav_bumpers_pos: "bottom".to_string(),
+            tabbar_show_buttons: "tabbar".to_string(),
+            tabbar_text_tabs: false,
+            tabbar_with_background: false,
+            tabbar_font_weight: "medium".to_string(),
+            tabbar_label_case: "default".to_string(),
+            bottombar_alignment: "left".to_string(),
+            show_home_collections: false,
+            show_home_collection_names: true,
+            gamepad_platform: "xbox".to_string(),
+            gamepad_icons_colored: false,
+            gamepad_icons_filled: true,
+            gamepad_icons_theme_color: false,
+            gamepad_btn_size: "small".to_string(),
+            gamepad_auto_detect: true,
+            topbar_show_bumpers: false,
         }
     }
 }

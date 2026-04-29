@@ -168,6 +168,12 @@ LiftOff is open source — you can inspect every line of code in this repository
 
 ---
 
+## Contributors
+
+- **[moi952](https://github.com/moi952)** — major contributor: French translation & full i18n system, SteamGridDB art browser, custom game sources, controller auto-detection, rename support, component architecture refactor (ThemeContext/SettingsContext), and extensive UI settings additions
+
+---
+
 ## Support
 
 LiftOff is free and open source. Join the community on [Discord](https://discord.gg/F5ncP75WtD) or consider buying me a coffee!

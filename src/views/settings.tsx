@@ -109,6 +109,7 @@ export function buildSettingsItems(t: TFunction, isDark: boolean): SettingsItem[
     { key: "discord", section: 5, label: t("settings.discord"), type: "link" },
 
     D("credits", 5),
+    { key: "credit0", section: 5, label: "i18n, component architecture & UI", author: "moi952", license: "GitHub", url: "https://github.com/moi952", type: "attribution" },
     { key: "credit1", section: 5, label: "Mysterious Magical Bell Flourish", author: "DanaiOuranos",  license: "CC0",        url: "https://freesound.org/s/848847/",                       type: "attribution" },
     { key: "credit2", section: 5, label: "Achievement Sparkle",              author: "DanaiOuranos",  license: "CC0",        url: "https://freesound.org/s/715067/",                       type: "attribution" },
     { key: "credit3", section: 5, label: "Mysterious Sparkle Flourish",      author: "DanaiOuranos",  license: "CC0",        url: "https://freesound.org/s/844398/",                       type: "attribution" },

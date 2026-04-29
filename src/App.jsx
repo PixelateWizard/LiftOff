@@ -424,7 +424,7 @@ function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "portrait", 
           {/* Controls */}
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
             <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
-            <button onClick={() => fileRef.current?.click()} style={btnStyle("browse", `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, "white")}>{t('artPicker.browseImage')}</button>
+            <button onClick={() => fileRef.current?.click()} style={btnStyle("browse", `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, accent.darkText ? "#1a1a1a" : "white")}>{t('artPicker.browseImage')}</button>
             {pendingData && <button onClick={handleSave} disabled={saving} style={btnStyle("save", "#4a9c4a", "white", { opacity: saving ? 0.6 : 1 })}>{saving ? t('artPicker.saving') : t('common.save')}</button>}
             {hasCustomArt && !pendingData && <button onClick={handleReset} style={btnStyle("reset", "rgba(255,255,255,0.08)", theme.text)}>{t('artPicker.resetToDefault')}</button>}
             <button onClick={onClose} style={btnStyle("cancel", "rgba(255,255,255,0.05)", theme.textDim)}>{t('common.cancel')}</button>
@@ -549,7 +549,7 @@ function ThumbnailCard({ result, selected, isSelected, accent, theme, thumbW, as
       {result.is_animated && hasStaticThumb && (
         <div style={{
           position: "absolute", top: 5, left: 5, padding: "2px 5px", borderRadius: 4,
-          background: accent.primary, color: "white", fontSize: 8, fontWeight: 700, letterSpacing: "0.05em",
+          background: accent.primary, color: accent.darkText ? "#1a1a1a" : "white", fontSize: 8, fontWeight: 700, letterSpacing: "0.05em",
         }}>
           ANIM
         </div>
@@ -737,7 +737,7 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose, repe
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
       <span style={{ color: theme.textDim, fontSize: 13 }}>{t('sgdb.failedToLoad')}</span>
       <button onClick={loadResults}
-        style={{ padding: "8px 20px", borderRadius: 8, background: `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, color: "white", fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer" }}>
+        style={{ padding: "8px 20px", borderRadius: 8, background: `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, color: accent.darkText ? "#1a1a1a" : "white", fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer" }}>
         {t('common.retry')}
       </button>
     </div>
@@ -752,7 +752,7 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose, repe
               onClick={() => { setHeroFilter(f); setSelectedIdx(null); selectedIdxRef.current = null; }}
               style={{ padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "none",
                 background: heroFilter === f ? accent.primary : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"),
-                color: heroFilter === f ? "white" : theme.text }}>
+                color: heroFilter === f ? (accent.darkText ? "#1a1a1a" : "white") : theme.text }}>
               {t(`sgdb.filter.${f}`)}
             </button>
           ))}
@@ -801,7 +801,7 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose, repe
             background: selectedIdx !== null && !downloading
               ? `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`
               : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"),
-            color: selectedIdx !== null && !downloading ? "white" : theme.textDim, transition: "all 0.15s" }}>
+            color: selectedIdx !== null && !downloading ? (accent.darkText ? "#1a1a1a" : "white") : theme.textDim, transition: "all 0.15s" }}>
           {downloading ? t('sgdb.downloading') : t('common.select')}
         </button>
       </div>
@@ -944,7 +944,7 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
             <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
-            <button onClick={() => fileRef.current?.click()} style={btnStyle("browse", `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, "white")}>{t('artPicker.browseImage')}</button>
+            <button onClick={() => fileRef.current?.click()} style={btnStyle("browse", `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, accent.darkText ? "#1a1a1a" : "white")}>{t('artPicker.browseImage')}</button>
             {pendingData && <button onClick={handleSave} disabled={saving} style={btnStyle("save", "#4a9c4a", "white", { opacity: saving ? 0.6 : 1 })}>{saving ? t('artPicker.saving') : t('common.save')}</button>}
             {hasCustomArt && !pendingData && <button onClick={handleReset} style={btnStyle("reset", "rgba(255,255,255,0.08)", theme.text)}>{t('artPicker.resetToDefault')}</button>}
             <button onClick={onClose} style={btnStyle("cancel", "rgba(255,255,255,0.05)", theme.textDim)}>{t('common.cancel')}</button>
@@ -1000,7 +1000,7 @@ function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait"
     padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600,
     cursor: "pointer", border: "none",
     background: activeTab === tab ? `linear-gradient(135deg, ${accent.primary}, ${accent.dark})` : "transparent",
-    color: activeTab === tab ? "white" : theme.textDim,
+    color: activeTab === tab ? (accent.darkText ? "#1a1a1a" : "white") : theme.textDim,
     transition: "all 0.15s",
   });
 
@@ -1180,6 +1180,10 @@ export default function App() {
   const sliderDraftRef = useRef({ key: null, value: null });
   const [editNameApp, setEditNameApp] = useState(null);
   const editNameAppRef = useRef(null);
+  const [homeColFocusRow, setHomeColFocusRow] = useState(0);
+  const [homeColFocusCol, setHomeColFocusCol] = useState(0);
+  const homeColFocusRowRef = useRef(0);
+  const homeColFocusColRef = useRef(0);
 
   // ── Search state ──────────────────────────────────────────────
   const [searchOpen, setSearchOpen]               = useState(false);
@@ -1205,12 +1209,14 @@ export default function App() {
   const artPickerModeRef      = useRef("grid");
   const contextMenuRef        = useRef(null);
   const focusedCardRef        = useRef(null);
+  const focusedRowRef         = useRef(null);
   const searchFocusedCardRef  = useRef(null);   // FIX 3: focused search result card ref
   const settingsFocusedRef    = useRef(null);
   const settingsSectionRef    = useRef(0);
   const outerRef              = useRef(null);
   const homeScrollRef         = useRef(null);
   const tabScrollRef          = useRef(null);
+  const drawerScrollRef       = useRef(null);
   const handleNavRef          = useRef(null);
   const tabRef                = useRef("Home");
   const focusSectionRef       = useRef("hero");
@@ -1482,6 +1488,7 @@ export default function App() {
       "@keyframes spin          { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }",
       "@keyframes bgStarTwinkle { 0%, 100% { opacity: 0.08; transform: scale(1); } 50% { opacity: 0.35; transform: scale(1.2); } }",
       "@keyframes cloudDrift    { from { transform: translateX(110vw); } to { transform: translateX(-110vw); } }",
+      "@keyframes colChevronBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }",
       ".bg-star  { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; animation: bgStarTwinkle ease-in-out infinite; }",
       ".bg-cloud { position: fixed; top: 0; pointer-events: none; z-index: -1; animation: cloudDrift linear infinite; }",
       "html, body { overflow-x: hidden; }",
@@ -1933,8 +1940,23 @@ export default function App() {
       const scroller = tab === "Home" ? homeScrollRef.current : tabScrollRef.current;
       if (scroller) scroller.scrollTo({ top: 0, behavior: "smooth" });
     };
-    if (focusSection === "hero" || focusSection === "recent") {
+    if (focusSection === "hero") {
       setTimeout(scrollToTop, 50);
+    } else if (focusSection === "recent") {
+      if (settingsRef.current?.cinematic_home) {
+        // In cinematic mode, scroll drawer back to top so recents are fully visible
+        setTimeout(() => { if (drawerScrollRef.current) drawerScrollRef.current.scrollTo({ top: 0, behavior: "smooth" }); }, 50);
+      } else {
+        setTimeout(scrollToTop, 50);
+      }
+    } else if (focusSection === "home_collections") {
+      if (drawerScrollRef.current && focusedRowRef.current) {
+        const drawerRect = drawerScrollRef.current.getBoundingClientRect();
+        const rowRect = focusedRowRef.current.getBoundingClientRect();
+        // rowRect.top is relative to viewport; convert to scroll position
+        const scrollTarget = drawerScrollRef.current.scrollTop + rowRect.top - drawerRect.top - 16;
+        drawerScrollRef.current.scrollTo({ top: scrollTarget, behavior: "smooth" });
+      }
     } else if (focusSection === "pinned") {
       setTimeout(scrollToTop, 50);
       // On Home tab, pinned is a horizontal pill shelf — scroll focused pill into view horizontally
@@ -2254,6 +2276,29 @@ export default function App() {
         if (key === "ArrowUp")    { setFocusSection("hero"); focusSectionRef.current = "hero"; }
         if (key === "ArrowDown") {
           if (!settingsRef.current.cinematic_home && fRecent.length > 0) { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(Math.min(focusIndexRef.current, fRecent.length - 1)); }
+          else if (settingsRef.current.cinematic_home && settingsRef.current.show_home_collections) {
+            // In cinematic mode: down from pinned goes to recent first (if recents exist), else collections
+            if (fRecent.length > 0) {
+              setFocusSection("recent"); focusSectionRef.current = "recent";
+              setFocusIndex(0); focusIndexRef.current = 0;
+            } else {
+              const allCols = [
+                ...gameCollectionsRef.current.map(col => ({
+                  id: col.id,
+                  items: appsRef.current.filter(a => a.app_type === "game" && (gameMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
+                })),
+                ...appCollectionsRef.current.map(col => ({
+                  id: col.id,
+                  items: appsRef.current.filter(a => a.app_type === "app" && (appMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
+                })),
+              ].filter(c => c.items.length > 0);
+              if (allCols.length > 0) {
+                setFocusSection("home_collections"); focusSectionRef.current = "home_collections";
+                setHomeColFocusRow(0); homeColFocusRowRef.current = 0;
+                setHomeColFocusCol(0); homeColFocusColRef.current = 0;
+              }
+            }
+          }
         }
         if (key === "Enter" && fPinned[index]) triggerLaunch(fPinned[index], rec);
         return;
@@ -2262,8 +2307,88 @@ export default function App() {
         const maxIdx = Math.min(fRecent.length, 10) - 1;
         if (key === "ArrowRight") { const ni = Math.min(index + 1, maxIdx); setFocusIndex(ni); focusIndexRef.current = ni; }
         if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);      setFocusIndex(ni); focusIndexRef.current = ni; }
-        if (key === "ArrowUp")    { setFocusSection("hero"); focusSectionRef.current = "hero"; }
+        if (key === "ArrowUp") {
+          if (settingsRef.current.cinematic_home) {
+            // In cinematic mode, recent is inside the slide panel — up goes back to pinned
+            if (fPinned.length > 0) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
+            else { setFocusSection("hero"); focusSectionRef.current = "hero"; }
+          } else {
+            setFocusSection("hero"); focusSectionRef.current = "hero";
+          }
+        }
+        if (key === "ArrowDown") {
+          if (settingsRef.current.show_home_collections) {
+            const allCols = [
+              ...gameCollectionsRef.current.map(col => ({
+                id: col.id,
+                items: appsRef.current.filter(a => a.app_type === "game" && (gameMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
+              })),
+              ...appCollectionsRef.current.map(col => ({
+                id: col.id,
+                items: appsRef.current.filter(a => a.app_type === "app" && (appMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
+              })),
+            ].filter(c => c.items.length > 0);
+            if (allCols.length > 0) {
+              setFocusSection("home_collections"); focusSectionRef.current = "home_collections";
+              setHomeColFocusRow(0); homeColFocusRowRef.current = 0;
+              setHomeColFocusCol(0); homeColFocusColRef.current = 0;
+            }
+          }
+        }
         if (key === "Enter" && fRecent[index]) triggerLaunch(fRecent[index], rec);
+        return;
+      }
+      if (section === "home_collections") {
+        const allCols = [
+          ...gameCollectionsRef.current.map(col => ({
+            id: col.id,
+            items: appsRef.current.filter(a => a.app_type === "game" && (gameMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
+          })),
+          ...appCollectionsRef.current.map(col => ({
+            id: col.id,
+            items: appsRef.current.filter(a => a.app_type === "app" && (appMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
+          })),
+        ].filter(c => c.items.length > 0);
+        const row = homeColFocusRowRef.current;
+        const col = homeColFocusColRef.current;
+        const currentRow = allCols[row];
+        if (key === "ArrowRight") {
+          if (currentRow && col < currentRow.items.length - 1) { const ni = col + 1; setHomeColFocusCol(ni); homeColFocusColRef.current = ni; }
+        }
+        if (key === "ArrowLeft") {
+          if (col > 0) { const ni = col - 1; setHomeColFocusCol(ni); homeColFocusColRef.current = ni; }
+        }
+        if (key === "ArrowDown") {
+          if (row < allCols.length - 1) {
+            const nr = row + 1;
+            const nc = Math.min(col, allCols[nr].items.length - 1);
+            setHomeColFocusRow(nr); homeColFocusRowRef.current = nr;
+            setHomeColFocusCol(nc); homeColFocusColRef.current = nc;
+          }
+        }
+        if (key === "ArrowUp") {
+          if (row > 0) {
+            const nr = row - 1;
+            const nc = Math.min(col, allCols[nr].items.length - 1);
+            setHomeColFocusRow(nr); homeColFocusRowRef.current = nr;
+            setHomeColFocusCol(nc); homeColFocusColRef.current = nc;
+          } else {
+            // Back up to recents (both normal and cinematic)
+            if (fRecent.length > 0) {
+              setFocusSection("recent"); focusSectionRef.current = "recent";
+              setFocusIndex(0); focusIndexRef.current = 0;
+            } else if (settingsRef.current.cinematic_home) {
+              if (fPinned.length > 0) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
+              else { setFocusSection("hero"); focusSectionRef.current = "hero"; }
+            } else {
+              setFocusSection("hero"); focusSectionRef.current = "hero";
+            }
+          }
+        }
+        if (key === "Enter" && currentRow) {
+          const app = currentRow.items[col];
+          if (app) triggerLaunch(app, rec);
+        }
         return;
       }
       return;
@@ -2575,7 +2700,7 @@ export default function App() {
                     background: isActive
                       ? `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`
                       : isDark ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.8)",
-                    color: isActive ? "white" : theme.text,
+                    color: isActive ? (accent.darkText ? "#1a1a1a" : "white") : theme.text,
                     border: isActive
                       ? `1px solid ${accent.glow}0.7)`
                       : `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}`,
@@ -2656,7 +2781,7 @@ export default function App() {
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
           background: isDark ? "#0a0502" : appBg,
         }}>
-          <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: 20, overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: settings.cinematic_home ? 0 : 20, overflow: "hidden" }}>
             {recentGames.map((game, idx) => {
               const isActive = idx === heroIdx;
               const isNearby = Math.abs(idx - heroIdx) <= 1;
@@ -2736,7 +2861,7 @@ export default function App() {
                       {art
                         ? <img src={art} alt={app.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
                         : <AppIcon app={app} size={24} />}
-                      <div style={{ fontSize: 12, fontWeight: 500, color: focused ? "white" : "rgba(245,237,232,0.88)", whiteSpace: "nowrap", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: focused ? (accent.darkText ? "#1a1a1a" : "white") : "rgba(245,237,232,0.88)", whiteSpace: "nowrap", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
                     </div>
                   );
                 })}
@@ -2769,7 +2894,7 @@ export default function App() {
                   <div onClick={() => triggerLaunch(heroGame, recentRef.current)}
                     style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 24px", borderRadius: 10, cursor: "pointer", transition: "all 0.15s ease", fontWeight: 600, fontSize: 14,
                       background: heroFocused ? accent.primary : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)",
-                      color: heroFocused ? "white" : theme.text,
+                      color: heroFocused ? (accent.darkText ? "#1a1a1a" : "white") : theme.text,
                       border: `1px solid ${heroFocused ? accent.primary : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`,
                       backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
                       boxShadow: heroFocused ? `0 4px 24px ${accent.glow}0.5)` : "none",
@@ -2815,7 +2940,7 @@ export default function App() {
                     {art
                       ? <img src={art} alt={app.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
                       : <AppIcon app={app} size={24} />}
-                    <div style={{ fontSize: 12, fontWeight: 500, color: focused ? "white" : "rgba(245,237,232,0.9)", whiteSpace: "nowrap", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: focused ? (accent.darkText ? "#1a1a1a" : "white") : "rgba(245,237,232,0.9)", whiteSpace: "nowrap", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
                   </div>
                 );
               })}
@@ -2901,7 +3026,7 @@ export default function App() {
         </div>}
 
         {/* ── HOME COLLECTIONS ── */}
-        {settings.show_home_collections && !settings.cinematic_home && (() => {
+        {settings.show_home_collections && (() => {
           const homeBase = Math.round(110 * (settings.home_cover_scale ?? 1.0));
           const CARD_W = `${homeBase}px`;
           const CARD_H = `${Math.round(homeBase * 1.5)}px`;
@@ -2916,43 +3041,162 @@ export default function App() {
             })),
           ].filter(c => c.items.length > 0);
           if (allCols.length === 0) return null;
-          return (
-            <div style={{ paddingBottom: 100 }}>
-              {allCols.map(col => (
-                <div key={col.id} style={{ marginBottom: 28 }}>
-                  {settings.show_home_collection_names && (
-                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, paddingBottom: 10, paddingLeft: 4 }}>
-                      {col.name}
-                    </div>
-                  )}
-                  <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, paddingLeft: 4, paddingRight: 4 }}>
-                    {col.items.map(app => {
-                      const art = customArt[app.id] || (app.app_type === "game" ? gameArt[app.id] : null);
-                      if (app.app_type === "game") {
-                        return (
-                          <div key={app.id} onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                            style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative", transition: "all 0.15s ease", border: "1px solid rgba(255,255,255,0.08)" }}>
-                            {art
-                              ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                              : <div style={{ width: "100%", height: "100%", background: `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={app} size={36} /></div>
-                            }
-                            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
-                              <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return (
-                        <div key={app.id} onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                          style={{ ...glass, flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px" }}>
-                          <AppIcon app={app} size={40} />
-                          <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
+          const colsFocused = focusSec === "home_collections";
+
+          const collectionRows = allCols.map((col, rowIdx) => {
+            const rowFocused = colsFocused && homeColFocusRow === rowIdx;
+            return (
+            <div key={col.id} ref={rowFocused ? focusedRowRef : null} style={{ marginBottom: 28 }}>
+              {settings.show_home_collection_names && (
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, paddingBottom: 10, paddingLeft: 4 }}>
+                  {col.name}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, paddingLeft: 4, paddingRight: 4, paddingTop: 8 }}>
+                {col.items.map((app, colIdx) => {
+                  const art = customArt[app.id] || (app.app_type === "game" ? gameArt[app.id] : null);
+                  const focused = colsFocused && homeColFocusRow === rowIdx && homeColFocusCol === colIdx;
+                  if (app.app_type === "game") {
+                    return (
+                      <div key={app.id}
+                        ref={focused ? focusedCardRef : null}
+                        onClick={() => { setFocusSection("home_collections"); focusSectionRef.current = "home_collections"; setHomeColFocusRow(rowIdx); homeColFocusRowRef.current = rowIdx; setHomeColFocusCol(colIdx); homeColFocusColRef.current = colIdx; }}
+                        onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                        style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative", transition: "box-shadow 0.15s ease, outline 0.15s ease",
+                          outline: focused ? `2px solid ${accent.primary}` : "2px solid transparent",
+                          outlineOffset: "2px",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          boxShadow: focused ? `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)` : "none",
+                          scrollMarginTop: "120px",
+                        }}>
+                        {art
+                          ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          : <div style={{ width: "100%", height: "100%", background: `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={app} size={36} /></div>
+                        }
+                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
+                          <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div key={app.id}
+                      ref={focused ? focusedCardRef : null}
+                      onClick={() => { setFocusSection("home_collections"); focusSectionRef.current = "home_collections"; setHomeColFocusRow(rowIdx); homeColFocusRowRef.current = rowIdx; setHomeColFocusCol(colIdx); homeColFocusColRef.current = colIdx; }}
+                      onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                      style={{ ...glass, flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer",
+                        outline: focused ? `2px solid ${accent.primary}` : "2px solid transparent",
+                        outlineOffset: "2px",
+                        border: "1px solid rgba(255,255,255,0.08)",
+                        boxShadow: focused ? `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)` : "none",
+                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px",
+                        transition: "box-shadow 0.15s ease, outline 0.15s ease",
+                        scrollMarginTop: "120px",
+                      }}>
+                      <AppIcon app={app} size={40} />
+                      <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            );
+          });
+
+          if (settings.cinematic_home) {
+            // ── CINEMATIC: chevron hint + slide-up full-screen panel ──
+            const panelOpen = colsFocused || focusSec === "recent";
+            return (
+              <>
+                {/* Chevron — clickable for mouse/keyboard users to open drawer */}
+                <div
+                  onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(0); focusIndexRef.current = 0; }}
+                  style={{
+                    position: "fixed", left: 0, right: 0, bottom: "16px", zIndex: 3,
+                    display: "flex", justifyContent: "center", pointerEvents: panelOpen ? "none" : "auto",
+                    opacity: panelOpen ? 0 : 1,
+                    cursor: "pointer",
+                    transition: "opacity 0.3s ease",
+                    animation: panelOpen ? "none" : "colChevronBob 1.6s ease-in-out infinite",
+                    padding: "8px 0",
+                  }}>
+                  <svg width="22" height="12" viewBox="0 0 22 12" fill="none">
+                    <path d="M2 2L11 10L20 2" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+
+                {/* Slide-up drawer panel */}
+                <div style={{
+                  position: "fixed", left: 0, right: 0, bottom: 0, top: "72px", zIndex: 4,
+                  background: isDark ? "rgba(14,8,4,0.98)" : "rgba(238,228,218,0.98)",
+                  backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+                  borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
+                  boxShadow: `0 -8px 40px rgba(0,0,0,0.4)`,
+                  transform: panelOpen ? "translateY(0)" : "translateY(100%)",
+                  transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
+                  display: "flex", flexDirection: "column",
+                  pointerEvents: panelOpen ? "auto" : "none",
+                }}>
+                  {/* Up chevron — sticky outside scroll, always visible */}
+                  <div
+                    onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }}
+                    style={{ display: "flex", justifyContent: "center", padding: "16px 0 16px", flexShrink: 0, cursor: "pointer" }}>
+                    <svg width="18" height="10" viewBox="0 0 22 12" fill="none" style={{ opacity: 0.4 }}>
+                      <path d="M20 10L11 2L2 10" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </div>
+
+                  {/* Scrollable content */}
+                  <div ref={drawerScrollRef} style={{ flex: 1, overflowY: "auto", paddingTop: 8 }}>
+                    {/* Recents row — fully navigable */}
+                    {homeFilteredRecent.length > 0 && (
+                    <div style={{ marginBottom: 28, padding: "0 24px" }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, paddingBottom: 10, paddingLeft: 4, paddingTop: 8 }}>
+                        {t('home.recentlyPlayed').replace('▶ ', '')}
+                      </div>
+                      <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 8, paddingLeft: 4, paddingRight: 4, paddingTop: 8 }}>
+                        {homeFilteredRecent.map((app, i) => {
+                          const recFocused = focusSec === "recent" && focusIdx === i;
+                          const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : (customArt[app.id] || null);
+                          return (
+                            <div key={app.id}
+                              ref={recFocused ? focusedCardRef : null}
+                              onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
+                              onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                              style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative",
+                                border: "1px solid rgba(255,255,255,0.08)",
+                                outline: recFocused ? `2px solid ${accent.primary}` : "2px solid transparent",
+                                outlineOffset: "2px",
+                                boxShadow: recFocused ? `0 4px 20px ${accent.glow}0.3)` : "none",
+                                transition: "outline-color 0.15s ease, box-shadow 0.15s ease",
+                              }}>
+                              {art
+                                ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                : <div style={{ width: "100%", height: "100%", background: `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={app} size={36} /></div>
+                              }
+                              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
+                                <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    )}
+                    {/* Collection rows */}
+                    <div style={{ padding: "0 24px 100px" }}>
+                      {collectionRows}
+                    </div>
                   </div>
                 </div>
-              ))}
+              </>
+            );
+          }
+
+          // ── NORMAL MODE: inline below recents ──
+          return (
+            <div style={{ paddingBottom: 100 }}>
+              {collectionRows}
             </div>
           );
         })()}
@@ -3510,7 +3754,7 @@ export default function App() {
               const actionBtnStyle = (active) => ({
                 fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", padding: "5px 12px", borderRadius: 20, cursor: "pointer", transition: "all 0.15s ease",
                 background: active ? accent.primary : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"),
-                color: active ? "white" : theme.textDim,
+                color: active ? (accent.darkText ? "#1a1a1a" : "white") : theme.textDim,
                 border: `1px solid ${active ? accent.primary : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
                 boxShadow: active ? `0 2px 10px ${accent.glow}0.35)` : "none",
                 display: "flex", alignItems: "center", justifyContent: "center",

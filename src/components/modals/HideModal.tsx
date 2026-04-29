@@ -153,7 +153,7 @@ export default function HideModal({ tab, appsRef, hiddenRef, allAppsRef, closeHi
                 border: `2px solid ${checked ? accent.primary : (isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.2)")}`,
                 background: checked ? accent.primary : "transparent",
                 display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.1s ease" }}>
-                {checked && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                {checked && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke={accent.darkText ? "#1a1a1a" : "white"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
               </div>
               {item.icon_base64
                 ? <div style={{ width: 28, height: 28, borderRadius: 6, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>

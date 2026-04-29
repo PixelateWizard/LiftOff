@@ -3,29 +3,30 @@ import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import { GamepadBtn } from "./GamepadBtn";
 import { useTheme } from "../contexts/ThemeContext";
+import { getBestGamepad, readGpState } from "../utils/gamepad";
 
-function getBestGamepad() {
-  const gps = Array.from(navigator.getGamepads()).filter(Boolean);
-  return (
-    gps.find(gp => gp!.mapping === "standard" && gp!.axes.length >= 4) ||
-    gps.find(gp => gp!.buttons.length >= 4    && gp!.axes.length >= 4) ||
-    gps[0] || null
-  );
-}
-function readGpState(gp: Gamepad) {
-  const btn = (i: number) => !!gp.buttons[i]?.pressed;
-  const hatLeft  = (gp.axes[6] ?? 0) < -0.5;
-  const hatRight = (gp.axes[6] ?? 0) >  0.5;
-  const hatUp    = (gp.axes[7] ?? 0) < -0.5;
-  const hatDown  = (gp.axes[7] ?? 0) >  0.5;
-  return {
-    ArrowUp:    btn(12) || hatUp    || gp.axes[1] < -0.5,
-    ArrowDown:  btn(13) || hatDown  || gp.axes[1] >  0.5,
-    Enter:      btn(0),
-    Escape:     btn(1),
-    ButtonX:    btn(2),
-  };
-}
+// function getBestGamepad() {
+//   const gps = Array.from(navigator.getGamepads()).filter(Boolean);
+//   return (
+//     gps.find(gp => gp!.mapping === "standard" && gp!.axes.length >= 4) ||
+//     gps.find(gp => gp!.buttons.length >= 4    && gp!.axes.length >= 4) ||
+//     gps[0] || null
+//   );
+// }
+// function readGpState(gp: Gamepad) {
+//   const btn = (i: number) => !!gp.buttons[i]?.pressed;
+//   const hatLeft  = (gp.axes[6] ?? 0) < -0.5;
+//   const hatRight = (gp.axes[6] ?? 0) >  0.5;
+//   const hatUp    = (gp.axes[7] ?? 0) < -0.5;
+//   const hatDown  = (gp.axes[7] ?? 0) >  0.5;
+//   return {
+//     ArrowUp:    btn(12) || hatUp    || gp.axes[1] < -0.5,
+//     ArrowDown:  btn(13) || hatDown  || gp.axes[1] >  0.5,
+//     Enter:      btn(0),
+//     Escape:     btn(1),
+//     ButtonX:    btn(2),
+//   };
+// }
 
 interface FileEntry {
   name: string;
