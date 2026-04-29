@@ -7,11 +7,12 @@ export const GITHUB_REPO = "PixelateWizard/LiftOff";
 export const ACCENTS: Record<string, {
   primary: string; light: string; dark: string; glow: string; lightBg: string; lightPrimary?: string; darkText?: boolean;
 }> = {
-  ember:    { primary: "#e8714a", light: "#ff9a6c", dark: "#c94f28", glow: "rgba(232,113,74,",  lightBg: "#f5e8e0" },
+  ember:    { primary: "#e8714a", light: "#ff9a6c", dark: "#c94f28", glow: "rgba(232,113,74,",  lightBg: "#f5e8e0", darkText: true },
   ocean:    { primary: "#4a9ee8", light: "#6cb8ff", dark: "#2878c9", glow: "rgba(74,158,232,",  lightBg: "#ddeeff", darkText: true },
   neon:     { primary: "#4ae88a", lightPrimary: "#15803d", light: "#6cffaa", dark: "#28c96a", glow: "rgba(74,232,138,", lightBg: "#ddf5e8", darkText: true },
-  rose:     { primary: "#e84a8a", light: "#ff6caa", dark: "#c9286a", glow: "rgba(232,74,138,",  lightBg: "#f5dde8" },
+  rose:     { primary: "#e84a8a", light: "#ff6caa", dark: "#c9286a", glow: "rgba(232,74,138,",  lightBg: "#f5dde8", darkText: true },
   midnight: { primary: "#8a4ae8", light: "#aa6cff", dark: "#6a28c9", glow: "rgba(138,74,232,",  lightBg: "#e8ddff" },
+  red:    { primary: "#ff0000", light: "#fa8072", dark: "#800000", glow: "rgba(255, 0, 0,),", lightBg: "#ffeeee", darkText: true },
   silver:   { primary: "#909090", light: "#c0c0c0", dark: "#606060", glow: "rgba(144,144,144,", lightBg: "#f0f0f0", darkText: true },
   white:    { primary: "#d8d8d8", light: "#ffffff", dark: "#aaaaaa", glow: "rgba(220,220,220,", lightBg: "#f8f8f8", darkText: true },
 };
