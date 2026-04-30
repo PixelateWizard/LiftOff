@@ -147,6 +147,8 @@ pub struct Settings {
     pub show_home_collections: bool,
     #[serde(default = "default_true")]
     pub show_home_collection_names: bool,
+    #[serde(default = "default_true")]
+    pub show_hero_cover: bool,
     // Gamepad icon settings (moi952 PRs)
     #[serde(default = "default_gamepad_platform")]
     pub gamepad_platform: String,
@@ -214,6 +216,7 @@ impl Default for Settings {
             bottombar_alignment: "left".to_string(),
             show_home_collections: false,
             show_home_collection_names: true,
+            show_hero_cover: true,
             gamepad_platform: "xbox".to_string(),
             gamepad_icons_colored: false,
             gamepad_icons_filled: true,

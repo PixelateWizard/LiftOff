@@ -16,6 +16,7 @@ import CollectionManagerModal from "./components/modals/CollectionManagerModal";
 import ModalShell from "./components/modals/ModalShell";
 import ContextMenuModal from "./components/modals/ContextMenuModal";
 import HideModal from "./components/modals/HideModal";
+import LibraryActionsModal from "./components/modals/LibraryActionsModal";
 import EditNameModal from "./components/modals/EditNameModal";
 import uiSound from "./assets/uiSound.mp3";
 import uiSoundAlt from "./assets/uiSoundAlt.mp3";
@@ -785,7 +786,7 @@ function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose, repe
           {artType === "hero" && (
             <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
               <span style={{ height: 18, minWidth: 20, borderRadius: 4, background: "rgba(255,255,255,0.52)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "white", padding: "0 3px" }}>LT</span>
-              <span style={{ height: 18, minWidth: 20, borderRadius: 4, background: "rgba(255,255,255,0.52)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "white", padding: "0 3px" }}>RT</span>
+              <span style={{ height: 18, minWidth: 20, borderRadius: 4, background: "rgba(255,255,255,0.52)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: white, padding: "0 3px" }}>RT</span>
               {t('sgdb.filter.label')}
             </span>
           )}
@@ -1134,6 +1135,7 @@ export default function App() {
   const [gameSourceTab, setGameSourceTab]           = useState("All"); // "All" | "Steam" | "Xbox" | "Other"
   const [subtabFocusIndex, setSubtabFocusIndex]     = useState(0);    // index within subtab row
   const [showHideModal, setShowHideModal]           = useState(false);
+  const [showLibraryActions, setShowLibraryActions] = useState(false);
   const [showFileBrowser, setShowFileBrowser]       = useState(null);  // null | "file" | "folder"
   const [addAppType, setAddAppType]                 = useState("game"); // "game" | "app"
   const [pendingFile, setPendingFile]               = useState(null);  // FileEntry from FileBrowser
@@ -1184,6 +1186,9 @@ export default function App() {
   const [homeColFocusCol, setHomeColFocusCol] = useState(0);
   const homeColFocusRowRef = useRef(0);
   const homeColFocusColRef = useRef(0);
+  const [homeHiddenCollections, setHomeHiddenCollections] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("homeHiddenCollections") || "[]"); } catch { return []; }
+  });
 
   // ── Search state ──────────────────────────────────────────────
   const [searchOpen, setSearchOpen]               = useState(false);
@@ -1212,6 +1217,7 @@ export default function App() {
   const focusedRowRef         = useRef(null);
   const searchFocusedCardRef  = useRef(null);   // FIX 3: focused search result card ref
   const settingsFocusedRef    = useRef(null);
+  const settingsBottomRef     = useRef(null);
   const settingsSectionRef    = useRef(0);
   const outerRef              = useRef(null);
   const homeScrollRef         = useRef(null);
@@ -1229,7 +1235,8 @@ export default function App() {
   const hiddenRef             = useRef([]);
   const gameSourceTabRef      = useRef("All");
   const subtabFocusIndexRef   = useRef(0);
-  const showHideModalRef      = useRef(false);
+  const showHideModalRef        = useRef(false);
+  const showLibraryActionsRef   = useRef(false);
   const showFileBrowserRef    = useRef(null);
   const pendingFileRef        = useRef(null);
   const customSourcesRef      = useRef([]);
@@ -1270,7 +1277,8 @@ export default function App() {
     const darkText = isDark
       ? !!resolved.darkText
       : (resolved.lightDarkText !== undefined ? resolved.lightDarkText : !!resolved.darkText);
-    return { ...resolved, darkText };
+    const glow = (!isDark && base.lightGlow) ? base.lightGlow : resolved.glow;
+    return { ...resolved, darkText, glow };
   }, [settings.accent, isDark]);
   const appBg  = isDark ? "#100a06" : accent.lightBg;
 
@@ -1316,6 +1324,23 @@ export default function App() {
     }).catch(console.error);
   };
 
+  // ── Library Actions modal ─────────────────────────────────────
+  const openLibraryActionsModal = () => {
+    if (document.activeElement) document.activeElement.blur();
+    setShowLibraryActions(true); showLibraryActionsRef.current = true;
+  };
+  const closeLibraryActionsModal = () => {
+    const gp = getBestGamepad();
+    if (gp) {
+      const s = readGpState(gp);
+      suppressUntilRelease.current = {
+        Enter: s.Enter, Escape: s.Escape, Select: s.Select,
+        ButtonX: s.ButtonX, ButtonY: s.ButtonY,
+      };
+    }
+    setShowLibraryActions(false); showLibraryActionsRef.current = false;
+  };
+
   // ── Hide helpers ──────────────────────────────────────────────
   const openHideModal  = () => {
     // Blur whatever DOM element has focus so the browser doesn't send synthetic
@@ -1351,6 +1376,14 @@ export default function App() {
       };
     }
     setArtPickerApp(null); artPickerAppRef.current = null;
+  };
+
+  const toggleHomeCollection = (colName) => {
+    setHomeHiddenCollections(prev => {
+      const next = prev.includes(colName) ? prev.filter(n => n !== colName) : [...prev, colName];
+      localStorage.setItem("homeHiddenCollections", JSON.stringify(next));
+      return next;
+    });
   };
 
   const toggleHidden = (appId) => {
@@ -1443,7 +1476,7 @@ export default function App() {
           }
 
           if (pressed && !wasPressed) {
-            if (!showHideModalRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
+            if (!showHideModalRef.current && !showLibraryActionsRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
             btnPressTime.current[key]  = now;
             btnRepeating.current[key]  = false;
           } else if (pressed && wasPressed && REPEATABLE.has(key)) {
@@ -1451,10 +1484,10 @@ export default function App() {
             if (!btnRepeating.current[key] && heldMs >= initialDelay) {
               btnRepeating.current[key] = true;
               btnPressTime.current[key] = now;
-              if (!showHideModalRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
+              if (!showHideModalRef.current && !showLibraryActionsRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
             } else if (btnRepeating.current[key] && heldMs >= repeatDelay) {
               btnPressTime.current[key] = now;
-              if (!showHideModalRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
+              if (!showHideModalRef.current && !showLibraryActionsRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
             }
           } else if (!pressed && wasPressed) {
             btnPressTime.current[key]  = 0;
@@ -1928,7 +1961,7 @@ export default function App() {
   }, [tab, heroIndex, recentGames]);
 
   // Pinned apps reactive (for render)
-  const pinnedAppsReactive = pins
+  const pinnedAppsReactive = (tab === "Apps" && appCollectionTab !== "All") ? [] : pins
     .map(id => apps.find(a => a.id === id))
     .filter(Boolean)
     .filter(a => tab === "Home" ? true : tab === "Games" ? a.app_type === "game" : a.app_type === "app");
@@ -1954,12 +1987,17 @@ export default function App() {
         setTimeout(scrollToTop, 50);
       }
     } else if (focusSection === "home_collections") {
-      if (drawerScrollRef.current && focusedRowRef.current) {
-        const drawerRect = drawerScrollRef.current.getBoundingClientRect();
-        const rowRect = focusedRowRef.current.getBoundingClientRect();
-        // rowRect.top is relative to viewport; convert to scroll position
-        const scrollTarget = drawerScrollRef.current.scrollTop + rowRect.top - drawerRect.top - 16;
-        drawerScrollRef.current.scrollTo({ top: scrollTarget, behavior: "smooth" });
+      if (focusedRowRef.current) {
+        if (drawerScrollRef.current) {
+          const drawerRect = drawerScrollRef.current.getBoundingClientRect();
+          const rowRect = focusedRowRef.current.getBoundingClientRect();
+          const scrollTarget = drawerScrollRef.current.scrollTop + rowRect.top - drawerRect.top - 16;
+          drawerScrollRef.current.scrollTo({ top: scrollTarget, behavior: "smooth" });
+        } else {
+          focusedRowRef.current.style.scrollMarginTop    = "120px";
+          focusedRowRef.current.style.scrollMarginBottom = "80px";
+          focusedRowRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
       }
     } else if (focusSection === "pinned") {
       setTimeout(scrollToTop, 50);
@@ -1988,7 +2026,7 @@ export default function App() {
       focusedCardRef.current.style.scrollMarginBottom = "80px";
       focusedCardRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
     }
-  }, [focusSection, focusIndex, tab]);
+  }, [focusSection, focusIndex, homeColFocusRow, tab]);
 
   const switchTab = (newTab) => {
     setTab(newTab); tabRef.current = newTab;
@@ -2018,7 +2056,7 @@ export default function App() {
   // ── handleNav ─────────────────────────────────────────────────
   const handleNav = (key) => {
     // Modal intercepts all input via its own poll — main nav must not run
-    if (showHideModalRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current) return;
+    if (showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current) return;
 
     // Art picker open — only Escape closes it (user interacts via touch/mouse)
     if (artPickerAppRef.current) {
@@ -2065,7 +2103,7 @@ export default function App() {
       currentTab === "Home" || currentTab === "All" ? true
         : currentTab === "Games" ? a.app_type === "game" : a.app_type === "app"
     ).slice(0, 8);
-    const fPinned = currentPins
+    const fPinned = (currentTab === "Apps" && appCollectionTabRef.current !== "All") ? [] : currentPins
       .map(id => allApps.find(a => a.id === id))
       .filter(Boolean)
       .filter(a => currentTab === "Home" || currentTab === "All" ? true
@@ -2153,7 +2191,7 @@ export default function App() {
 
     // ── Main nav sections ──────────────────────────────────────
     // Compute filtered data using refs (same as render-time but from refs)
-    const fRecentGames = recentGamesRef.current;
+    const fRecentGames = (() => { const fg = recentGamesRef.current.filter(g => appsRef.current.some(a => a.id === g.id)); return fg.length > 0 ? fg : appsRef.current.filter(a => a.app_type === "game").slice(0, 6); })();
 
     // X pins/unpins focused app
     if (key === "ButtonX") {
@@ -2170,9 +2208,9 @@ export default function App() {
     if (key === "BumperLeft")  { const i = TABS.indexOf(currentTab); switchTab(TABS[(i - 1 + TABS.length) % TABS.length]); return; }
     if (key === "BumperRight") { const i = TABS.indexOf(currentTab); switchTab(TABS[(i + 1) % TABS.length]); return; }
 
-    // BACK (Select) opens Manage modal; MENU (Start) opens context menu for focused card
+    // BACK (Select) opens library actions menu; MENU (Start) opens context menu for focused card
     if (key === "Select" && (currentTab === "Games" || currentTab === "Apps")) {
-      openHideModal(); return;
+      openLibraryActionsModal(); return;
     }
     if (key === "Start" && (currentTab === "Games" || currentTab === "Apps")) {
       const focusedApp = section === "pinned" ? fPinned[index] : section === "grid" ? fApps[index] : null;
@@ -2208,7 +2246,13 @@ export default function App() {
       }
       const sfIndex = settingsFocusIndexRef.current;
       const item    = navigableSettings[sfIndex];
-      if (key === "ArrowDown") { const ni = Math.min(sfIndex + 1, navigableSettings.length - 1); setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni; }
+      if (key === "ArrowDown") {
+        const ni = Math.min(sfIndex + 1, navigableSettings.length - 1);
+        setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni;
+        if (sfIndex === navigableSettings.length - 1 && tabScrollRef.current) {
+          tabScrollRef.current.scrollTo({ top: tabScrollRef.current.scrollHeight, behavior: "smooth" });
+        }
+      }
       if (key === "ArrowUp") {
         const ni = Math.max(sfIndex - 1, 0); setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni;
         if (sfIndex === 0 && tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
@@ -2441,12 +2485,12 @@ export default function App() {
       }
     }
 
-    // subtabs row: source pills + game collections + add/folder buttons + manage
+    // subtabs row: source pills + manage button
     const SOURCES = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSourcesRef.current, ...gameCollectionsRef.current.map(c => c.name)];
     const APP_COLS_NAV = ["All", ...appCollectionsRef.current.map(c => c.name)];
     const subtabItems = currentTab === "Games"
-      ? [...SOURCES, "add_app", "add_folder", "manage", "collections"]
-      : [...APP_COLS_NAV, "add_app", "add_folder", "manage", "collections"];
+      ? [...SOURCES, "manage"]
+      : [...APP_COLS_NAV, "manage"];
 
     const switchSubtabItem = (item) => {
       if (item === "add_app" || item === "add_folder" || item === "manage" || item === "collections") return;
@@ -2475,10 +2519,7 @@ export default function App() {
       }
       else if (key === "Enter") {
         const item = subtabItems[subtabFocusIndexRef.current];
-        if (item === "manage")          { openHideModal(); }
-        else if (item === "add_app")    { setAddAppType(tabRef.current === "Games" ? "game" : "app"); setShowFileBrowser("file"); }
-        else if (item === "add_folder") { setAddAppType(tabRef.current === "Games" ? "game" : "app"); setShowFileBrowser("folder"); }
-        else if (item === "collections") { setShowColModal(true); showColModalRef.current = true; }
+        if (item === "manage") { openLibraryActionsModal(); }
         // Pills already auto-switched on focus movement — Enter is a no-op for them
       }
       return; // always return — never fall through to grid/pinned launch
@@ -2556,7 +2597,7 @@ export default function App() {
   useEffect(() => {
     const onKey = (e) => {
       // Modal has its own capture-phase keyboard handler — don't double-fire
-      if (showHideModalRef.current || showFileBrowserRef.current || pendingFileRef.current) return;
+      if (showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current) return;
       if (e.key === "Escape") {
         e.preventDefault();
         if (searchOpenRef.current) {
@@ -2592,7 +2633,7 @@ export default function App() {
   useEffect(() => {
     let unlisten;
     listen("gamepad-button", (e) => {
-      if (!isReadyRef.current || showHideModalRef.current) return;
+      if (!isReadyRef.current || showHideModalRef.current || showLibraryActionsRef.current) return;
       handleNavRef.current?.(e.payload);
     }).then((fn) => { unlisten = fn; });
     return () => { if (unlisten) unlisten(); };
@@ -2602,7 +2643,7 @@ export default function App() {
     let repeatInterval = null, initialTimeout = null, currentDir = null, unlisten;
     listen("gamepad-axis", (e) => {
       const dir = e.payload;
-      if (!isReadyRef.current || showHideModalRef.current) return;
+      if (!isReadyRef.current || showHideModalRef.current || showLibraryActionsRef.current) return;
       const speed = settingsRef.current.repeat_speed;
       const initialDelay = speed === "slow" ? 800 : speed === "fast" ? 400 : 600;
       const repeatDelay  = speed === "slow" ? 300 : speed === "fast" ? 100 : 200;
@@ -2666,7 +2707,7 @@ export default function App() {
       >
         {art
           ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-          : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: `${accent.glow}0.08)` }}><AppIcon app={app} size={48} /></div>
+          : <img src={`/assets/liftoff_cover_${settings.accent}.svg`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
         }
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 12px 12px", background: "linear-gradient(transparent, rgba(0,0,0,0.8))" }}>
           <span style={{ fontSize: 12, fontWeight: 600, color: "white", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</span>
@@ -2754,10 +2795,11 @@ export default function App() {
 
   // ── Home screen content ──
   const homeContent = (() => {
-    const heroIdx  = heroIndex;
+    const heroGames  = (() => { const fg = recentGames.filter(g => apps.some(a => a.id === g.id)); return fg.length > 0 ? fg : apps.filter(a => a.app_type === "game").slice(0, 6); })();
+    const heroIdx    = Math.min(heroIndex, Math.max(0, heroGames.length - 1));
     const focusSec = focusSection;
     const focusIdx = focusIndex;
-    const heroGame   = recentGames[heroIdx];
+    const heroGame   = heroGames[heroIdx];
     const heroArt    = heroGame ? (customArt[heroGame.id] || gameArt[heroGame.id]) : null;
     const resolveHeroType = (id) => {
       if (settings.animated_heroes === "static")   return "static";
@@ -2772,7 +2814,7 @@ export default function App() {
     const heroFocused = focusSec === "hero";
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", padding: settings.cinematic_home ? "0" : "0 24px 0", ...(settings.wide_layout || settings.cinematic_home ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box",
+      <div style={{ display: "flex", flexDirection: "column", padding: settings.cinematic_home ? "0" : "16px 24px 0", ...(settings.wide_layout || settings.cinematic_home ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box",
         ...(settings.cinematic_home ? { position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none" } : { minHeight: "100%" }) }}>
         {/* ── HERO ── */}
         <div style={{
@@ -2786,7 +2828,7 @@ export default function App() {
           background: isDark ? "#0a0502" : appBg,
         }}>
           <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: settings.cinematic_home ? 0 : 20, overflow: "hidden" }}>
-            {recentGames.map((game, idx) => {
+            {heroGames.map((game, idx) => {
               const isActive = idx === heroIdx;
               const isNearby = Math.abs(idx - heroIdx) <= 1;
 
@@ -2805,7 +2847,7 @@ export default function App() {
                         ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
                         : fallback
                           ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: "scale(1.08)" }} />
-                          : <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${accent.glow}0.25) 0%, ${accent.glow}0.06) 100%)` }} />)
+                          : <img src={`/assets/liftoff_hero_${settings.accent}.svg`} alt="" style={{ ...coverStyle }} />)
                     : <div style={{ width: "100%", height: "100%" }} />
                   }
                   {/* Video layer: always in DOM; only active hero preloads */}
@@ -2832,14 +2874,14 @@ export default function App() {
             <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroBanner
               ? (isDark
                   ? "linear-gradient(to right, rgba(6,3,1,0.82) 0%, rgba(6,3,1,0.55) 45%, rgba(6,3,1,0.18) 100%)"
-                  : `linear-gradient(to right, ${appBg}dd 0%, ${appBg}99 45%, ${appBg}22 100%)`)
+                  : `linear-gradient(to right, ${appBg}cc 0%, ${appBg}55 40%, transparent 100%)`)
               : (isDark
                   ? "linear-gradient(to right, rgba(8,4,2,0.88) 0%, rgba(8,4,2,0.5) 50%, rgba(8,4,2,0.2) 100%)"
-                  : `linear-gradient(to right, ${appBg}ee 0%, ${appBg}99 50%, transparent 100%)`)
+                  : `linear-gradient(to right, ${appBg}dd 0%, ${appBg}66 45%, transparent 100%)`)
             }} />
             <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "55%", zIndex: 2, background: isDark
               ? "linear-gradient(to bottom, transparent, rgba(6,3,1,0.95))"
-              : `linear-gradient(to bottom, transparent, ${appBg})`
+              : `linear-gradient(to bottom, transparent, ${appBg}bb)`
             }} />
           </div>
 
@@ -2879,14 +2921,16 @@ export default function App() {
           <div style={settings.cinematic_home
             ? { position: "fixed", left: 0, right: 0, bottom: "120px", zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
             : { position: "relative", zIndex: 1, flex: 1, display: "flex", alignItems: "flex-end", padding: "0 20px 20px" }}>
-            <div style={{ flexShrink: 0, width: "clamp(80px, 10vw, 150px)", aspectRatio: "2/3", marginRight: 20 }}>
-              {heroArt
-                ? <img key={heroGame?.id} src={heroArt} alt={heroGame?.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.7)", animation: "heroArtFade 0.3s ease forwards" }} />
-                : heroGame
-                  ? <div style={{ width: "100%", height: "100%", borderRadius: 10, background: `${accent.glow}0.15)`, border: `1px solid ${accent.glow}0.3)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40, fontWeight: 700, color: accent.primary }}>{heroGame.name.charAt(0).toUpperCase()}</div>
-                  : <div style={{ width: "100%", height: "100%", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
-              }
-            </div>
+            {settings.show_hero_cover !== false && (
+              <div style={{ flexShrink: 0, width: "clamp(80px, 10vw, 150px)", aspectRatio: "2/3", marginRight: 20 }}>
+                {heroArt
+                  ? <img key={heroGame?.id} src={heroArt} alt={heroGame?.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.7)", animation: "heroArtFade 0.3s ease forwards" }} />
+                  : heroGame
+                    ? <img src={`/assets/liftoff_cover_${settings.accent}.svg`} alt={heroGame.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.7)" }} />
+                    : <div style={{ width: "100%", height: "100%", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
+                }
+              </div>
+            )}
             {heroGame ? (
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: accent.primary, marginBottom: 6, fontWeight: 600 }}>
@@ -2906,9 +2950,9 @@ export default function App() {
                     <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5l7 3.5-7 3.5z"/></svg>
                     {t('home.launch')}
                   </div>
-                  {recentGames.length > 1 && (
+                  {heroGames.length > 1 && (
                     <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                      {recentGames.slice(0, 6).map((_, i) => (
+                      {heroGames.slice(0, 6).map((_, i) => (
                         <div key={i} onClick={() => { setHeroIndex(i); heroIndexRef.current = i; }}
                           style={{ width: i === heroIdx ? 20 : 6, height: 6, borderRadius: 3, cursor: "pointer", transition: "all 0.2s ease",
                             background: i === heroIdx ? accent.primary : isDark ? "rgba(245,237,232,0.25)" : "rgba(0,0,0,0.2)" }} />
@@ -2937,14 +2981,14 @@ export default function App() {
                     style={{
                       display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
                       flexShrink: 0, cursor: "pointer", borderRadius: 10, transition: "all 0.15s ease",
-                      background: focused ? accent.primary : "rgba(255,255,255,0.08)",
-                      border: `1px solid ${focused ? accent.primary : "rgba(255,255,255,0.14)"}`,
+                      background: focused ? accent.primary : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.18)",
+                      border: `1px solid ${focused ? accent.primary : isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.22)"}`,
                       boxShadow: focused ? `0 2px 12px ${accent.glow}0.5)` : "none",
                     }}>
                     {art
                       ? <img src={art} alt={app.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
                       : <AppIcon app={app} size={24} />}
-                    <div style={{ fontSize: 12, fontWeight: 500, color: focused ? (accent.darkText ? "#1a1a1a" : "white") : "rgba(245,237,232,0.9)", whiteSpace: "nowrap", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: focused ? (accent.darkText ? "#1a1a1a" : "white") : isDark ? "rgba(245,237,232,0.9)" : "rgba(0,0,0,0.85)", whiteSpace: "nowrap", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
                   </div>
                 );
               })}
@@ -3043,7 +3087,7 @@ export default function App() {
               id: col.id, name: col.name, type: "app",
               items: apps.filter(a => a.app_type === "app" && (appMemberships[a.id] || []).includes(col.id)).slice(0, 20),
             })),
-          ].filter(c => c.items.length > 0);
+          ].filter(c => c.items.length > 0 && !homeHiddenCollections.includes(c.name));
           if (allCols.length === 0) return null;
           const colsFocused = focusSec === "home_collections";
 
@@ -3125,14 +3169,14 @@ export default function App() {
                     padding: "8px 0",
                   }}>
                   <svg width="22" height="12" viewBox="0 0 22 12" fill="none">
-                    <path d="M2 2L11 10L20 2" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2 2L11 10L20 2" stroke={isDark ? "white" : "rgba(0,0,0,0.7)"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
 
                 {/* Slide-up drawer panel */}
                 <div style={{
                   position: "fixed", left: 0, right: 0, bottom: 0, top: "72px", zIndex: 4,
-                  background: isDark ? "rgba(14,8,4,0.98)" : "rgba(238,228,218,0.98)",
+                  background: appBg,
                   backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
                   borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
                   boxShadow: `0 -8px 40px rgba(0,0,0,0.4)`,
@@ -3146,7 +3190,7 @@ export default function App() {
                     onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }}
                     style={{ display: "flex", justifyContent: "center", padding: "16px 0 16px", flexShrink: 0, cursor: "pointer" }}>
                     <svg width="18" height="10" viewBox="0 0 22 12" fill="none" style={{ opacity: 0.4 }}>
-                      <path d="M20 10L11 2L2 10" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M20 10L11 2L2 10" stroke={isDark ? "white" : "rgba(0,0,0,0.7)"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
 
@@ -3216,6 +3260,7 @@ export default function App() {
       settingsFocusIndex={settingsFocusIndex}
       settingsSection={settingsSection}
       settingsFocusedRef={settingsFocusedRef}
+      settingsBottomRef={settingsBottomRef}
       customFolders={customFolders}
       onOpenFolderManager={() => { setShowFolderManager(true); showFolderManagerRef.current = true; }}
       libraryRefreshStatus={libraryRefreshStatus}
@@ -3229,6 +3274,10 @@ export default function App() {
       sliderDraft={sliderDraft}
       sliderDraftRef={sliderDraftRef}
       setSliderDraft={setSliderDraft}
+      gameCollections={gameCollections}
+      appCollections={appCollections}
+      homeHiddenCollections={homeHiddenCollections}
+      onToggleHomeCollection={toggleHomeCollection}
     />
   );
 
@@ -3260,6 +3309,32 @@ export default function App() {
     if (tab !== "Settings") { setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(i); subtabFocusIndexRef.current = i; setFocusIndex(0); focusIndexRef.current = 0; }
   };
 
+  // ── Header right actions (Manage button inline with subtab pills) ─
+  const _hdrManageIdx = tab === "Games" ? _hdrSources.length : _hdrAppCols.length;
+  const headerRightActions = (tab === "Games" || tab === "Apps") ? (
+    <div
+      onClick={openLibraryActionsModal}
+      style={{
+        fontSize: 11, fontWeight: 600, letterSpacing: "0.06em",
+        padding: "4px 12px", borderRadius: 20, cursor: "pointer",
+        transition: "all 0.15s ease",
+        background: (focusSection === "subtabs" && subtabFocusIndex === _hdrManageIdx)
+          ? accent.primary
+          : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"),
+        color: (focusSection === "subtabs" && subtabFocusIndex === _hdrManageIdx)
+          ? (accent.darkText ? "#1a1a1a" : "white")
+          : theme.textDim,
+        border: `1px solid ${(focusSection === "subtabs" && subtabFocusIndex === _hdrManageIdx)
+          ? accent.primary
+          : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
+        boxShadow: (focusSection === "subtabs" && subtabFocusIndex === _hdrManageIdx)
+          ? `0 2px 10px ${accent.glow}0.35)` : "none",
+      }}
+    >
+      {t('grid.manage')}
+    </div>
+  ) : undefined;
+
   // ── Render ────────────────────────────────────────────────────
   const themeValue = { isDark, theme, accent, glass, appBg, bgGlow1, bgGlow2 };
   const settingsValue = { settings, settingsRef, updateSetting, updateSettingsBatch };
@@ -3267,7 +3342,7 @@ export default function App() {
   return (
     <ThemeProvider value={themeValue}>
     <SettingsProvider value={settingsValue}>
-    <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, btnSize: settings.gamepad_btn_size ?? "medium" }}>
+    <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
     <div style={{ position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1 }} ref={outerRef}>
 
       <div style={{ position: "fixed", inset: 0, background: appBg, zIndex: -2 }} />
@@ -3336,6 +3411,16 @@ export default function App() {
         />
       )}
       {showHideModal && <HideModal key="hide-modal" tab={tab} appsRef={appsRef} hiddenRef={hiddenRef} allAppsRef={allAppsRef} closeHideModal={closeHideModal} toggleHidden={toggleHidden} />}
+      {showLibraryActions && (
+        <LibraryActionsModal
+          tab={tab}
+          onAddFile={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("file"); showFileBrowserRef.current = "file"; }}
+          onAddFolder={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("folder"); showFileBrowserRef.current = "folder"; }}
+          onManage={openHideModal}
+          onCollections={() => { setShowColModal(true); showColModalRef.current = true; }}
+          onClose={closeLibraryActionsModal}
+        />
+      )}
       {showFileBrowser && (
         <FileBrowser
           mode={showFileBrowser}
@@ -3708,7 +3793,7 @@ export default function App() {
       )}
       {/* ══════════════ END SEARCH OVERLAY ══════════════ */}
 
-      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: showHideModal ? "none" : "auto" }}>
+      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions) ? "none" : "auto" }}>
 
         {/* Topbar */}
         <AppHeader
@@ -3725,6 +3810,7 @@ export default function App() {
           headerTabItems={headerTabItems}
           headerActiveIndex={headerActiveIndex}
           headerOnSelect={headerOnSelect}
+          headerRightActions={headerRightActions}
         />
         {/* Tab content area — Home always mounted; cover layer hides it when elsewhere;
              clouds sit above cover, below all tab UI. */}
@@ -3749,12 +3835,12 @@ export default function App() {
               const SOURCES = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSources, ...gameCollections.map(c => c.name)];
               const APP_COLS = ["All", ...appCollections.map(c => c.name)];
               const subtabItems = tab === "Games"
-                ? [...SOURCES, "add_app", "add_folder", "manage", "collections"]
-                : [...APP_COLS, "add_app", "add_folder", "manage", "collections"];
-              const addAppIdx    = tab === "Games" ? SOURCES.length     : APP_COLS.length;
-              const addFolderIdx = tab === "Games" ? SOURCES.length + 1 : APP_COLS.length + 1;
-              const manageIdx    = tab === "Games" ? SOURCES.length + 2 : APP_COLS.length + 2;
-              const colModalIdx  = tab === "Games" ? SOURCES.length + 3 : APP_COLS.length + 3;
+                ? [...SOURCES, "manage"]
+                : [...APP_COLS, "manage"];
+              const addAppIdx    = tab === "Games" ? SOURCES.length     : APP_COLS.length;     // kept for hidden buttons
+              const addFolderIdx = tab === "Games" ? SOURCES.length + 1 : APP_COLS.length + 1; // kept for hidden buttons
+              const manageIdx    = tab === "Games" ? SOURCES.length     : APP_COLS.length;
+              const colModalIdx  = tab === "Games" ? SOURCES.length + 1 : APP_COLS.length + 1; // kept for hidden buttons
               const actionBtnStyle = (active) => ({
                 fontSize: 11, fontWeight: 600, letterSpacing: "0.06em", padding: "5px 12px", borderRadius: 20, cursor: "pointer", transition: "all 0.15s ease",
                 background: active ? accent.primary : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"),
@@ -3779,8 +3865,8 @@ export default function App() {
               return (
             <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
               <div style={{ padding: `0 24px 0`, ...(settings.wide_layout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" }}>
-                {/* Action buttons — below the tab bar, aligned right */}
-                <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end", paddingTop: 8, paddingBottom: 8 }}>
+                {/* Action buttons — hidden; kept for potential future use */}
+                <div style={{ display: "none" }}>
                   <div onClick={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("file"); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(addAppIdx); subtabFocusIndexRef.current = addAppIdx; }}
                     style={{ ...actionBtnStyle(focusSection === "subtabs" && subtabFocusIndex === addAppIdx), padding: "5px 10px" }}
                     title={tab === "Games" ? t('addEntry.addGame') : t('addEntry.addApp')}>
@@ -3853,7 +3939,7 @@ export default function App() {
                           ) : (
                             <>
                               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", position: "relative", zIndex: 1 }}>
-                                <AppIcon app={app} size={64} />
+                                <AppIcon app={app} size={44} />
                               </div>
                               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 10px 10px", zIndex: 1 }}>
                                 <div style={{ fontSize: 11, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
@@ -3916,7 +4002,7 @@ export default function App() {
                       ) : (
                         <>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", position: "relative", zIndex: 1 }}>
-                            <AppIcon app={app} size={64} />
+                            <AppIcon app={app} size={44} />
                           </div>
                           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 10px 10px", zIndex: 1 }}>
                             <div style={{ fontSize: 11, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>

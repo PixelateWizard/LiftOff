@@ -30,6 +30,7 @@ export function buildSettingsItems(t: TFunction, isDark: boolean): SettingsItem[
 
     D("home", 0),
     { key: "cinematic_home",         section: 0, label: t("settings.immersiveHome"),       type: "toggle" },
+    { key: "show_hero_cover",        section: 0, label: t("settings.showHeroCover"),        type: "toggle" },
     { key: "show_home_collections",  section: 0, label: t("settings.showHomeCollections"),  type: "toggle", subItems: [
       { key: "show_home_collection_names", label: t("settings.showHomeCollectionNames"), type: "toggle" },
     ]},
@@ -142,6 +143,7 @@ export interface SettingsScreenProps {
   settingsFocusIndex: number;
   settingsSection: number;
   settingsFocusedRef: React.RefObject<any>;
+  settingsBottomRef: React.RefObject<any>;
   customFolders: CustomFolder[];
   onOpenFolderManager: () => void;
   libraryRefreshStatus: string | null;
@@ -155,12 +157,17 @@ export interface SettingsScreenProps {
   sliderDraft: { key: string | null; value: number | null };
   sliderDraftRef: React.RefObject<{ key: string | null; value: number | null }>;
   setSliderDraft: (v: { key: string | null; value: number | null }) => void;
+  gameCollections?: { id: string; name: string }[];
+  appCollections?: { id: string; name: string }[];
+  homeHiddenCollections?: string[];
+  onToggleHomeCollection?: (colName: string) => void;
 }
 
 export function SettingsScreen({
   settingsFocusIndex,
   settingsSection,
   settingsFocusedRef,
+  settingsBottomRef,
   customFolders,
   onOpenFolderManager,
   libraryRefreshStatus,
@@ -174,6 +181,10 @@ export function SettingsScreen({
   sliderDraft,
   sliderDraftRef,
   setSliderDraft,
+  gameCollections = [],
+  appCollections = [],
+  homeHiddenCollections = [],
+  onToggleHomeCollection,
 }: SettingsScreenProps) {
   const { t } = useTranslation();
   const { glass, accent, theme, isDark } = useTheme();
@@ -206,7 +217,7 @@ export function SettingsScreen({
   const renderItem = (item: SettingsItem) => {
     if (item.type === "divider") {
       return (
-        <div key={item.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "22px 4px 6px" }}>
+        <div key={item.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "22px 4px 16px" }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: theme.textFaint, textTransform: "uppercase", letterSpacing: "0.12em", flexShrink: 0 }}>
             {item.label}
           </span>
@@ -229,6 +240,96 @@ export function SettingsScreen({
 
     if (item.type === "toggle") {
       const val = settings[item.key] as boolean;
+
+      if (item.key === "show_home_collections") {
+        const allCols = [
+          ...gameCollections.map(c => ({ ...c, group: t("tabs.games") })),
+          ...appCollections.map(c => ({ ...c, group: t("tabs.apps") })),
+        ];
+        const subNavIdx = navigableItems.findIndex((n) => n.key === "show_home_collection_names");
+        const subFocused = settingsFocusIndex === subNavIdx && subNavIdx !== -1;
+        const subContainerStyle = {
+          marginBottom: 8,
+          background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+          borderRadius: "0 0 14px 14px",
+          border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
+          borderTop: "none",
+          overflow: "hidden" as const,
+        };
+        const parentStyle = {
+          ...glass,
+          borderRadius: val ? "14px 14px 0 0" : 14,
+          padding: "14px 20px",
+          marginBottom: val ? 0 : 8,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          cursor: "pointer",
+          transition: "all 0.15s ease",
+          ...(focused
+            ? { border: `1px solid ${accent.glow}0.6)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, background: isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)` }
+            : { border: "1px solid rgba(255,255,255,0.06)" }),
+        };
+        const rowBase = { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", cursor: "pointer", transition: "background 0.15s ease" } as const;
+        const dividerRow = (label: string) => (
+          <div style={{ padding: "10px 20px 4px", borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: theme.textFaint, textTransform: "uppercase" as const, letterSpacing: "0.12em" }}>{label}</span>
+          </div>
+        );
+        return (
+          <div key={item.key}>
+            <div ref={rowRef} style={parentStyle} onClick={() => updateSetting(item.key, !val)}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
+              <ToggleKnob value={val} />
+            </div>
+            {val && (
+              <div style={subContainerStyle}>
+                {/* Show Collection Names sub-toggle */}
+                <div
+                  ref={subFocused ? settingsFocusedRef : undefined}
+                  style={{ ...rowBase, background: subFocused ? (isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : "transparent", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}
+                  onClick={() => updateSetting("show_home_collection_names", !settings.show_home_collection_names)}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 500, color: theme.textDim }}>{t("settings.showHomeCollectionNames")}</span>
+                  <ToggleKnob value={settings.show_home_collection_names as boolean} />
+                </div>
+                {/* Per-collection visibility */}
+                {allCols.length === 0 ? (
+                  <div style={{ padding: "12px 20px", fontSize: 12, color: theme.textFaint, fontStyle: "italic" }}>
+                    {t("settings.noCollections", "No collections yet")}
+                  </div>
+                ) : (
+                  <>
+                    {gameCollections.length > 0 && dividerRow(t("tabs.games"))}
+                    {gameCollections.map((col) => {
+                      const visible = !homeHiddenCollections.includes(col.name);
+                      return (
+                        <div key={col.id} style={{ ...rowBase, background: "transparent", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}
+                          onClick={() => onToggleHomeCollection?.(col.name)}>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: theme.textDim }}>{col.name}</span>
+                          <ToggleKnob value={visible} />
+                        </div>
+                      );
+                    })}
+                    {appCollections.length > 0 && dividerRow(t("tabs.apps"))}
+                    {appCollections.map((col) => {
+                      const visible = !homeHiddenCollections.includes(col.name);
+                      return (
+                        <div key={col.id} style={{ ...rowBase, background: "transparent", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}
+                          onClick={() => onToggleHomeCollection?.(col.name)}>
+                          <span style={{ fontSize: 13, fontWeight: 500, color: theme.textDim }}>{col.name}</span>
+                          <ToggleKnob value={visible} />
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      }
+
       if (item.subItems) {
         return (
           <CollapsibleGroup
@@ -497,8 +598,9 @@ export function SettingsScreen({
 
   return (
     <div style={{ ...(wideLayout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" as const }}>
-      <div style={{ padding: "0 24px 160px" }}>
+      <div style={{ padding: `${sectionItems[0]?.type !== "divider" ? "22px" : "0"} 24px 160px` }}>
         {sectionItems.map(renderItem)}
+        <div ref={settingsBottomRef} />
       </div>
     </div>
   );

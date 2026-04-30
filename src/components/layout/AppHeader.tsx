@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { GamepadBtn } from "../GamepadBtn";
 import { SectionTabHeader } from "../SectionTabHeader";
@@ -20,6 +20,7 @@ interface Props {
   headerTabItems: TabItem[];
   headerActiveIndex: number;
   headerOnSelect: (i: number) => void;
+  headerRightActions?: ReactNode;
 }
 
 function RocketLogo({ accent }: { accent: { primary: string; light: string; dark: string } }) {
@@ -55,7 +56,7 @@ function widthConstraints(wideLayout: boolean, transparent: boolean, topMargin: 
 export function AppHeader({
   tab, tabs, switchTab,
   date, time, hasBattery, battery, batteryWidth, batteryColor, charging,
-  headerTabItems, headerActiveIndex, headerOnSelect,
+  headerTabItems, headerActiveIndex, headerOnSelect, headerRightActions,
 }: Props) {
   const { t } = useTranslation();
   const { glass, accent, theme, isDark } = useTheme();
@@ -132,6 +133,7 @@ export function AppHeader({
       textTabs={settings.tabbar_text_tabs}
       fontWeight={settings.tabbar_font_weight}
       labelCase={settings.tabbar_label_case}
+      rightActions={headerRightActions}
     />
   );
 
@@ -172,11 +174,12 @@ export function AppHeader({
           <div style={{
             ...widthConstraints(wideLayout, false, false),
             ...glass, borderRadius: 12,
+            marginTop: 16,
           }}>
             {subtab}
           </div>
         ) : (
-          subtab
+          <div style={{ marginTop: 16 }}>{subtab}</div>
         )
       )}
 
