@@ -80,6 +80,7 @@ export interface Settings {
   tabbar_label_case: TabbarLabelCase;
   show_home_collections: boolean;
   show_home_collection_names: boolean;
+  show_hero_cover: boolean;
   gamepad_platform: GamepadPlatform;
   gamepad_icons_colored: boolean;
   gamepad_icons_filled: boolean;

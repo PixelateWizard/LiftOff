@@ -7,6 +7,8 @@ export interface GamepadIconConfig {
   filled: boolean;
   /** When set, bumpers/triggers use this accent color instead of the default light grey */
   themeColor?: string;
+  /** When true, text on top of themeColor should be dark (for light accent colors) */
+  darkText?: boolean;
   btnSize?: "small" | "medium" | "large";
 }
 

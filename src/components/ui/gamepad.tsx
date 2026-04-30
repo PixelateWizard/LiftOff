@@ -46,9 +46,9 @@ const BUMPER_PATH = "M3 15 L25 15 Q27 15 27 13 L27 6 Q27 1 22 1 L6 1 Q1 1 1 6 L1
 
 function makeBumperBtn(label: string) {
   return function BumperBtn({ size = 16, colored: _c = false, filled = true, style }: GamepadIconProps) {
-    const { themeColor } = useGamepadIcons();
+    const { themeColor, darkText } = useGamepadIcons();
     const fillColor    = themeColor ?? "white";
-    const textColor    = themeColor ? "white" : NEUTRAL_TEXT;
+    const textColor    = themeColor ? (darkText ? "#1a1a1a" : "white") : NEUTRAL_TEXT;
     const outlineColor = themeColor ?? "white";
     const h = size;
     const w = Math.round(h * 28 / 16);
@@ -70,9 +70,9 @@ function makeBumperBtn(label: string) {
 
 function makeTriggerBtn(label: string) {
   return function TriggerBtn({ size = 28, colored: _c = false, filled = true, style }: GamepadIconProps) {
-    const { themeColor } = useGamepadIcons();
+    const { themeColor, darkText } = useGamepadIcons();
     const fillColor    = themeColor ?? "white";
-    const textColor    = themeColor ? "white" : NEUTRAL_TEXT;
+    const textColor    = themeColor ? (darkText ? "#1a1a1a" : "white") : NEUTRAL_TEXT;
     const outlineColor = themeColor ?? "white";
     const h = size;
     const w = Math.round(h * 22 / 28);
@@ -94,9 +94,9 @@ function makeTriggerBtn(label: string) {
 
 function makeSquareBtn(symbol: SymbolFn) {
   return function SquareBtn({ size = 20, colored: _c = false, filled = true, style }: GamepadIconProps) {
-    const { themeColor } = useGamepadIcons();
+    const { themeColor, darkText } = useGamepadIcons();
     const fillColor    = themeColor ?? "white";
-    const textColor    = themeColor ? "white" : NEUTRAL_TEXT;
+    const textColor    = themeColor ? (darkText ? "#1a1a1a" : "white") : NEUTRAL_TEXT;
     const outlineColor = themeColor ?? "white";
     const ic = filled ? textColor : outlineColor;
     return (
@@ -115,9 +115,9 @@ function makeSquareBtn(symbol: SymbolFn) {
 
 function makeCircleBtn(symbol: SymbolFn) {
   return function CircleBtn({ size = 24, colored: _c = false, filled = true, style }: GamepadIconProps) {
-    const { themeColor } = useGamepadIcons();
+    const { themeColor, darkText } = useGamepadIcons();
     const fillColor    = themeColor ?? "white";
-    const textColor    = themeColor ? "white" : NEUTRAL_TEXT;
+    const textColor    = themeColor ? (darkText ? "#1a1a1a" : "white") : NEUTRAL_TEXT;
     const outlineColor = themeColor ?? "white";
     const ic = filled ? textColor : outlineColor;
     return (
