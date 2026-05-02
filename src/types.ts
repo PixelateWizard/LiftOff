@@ -81,12 +81,14 @@ export interface Settings {
   show_home_collections: boolean;
   show_home_collection_names: boolean;
   show_hero_cover: boolean;
+  show_home_pinned: boolean;
   gamepad_platform: GamepadPlatform;
   gamepad_icons_colored: boolean;
   gamepad_icons_filled: boolean;
   gamepad_icons_theme_color: boolean;
   gamepad_btn_size: GamepadBtnSize;
   gamepad_auto_detect: boolean;
+  glass_ui: boolean;
 }
 
 /** Custom folder entry from the backend */
@@ -188,6 +190,14 @@ export interface SettingsCustomFoldersItem extends SettingsItemBase {
   type: "custom_folders";
 }
 
+export interface SettingsHomeCollectionItem {
+  key: string;
+  section: number;
+  label: string;
+  type: "home_collection_toggle";
+  colName: string;
+}
+
 export type SettingsItem =
   | SettingsDividerItem
   | SettingsToggleItem
@@ -202,4 +212,5 @@ export type SettingsItem =
   | SettingsIconPreviewItem
   | SettingsControllerTestItem
   | SettingsInfoItem
-  | SettingsCustomFoldersItem;
+  | SettingsCustomFoldersItem
+  | SettingsHomeCollectionItem;

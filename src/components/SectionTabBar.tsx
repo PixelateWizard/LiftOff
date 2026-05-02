@@ -52,7 +52,11 @@ export function SectionTabBar({
   style,
   labelCase = "default",
 }: SectionTabBarProps) {
-  const { theme, accent, isDark } = useTheme();
+  const { theme, accent, isDark, glassEnabled } = useTheme();
+  const activePillText = "rgba(20, 14, 10, 0.90)";
+  const activeTextColor = isDark
+    ? (accent.darkText ? activePillText : "white")
+    : (accent.lightDarkText ? activePillText : "white");
   const textTransform: CSSProperties["textTransform"] =
     labelCase === "uppercase" ? "uppercase" :
     labelCase === "ucfirst"   ? "capitalize" :
@@ -80,18 +84,27 @@ export function SectionTabBar({
     textTransform,
     background: active
       ? accent.primary
+      : glassEnabled
+      ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)")
       : isDark
       ? "rgba(255,255,255,0.06)"
       : "rgba(0,0,0,0.06)",
-    color: active ? (accent.darkText ? "#1a1a1a" : "white") : theme.textDim,
+    color: active ? activeTextColor : theme.textDim,
     border: `1px ${isDashed && !active ? "dashed" : "solid"} ${
       active
         ? accent.primary
+        : glassEnabled
+        ? (isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.70)")
         : isDark
         ? "rgba(255,255,255,0.1)"
         : "rgba(0,0,0,0.1)"
     }`,
-    boxShadow: active ? `0 2px 10px ${accent.glow}0.35)` : "none",
+    backdropFilter: !active && glassEnabled ? "blur(12px) saturate(150%)" : undefined,
+    boxShadow: active
+      ? `0 2px 10px ${accent.glow}0.35)`
+      : glassEnabled
+      ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)")
+      : "none",
     flexShrink: 0,
     whiteSpace: "nowrap",
   });
@@ -115,12 +128,22 @@ export function SectionTabBar({
 
   const tabs = (
     <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
-      {items.map((item, i) => (
-        <div key={i} onClick={() => onSelect?.(i)}
-          style={textTabs ? makeTextTabStyle(activeIndex === i) : makePillTabStyle(activeIndex === i, item.isDashed)}>
-          {item.label}
-        </div>
-      ))}
+      {items.map((item, i) => {
+        const active = activeIndex === i;
+        if (textTabs) {
+          return (
+            <div key={i} onClick={() => onSelect?.(i)} style={makeTextTabStyle(active)}>
+              {item.label}
+            </div>
+          );
+        }
+        const baseStyle = makePillTabStyle(active, item.isDashed);
+        return (
+          <div key={i} onClick={() => onSelect?.(i)} style={baseStyle}>
+            {item.label}
+          </div>
+        );
+      })}
     </div>
   );
 

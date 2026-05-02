@@ -1,7 +1,7 @@
 export const COLS = 6;
 export const GAME_COLS = 5;
 export const TABS = ["Home", "Games", "Apps", "Settings"] as const;
-export const APP_VERSION = "1.2.2";
+export const APP_VERSION = "2.0.0";
 export const GITHUB_REPO = "PixelateWizard/LiftOff";
 
 export const ACCENTS: Record<string, {
@@ -10,7 +10,7 @@ export const ACCENTS: Record<string, {
   ember:    { primary: "#e8714a", lightPrimary: "#e75a2b", light: "#ff9a6c", dark: "#c94f28", glow: "rgba(232,113,74,",  lightBg: "#f5e8e0", darkText: true, lightDarkText: false, },
   ocean:    { primary: "#4a9ee8", lightPrimary: "#438fd1", light: "#9dd0ff", dark: "#2878c9", glow: "rgba(74,158,232,",  lightBg: "#ddeeff", darkText: true, lightDarkText: false,
    },
-  neon:     { primary: "#4ae88a", lightPrimary: "#15803d", light: "#6cffaa", dark: "#28c96a", glow: "rgba(74,232,138,", lightBg: "#ddf5e8", darkText: true, lightDarkText: false,},
+  neon:     { primary: "#44d62c", lightPrimary: "#1a8a09", light: "#72f550", dark: "#2aa316", glow: "rgba(68,214,44,",  lightBg: "#e0f5d9", darkText: true, lightDarkText: false },
   rose:     { primary: "#E97CA9", lightPrimary: "#da4583", light: "#ff6caa", dark: "#c9286a", glow: "rgba(232,74,138,",  lightBg: "#f5dde8", darkText: true, lightDarkText: false, },
   midnight: { primary: "#8a4ae8", light: "#aa6cff", dark: "#6a28c9", glow: "rgba(138,74,232,",  lightBg: "#e8ddff" },
   nova:      { primary: "#e03030", light: "#ff6060", dark: "#b01010", glow: "rgba(224,48,48,",   lightBg: "#fde8e8", },
@@ -75,6 +75,7 @@ export const DEFAULT_SETTINGS = {
   show_home_collections: false, show_home_collection_names: true, show_hero_cover: true,
   gamepad_platform: "xbox", gamepad_icons_colored: false, gamepad_icons_filled: true, gamepad_icons_theme_color: false,
   gamepad_btn_size: "small", gamepad_auto_detect: true,
+  glass_ui: true,
 } as const;
 
 export type AccentKey = keyof typeof ACCENTS;

@@ -9,6 +9,9 @@ export interface ThemeValue {
   theme: ThemeColors;
   accent: AccentColors;
   glass: CSSProperties;
+  glassBar: CSSProperties;
+  settingsRowGlass: CSSProperties;
+  glassEnabled: boolean;
   appBg: string;
   bgGlow1: string;
   bgGlow2: string;

@@ -6,7 +6,7 @@ import { ControllerTestWidget } from "../components/ControllerTestWidget";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
 import { ACCENTS, APP_VERSION, GITHUB_REPO } from "../constants";
-import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder } from "../types";
+import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem } from "../types";
 
 // ── Section definitions ────────────────────────────────────────
 export const SETTINGS_SECTIONS = [
@@ -27,10 +27,12 @@ export function buildSettingsItems(t: TFunction, isDark: boolean): SettingsItem[
     { key: "accent",        section: 0, label: t("settings.accentColor"),  type: "accent" },
     { key: "theme",         section: 0, label: t("settings.theme"),         type: "cycle",  options: ["dark","light","system"] },
     { key: "stars_enabled", section: 0, label: isDark ? t("settings.backgroundStars") : t("settings.backgroundClouds"), type: "toggle" },
+    { key: "glass_ui",      section: 0, label: t("settings.glassUi"),                                                     type: "toggle" },
 
     D("home", 0),
     { key: "cinematic_home",         section: 0, label: t("settings.immersiveHome"),       type: "toggle" },
     { key: "show_hero_cover",        section: 0, label: t("settings.showHeroCover"),        type: "toggle" },
+    { key: "show_home_pinned",       section: 0, label: t("settings.showHomePinned"),       type: "toggle" },
     { key: "show_home_collections",  section: 0, label: t("settings.showHomeCollections"),  type: "toggle", subItems: [
       { key: "show_home_collection_names", label: t("settings.showHomeCollectionNames"), type: "toggle" },
     ]},
@@ -122,13 +124,27 @@ export function buildSettingsItems(t: TFunction, isDark: boolean): SettingsItem[
 export function getSectionNavigableItems(
   sectionIndex: number,
   allItems: SettingsItem[],
-  settings: Settings
-): (SettingsItem | SettingsSubItem)[] {
+  settings: Settings,
+  collections?: { gameCollections: { id: string; name: string }[]; appCollections: { id: string; name: string }[] }
+): (SettingsItem | SettingsSubItem | SettingsHomeCollectionItem)[] {
   return allItems
     .filter((i) => i.section === sectionIndex)
-    .flatMap((i): (SettingsItem | SettingsSubItem)[] =>
-      i.type === "toggle" && i.subItems && settings[i.key] ? [i, ...i.subItems] : [i]
-    )
+    .flatMap((i): (SettingsItem | SettingsSubItem | SettingsHomeCollectionItem)[] => {
+      if (i.type === "toggle" && i.key === "show_home_collections" && settings[i.key]) {
+        const colItems: SettingsHomeCollectionItem[] = [
+          ...(collections?.gameCollections ?? []).map(c => ({
+            key: `home_col_${c.id}`, section: i.section, label: c.name,
+            type: "home_collection_toggle" as const, colName: c.name,
+          })),
+          ...(collections?.appCollections ?? []).map(c => ({
+            key: `home_col_${c.id}`, section: i.section, label: c.name,
+            type: "home_collection_toggle" as const, colName: c.name,
+          })),
+        ];
+        return i.subItems ? [i, ...i.subItems, ...colItems] : [i, ...colItems];
+      }
+      return i.type === "toggle" && i.subItems && settings[i.key] ? [i, ...i.subItems] : [i];
+    })
     .filter(
       (i) =>
         i.type !== "divider" &&
@@ -187,18 +203,18 @@ export function SettingsScreen({
   onToggleHomeCollection,
 }: SettingsScreenProps) {
   const { t } = useTranslation();
-  const { glass, accent, theme, isDark } = useTheme();
+  const { settingsRowGlass, accent, theme, isDark, glassEnabled } = useTheme();
   const { settings, updateSetting } = useSettings();
   const wideLayout = settings.wide_layout ?? false;
 
   const ALL_ITEMS = buildSettingsItems(t, isDark);
   const sectionItems = ALL_ITEMS.filter((i) => i.section === settingsSection);
-  const navigableItems = getSectionNavigableItems(settingsSection, ALL_ITEMS, settings);
+  const navigableItems = getSectionNavigableItems(settingsSection, ALL_ITEMS, settings, { gameCollections, appCollections });
 
   const makeRowStyle = (focused: boolean, sub = false) => ({
-    ...glass,
+    ...settingsRowGlass,
     borderRadius: 14,
-    padding: "14px 20px",
+    padding: glassEnabled ? "12px 20px" : "14px 20px",
     marginBottom: sub ? 6 : 8,
     display: "flex",
     alignItems: "center",
@@ -207,11 +223,15 @@ export function SettingsScreen({
     transition: "all 0.15s ease",
     ...(focused && !sub
       ? {
-          border: `1px solid ${accent.glow}0.6)`,
-          boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`,
-          background: isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`,
+          border: `1px solid ${accent.glow}0.45)`,
+          backdropFilter: "blur(12px) saturate(115%) brightness(1.02)",
+          WebkitBackdropFilter: "blur(12px) saturate(115%) brightness(1.02)",
+          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.14), 0 0 0 1px ${accent.glow}0.12), 0 8px 22px ${accent.glow}0.10), 0 10px 28px rgba(0,0,0,0.28)`,
+          background: isDark
+            ? "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.032))"
+            : `${accent.glow}0.05)`,
         }
-      : { border: "1px solid rgba(255,255,255,0.06)" }),
+      : {}),
   });
 
   const renderItem = (item: SettingsItem) => {
@@ -221,7 +241,7 @@ export function SettingsScreen({
           <span style={{ fontSize: 10, fontWeight: 700, color: theme.textFaint, textTransform: "uppercase", letterSpacing: "0.12em", flexShrink: 0 }}>
             {item.label}
           </span>
-          <div style={{ flex: 1, height: 1, background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)" }} />
+          <div style={{ flex: 1, height: 1, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" }} />
         </div>
       );
     }
@@ -257,9 +277,9 @@ export function SettingsScreen({
           overflow: "hidden" as const,
         };
         const parentStyle = {
-          ...glass,
+          ...settingsRowGlass,
           borderRadius: val ? "14px 14px 0 0" : 14,
-          padding: "14px 20px",
+          padding: glassEnabled ? "12px 20px" : "14px 20px",
           marginBottom: val ? 0 : 8,
           display: "flex",
           alignItems: "center",
@@ -267,8 +287,8 @@ export function SettingsScreen({
           cursor: "pointer",
           transition: "all 0.15s ease",
           ...(focused
-            ? { border: `1px solid ${accent.glow}0.6)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, background: isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)` }
-            : { border: "1px solid rgba(255,255,255,0.06)" }),
+            ? { border: `1px solid ${accent.glow}0.45)`, backdropFilter: "blur(12px) saturate(115%) brightness(1.02)", WebkitBackdropFilter: "blur(12px) saturate(115%) brightness(1.02)", boxShadow: `inset 0 1px 0 rgba(255,255,255,0.14), 0 0 0 1px ${accent.glow}0.12), 0 8px 22px ${accent.glow}0.10), 0 10px 28px rgba(0,0,0,0.28)`, background: isDark ? "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.032))" : `${accent.glow}0.05)` }
+            : {}),
         };
         const rowBase = { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px", cursor: "pointer", transition: "background 0.15s ease" } as const;
         const dividerRow = (label: string) => (
@@ -303,8 +323,12 @@ export function SettingsScreen({
                     {gameCollections.length > 0 && dividerRow(t("tabs.games"))}
                     {gameCollections.map((col) => {
                       const visible = !homeHiddenCollections.includes(col.name);
+                      const colNavIdx = navigableItems.findIndex(n => n.type === "home_collection_toggle" && (n as any).colName === col.name);
+                      const colFocused = colNavIdx !== -1 && settingsFocusIndex === colNavIdx;
                       return (
-                        <div key={col.id} style={{ ...rowBase, background: "transparent", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}
+                        <div key={col.id}
+                          ref={colFocused ? settingsFocusedRef : undefined}
+                          style={{ ...rowBase, background: colFocused ? (isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : "transparent", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}
                           onClick={() => onToggleHomeCollection?.(col.name)}>
                           <span style={{ fontSize: 13, fontWeight: 500, color: theme.textDim }}>{col.name}</span>
                           <ToggleKnob value={visible} />
@@ -314,8 +338,12 @@ export function SettingsScreen({
                     {appCollections.length > 0 && dividerRow(t("tabs.apps"))}
                     {appCollections.map((col) => {
                       const visible = !homeHiddenCollections.includes(col.name);
+                      const colNavIdx = navigableItems.findIndex(n => n.type === "home_collection_toggle" && (n as any).colName === col.name);
+                      const colFocused = colNavIdx !== -1 && settingsFocusIndex === colNavIdx;
                       return (
-                        <div key={col.id} style={{ ...rowBase, background: "transparent", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}
+                        <div key={col.id}
+                          ref={colFocused ? settingsFocusedRef : undefined}
+                          style={{ ...rowBase, background: colFocused ? (isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : "transparent", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}
                           onClick={() => onToggleHomeCollection?.(col.name)}>
                           <span style={{ fontSize: 13, fontWeight: 500, color: theme.textDim }}>{col.name}</span>
                           <ToggleKnob value={visible} />
@@ -543,14 +571,14 @@ export function SettingsScreen({
 
     if (item.type === "icon_preview")
       return (
-        <div key={item.key} style={{ ...glass, borderRadius: 14, padding: "16px 20px", marginBottom: 8, border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
+        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: 14, padding: "14px 20px", marginBottom: 8 }}>
           <GamepadIconPreview />
         </div>
       );
 
     if (item.type === "controller_test")
       return (
-        <div key={item.key} style={{ ...glass, borderRadius: 14, padding: "14px 20px", marginBottom: 8, border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
+        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: 14, padding: "12px 20px", marginBottom: 8 }}>
           <ControllerTestWidget />
         </div>
       );
@@ -581,7 +609,7 @@ export function SettingsScreen({
         );
 
       return (
-        <div key={item.key} ref={rowRef} style={{ ...glass, borderRadius: 14, padding: "14px 20px", marginBottom: 8, border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`, boxShadow: focused ? `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)` : "none" }}>
+        <div key={item.key} ref={rowRef} style={{ ...settingsRowGlass, borderRadius: 14, padding: "12px 20px", marginBottom: 8, ...(focused ? { border: `1px solid ${accent.glow}0.45)`, backdropFilter: "blur(12px) saturate(115%) brightness(1.02)", WebkitBackdropFilter: "blur(12px) saturate(115%) brightness(1.02)", boxShadow: `inset 0 1px 0 rgba(255,255,255,0.14), 0 0 0 1px ${accent.glow}0.12), 0 8px 22px ${accent.glow}0.10), 0 10px 28px rgba(0,0,0,0.28)`, background: isDark ? "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.032))" : `${accent.glow}0.05)` } : {}) }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: customFolders.length > 0 ? 4 : 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: focused ? accent.primary : theme.textDim, textTransform: "uppercase", letterSpacing: "0.08em" }}>{item.label}</div>
             <span style={{ fontSize: 10, color: theme.textFaint, cursor: "pointer" }} onClick={onOpenFolderManager}>↵ {t("grid.manage")}</span>
