@@ -76,7 +76,7 @@
     "theme": "Theme",
     "backgroundStars": "Background Stars",
     "backgroundClouds": "Background Clouds",
-    "glassUi": "Glass UI",
+    "surfaceStyle": "Surface Style",
     "wideLayout": "Wide Layout",
     "transparentBars": "Transparent Bars",
     "transparentTopbar": "Top Bar",
@@ -187,7 +187,11 @@
       "large": "Large",
       "thin": "Light",
       "bold": "Bold",
-      "tabbar": "Tab Bar"
+      "tabbar": "Tab Bar",
+      "glass": "Glass",
+      "aero": "Aero",
+      "material": "Material",
+      "clear": "Clear"
     }
   },
   "home": {

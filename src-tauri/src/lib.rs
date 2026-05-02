@@ -166,8 +166,8 @@ pub struct Settings {
     pub gamepad_auto_detect: bool,
     #[serde(default = "default_topbar_show_bumpers")]
     pub topbar_show_bumpers: bool,
-    #[serde(default = "default_true")]
-    pub glass_ui: bool,
+    #[serde(default = "default_surface_style")]
+    pub surface_style: String,
 }
 
 fn default_language()             -> String { "auto".to_string() }
@@ -181,6 +181,7 @@ fn default_bottombar_alignment()  -> String { "left".to_string() }
 fn default_gamepad_platform()     -> String { "xbox".to_string() }
 fn default_gamepad_btn_size()     -> String { "small".to_string() }
 fn default_topbar_show_bumpers()  -> bool   { false }
+fn default_surface_style()        -> String { "glass".to_string() }
 
 impl Default for Settings {
     fn default() -> Self {
@@ -229,7 +230,7 @@ impl Default for Settings {
             gamepad_btn_size: "small".to_string(),
             gamepad_auto_detect: true,
             topbar_show_bumpers: false,
-            glass_ui: true,
+            surface_style: "glass".to_string(),
         }
     }
 }

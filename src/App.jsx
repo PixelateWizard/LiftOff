@@ -1280,12 +1280,38 @@ export default function App() {
     const glow = (!isDark && base.lightGlow) ? base.lightGlow : resolved.glow;
     return { ...resolved, darkText, glow };
   }, [settings.accent, isDark]);
-  const appBg  = isDark ? "#100a06" : accent.lightBg;
+  const surfaceStyle = settings.surface_style ?? "glass";
+  const glassEnabled = surfaceStyle !== "clear";
+  const isMaterial = surfaceStyle === "material";
+  const materialTokens = useMemo(() => ({
+    "--material-bg-primary": isDark ? "#141312" : `color-mix(in srgb, ${accent.lightBg} 86%, #f7f4ef 14%)`,
+    "--material-bg-secondary": isDark ? "#1b1917" : `color-mix(in srgb, ${accent.lightBg} 72%, #ffffff 28%)`,
+    "--material-shadow-low": isDark
+      ? "0 6px 18px rgba(0,0,0,0.22), 0 14px 38px rgba(0,0,0,0.16)"
+      : "0 5px 18px rgba(18,18,20,0.075), 0 14px 36px rgba(18,18,20,0.052)",
+    "--material-shadow-medium": isDark
+      ? "0 10px 28px rgba(0,0,0,0.28), 0 22px 56px rgba(0,0,0,0.20)"
+      : "0 9px 28px rgba(18,18,20,0.105), 0 22px 54px rgba(18,18,20,0.075)",
+    "--material-shadow-high": isDark
+      ? "0 14px 36px rgba(0,0,0,0.34), 0 32px 72px rgba(0,0,0,0.24)"
+      : "0 13px 36px rgba(18,18,20,0.13), 0 30px 72px rgba(18,18,20,0.09)",
+    "--material-shadow-pressed": isDark
+      ? "0 4px 14px rgba(0,0,0,0.22), 0 10px 28px rgba(0,0,0,0.14)"
+      : "0 4px 14px rgba(18,18,20,0.075), 0 10px 28px rgba(18,18,20,0.045)",
+    "--material-elevation-1": isDark ? "#1a1816" : `color-mix(in srgb, ${accent.lightBg} 58%, #ffffff 42%)`,
+    "--material-elevation-2": isDark ? "#201d1a" : `color-mix(in srgb, ${accent.lightBg} 36%, #ffffff 64%)`,
+    "--material-elevation-3": isDark ? "#26221f" : "#ffffff",
+    "--material-inset-bg": isDark ? "#24221f" : `color-mix(in srgb, ${accent.lightBg} 82%, #efe7dc 18%)`,
+    "--material-inset-row": isDark ? "#282620" : `color-mix(in srgb, ${accent.lightBg} 68%, #fff8ee 32%)`,
+    "--material-inset-row-active": isDark ? "#2d2924" : `color-mix(in srgb, ${accent.lightBg} 42%, #ffffff 58%)`,
+    "--material-inset-top-edge": isDark ? "rgba(255,255,255,0.055)" : "rgba(18,18,20,0.075)",
+    "--material-inset-bottom-edge": isDark ? "rgba(255,255,255,0.025)" : "rgba(255,255,255,0.62)",
+    "--material-border-subtle": isDark ? "rgba(255,255,255,0.025)" : "rgba(18,18,20,0.03)",
+  }), [isDark, accent.lightBg]);
+  const appBg  = isMaterial ? materialTokens["--material-bg-primary"] : (isDark ? "#100a06" : accent.lightBg);
 
-  const bgGlow1 = `${accent.glow}${isDark ? "0.07)" : "0.08)"}`;
-  const bgGlow2 = `${accent.glow}${isDark ? "0.05)" : "0.06)"}`;
-
-  const glassEnabled = settings.glass_ui !== false;
+  const bgGlow1 = isMaterial ? "transparent" : `${accent.glow}${isDark ? "0.07)" : "0.08)"}`;
+  const bgGlow2 = isMaterial ? "transparent" : `${accent.glow}${isDark ? "0.05)" : "0.06)"}`;
   const activeTextColor = isDark
     ? (accent.darkText ? "rgba(20, 14, 10, 0.90)" : "white")
     : (accent.lightDarkText ? "rgba(20, 14, 10, 0.90)" : "white");
@@ -1301,6 +1327,27 @@ export default function App() {
 
   const glass = useMemo(() => {
     if (!glassEnabled) return _flatGlass;
+    if (surfaceStyle === "material") return {
+      background:           isDark ? "var(--material-elevation-2)" : "var(--material-elevation-2)",
+      backdropFilter:       undefined,
+      WebkitBackdropFilter: undefined,
+      border:               "1px solid var(--material-border-subtle)",
+      boxShadow:            "var(--material-shadow-low)",
+    };
+    if (surfaceStyle === "aero") return {
+      // Sharp-knee gradient: bright at top edge, rapid falloff — light striking from above
+      background:           isDark
+        ? "linear-gradient(180deg, rgba(255,255,255,0.36) 0%, rgba(255,255,255,0.16) 12%, rgba(255,255,255,0.08) 100%)"
+        : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.76) 12%, rgba(255,255,255,0.58) 100%)",
+      backdropFilter:       isDark ? "blur(14px) saturate(160%) brightness(1.06)" : "blur(16px) saturate(140%) brightness(1.02)",
+      WebkitBackdropFilter: isDark ? "blur(14px) saturate(160%) brightness(1.06)" : "blur(16px) saturate(140%) brightness(1.02)",
+      // Thin neutral rim; accent ring sits just outside via box-shadow
+      border:               `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.85)"}`,
+      // Tight sub-specular (4px) fades quickly from the top edge; light shadow adds depth in light mode
+      boxShadow:            isDark
+        ? `inset 0 1px 0 rgba(255,255,255,0.60), inset 0 2px 4px rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.24), inset 1px 0 0 rgba(255,255,255,0.08), 0 0 0 1px ${accent.glow}0.12), 0 8px 28px rgba(0,0,0,0.30)`
+        : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 2px 8px rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.08), 0 0 0 1px ${accent.glow}0.10), 0 6px 20px rgba(0,0,0,0.14)`,
+    };
     return {
       background:           isDark
         ? "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.06) 100%)"
@@ -1312,13 +1359,32 @@ export default function App() {
         ? "inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.22), 0 10px 32px rgba(0,0,0,0.35)"
         : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
     };
-  }, [isDark, glassEnabled, _flatGlass]);
+  }, [isDark, glassEnabled, surfaceStyle, accent.glow, _flatGlass]);
 
   // Lighter glass variant for top/bottom bars — less visual weight than cards.
   // Dark mode layers a dark scrim over the white tint so text stays readable over
   // bright/colorful wallpaper without the bar feeling like a solid slab.
   const glassBar = useMemo(() => {
     if (!glassEnabled) return _flatGlass;
+    if (surfaceStyle === "material") return {
+      background:           isDark ? "var(--material-elevation-3)" : "var(--material-elevation-3)",
+      backdropFilter:       undefined,
+      WebkitBackdropFilter: undefined,
+      border:               "1px solid var(--material-border-subtle)",
+      boxShadow:            "var(--material-shadow-high)",
+    };
+    if (surfaceStyle === "aero") return {
+      // Hero Aero surface: strongest edge reflectivity, tighter knee, stronger specular than cards/rows
+      background:           isDark
+        ? "linear-gradient(180deg, rgba(0,0,0,0.14), rgba(0,0,0,0.05)), linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.14) 20%, rgba(255,255,255,0.07) 100%)"
+        : "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.82) 15%, rgba(255,255,255,0.60) 100%)",
+      backdropFilter:       isDark ? "blur(12px) saturate(130%) brightness(0.91)" : "blur(16px) saturate(140%) brightness(1.02)",
+      WebkitBackdropFilter: isDark ? "blur(12px) saturate(130%) brightness(0.91)" : "blur(16px) saturate(140%) brightness(1.02)",
+      border:               `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.85)"}`,
+      boxShadow:            isDark
+        ? `inset 0 1px 0 rgba(255,255,255,0.52), inset 0 2px 7px rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.18), 0 0 0 1px ${accent.glow}0.14), 0 4px 16px rgba(0,0,0,0.22)`
+        : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 0 0 1px ${accent.glow}0.10), 0 4px 16px rgba(0,0,0,0.10)`,
+    };
     return {
       background:           isDark
         ? "linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.10)), linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.045))"
@@ -1330,7 +1396,7 @@ export default function App() {
         ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.16), 0 6px 20px rgba(0,0,0,0.25)"
         : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
     };
-  }, [isDark, glassEnabled, _flatGlass]);
+  }, [isDark, glassEnabled, surfaceStyle, accent.glow, _flatGlass]);
 
   // Ultra-light glass for settings rows — quieter than cards, accent-tinted.
   // Uses accent.glow (already "rgba(r,g,b,") so tint is zero-cost and theme-aware.
@@ -1338,6 +1404,26 @@ export default function App() {
     if (!glassEnabled) return _flatGlass;
     const tintTop = `${accent.glow}0.025)`;
     const tintBot = `${accent.glow}0.010)`;
+    if (surfaceStyle === "material") return {
+      background:           isDark ? "var(--material-elevation-2)" : "var(--material-elevation-2)",
+      backdropFilter:       undefined,
+      WebkitBackdropFilter: undefined,
+      border:               "1px solid var(--material-border-subtle)",
+      boxShadow:            "var(--material-shadow-low)",
+    };
+    if (surfaceStyle === "aero") return {
+      // Rows: tight-knee neutral gradient, lighter than header. Accent only on outer ring.
+      background:           isDark
+        ? "linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.07) 15%, rgba(255,255,255,0.04) 100%)"
+        : "linear-gradient(180deg, rgba(255,255,255,0.90) 0%, rgba(255,255,255,0.74) 12%, rgba(255,255,255,0.56) 100%)",
+      backdropFilter:       isDark ? "blur(8px) saturate(115%) brightness(0.97)" : "blur(16px) saturate(140%) brightness(1.02)",
+      WebkitBackdropFilter: isDark ? "blur(8px) saturate(115%) brightness(0.97)" : "blur(16px) saturate(140%) brightness(1.02)",
+      border:               `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`,
+      // Micro top specular + dark bottom edge + faint accent ring
+      boxShadow:            isDark
+        ? `inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.08), 0 0 0 1px ${accent.glow}0.10), 0 1px 4px rgba(0,0,0,0.08)`
+        : "inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 4px 10px rgba(0,0,0,0.10)",
+    };
     return {
       background:           isDark
         ? `linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.022)), linear-gradient(180deg, ${tintTop}, ${tintBot})`
@@ -1349,12 +1435,17 @@ export default function App() {
         ? "inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 6px rgba(0,0,0,0.12)"
         : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
     };
-  }, [isDark, glassEnabled, accent.glow, _flatGlass]);
+  }, [isDark, glassEnabled, surfaceStyle, accent.glow, _flatGlass]);
 
-  // Backdrop filter for app cards that override glass — falls back to simple blur when glass is off.
-  const cardBackdropFilter = glassEnabled
-    ? (isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)")
-    : (isDark ? "blur(16px)" : "blur(28px)");
+  const cardBackdropFilter = !glassEnabled
+    ? (isDark ? "blur(16px)" : "blur(28px)")
+    : surfaceStyle === "material"
+      ? undefined
+    : surfaceStyle === "aero"
+      ? (isDark ? "blur(12px) saturate(140%) brightness(1.05)" : "blur(14px) saturate(140%) brightness(1.02)")
+      : (isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)");
+  const materialFocusShadow = "var(--material-shadow-medium)";
+  const materialRaisedShadow = "var(--material-shadow-high)";
 
   const lastLaunchTime = useRef(0);
   const _triggerLaunchImpl = (app, rec) => {
@@ -2761,7 +2852,7 @@ export default function App() {
         </div>
       );
     }
-    return <div style={{ width: size, height: size, borderRadius: 10, background: `${accent.glow}0.25)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45, fontWeight: 700, color: accent.primary }}>{app.name.charAt(0).toUpperCase()}</div>;
+    return <div style={{ width: size, height: size, borderRadius: 10, background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.25)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45, fontWeight: 700, color: accent.primary }}>{app.name.charAt(0).toUpperCase()}</div>;
   };
 
   // Pin badge shown on cards
@@ -2775,7 +2866,7 @@ export default function App() {
         background: `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`,
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: small ? 9 : 11,
-        boxShadow: `0 2px 8px ${accent.glow}0.5)`,
+        boxShadow: surfaceStyle === "material" ? "0 3px 10px rgba(0,0,0,0.22)" : `0 2px 8px ${accent.glow}0.5)`,
         zIndex: 2,
       }}>📌</div>
     );
@@ -2787,8 +2878,8 @@ export default function App() {
       <div ref={cardRef} onClick={onClick} onDoubleClick={onDoubleClick}
         onContextMenu={onRightClick ? (e) => { e.preventDefault(); onRightClick(e, app); } : undefined}
         style={focused
-          ? { ...glass, border: `1px solid ${accent.glow}0.6)`, borderRadius: 16, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "all 0.15s ease", boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 40px ${accent.glow}0.2)`, transform: "scale(1.04)" }
-          : { ...glass, border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "all 0.15s ease" }
+          ? { ...glass, border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: 16, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease", boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 40px ${accent.glow}0.2)`, transform: "scale(1.04) translateY(-1px)" }
+          : { ...glass, border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)", borderRadius: 16, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease" }
         }
       >
         {art
@@ -2799,7 +2890,7 @@ export default function App() {
           <span style={{ fontSize: 12, fontWeight: 600, color: "white", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</span>
         </div>
         <PinBadge isPinned={isPinned} />
-        {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${accent.glow}0.6)`, borderRadius: 16, pointerEvents: "none" }} />}
+        {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: 16, pointerEvents: "none" }} />}
       </div>
     );
   };
@@ -2809,11 +2900,11 @@ export default function App() {
     const layout     = kbNumMode ? KB_NUMS : KB_ALPHA;
     const rowOffsets = kbNumMode ? [0, 0, 0] : [0, 0.5, 1];
     return (
-      <div style={{ ...glass, borderRadius: "20px 20px 0 0", padding: "12px 24px 16px", borderBottom: "none", borderColor: `${accent.glow}0.25)` }}>
+      <div style={{ ...glass, borderRadius: "20px 20px 0 0", padding: "12px 24px 16px", borderBottom: "none", borderColor: surfaceStyle === "material" ? "var(--material-border-subtle)" : `${accent.glow}0.25)` }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase",
-            color: accent.primary, background: `${accent.glow}0.12)`, borderRadius: 20,
-            padding: "3px 14px", border: `1px solid ${accent.glow}0.25)` }}>
+            color: accent.primary, background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.12)`, borderRadius: 20,
+            padding: "3px 14px", border: `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : accent.glow + "0.25)"}` }}>
             {kbNumMode ? t('keyboard.numbersAndSymbols') : t('keyboard.letters')}
           </div>
         </div>
@@ -2833,10 +2924,10 @@ export default function App() {
                       : isDark ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.8)",
                     color: isActive ? (accent.darkText ? "#1a1a1a" : "white") : theme.text,
                     border: isActive
-                      ? `1px solid ${accent.glow}0.7)`
+                      ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.7)"}`
                       : `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}`,
                     boxShadow: isActive
-                      ? `0 0 16px ${accent.glow}0.5), 0 4px 10px rgba(0,0,0,0.3)`
+                      ? (surfaceStyle === "material" ? "var(--material-shadow-pressed)" : `0 0 16px ${accent.glow}0.5), 0 4px 10px rgba(0,0,0,0.3)`)
                       : isDark ? "none" : "0 1px 3px rgba(0,0,0,0.06)",
                     transform: isActive ? "scale(1.16)" : "scale(1)",
                   }}>
@@ -2898,6 +2989,36 @@ export default function App() {
           : heroStatic[heroGame.id])
       : null;
     const heroFocused = focusSec === "hero";
+    const materialHero = surfaceStyle === "material";
+    const materialHeroText = isDark ? "#fffefd" : "#18110b";
+    const materialHeroDimText = isDark ? "rgba(255,250,245,0.72)" : "rgba(24,17,11,0.66)";
+    const heroSideOverlay = materialHero
+      ? (isDark
+          ? (heroBanner
+              ? "linear-gradient(to right, rgba(8,6,5,0.78) 0%, rgba(8,6,5,0.44) 34%, rgba(8,6,5,0.07) 70%, transparent 100%)"
+              : "linear-gradient(to right, rgba(8,6,5,0.84) 0%, rgba(8,6,5,0.48) 38%, rgba(8,6,5,0.10) 76%, transparent 100%)")
+          : (heroBanner
+              ? `linear-gradient(to right, color-mix(in srgb, ${accent.lightBg} 52%, transparent 48%) 0%, color-mix(in srgb, ${accent.lightBg} 24%, transparent 76%) 42%, transparent 100%)`
+              : `linear-gradient(to right, color-mix(in srgb, ${accent.lightBg} 58%, transparent 42%) 0%, color-mix(in srgb, ${accent.lightBg} 30%, transparent 70%) 46%, transparent 100%)`))
+      : heroBanner
+        ? (isDark
+            ? "linear-gradient(to right, rgba(6,3,1,0.82) 0%, rgba(6,3,1,0.55) 45%, rgba(6,3,1,0.18) 100%)"
+            : `linear-gradient(to right, ${appBg}cc 0%, ${appBg}55 40%, transparent 100%)`)
+        : (isDark
+            ? "linear-gradient(to right, rgba(8,4,2,0.88) 0%, rgba(8,4,2,0.5) 50%, rgba(8,4,2,0.2) 100%)"
+            : `linear-gradient(to right, ${appBg}dd 0%, ${appBg}66 45%, transparent 100%)`);
+    const heroBottomOverlay = materialHero
+      ? (isDark
+          ? "linear-gradient(to bottom, transparent 0%, rgba(10,8,7,0.48) 100%)"
+          : `linear-gradient(to bottom, transparent 0%, color-mix(in srgb, ${accent.lightBg} 34%, transparent 66%) 100%)`)
+      : isDark
+        ? "linear-gradient(to bottom, transparent, rgba(6,3,1,0.95))"
+        : `linear-gradient(to bottom, transparent, ${appBg}bb)`;
+    const heroTextAnchorOverlay = materialHero
+      ? (isDark
+          ? "radial-gradient(ellipse 46% 42% at 16% 72%, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.18) 34%, transparent 68%)"
+          : "radial-gradient(ellipse 46% 42% at 16% 72%, rgba(39,27,18,0.18) 0%, rgba(39,27,18,0.09) 34%, transparent 68%)")
+      : "transparent";
 
     return (
       <div style={{ display: "flex", flexDirection: "column", padding: settings.cinematic_home ? "0" : "16px 24px 0", ...(settings.wide_layout || settings.cinematic_home ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box",
@@ -2908,10 +3029,10 @@ export default function App() {
             ? { position: "fixed", inset: 0, zIndex: 0 }
             : { position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: 20, flexShrink: 0 }),
           overflow: "hidden", display: "flex", flexDirection: "column",
-          border: settings.cinematic_home ? "none" : heroFocused ? `1px solid ${accent.glow}0.5)` : `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-          boxShadow: settings.cinematic_home ? "none" : heroFocused ? `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)` : "0 4px 24px rgba(0,0,0,0.15)",
+          border: settings.cinematic_home ? "none" : heroFocused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.5)"}` : `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+          boxShadow: settings.cinematic_home ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-          background: isDark ? "#0a0502" : appBg,
+          background: materialHero ? appBg : isDark ? "#0a0502" : appBg,
         }}>
           <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: settings.cinematic_home ? 0 : 20, overflow: "hidden" }}>
             {heroGames.map((game, idx) => {
@@ -2932,7 +3053,7 @@ export default function App() {
                     ? (staticBanner
                         ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
                         : fallback
-                          ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: "scale(1.08)" }} />
+                          ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(10px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
                           : <img src={`/assets/liftoff_hero_${settings.accent}.svg`} alt="" style={{ ...coverStyle }} />)
                     : <div style={{ width: "100%", height: "100%" }} />
                   }
@@ -2957,18 +3078,9 @@ export default function App() {
                 </div>
               );
             })}
-            <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroBanner
-              ? (isDark
-                  ? "linear-gradient(to right, rgba(6,3,1,0.82) 0%, rgba(6,3,1,0.55) 45%, rgba(6,3,1,0.18) 100%)"
-                  : `linear-gradient(to right, ${appBg}cc 0%, ${appBg}55 40%, transparent 100%)`)
-              : (isDark
-                  ? "linear-gradient(to right, rgba(8,4,2,0.88) 0%, rgba(8,4,2,0.5) 50%, rgba(8,4,2,0.2) 100%)"
-                  : `linear-gradient(to right, ${appBg}dd 0%, ${appBg}66 45%, transparent 100%)`)
-            }} />
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "55%", zIndex: 2, background: isDark
-              ? "linear-gradient(to bottom, transparent, rgba(6,3,1,0.95))"
-              : `linear-gradient(to bottom, transparent, ${appBg}bb)`
-            }} />
+            <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroSideOverlay }} />
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: materialHero ? "42%" : "55%", zIndex: 2, background: heroBottomOverlay }} />
+            {materialHero && <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroTextAnchorOverlay }} />}
           </div>
 
           {/* Pinned bar — hidden in cinematic mode, shown separately below hero */}
@@ -2985,15 +3097,15 @@ export default function App() {
                       style={{
                         display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
                         flexShrink: 0, cursor: "pointer", borderRadius: 10, transition: "all 0.15s ease",
-                        background: focused ? accent.primary : glassEnabled ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)") : "rgba(8,4,2,0.55)",
-                        backdropFilter: glassEnabled ? "blur(14px) saturate(150%)" : "blur(12px)", WebkitBackdropFilter: glassEnabled ? "blur(14px) saturate(150%)" : "blur(12px)",
-                        border: `1px solid ${focused ? accent.primary : glassEnabled ? (isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.70)") : "rgba(255,255,255,0.14)"}`,
-                        boxShadow: focused ? `0 2px 12px ${accent.glow}0.6)` : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none",
+                        background: focused ? accent.primary : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "aero" ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.10) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.70) 100%)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)") : "rgba(8,4,2,0.55)",
+                        backdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(12px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(12px)",
+                        border: `1px solid ${focused ? accent.primary : surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : surfaceStyle === "aero" ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.70)") : "rgba(255,255,255,0.14)"}`,
+                        boxShadow: focused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 3px 14px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-medium)" : `0 2px 12px ${accent.glow}0.6)`) : surfaceStyle === "aero" ? (isDark ? `inset 0 1px 0 rgba(255,255,255,0.42), inset 0 -1px 0 rgba(0,0,0,0.10), 0 0 0 1px ${accent.glow}0.12)` : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 0 0 1px ${accent.glow}0.10)`) : surfaceStyle === "material" ? "var(--material-shadow-low)" : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none",
                       }}>
                       {art
                         ? <img src={art} alt={app.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
                         : <AppIcon app={app} size={24} />}
-                      <div style={{ fontSize: 12, fontWeight: 500, color: focused ? activeTextColor : "rgba(245,237,232,0.88)", whiteSpace: "nowrap", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: focused ? activeTextColor : surfaceStyle === "material" ? (isDark ? "rgba(255,250,245,0.84)" : "rgba(31,22,15,0.82)") : "rgba(245,237,232,0.88)", whiteSpace: "nowrap", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
                     </div>
                   );
                 })}
@@ -3022,16 +3134,16 @@ export default function App() {
                 <div style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: accent.primary, marginBottom: 6, fontWeight: 600 }}>
                   {heroIdx === 0 ? t('home.resumePlaying') : t('home.recentlyPlayed')}
                 </div>
-                <div style={{ fontSize: "clamp(22px, 3.2vw, 48px)", fontWeight: 700, color: theme.text, marginBottom: 4, lineHeight: 1.05, textShadow: isDark ? "0 2px 20px rgba(0,0,0,0.8)" : "none" }}>{heroGame.name}</div>
-                <div style={{ fontSize: 11, color: theme.textDim, marginBottom: 16 }}>{t('home.game')}</div>
+                <div style={{ fontSize: "clamp(22px, 3.2vw, 48px)", fontWeight: 700, color: materialHero ? materialHeroText : theme.text, marginBottom: 4, lineHeight: 1.05, textShadow: materialHero ? (isDark ? "0 2px 14px rgba(0,0,0,0.64)" : "0 1px 0 rgba(255,255,255,0.32), 0 2px 10px rgba(39,27,18,0.12)") : isDark ? "0 2px 20px rgba(0,0,0,0.8)" : "none" }}>{heroGame.name}</div>
+                <div style={{ fontSize: 11, color: materialHero ? materialHeroDimText : theme.textDim, marginBottom: 16 }}>{t('home.game')}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div onClick={() => triggerLaunch(heroGame, recentRef.current)}
                     style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 24px", borderRadius: 10, cursor: "pointer", transition: "all 0.15s ease", fontWeight: 600, fontSize: 14,
-                      background: heroFocused ? accent.primary : glassEnabled ? (isDark ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)",
-                      color: heroFocused ? activeTextColor : theme.text,
-                      border: `1px solid ${heroFocused ? accent.primary : glassEnabled ? (isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`,
-                      backdropFilter: glassEnabled ? "blur(14px) saturate(150%)" : "blur(8px)", WebkitBackdropFilter: glassEnabled ? "blur(14px) saturate(150%)" : "blur(8px)",
-                      boxShadow: heroFocused ? `0 4px 24px ${accent.glow}0.5)` : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none",
+                      background: heroFocused ? accent.primary : surfaceStyle === "material" ? "var(--material-elevation-3)" : surfaceStyle === "aero" ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.11) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.72) 100%)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)",
+                      color: heroFocused ? activeTextColor : materialHero ? materialHeroText : theme.text,
+                      border: `1px solid ${heroFocused ? accent.primary : surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : surfaceStyle === "aero" ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`,
+                      backdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(8px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(8px)",
+                      boxShadow: heroFocused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 4px 24px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-high)" : `0 4px 24px ${accent.glow}0.5)`) : surfaceStyle === "aero" ? (isDark ? `inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -1px 0 rgba(0,0,0,0.12), 0 0 0 1px ${accent.glow}0.12)` : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 0 0 1px ${accent.glow}0.10)`) : surfaceStyle === "material" ? (isDark ? "0 8px 22px rgba(0,0,0,0.36), 0 20px 46px rgba(0,0,0,0.24)" : "0 8px 22px rgba(39,27,18,0.16), 0 18px 44px rgba(39,27,18,0.10)") : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none",
                     }}>
                     <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5l7 3.5-7 3.5z"/></svg>
                     {t('home.launch')}
@@ -3051,7 +3163,7 @@ export default function App() {
               <div style={{ fontSize: 14, color: theme.textFaint }}>{t('home.noGames')}</div>
             )}
           </div>
-          {heroFocused && !settings.cinematic_home && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: `linear-gradient(to right, ${accent.primary}, ${accent.glow}0))`, pointerEvents: "none", zIndex: 3 }} />}
+          {heroFocused && !settings.cinematic_home && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: surfaceStyle === "material" ? accent.primary : `linear-gradient(to right, ${accent.primary}, ${accent.glow}0))`, pointerEvents: "none", zIndex: 3 }} />}
         </div>
 
         {/* ── CINEMATIC PINNED SHELF — fixed overlay above bottom bar ── */}
@@ -3067,10 +3179,10 @@ export default function App() {
                     style={{
                       display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
                       flexShrink: 0, cursor: "pointer", borderRadius: 10, transition: "all 0.15s ease",
-                      background: focused ? accent.primary : glassEnabled ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.18)",
-                      backdropFilter: glassEnabled ? "blur(14px) saturate(150%)" : undefined, WebkitBackdropFilter: glassEnabled ? "blur(14px) saturate(150%)" : undefined,
-                      border: `1px solid ${focused ? accent.primary : glassEnabled ? (isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.22)"}`,
-                      boxShadow: focused ? `0 2px 12px ${accent.glow}0.5)` : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none",
+                      background: focused ? accent.primary : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "aero" ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.10) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.70) 100%)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.18)",
+                      backdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : undefined, WebkitBackdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : undefined,
+                      border: `1px solid ${focused ? accent.primary : surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : surfaceStyle === "aero" ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.22)"}`,
+                      boxShadow: focused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 3px 14px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-medium)" : `0 2px 12px ${accent.glow}0.5)`) : surfaceStyle === "aero" ? (isDark ? `inset 0 1px 0 rgba(255,255,255,0.42), inset 0 -1px 0 rgba(0,0,0,0.10), 0 0 0 1px ${accent.glow}0.12)` : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 0 0 1px ${accent.glow}0.10)`) : surfaceStyle === "material" ? "var(--material-shadow-low)" : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none",
                     }}>
                     {art
                       ? <img src={art} alt={app.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
@@ -3103,18 +3215,18 @@ export default function App() {
                       onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recentRef.current)}
                       style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative", transition: "all 0.15s ease",
-                        border: `1px solid ${focused ? accent.glow + "0.6)" : "rgba(255,255,255,0.08)"}`,
-                        boxShadow: focused ? `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)` : "none",
+                        border: `1px solid ${focused ? (surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)") : (surfaceStyle === "material" ? "var(--material-border-subtle)" : "rgba(255,255,255,0.08)")}`,
+                        boxShadow: focused ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
                         transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" }}>
                       {art
                         ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        : <div style={{ width: "100%", height: "100%", background: `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
+                        : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
                       }
                       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
                         <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
                       </div>
                       <PinBadge isPinned={isPinned} small />
-                      {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${accent.glow}0.6)`, borderRadius: 12, pointerEvents: "none" }} />}
+                      {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: 12, pointerEvents: "none" }} />}
                     </div>
                   );
                 }
@@ -3127,15 +3239,15 @@ export default function App() {
                       onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recentRef.current)}
                       style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative", transition: "all 0.15s ease",
-                        border: `1px solid ${focused ? accent.glow + "0.6)" : "rgba(255,255,255,0.08)"}`,
-                        boxShadow: focused ? `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)` : "none",
+                        border: `1px solid ${focused ? (surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)") : (surfaceStyle === "material" ? "var(--material-border-subtle)" : "rgba(255,255,255,0.08)")}`,
+                        boxShadow: focused ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
                         transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" }}>
                       <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
                         <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
                       </div>
                       <PinBadge isPinned={isPinned} small />
-                      {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${accent.glow}0.6)`, borderRadius: 12, pointerEvents: "none" }} />}
+                      {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: 12, pointerEvents: "none" }} />}
                     </div>
                   );
                 }
@@ -3143,11 +3255,11 @@ export default function App() {
                   <div key={app.id} ref={focused ? focusedCardRef : null}
                     onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                     onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                    style={{ ...glass, background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)", backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
-                      border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${tintBorder}`,
+                    style={{ ...glass, background: surfaceStyle === "material" ? "var(--material-elevation-2)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)", backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
+                      border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : tintBorder}`,
                       flexShrink: 0, borderRadius: 12, cursor: "pointer", transition: "all 0.15s ease",
                       width: CARD_W, height: CARD_H, boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px", position: "relative",
-                      ...(focused ? { background: isDark ? `${accent.glow}0.1)` : `${accent.glow}0.07)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, transform: "scale(1.05) translateY(-3px)" } : {}) }}>
+                      ...(focused ? { background: surfaceStyle === "material" ? "var(--material-elevation-3)" : isDark ? `${accent.glow}0.1)` : `${accent.glow}0.07)`, boxShadow: surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, transform: "scale(1.05) translateY(-3px)" } : {}) }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", position: "relative", zIndex: 1 }}>
                       <AppIcon app={fullApp} size={40} />
                       <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
@@ -3201,12 +3313,12 @@ export default function App() {
                           outline: focused ? `2px solid ${accent.primary}` : "2px solid transparent",
                           outlineOffset: "2px",
                           border: "1px solid rgba(255,255,255,0.08)",
-                          boxShadow: focused ? `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)` : "none",
+                          boxShadow: focused ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
                           scrollMarginTop: "120px",
                         }}>
                         {art
                           ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          : <div style={{ width: "100%", height: "100%", background: `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={app} size={36} /></div>
+                          : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={app} size={36} /></div>
                         }
                         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
                           <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
@@ -3222,7 +3334,7 @@ export default function App() {
                       style={{ ...glass, flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer",
                         outline: focused ? `2px solid ${accent.primary}` : "2px solid transparent",
                         outlineOffset: "2px",
-                        ...(focused ? { border: `1px solid ${accent.glow}0.4)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)` } : {}),
+                        ...(focused ? { border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.4)"}`, boxShadow: surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)` } : {}),
                         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px",
                         transition: "box-shadow 0.15s ease, outline 0.15s ease",
                         scrollMarginTop: "120px",
@@ -3262,15 +3374,25 @@ export default function App() {
                 {/* Slide-up drawer panel */}
                 <div style={{
                   position: "fixed", left: 0, right: 0, bottom: 0, top: "72px", zIndex: 4,
-                  ...(glassEnabled ? {
+                  ...(surfaceStyle === "material" ? {
+                    background: "var(--material-elevation-3)",
+                    borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)"}`,
+                    boxShadow: isDark ? "0 -18px 48px rgba(0,0,0,0.48)" : "0 -18px 42px rgba(43,31,20,0.18)",
+                  } : glassEnabled ? {
                     background: isDark
-                      ? "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)"
+                      ? (surfaceStyle === "aero"
+                          ? "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.08) 100%)"
+                          : "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)")
                       : "linear-gradient(180deg, rgba(255,255,255,0.80) 0%, rgba(255,255,255,0.65) 100%)",
-                    backdropFilter: isDark ? "blur(32px) saturate(140%) brightness(0.85)" : "blur(32px) saturate(150%) brightness(1.02)",
-                    WebkitBackdropFilter: isDark ? "blur(32px) saturate(140%) brightness(0.85)" : "blur(32px) saturate(150%) brightness(1.02)",
-                    borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.6)"}`,
+                    backdropFilter: isDark
+                      ? (surfaceStyle === "aero" ? "blur(18px) saturate(130%) brightness(0.88)" : "blur(32px) saturate(140%) brightness(0.85)")
+                      : "blur(32px) saturate(150%) brightness(1.02)",
+                    WebkitBackdropFilter: isDark
+                      ? (surfaceStyle === "aero" ? "blur(18px) saturate(130%) brightness(0.88)" : "blur(32px) saturate(140%) brightness(0.85)")
+                      : "blur(32px) saturate(150%) brightness(1.02)",
+                    borderTop: `1px solid ${isDark ? (surfaceStyle === "aero" ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.14)") : "rgba(255,255,255,0.6)"}`,
                     boxShadow: isDark
-                      ? "0 -8px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)"
+                      ? (surfaceStyle === "aero" ? "0 -6px 32px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.22)" : "0 -8px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)")
                       : "0 -8px 40px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8)",
                   } : {
                     background: appBg,
@@ -3310,15 +3432,15 @@ export default function App() {
                               onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                               onDoubleClick={() => triggerLaunch(app, recentRef.current)}
                               style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative",
-                                border: "1px solid rgba(255,255,255,0.08)",
+                                border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.08)",
                                 outline: recFocused ? `2px solid ${accent.primary}` : "2px solid transparent",
                                 outlineOffset: "2px",
-                                boxShadow: recFocused ? `0 4px 20px ${accent.glow}0.3)` : "none",
+                                boxShadow: recFocused ? (surfaceStyle === "material" ? materialFocusShadow : `0 4px 20px ${accent.glow}0.3)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
                                 transition: "outline-color 0.15s ease, box-shadow 0.15s ease",
                               }}>
                               {art
                                 ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                : <div style={{ width: "100%", height: "100%", background: `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={app} size={36} /></div>
+                                : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={app} size={36} /></div>
                               }
                               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
                                 <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
@@ -3426,7 +3548,7 @@ export default function App() {
           ? accent.primary
           : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
         boxShadow: (focusSection === "subtabs" && subtabFocusIndex === _hdrManageIdx)
-          ? `0 2px 10px ${accent.glow}0.35)` : "none",
+          ? (surfaceStyle === "material" ? "var(--material-shadow-medium)" : `0 2px 10px ${accent.glow}0.35)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
       }}
     >
       {t('grid.manage')}
@@ -3434,16 +3556,23 @@ export default function App() {
   ) : undefined;
 
   // ── Render ────────────────────────────────────────────────────
-  const themeValue = { isDark, theme, accent, glass, glassBar, settingsRowGlass, glassEnabled, appBg, bgGlow1, bgGlow2 };
+  const themeValue = { isDark, theme, accent, glass, glassBar, settingsRowGlass, glassEnabled, surfaceStyle, appBg, bgGlow1, bgGlow2 };
   const settingsValue = { settings, settingsRef, updateSetting, updateSettingsBatch };
 
   return (
     <ThemeProvider value={themeValue}>
     <SettingsProvider value={settingsValue}>
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
-    <div style={{ position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1 }} ref={outerRef}>
+    <div style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1 }} ref={outerRef}>
 
       <div style={{ position: "fixed", inset: 0, background: appBg, zIndex: -2 }} />
+      {surfaceStyle === "aero" && (
+        <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none",
+          background: isDark
+            ? "linear-gradient(180deg, rgba(255,255,255,0.012) 0%, rgba(0,0,0,0.018) 100%)"
+            : "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.025) 100%)",
+        }} />
+      )}
       {isDark && settings.stars_enabled && (
         <div id="star-container" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }} />
       )}
@@ -3726,7 +3855,7 @@ export default function App() {
       )}
       {libraryRefreshStatus === "scanning" && (
         <div style={{ position: "fixed", inset: 0, zIndex: 5000, display: "flex", alignItems: "center", justifyContent: "center",
-          background: isDark ? "rgba(10,5,2,0.75)" : "rgba(240,230,220,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}>
+          background: surfaceStyle === "material" ? (isDark ? "rgba(23,21,19,0.96)" : "rgba(244,240,235,0.96)") : isDark ? "rgba(10,5,2,0.75)" : "rgba(240,230,220,0.75)", backdropFilter: surfaceStyle === "material" ? undefined : "blur(12px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : "blur(12px)" }}>
           <div style={{ ...glass, borderRadius: 20, padding: "32px 48px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
             border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.3)` }}>
             <div className="splash-dots" style={{ opacity: 1 }}>
@@ -3743,8 +3872,8 @@ export default function App() {
       {searchOpen && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 7000,
-          background: isDark ? "rgba(10,5,2,0.95)" : "rgba(240,230,220,0.95)",
-          backdropFilter: "blur(28px)", WebkitBackdropFilter: "blur(28px)",
+          background: surfaceStyle === "material" ? (isDark ? "rgba(23,21,19,0.98)" : "rgba(244,240,235,0.98)") : isDark ? "rgba(10,5,2,0.95)" : "rgba(240,230,220,0.95)",
+          backdropFilter: surfaceStyle === "material" ? undefined : "blur(28px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : "blur(28px)",
           display: "flex", flexDirection: "column",
           fontFamily: "'Segoe UI', sans-serif",
           animation: "appFadeIn 0.18s ease forwards",
@@ -3752,7 +3881,7 @@ export default function App() {
           {/* Search bar */}
           <div style={{ padding: "18px 24px 10px", flexShrink: 0 }}>
             <div style={{ ...glass, borderRadius: 16, padding: "12px 20px", display: "flex", alignItems: "center", gap: 14,
-              ...(searchMode === "keyboard" ? { borderColor: `${accent.glow}0.45)`, boxShadow: `0 0 0 1px ${accent.glow}0.2)` } : {}) }}>
+              ...(searchMode === "keyboard" ? { borderColor: surfaceStyle === "material" ? accent.primary : `${accent.glow}0.45)`, boxShadow: surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.2)` } : {}) }}>
               <svg width="18" height="18" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0, opacity: 0.4 }}>
                 <circle cx="8.5" cy="8.5" r="5.5" stroke={theme.text} strokeWidth="1.8"/>
                 <path d="M13 13l3.5 3.5" stroke={theme.text} strokeWidth="1.8" strokeLinecap="round"/>
@@ -3822,9 +3951,9 @@ export default function App() {
                       <div key={app.id} ref={focused ? searchFocusedCardRef : null}
                         onClick={() => { setSearchFocusIndex(i); searchFocusIndexRef.current = i; if (searchModeRef.current !== "results") switchSearchMode("results"); }}
                         onDoubleClick={() => { closeSearch(); triggerLaunch(app, recentRef.current); }}
-                        style={{ ...glass, border: focused ? `1px solid ${accent.glow}0.6)` : "1px solid rgba(255,255,255,0.06)", borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "2/3", position: "relative", overflow: "hidden",
-                          ...(focused ? { background: isDark ? `${accent.glow}0.12)` : `${accent.glow}0.08)`,
-                            boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`,
+                        style={{ ...glass, border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : "1px solid rgba(255,255,255,0.06)", borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "2/3", position: "relative", overflow: "hidden",
+                          ...(focused ? { background: surfaceStyle === "material" ? "var(--material-elevation-3)" : isDark ? `${accent.glow}0.12)` : `${accent.glow}0.08)`,
+                            boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`,
                             transform: "scale(1.06)" } : {}) }}>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, height: "100%", padding: "12px 8px" }}>
                           <AppIcon app={app} size={40} />
@@ -3944,7 +4073,7 @@ export default function App() {
                 background: active ? accent.primary : (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"),
                 color: active ? (accent.darkText ? "#1a1a1a" : "white") : theme.textDim,
                 border: `1px solid ${active ? accent.primary : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
-                boxShadow: active ? `0 2px 10px ${accent.glow}0.35)` : "none",
+                boxShadow: active ? (surfaceStyle === "material" ? "var(--material-shadow-medium)" : `0 2px 10px ${accent.glow}0.35)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
                 display: "flex", alignItems: "center", justifyContent: "center",
               });
 
@@ -4022,10 +4151,10 @@ export default function App() {
                           onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
                           onDoubleClick={() => triggerLaunch(app, recent)}
                           onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
-                          style={{ ...glass, background: art ? "transparent" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
-                            border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${art ? "rgba(255,255,255,0.12)" : tintBorder}`,
+                          style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
+                            border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
                             borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
-                            ...(focused ? { boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
+                            ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
                           {art ? (
                             <>
                               <img src={art} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
@@ -4085,10 +4214,10 @@ export default function App() {
                       onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recent)}
                       onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
-                      style={{ ...glass, background: art ? "transparent" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
-                        border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${art ? "rgba(255,255,255,0.12)" : tintBorder}`,
+                      style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
+                        border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
                         borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
-                        ...(focused ? { boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
+                        ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
                       {art ? (
                         <>
                           <img src={art} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />

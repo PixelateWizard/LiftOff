@@ -41,7 +41,8 @@ export function CollapsibleGroup({
   focusedRef,
   items,
 }: CollapsibleGroupProps) {
-  const { glass, accent, isDark, theme } = useTheme();
+  const { glass, accent, isDark, theme, surfaceStyle } = useTheme();
+  const isMaterial = surfaceStyle === "material";
   const parentStyle: CSSProperties = {
     ...glass,
     borderRadius: value ? "14px 14px 0 0" : 14,
@@ -54,19 +55,25 @@ export function CollapsibleGroup({
     transition: "all 0.15s ease",
     ...(focused
       ? {
-          border: `1px solid ${accent.glow}0.6)`,
-          boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`,
-          background: isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`,
+          border: `1px solid ${isMaterial ? accent.primary : accent.glow + "0.6)"}`,
+          boxShadow: isMaterial ? "var(--material-shadow-medium)" : `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`,
+          background: isMaterial ? "var(--material-elevation-3)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`,
         }
-      : { border: "1px solid rgba(255,255,255,0.06)" }),
+      : { border: isMaterial ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)" }),
   };
 
   const subContainerStyle: CSSProperties = {
     marginBottom: 8,
-    background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
-    borderRadius: "0 0 14px 14px",
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
-    borderTop: "none",
+    padding: isMaterial ? "5px 6px 6px" : undefined,
+    background: isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+    borderRadius: isMaterial ? "0 0 12px 12px" : "0 0 14px 14px",
+    border: `1px solid ${isMaterial ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
+    borderTop: isMaterial ? "1px solid var(--material-inset-top-edge)" : "none",
+    boxShadow: isMaterial
+      ? isDark
+        ? "inset 0 9px 18px rgba(0,0,0,0.18), inset 0 1px 0 var(--material-inset-top-edge), inset 0 -1px 0 var(--material-inset-bottom-edge)"
+        : "inset 0 9px 18px rgba(70,50,30,0.10), inset 0 1px 0 var(--material-inset-top-edge), inset 0 -1px 0 var(--material-inset-bottom-edge)"
+      : undefined,
     overflow: "hidden",
   };
 
@@ -84,15 +91,24 @@ export function CollapsibleGroup({
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              padding: "14px 20px",
+              padding: isMaterial ? "13px 16px" : "14px 20px",
               cursor: "pointer",
-              transition: "background 0.15s ease",
+              transition: "background 0.15s ease, box-shadow 0.15s ease",
+              borderRadius: isMaterial ? 8 : undefined,
+              marginBottom: isMaterial && idx < items.length - 1 ? 3 : undefined,
               background: item.focused
-                ? isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`
-                : "transparent",
+                ? isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`
+                : isMaterial ? "var(--material-inset-row)" : "transparent",
+              boxShadow: item.focused && isMaterial
+                ? "var(--material-shadow-pressed)"
+                : isMaterial
+                ? isDark
+                  ? "inset 0 1px 0 rgba(255,255,255,0.018)"
+                  : "inset 0 1px 0 rgba(255,255,255,0.45)"
+                : undefined,
               borderBottom:
-                idx < items.length - 1
-                  ? `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`
+                idx < items.length - 1 && !isMaterial
+                  ? `1px solid ${isMaterial ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`
                   : "none",
             };
 
@@ -103,7 +119,7 @@ export function CollapsibleGroup({
               const displayLabel = item.cycleLabel ? item.cycleLabel(item.cycleValue) : item.cycleValue;
               return (
                 <div key={idx} ref={item.focused ? item.focusedRef : undefined} style={rowStyle}>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: theme.textDim }}>{item.label}</span>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: isMaterial ? theme.text : theme.textDim }}>{item.label}</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
                       onClick={(e) => { e.stopPropagation(); item.onCycleChange(prev); }}>◀</span>
@@ -122,7 +138,7 @@ export function CollapsibleGroup({
                 style={rowStyle}
                 onClick={() => item.onChange(!item.value)}
               >
-                <span style={{ fontSize: 13, fontWeight: 500, color: theme.textDim }}>
+                <span style={{ fontSize: 13, fontWeight: 500, color: isMaterial ? theme.text : theme.textDim }}>
                   {item.label}
                 </span>
                 <ToggleKnob value={item.value} />

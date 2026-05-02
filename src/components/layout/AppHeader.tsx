@@ -60,7 +60,7 @@ export function AppHeader({
   headerTabItems, headerActiveIndex, headerOnSelect, headerRightActions,
 }: Props) {
   const { t } = useTranslation();
-  const { glassBar, accent, theme, isDark, glassEnabled } = useTheme();
+  const { glassBar, accent, theme, isDark, glassEnabled, surfaceStyle } = useTheme();
   const { settings } = useSettings();
   const activePillText = "rgba(20, 14, 10, 0.90)";
   const activeTextColor = isDark
@@ -95,12 +95,16 @@ export function AppHeader({
               <div key={tabName} onClick={() => switchTab(tabName)} style={{
                 fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
                 padding: "6px 16px", borderRadius: 8, cursor: "pointer",
-                transition: "all 0.2s ease",
+                transition: "background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease",
                 ...(isActive
                   ? {
                       background: accent.primary,
                       border: `1px solid ${accent.primary}`,
-                      boxShadow: `0 4px 24px ${accent.glow}0.5)`,
+                      boxShadow: surfaceStyle === "aero"
+                        ? `inset 0 1px 0 rgba(255,255,255,0.80), inset 0 2px 10px rgba(255,255,255,0.24), inset 0 -1px 0 rgba(0,0,0,0.28), 0 4px 16px ${accent.glow}0.55)`
+                        : surfaceStyle === "material"
+                        ? "var(--material-shadow-medium)"
+                        : `0 4px 24px ${accent.glow}0.5)`,
                       color: activeTextColor,
                     }
                   : {
@@ -119,9 +123,9 @@ export function AppHeader({
         )}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, justifyContent: "flex-end" }}>
-        {settings.show_date && <span style={{ fontSize: 12, color: theme.textDim, ...(isDark && glassEnabled ? { textShadow: "0 1px 2px rgba(0,0,0,0.55)" } : {}) }}>{date}</span>}
+        {settings.show_date && <span style={{ fontSize: 12, color: theme.textDim, ...(isDark && glassEnabled && surfaceStyle !== "material" ? { textShadow: "0 1px 2px rgba(0,0,0,0.55)" } : {}) }}>{date}</span>}
         {settings.show_clock && (
-          <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? "rgba(245,237,232,0.7)" : "rgba(42,26,14,0.7)", ...(isDark && glassEnabled ? { textShadow: "0 1px 2px rgba(0,0,0,0.55)" } : {}) }}>{time}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? "rgba(245,237,232,0.7)" : "rgba(42,26,14,0.7)", ...(isDark && glassEnabled && surfaceStyle !== "material" ? { textShadow: "0 1px 2px rgba(0,0,0,0.55)" } : {}) }}>{time}</span>
         )}
         {hasBattery && settings.show_battery && (
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -139,7 +143,7 @@ export function AppHeader({
                 </svg>
               )}
             </div>
-            <span style={{ fontSize: 11, color: charging ? "#4ae88a" : theme.textDim, ...(isDark && glassEnabled ? { textShadow: "0 1px 2px rgba(0,0,0,0.55)" } : {}) }}>{battery}%</span>
+            <span style={{ fontSize: 11, color: charging ? "#4ae88a" : theme.textDim, ...(isDark && glassEnabled && surfaceStyle !== "material" ? { textShadow: "0 1px 2px rgba(0,0,0,0.55)" } : {}) }}>{battery}%</span>
           </div>
         )}
       </div>

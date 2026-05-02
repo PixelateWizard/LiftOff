@@ -22,7 +22,7 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 - **Manage visibility** — hide apps from view and restore them anytime from the same menu
 - **Search** — on-screen virtual keyboard for controller-only searching
 - **Themes** — dark, light, and system-follow modes with 8 accent colors including an Xbox-inspired neon green; each accent defines WCAG-compliant text colors for both light and dark mode so active buttons and nav pills always meet contrast requirements
-- **Glass UI** — optional premium glass surface system with distinct visual hierarchy for bars, cards, and settings rows; toggle off for a classic flat look
+- **Surface Style** — four visual materials: Glass (frosted blur panels), Aero (polished transparent acrylic with sharp specular highlights), Material (solid matte surfaces with shadow-based elevation), and Clear (flat matte)
 - **Recent apps** — quick access to what you launched last
 - **Battery indicator** — shows charge level and charging status
 - **Controller test** — live button and axis display in Settings to verify your gamepad mapping
@@ -80,7 +80,7 @@ When a card is focused on the Games or Apps tab, press **Menu** to open the cont
 |---------|-------------|
 | Accent Color | Ember, Ocean, Neon, Rose, Midnight |
 | Theme | Dark / Light / System |
-| Glass UI | Enable or disable the premium glass surface system |
+| Surface Style | Glass — frosted blur panels; Aero — polished acrylic with specular highlights, glossy active elements, and a subtle neutral depth gradient behind the UI; Material — opaque matte cards, inset grouped settings, and soft physical shadows; Clear — flat matte |
 | Immersive Home | Fullscreen cinematic hero with floating pinned shelf |
 | Show Cover on Home | Show the 2:3 cover art card in the hero section |
 | Show Pinned on Home | Show or hide the pinned items shelf on the home screen |

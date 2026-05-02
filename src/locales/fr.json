@@ -76,7 +76,7 @@
     "theme": "Thème",
     "backgroundStars": "Étoiles de fond",
     "backgroundClouds": "Nuages de fond",
-    "glassUi": "Interface en verre",
+    "surfaceStyle": "Style de surface",
     "wideLayout": "Disposition large",
     "transparentBars": "Barres transparentes",
     "transparentTopbar": "Barre supérieure",
@@ -187,7 +187,11 @@
       "large": "Grand",
       "thin": "Fin",
       "bold": "Gras",
-      "tabbar": "Barre d'onglets"
+      "tabbar": "Barre d'onglets",
+      "glass": "Verre",
+      "aero": "Aero",
+      "material": "Material",
+      "clear": "Plat"
     }
   },
   "home": {

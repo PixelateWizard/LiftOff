@@ -75,7 +75,7 @@ export const DEFAULT_SETTINGS = {
   show_home_collections: false, show_home_collection_names: true, show_hero_cover: true,
   gamepad_platform: "xbox", gamepad_icons_colored: false, gamepad_icons_filled: true, gamepad_icons_theme_color: false,
   gamepad_btn_size: "small", gamepad_auto_detect: true,
-  glass_ui: true,
+  surface_style: "glass",
 } as const;
 
 export type AccentKey = keyof typeof ACCENTS;

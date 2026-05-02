@@ -12,6 +12,7 @@ export interface ThemeValue {
   glassBar: CSSProperties;
   settingsRowGlass: CSSProperties;
   glassEnabled: boolean;
+  surfaceStyle: string;
   appBg: string;
   bgGlow1: string;
   bgGlow2: string;
