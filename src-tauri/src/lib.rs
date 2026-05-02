@@ -149,6 +149,8 @@ pub struct Settings {
     pub show_home_collection_names: bool,
     #[serde(default = "default_true")]
     pub show_hero_cover: bool,
+    #[serde(default = "default_true")]
+    pub show_home_pinned: bool,
     // Gamepad icon settings (moi952 PRs)
     #[serde(default = "default_gamepad_platform")]
     pub gamepad_platform: String,
@@ -164,6 +166,8 @@ pub struct Settings {
     pub gamepad_auto_detect: bool,
     #[serde(default = "default_topbar_show_bumpers")]
     pub topbar_show_bumpers: bool,
+    #[serde(default = "default_true")]
+    pub glass_ui: bool,
 }
 
 fn default_language()             -> String { "auto".to_string() }
@@ -217,6 +221,7 @@ impl Default for Settings {
             show_home_collections: false,
             show_home_collection_names: true,
             show_hero_cover: true,
+            show_home_pinned: true,
             gamepad_platform: "xbox".to_string(),
             gamepad_icons_colored: false,
             gamepad_icons_filled: true,
@@ -224,6 +229,7 @@ impl Default for Settings {
             gamepad_btn_size: "small".to_string(),
             gamepad_auto_detect: true,
             topbar_show_bumpers: false,
+            glass_ui: true,
         }
     }
 }

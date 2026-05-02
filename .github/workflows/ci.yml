@@ -1,0 +1,53 @@
+name: CI Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Write .env (SGDB API key)
+        run: echo "SGDB_API_KEY=${{ secrets.SGDB_API_KEY }}" > src-tauri/.env
+        shell: bash
+
+      - name: Build
+        run: npm run tauri build
+
+      - name: Get version
+        id: version
+        run: |
+          $version = (Get-Content src-tauri/tauri.conf.json | ConvertFrom-Json).version
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiftOff-v${{ steps.version.outputs.VERSION }}-alpha-build.${{ github.run_number }}
+          path: src-tauri/target/release/bundle/nsis/*.exe
+          retention-days: 14

@@ -11,7 +11,7 @@ interface Props {
 
 export function AppBottomBar({ tab, appCollectionsCount }: Props) {
   const { t } = useTranslation();
-  const { glass, theme, isDark } = useTheme();
+  const { glassBar, theme, isDark } = useTheme();
   const { settings } = useSettings();
 
   if (settings.hide_bottom_bar) return null;
@@ -48,7 +48,7 @@ export function AppBottomBar({ tab, appCollectionsCount }: Props) {
       <div style={{
         display: "flex", gap: 20, alignItems: "center", padding: "10px 20px",
         justifyContent: justify,
-        ...(isTransparent ? {} : { ...glass, borderRadius: 12 }),
+        ...(isTransparent ? {} : { ...glassBar, borderRadius: 12 }),
         ...(settings.wide_layout
           ? (settings.transparent_bottombar
             ? { width: "100%", margin: "0 0 14px", boxSizing: "border-box" }

@@ -43,8 +43,9 @@ function RocketLogo({ accent }: { accent: { primary: string; light: string; dark
   );
 }
 
-function widthConstraints(wideLayout: boolean, transparent: boolean, topMargin: boolean): CSSProperties {
-  const mt = topMargin ? "14px" : "4px";
+function widthConstraints(wideLayout: boolean, transparent: boolean, topMargin: boolean, uiScale: number): CSSProperties {
+  const px = (n: number) => `${Math.round(n / uiScale)}px`;
+  const mt = topMargin ? px(14) : px(4);
   if (wideLayout) {
     return transparent
       ? { width: "100%", margin: `${mt} 0 0`, boxSizing: "border-box" }
@@ -59,13 +60,19 @@ export function AppHeader({
   headerTabItems, headerActiveIndex, headerOnSelect, headerRightActions,
 }: Props) {
   const { t } = useTranslation();
-  const { glass, accent, theme, isDark } = useTheme();
+  const { glassBar, accent, theme, isDark, glassEnabled } = useTheme();
   const { settings } = useSettings();
+  const activePillText = "rgba(20, 14, 10, 0.90)";
+  const activeTextColor = isDark
+    ? (accent.darkText ? activePillText : "white")
+    : (accent.lightDarkText ? activePillText : "white");
 
   const transparentNav = settings.transparent_topbar ?? false;
   const tabbarBg       = settings.tabbar_with_background ?? false;
   const wideLayout     = settings.wide_layout ?? false;
   const isHome         = tab === "Home";
+  const uiScale        = settings.ui_scale ?? 1;
+  const subtabGap      = Math.round(16 / uiScale);
 
   const navContent = (
     <>
@@ -82,24 +89,39 @@ export function AppHeader({
           <GamepadBtn btn="LB" label="" style={{ gap: 0 }} />
         )}
         <div style={{ display: "flex", gap: 2 }}>
-          {tabs.map((tabName) => (
-            <div key={tabName} onClick={() => switchTab(tabName)} style={{
-              fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
-              color: tab === tabName ? theme.text : theme.textDim,
-              padding: "6px 16px", borderRadius: 8, cursor: "pointer",
-              border: `1px solid ${tab === tabName ? `${accent.glow}0.35)` : "transparent"}`,
-              background: tab === tabName ? `${accent.glow}0.15)` : "transparent",
-            }}>{t(`tabs.${tabName.toLowerCase()}`)}</div>
-          ))}
+          {tabs.map((tabName) => {
+            const isActive = tab === tabName;
+            return (
+              <div key={tabName} onClick={() => switchTab(tabName)} style={{
+                fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
+                padding: "6px 16px", borderRadius: 8, cursor: "pointer",
+                transition: "all 0.2s ease",
+                ...(isActive
+                  ? {
+                      background: accent.primary,
+                      border: `1px solid ${accent.primary}`,
+                      boxShadow: `0 4px 24px ${accent.glow}0.5)`,
+                      color: activeTextColor,
+                    }
+                  : {
+                      background: "transparent",
+                      border: "1px solid transparent",
+                      color: theme.textDim,
+                    }),
+              }}>
+                {t(`tabs.${tabName.toLowerCase()}`)}
+              </div>
+            );
+          })}
         </div>
         {settings.nav_bumpers_pos === "header" && (
           <GamepadBtn btn="RB" label="" style={{ gap: 0 }} />
         )}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, justifyContent: "flex-end" }}>
-        {settings.show_date && <span style={{ fontSize: 12, color: theme.textDim }}>{date}</span>}
+        {settings.show_date && <span style={{ fontSize: 12, color: theme.textDim, ...(isDark && glassEnabled ? { textShadow: "0 1px 2px rgba(0,0,0,0.55)" } : {}) }}>{date}</span>}
         {settings.show_clock && (
-          <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? "rgba(245,237,232,0.7)" : "rgba(42,26,14,0.7)" }}>{time}</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: isDark ? "rgba(245,237,232,0.7)" : "rgba(42,26,14,0.7)", ...(isDark && glassEnabled ? { textShadow: "0 1px 2px rgba(0,0,0,0.55)" } : {}) }}>{time}</span>
         )}
         {hasBattery && settings.show_battery && (
           <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -117,7 +139,7 @@ export function AppHeader({
                 </svg>
               )}
             </div>
-            <span style={{ fontSize: 11, color: charging ? "#4ae88a" : theme.textDim }}>{battery}%</span>
+            <span style={{ fontSize: 11, color: charging ? "#4ae88a" : theme.textDim, ...(isDark && glassEnabled ? { textShadow: "0 1px 2px rgba(0,0,0,0.55)" } : {}) }}>{battery}%</span>
           </div>
         )}
       </div>
@@ -142,8 +164,8 @@ export function AppHeader({
     return (
       <div style={{ position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{
-          ...widthConstraints(wideLayout, false, true),
-          ...glass, borderRadius: 16,
+          ...widthConstraints(wideLayout, false, true, uiScale),
+          ...glassBar, borderRadius: 16,
           display: "flex", flexDirection: "column",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "10px 20px" }}>
@@ -162,8 +184,8 @@ export function AppHeader({
       {/* Nav row */}
       <div style={{
         display: "flex", alignItems: "center", gap: 16, padding: "10px 20px",
-        ...widthConstraints(wideLayout, transparentNav, true),
-        ...(transparentNav ? {} : { ...glass, borderRadius: 16 }),
+        ...widthConstraints(wideLayout, transparentNav, true, uiScale),
+        ...(transparentNav ? {} : { ...glassBar, borderRadius: 16 }),
       }}>
         {navContent}
       </div>
@@ -172,14 +194,14 @@ export function AppHeader({
       {!isHome && (
         tabbarBg ? (
           <div style={{
-            ...widthConstraints(wideLayout, false, false),
-            ...glass, borderRadius: 12,
-            marginTop: 16,
+            ...widthConstraints(wideLayout, false, false, uiScale),
+            ...glassBar, borderRadius: 12,
+            marginTop: subtabGap,
           }}>
             {subtab}
           </div>
         ) : (
-          <div style={{ marginTop: 16 }}>{subtab}</div>
+          <div style={{ marginTop: subtabGap }}>{subtab}</div>
         )
       )}
 

@@ -1285,13 +1285,76 @@ export default function App() {
   const bgGlow1 = `${accent.glow}${isDark ? "0.07)" : "0.08)"}`;
   const bgGlow2 = `${accent.glow}${isDark ? "0.05)" : "0.06)"}`;
 
-  const glass = useMemo(() => ({
+  const glassEnabled = settings.glass_ui !== false;
+  const activeTextColor = isDark
+    ? (accent.darkText ? "rgba(20, 14, 10, 0.90)" : "white")
+    : (accent.lightDarkText ? "rgba(20, 14, 10, 0.90)" : "white");
+
+  // Flat fallback — exactly the values used before the glass styling pass.
+  const _flatGlass = useMemo(() => ({
     background:           isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.75)",
     backdropFilter:       "blur(24px)",
     WebkitBackdropFilter: "blur(24px)",
     border:               `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.9)"}`,
     boxShadow:            isDark ? "none" : "0 2px 16px rgba(0,0,0,0.06)",
   }), [isDark]);
+
+  const glass = useMemo(() => {
+    if (!glassEnabled) return _flatGlass;
+    return {
+      background:           isDark
+        ? "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.06) 100%)"
+        : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
+      backdropFilter:       isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)",
+      WebkitBackdropFilter: isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)",
+      border:               `1px solid ${isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.55)"}`,
+      boxShadow:            isDark
+        ? "inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.22), 0 10px 32px rgba(0,0,0,0.35)"
+        : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
+    };
+  }, [isDark, glassEnabled, _flatGlass]);
+
+  // Lighter glass variant for top/bottom bars — less visual weight than cards.
+  // Dark mode layers a dark scrim over the white tint so text stays readable over
+  // bright/colorful wallpaper without the bar feeling like a solid slab.
+  const glassBar = useMemo(() => {
+    if (!glassEnabled) return _flatGlass;
+    return {
+      background:           isDark
+        ? "linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.10)), linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.045))"
+        : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
+      backdropFilter:       isDark ? "blur(28px) saturate(115%) brightness(0.88)" : "blur(28px) saturate(160%) brightness(1.02)",
+      WebkitBackdropFilter: isDark ? "blur(28px) saturate(115%) brightness(0.88)" : "blur(28px) saturate(160%) brightness(1.02)",
+      border:               `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)"}`,
+      boxShadow:            isDark
+        ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.16), 0 6px 20px rgba(0,0,0,0.25)"
+        : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
+    };
+  }, [isDark, glassEnabled, _flatGlass]);
+
+  // Ultra-light glass for settings rows — quieter than cards, accent-tinted.
+  // Uses accent.glow (already "rgba(r,g,b,") so tint is zero-cost and theme-aware.
+  const settingsRowGlass = useMemo(() => {
+    if (!glassEnabled) return _flatGlass;
+    const tintTop = `${accent.glow}0.025)`;
+    const tintBot = `${accent.glow}0.010)`;
+    return {
+      background:           isDark
+        ? `linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.022)), linear-gradient(180deg, ${tintTop}, ${tintBot})`
+        : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
+      backdropFilter:       isDark ? "blur(8px) saturate(105%) brightness(0.92)" : "blur(28px) saturate(160%) brightness(1.02)",
+      WebkitBackdropFilter: isDark ? "blur(8px) saturate(105%) brightness(0.92)" : "blur(28px) saturate(160%) brightness(1.02)",
+      border:               `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"}`,
+      boxShadow:            isDark
+        ? "inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 6px rgba(0,0,0,0.12)"
+        : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
+    };
+  }, [isDark, glassEnabled, accent.glow, _flatGlass]);
+
+  // Backdrop filter for app cards that override glass — falls back to simple blur when glass is off.
+  const cardBackdropFilter = glassEnabled
+    ? (isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)")
+    : (isDark ? "blur(16px)" : "blur(28px)");
 
   const lastLaunchTime = useRef(0);
   const _triggerLaunchImpl = (app, rec) => {
@@ -1662,7 +1725,16 @@ export default function App() {
     return () => clearInterval(id);
   }, []);
 
-
+  // Prevent the root scroller from accumulating scroll offset. At scale > 1 Chromium's
+  // scrollIntoView (called by gamepad focus) can climb past the inner tabScrollRef and
+  // scroll the root instead, shifting the tab content area up behind the sticky header.
+  useEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+    const reset = () => { if (el.scrollTop !== 0) el.scrollTop = 0; };
+    el.addEventListener("scroll", reset, { passive: true });
+    return () => el.removeEventListener("scroll", reset);
+  }, []);
 
   useEffect(() => {
     Promise.all([invoke("get_screen_resolution"), invoke("get_settings")]).then(([res, s]) => {
@@ -1975,7 +2047,7 @@ export default function App() {
     const gridIsOffscreen = tab !== "Home" && hasPinned;
     const scrollToTop = () => {
       const scroller = tab === "Home" ? homeScrollRef.current : tabScrollRef.current;
-      if (scroller) scroller.scrollTo({ top: 0, behavior: "smooth" });
+      if (scroller) scroller.scrollTo({ top: 0, behavior: "instant" });
     };
     if (focusSection === "hero") {
       setTimeout(scrollToTop, 50);
@@ -2005,7 +2077,9 @@ export default function App() {
       if (tab === "Home") {
         setTimeout(() => {
           if (focusedCardRef.current) {
+            if (outerRef.current) outerRef.current.style.overflowY = "hidden";
             focusedCardRef.current.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+            if (outerRef.current) { outerRef.current.style.overflowY = ""; outerRef.current.scrollTop = 0; }
           }
         }, 80);
       }
@@ -2019,12 +2093,17 @@ export default function App() {
         // Pinned section pushes grid down — scroll first row into view properly
         focusedCardRef.current.style.scrollMarginTop    = "100px";
         focusedCardRef.current.style.scrollMarginBottom = "80px";
+        // Temporarily hide root overflow so scrollIntoView only animates tabScrollRef, not the root div
+        if (outerRef.current) outerRef.current.style.overflowY = "hidden";
         focusedCardRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        if (outerRef.current) { outerRef.current.style.overflowY = ""; outerRef.current.scrollTop = 0; }
       }
     } else if (focusedCardRef.current) {
       focusedCardRef.current.style.scrollMarginTop    = "100px";
       focusedCardRef.current.style.scrollMarginBottom = "80px";
+      if (outerRef.current) outerRef.current.style.overflowY = "hidden";
       focusedCardRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      if (outerRef.current) { outerRef.current.style.overflowY = ""; outerRef.current.scrollTop = 0; }
     }
   }, [focusSection, focusIndex, homeColFocusRow, tab]);
 
@@ -2044,14 +2123,15 @@ export default function App() {
     setSettingsSection(0); settingsSectionRef.current = 0;
     setGameSourceTab("All"); gameSourceTabRef.current = "All";
     setSubtabFocusIndex(0); subtabFocusIndexRef.current = 0;
+    if (outerRef.current) outerRef.current.scrollTop = 0;
     setTimeout(() => {
       const scroller = newTab === "Home" ? homeScrollRef.current : tabScrollRef.current;
-      if (scroller) scroller.scrollTo({ top: 0, behavior: "smooth" });
+      if (scroller) scroller.scrollTo({ top: 0, behavior: "instant" });
     }, 50);
   };
 
   const ALL_SETTINGS_ITEMS = buildSettingsItems(t, isDark);
-  const navigableSettings = getSectionNavigableItems(settingsSection, ALL_SETTINGS_ITEMS, settings);
+  const navigableSettings = getSectionNavigableItems(settingsSection, ALL_SETTINGS_ITEMS, settings, { gameCollections, appCollections });
 
   // ── handleNav ─────────────────────────────────────────────────
   const handleNav = (key) => {
@@ -2287,6 +2367,9 @@ export default function App() {
         else if (item.type === "custom_folders") {
           setShowFolderManager(true); showFolderManagerRef.current = true;
         }
+        else if (item.type === "home_collection_toggle") {
+          toggleHomeCollection(item.colName);
+        }
       }
       if (key === "ArrowLeft") {
         if (!item) return;
@@ -2296,6 +2379,9 @@ export default function App() {
         else if (item.type === "slider") {
           const cur = currentSettings[item.key] ?? 1.0;
           updateSetting(item.key, Math.max(item.min, Math.round((cur - item.step) * 100) / 100));
+        }
+        else if (item.type === "home_collection_toggle") {
+          toggleHomeCollection(item.colName);
         }
       }
       return;
@@ -2886,7 +2972,7 @@ export default function App() {
           </div>
 
           {/* Pinned bar — hidden in cinematic mode, shown separately below hero */}
-          {!settings.cinematic_home && <div style={{ position: "relative", zIndex: 2, padding: "16px 20px 0", flexShrink: 0 }}>
+          {!settings.cinematic_home && settings.show_home_pinned !== false && <div style={{ position: "relative", zIndex: 2, padding: "16px 20px 0", flexShrink: 0 }}>
             {homePinnedApps.length > 0 ? (
               <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 4, paddingBottom: 4 }}>
                 {homePinnedApps.map((app, i) => {
@@ -2899,15 +2985,15 @@ export default function App() {
                       style={{
                         display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
                         flexShrink: 0, cursor: "pointer", borderRadius: 10, transition: "all 0.15s ease",
-                        background: focused ? accent.primary : "rgba(8,4,2,0.55)",
-                        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-                        border: `1px solid ${focused ? accent.primary : "rgba(255,255,255,0.14)"}`,
-                        boxShadow: focused ? `0 2px 12px ${accent.glow}0.6)` : "none",
+                        background: focused ? accent.primary : glassEnabled ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)") : "rgba(8,4,2,0.55)",
+                        backdropFilter: glassEnabled ? "blur(14px) saturate(150%)" : "blur(12px)", WebkitBackdropFilter: glassEnabled ? "blur(14px) saturate(150%)" : "blur(12px)",
+                        border: `1px solid ${focused ? accent.primary : glassEnabled ? (isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.70)") : "rgba(255,255,255,0.14)"}`,
+                        boxShadow: focused ? `0 2px 12px ${accent.glow}0.6)` : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none",
                       }}>
                       {art
                         ? <img src={art} alt={app.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
                         : <AppIcon app={app} size={24} />}
-                      <div style={{ fontSize: 12, fontWeight: 500, color: focused ? (accent.darkText ? "#1a1a1a" : "white") : "rgba(245,237,232,0.88)", whiteSpace: "nowrap", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: focused ? activeTextColor : "rgba(245,237,232,0.88)", whiteSpace: "nowrap", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
                     </div>
                   );
                 })}
@@ -2941,11 +3027,11 @@ export default function App() {
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div onClick={() => triggerLaunch(heroGame, recentRef.current)}
                     style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 24px", borderRadius: 10, cursor: "pointer", transition: "all 0.15s ease", fontWeight: 600, fontSize: 14,
-                      background: heroFocused ? accent.primary : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)",
-                      color: heroFocused ? (accent.darkText ? "#1a1a1a" : "white") : theme.text,
-                      border: `1px solid ${heroFocused ? accent.primary : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`,
-                      backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)",
-                      boxShadow: heroFocused ? `0 4px 24px ${accent.glow}0.5)` : "none",
+                      background: heroFocused ? accent.primary : glassEnabled ? (isDark ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)",
+                      color: heroFocused ? activeTextColor : theme.text,
+                      border: `1px solid ${heroFocused ? accent.primary : glassEnabled ? (isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`,
+                      backdropFilter: glassEnabled ? "blur(14px) saturate(150%)" : "blur(8px)", WebkitBackdropFilter: glassEnabled ? "blur(14px) saturate(150%)" : "blur(8px)",
+                      boxShadow: heroFocused ? `0 4px 24px ${accent.glow}0.5)` : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none",
                     }}>
                     <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5l7 3.5-7 3.5z"/></svg>
                     {t('home.launch')}
@@ -2969,7 +3055,7 @@ export default function App() {
         </div>
 
         {/* ── CINEMATIC PINNED SHELF — fixed overlay above bottom bar ── */}
-        {settings.cinematic_home && homePinnedApps.length > 0 && (
+        {settings.cinematic_home && settings.show_home_pinned !== false && homePinnedApps.length > 0 && (
           <div style={{ position: "fixed", left: 0, right: 0, bottom: "60px", zIndex: 2, padding: "0 24px 12px", display: "flex", gap: 8, overflowX: "auto", pointerEvents: "auto" }}>
               {homePinnedApps.map((app, i) => {
                 const focused = focusSec === "pinned" && focusIdx === i;
@@ -2981,14 +3067,15 @@ export default function App() {
                     style={{
                       display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
                       flexShrink: 0, cursor: "pointer", borderRadius: 10, transition: "all 0.15s ease",
-                      background: focused ? accent.primary : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.18)",
-                      border: `1px solid ${focused ? accent.primary : isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.22)"}`,
-                      boxShadow: focused ? `0 2px 12px ${accent.glow}0.5)` : "none",
+                      background: focused ? accent.primary : glassEnabled ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.18)",
+                      backdropFilter: glassEnabled ? "blur(14px) saturate(150%)" : undefined, WebkitBackdropFilter: glassEnabled ? "blur(14px) saturate(150%)" : undefined,
+                      border: `1px solid ${focused ? accent.primary : glassEnabled ? (isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.22)"}`,
+                      boxShadow: focused ? `0 2px 12px ${accent.glow}0.5)` : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none",
                     }}>
                     {art
                       ? <img src={art} alt={app.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
                       : <AppIcon app={app} size={24} />}
-                    <div style={{ fontSize: 12, fontWeight: 500, color: focused ? (accent.darkText ? "#1a1a1a" : "white") : isDark ? "rgba(245,237,232,0.9)" : "rgba(0,0,0,0.85)", whiteSpace: "nowrap", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: focused ? activeTextColor : isDark ? "rgba(245,237,232,0.9)" : "rgba(0,0,0,0.85)", whiteSpace: "nowrap", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
                   </div>
                 );
               })}
@@ -3056,7 +3143,7 @@ export default function App() {
                   <div key={app.id} ref={focused ? focusedCardRef : null}
                     onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                     onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                    style={{ ...glass, background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)", backdropFilter: isDark ? "blur(16px)" : "blur(28px)", WebkitBackdropFilter: isDark ? "blur(16px)" : "blur(28px)",
+                    style={{ ...glass, background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)", backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
                       border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${tintBorder}`,
                       flexShrink: 0, borderRadius: 12, cursor: "pointer", transition: "all 0.15s ease",
                       width: CARD_W, height: CARD_H, boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px", position: "relative",
@@ -3135,8 +3222,7 @@ export default function App() {
                       style={{ ...glass, flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer",
                         outline: focused ? `2px solid ${accent.primary}` : "2px solid transparent",
                         outlineOffset: "2px",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        boxShadow: focused ? `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)` : "none",
+                        ...(focused ? { border: `1px solid ${accent.glow}0.4)`, boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)` } : {}),
                         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px",
                         transition: "box-shadow 0.15s ease, outline 0.15s ease",
                         scrollMarginTop: "120px",
@@ -3176,10 +3262,22 @@ export default function App() {
                 {/* Slide-up drawer panel */}
                 <div style={{
                   position: "fixed", left: 0, right: 0, bottom: 0, top: "72px", zIndex: 4,
-                  background: appBg,
-                  backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
-                  borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-                  boxShadow: `0 -8px 40px rgba(0,0,0,0.4)`,
+                  ...(glassEnabled ? {
+                    background: isDark
+                      ? "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)"
+                      : "linear-gradient(180deg, rgba(255,255,255,0.80) 0%, rgba(255,255,255,0.65) 100%)",
+                    backdropFilter: isDark ? "blur(32px) saturate(140%) brightness(0.85)" : "blur(32px) saturate(150%) brightness(1.02)",
+                    WebkitBackdropFilter: isDark ? "blur(32px) saturate(140%) brightness(0.85)" : "blur(32px) saturate(150%) brightness(1.02)",
+                    borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.6)"}`,
+                    boxShadow: isDark
+                      ? "0 -8px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)"
+                      : "0 -8px 40px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8)",
+                  } : {
+                    background: appBg,
+                    backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+                    borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
+                    boxShadow: "0 -8px 40px rgba(0,0,0,0.4)",
+                  }),
                   transform: panelOpen ? "translateY(0)" : "translateY(100%)",
                   transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
                   display: "flex", flexDirection: "column",
@@ -3336,7 +3434,7 @@ export default function App() {
   ) : undefined;
 
   // ── Render ────────────────────────────────────────────────────
-  const themeValue = { isDark, theme, accent, glass, appBg, bgGlow1, bgGlow2 };
+  const themeValue = { isDark, theme, accent, glass, glassBar, settingsRowGlass, glassEnabled, appBg, bgGlow1, bgGlow2 };
   const settingsValue = { settings, settingsRef, updateSetting, updateSettingsBatch };
 
   return (
@@ -3924,7 +4022,7 @@ export default function App() {
                           onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
                           onDoubleClick={() => triggerLaunch(app, recent)}
                           onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
-                          style={{ ...glass, background: art ? "transparent" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: isDark ? "blur(16px)" : "blur(28px)", WebkitBackdropFilter: isDark ? "blur(16px)" : "blur(28px)",
+                          style={{ ...glass, background: art ? "transparent" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
                             border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${art ? "rgba(255,255,255,0.12)" : tintBorder}`,
                             borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
                             ...(focused ? { boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
@@ -3987,7 +4085,7 @@ export default function App() {
                       onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recent)}
                       onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
-                      style={{ ...glass, background: art ? "transparent" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: isDark ? "blur(16px)" : "blur(28px)", WebkitBackdropFilter: isDark ? "blur(16px)" : "blur(28px)",
+                      style={{ ...glass, background: art ? "transparent" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
                         border: focused ? `1px solid ${accent.glow}0.6)` : `1px solid ${art ? "rgba(255,255,255,0.12)" : tintBorder}`,
                         borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
                         ...(focused ? { boxShadow: `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
