@@ -36,6 +36,12 @@ import {
 } from "./constants";
 
 
+// Paper grain for Material surface — SVG fractal noise, stitched and desaturated.
+// Light mode: subtle (0.038 opacity), warmer paper feel.
+// Dark mode: stronger (0.075 opacity) to read as tooth on dark paper fills.
+const PAPER_GRAIN_LIGHT = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72 0.54' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23p)' opacity='0.038'/%3E%3C/svg%3E";
+const PAPER_GRAIN_DARK  = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72 0.54' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23p)' opacity='0.075'/%3E%3C/svg%3E";
+
 const launchApp = (app) =>
   invoke("launch_app", { path: app.launch_path, id: app.id, name: app.name, appType: app.app_type });
 
@@ -1297,15 +1303,15 @@ export default function App() {
     "--material-shadow-pressed": isDark
       ? "0 4px 14px rgba(0,0,0,0.22), 0 10px 28px rgba(0,0,0,0.14)"
       : "0 4px 14px rgba(18,18,20,0.075), 0 10px 28px rgba(18,18,20,0.045)",
-    "--material-elevation-1": isDark ? "#1a1816" : isWash ? "#fdfaf7" : `color-mix(in srgb, ${accent.lightBg} 58%, #ffffff 42%)`,
-    "--material-elevation-2": isDark ? "#201d1a" : isWash ? "#ffffff" : `color-mix(in srgb, ${accent.lightBg} 36%, #ffffff 64%)`,
-    "--material-elevation-3": isDark ? "#26221f" : "#ffffff",
-    "--material-inset-bg": isDark ? "#24221f" : `color-mix(in srgb, ${accent.lightBg} 82%, #efe7dc 18%)`,
-    "--material-inset-row": isDark ? "#282620" : `color-mix(in srgb, ${accent.lightBg} 68%, #fff8ee 32%)`,
-    "--material-inset-row-active": isDark ? "#2d2924" : `color-mix(in srgb, ${accent.lightBg} 42%, #ffffff 58%)`,
+    "--material-elevation-1": isDark ? "#181511" : isWash ? "#fdfaf7" : `color-mix(in srgb, ${accent.lightBg} 58%, #faf8f2 42%)`,
+    "--material-elevation-2": isDark ? "#1e1b17" : isWash ? "#ffffff" : `color-mix(in srgb, ${accent.lightBg} 36%, #faf8f2 64%)`,
+    "--material-elevation-3": isDark ? "#242019" : isWash ? "#ffffff" : "#faf8f2",
+    "--material-inset-bg": isDark ? "#221f19" : `color-mix(in srgb, ${accent.lightBg} 82%, #efe7dc 18%)`,
+    "--material-inset-row": isDark ? "#26231c" : `color-mix(in srgb, ${accent.lightBg} 68%, #fdf7ec 32%)`,
+    "--material-inset-row-active": isDark ? "#2b261f" : `color-mix(in srgb, ${accent.lightBg} 42%, #faf8f2 58%)`,
     "--material-inset-top-edge": isDark ? "rgba(255,255,255,0.055)" : "rgba(18,18,20,0.075)",
     "--material-inset-bottom-edge": isDark ? "rgba(255,255,255,0.025)" : "rgba(255,255,255,0.62)",
-    "--material-border-subtle": isDark ? "rgba(255,255,255,0.025)" : isWash ? "rgba(42,30,20,0.035)" : "rgba(18,18,20,0.03)",
+    "--material-border-subtle": isDark ? "rgba(255,255,255,0.025)" : isWash ? "rgba(42,30,20,0.035)" : "rgba(40,28,14,0.045)",
   }), [isDark, isWash, accent.lightBg, accent.primary]);
   const appBg  = isMaterial
     ? materialTokens["--material-bg-primary"]
@@ -1337,7 +1343,7 @@ export default function App() {
   const glass = useMemo(() => {
     if (!glassEnabled) return _flatGlass;
     if (surfaceStyle === "material") return {
-      background:           isDark ? "var(--material-elevation-2)" : "var(--material-elevation-2)",
+      background:           `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-2)`,
       backdropFilter:       undefined,
       WebkitBackdropFilter: undefined,
       border:               "1px solid var(--material-border-subtle)",
@@ -1376,7 +1382,7 @@ export default function App() {
   const glassBar = useMemo(() => {
     if (!glassEnabled) return _flatGlass;
     if (surfaceStyle === "material") return {
-      background:           isDark ? "var(--material-elevation-3)" : "var(--material-elevation-3)",
+      background:           `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-3)`,
       backdropFilter:       undefined,
       WebkitBackdropFilter: undefined,
       border:               "1px solid var(--material-border-subtle)",
@@ -1414,7 +1420,7 @@ export default function App() {
     const tintTop = `${accent.glow}0.025)`;
     const tintBot = `${accent.glow}0.010)`;
     if (surfaceStyle === "material") return {
-      background:           isDark ? "var(--material-elevation-2)" : "var(--material-elevation-2)",
+      background:           `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-2)`,
       backdropFilter:       undefined,
       WebkitBackdropFilter: undefined,
       border:               "1px solid var(--material-border-subtle)",
@@ -3654,7 +3660,7 @@ export default function App() {
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
     <div style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1 }} ref={outerRef}>
 
-      <div style={{ position: "fixed", inset: 0, zIndex: -2, background: appBg }} />
+      <div style={{ position: "fixed", inset: 0, zIndex: -2, background: isMaterial ? `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, ${appBg}` : appBg }} />
       {settings.stars_enabled && resolvedTheme === "plasma" && (
         <>
           <div className="theme-plasma-layer" style={{ position: "fixed", inset: "-18%", zIndex: -1, pointerEvents: "none",

@@ -22,7 +22,7 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 - **Manage visibility** — hide apps from view and restore them anytime from the same menu
 - **Search** — on-screen virtual keyboard for controller-only searching
 - **Animated themes** — Space, Sky, Plasma, Cinder, and Wash are animated environments; Wash uses rich liquid tie-dye marble-ink color fields with optimized edge fills for smooth navigation
-- **Surface Style** — four visual materials: Glass (frosted blur panels), Aero (polished transparent acrylic with sharp specular highlights), Material (solid opaque cards with shadow-based elevation and clear focus states), and Clear (flat matte)
+- **Surface Style** — four visual materials: Glass (frosted blur panels), Aero (polished transparent acrylic with sharp specular highlights), Material (solid opaque paper-textured cards with shadow-based elevation and clear focus states), and Clear (flat matte)
 - **Recent apps** — quick access to what you launched last
 - **Battery indicator** — shows charge level and charging status
 - **Controller test** — live button and axis display in Settings to verify your gamepad mapping
@@ -81,7 +81,7 @@ When a card is focused on the Games or Apps tab, press **Menu** to open the cont
 | Accent Color | Ember, Ocean, Neon, Rose, Midnight |
 | Theme | Space / Sky / Plasma / Cinder / Wash |
 | Theme Surface Defaults | Space → Clear, Sky → Aero, Plasma → Glass, Cinder → Glass, Wash → Material; Surface Style can still be changed manually afterward |
-| Surface Style | Glass — frosted blur panels; Aero — polished acrylic with specular highlights, glossy active elements, and a subtle neutral depth gradient behind the UI; Material — opaque matte cards, inset grouped settings, stronger focused-row elevation, and soft physical shadows; Clear — flat matte |
+| Surface Style | Glass — frosted blur panels; Aero — polished acrylic with specular highlights, glossy active elements, and a subtle neutral depth gradient behind the UI; Material — opaque paper-textured cards, inset grouped settings, warmer cream light surfaces, dark aged-paper tooth, stronger focused-row elevation, and soft physical shadows; Clear — flat matte |
 | Immersive Home | Fullscreen cinematic hero with floating pinned shelf |
 | Show Cover on Home | Show the 2:3 cover art card in the hero section |
 | Show Pinned on Home | Show or hide the pinned items shelf on the home screen |
