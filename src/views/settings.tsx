@@ -217,11 +217,25 @@ export function SettingsScreen({
   const sectionItems = ALL_ITEMS.filter((i) => i.section === settingsSection);
   const navigableItems = getSectionNavigableItems(settingsSection, ALL_ITEMS, settings, { gameCollections, appCollections });
   const isMaterial = surfaceStyle === "material";
+  const materialFocusStyle = isMaterial ? {
+    border: `2px solid ${accent.primary}`,
+    background: isDark
+      ? `color-mix(in srgb, var(--material-elevation-3) 82%, ${accent.primary} 18%)`
+      : `color-mix(in srgb, var(--material-elevation-3) 88%, ${accent.primary} 12%)`,
+    boxShadow: "var(--material-shadow-high)",
+  } : {};
+  const materialSubFocusStyle = isMaterial ? {
+    border: `2px solid ${accent.primary}`,
+    background: isDark
+      ? `color-mix(in srgb, var(--material-inset-row-active) 82%, ${accent.primary} 18%)`
+      : `color-mix(in srgb, var(--material-inset-row-active) 88%, ${accent.primary} 12%)`,
+    boxShadow: "var(--material-shadow-medium)",
+  } : {};
 
   const makeRowStyle = (focused: boolean, sub = false) => ({
     ...settingsRowGlass,
     borderRadius: 14,
-    padding: glassEnabled ? "12px 20px" : "14px 20px",
+    padding: "12px 20px",
     marginBottom: sub ? 6 : 8,
     display: "flex",
     alignItems: "center",
@@ -245,6 +259,7 @@ export function SettingsScreen({
                 : surfaceStyle === "material" ? "var(--material-elevation-2)"
                 : "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.032))")
             : surfaceStyle === "material" ? "var(--material-elevation-3)" : `${accent.glow}0.05)`,
+          ...(isMaterial ? materialFocusStyle : {}),
         }
       : {}),
   });
@@ -300,7 +315,7 @@ export function SettingsScreen({
         const parentStyle = {
           ...settingsRowGlass,
           borderRadius: val ? "14px 14px 0 0" : 14,
-          padding: glassEnabled ? "12px 20px" : "14px 20px",
+          padding: "12px 20px",
           marginBottom: val ? 0 : 8,
           display: "flex",
           alignItems: "center",
@@ -320,6 +335,7 @@ export function SettingsScreen({
                 background: isDark
                   ? (surfaceStyle === "aero" ? "linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.05) 100%)" : isMaterial ? "var(--material-elevation-3)" : "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.032))")
                   : isMaterial ? "var(--material-elevation-3)" : `${accent.glow}0.05)`,
+                ...(isMaterial ? materialFocusStyle : {}),
               }
             : {}),
         };
@@ -348,7 +364,7 @@ export function SettingsScreen({
                 {/* Show Collection Names sub-toggle */}
                 <div
                   ref={subFocused ? settingsFocusedRef : undefined}
-                  style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: subFocused ? (isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: subFocused && isMaterial ? "var(--material-shadow-pressed)" : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}
+                  style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: subFocused ? (isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: subFocused && isMaterial ? "var(--material-shadow-pressed)" : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`, ...(subFocused && isMaterial ? materialSubFocusStyle : {}) }}
                   onClick={() => updateSetting("show_home_collection_names", !settings.show_home_collection_names)}
                 >
                   <span style={{ fontSize: 13, fontWeight: 500, color: isMaterial ? theme.text : theme.textDim }}>{t("settings.showHomeCollectionNames")}</span>
@@ -369,7 +385,7 @@ export function SettingsScreen({
                       return (
                         <div key={col.id}
                           ref={colFocused ? settingsFocusedRef : undefined}
-                          style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: colFocused ? (isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: colFocused && isMaterial ? "var(--material-shadow-pressed)" : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}
+                          style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: colFocused ? (isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: colFocused && isMaterial ? "var(--material-shadow-pressed)" : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`, ...(colFocused && isMaterial ? materialSubFocusStyle : {}) }}
                           onClick={() => onToggleHomeCollection?.(col.name)}>
                           <span style={{ fontSize: 13, fontWeight: 500, color: isMaterial ? theme.text : theme.textDim }}>{col.name}</span>
                           <ToggleKnob value={visible} />
@@ -384,7 +400,7 @@ export function SettingsScreen({
                       return (
                         <div key={col.id}
                           ref={colFocused ? settingsFocusedRef : undefined}
-                          style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: colFocused ? (isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: colFocused && isMaterial ? "var(--material-shadow-pressed)" : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}` }}
+                          style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: colFocused ? (isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: colFocused && isMaterial ? "var(--material-shadow-pressed)" : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`, ...(colFocused && isMaterial ? materialSubFocusStyle : {}) }}
                           onClick={() => onToggleHomeCollection?.(col.name)}>
                           <span style={{ fontSize: 13, fontWeight: 500, color: isMaterial ? theme.text : theme.textDim }}>{col.name}</span>
                           <ToggleKnob value={visible} />
@@ -664,6 +680,7 @@ export function SettingsScreen({
           background: isDark
             ? (surfaceStyle === "aero" ? "linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.05) 100%)" : surfaceStyle === "material" ? "var(--material-elevation-2)" : "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.032))")
             : surfaceStyle === "material" ? "var(--material-elevation-3)" : `${accent.glow}0.05)`,
+          ...(isMaterial ? materialFocusStyle : {}),
         } : {}) }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: customFolders.length > 0 ? 4 : 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: focused ? accent.primary : theme.textDim, textTransform: "uppercase", letterSpacing: "0.08em" }}>{item.label}</div>

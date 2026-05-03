@@ -1694,15 +1694,16 @@ export default function App() {
       "@keyframes cinderDrift   { 0% { transform: translate3d(0, 8vh, 0) scale(0.8); opacity: 0; } 18% { opacity: 0.28; } 42% { opacity: 0.62; } 76% { opacity: 0.30; } 100% { transform: translate3d(var(--cinder-drift-x, 10px), -106vh, 0) scale(0.92); opacity: 0; } }",
       "@keyframes cinderFlicker { 0%, 100% { filter: brightness(0.8); } 35% { filter: brightness(1.35); } 58% { filter: brightness(0.95); } 78% { filter: brightness(1.65); } }",
       "@keyframes cinderBreathe { 0%, 100% { opacity: 0.54; transform: scale(1); } 50% { opacity: 0.74; transform: scale(1.035); } }",
-      "@keyframes washW1 { 0%,100% { transform: translate3d(-1.5%,-0.8%,0) scale(1); } 33% { transform: translate3d(0.8%,0.6%,0) scale(1.02); } 66% { transform: translate3d(-0.4%,1.2%,0) scale(0.986); } }",
-      "@keyframes washW2 { 0%,100% { transform: translate3d(0.6%,-1.2%,0) scale(1.01); } 38% { transform: translate3d(-1.1%,0.5%,0) scale(0.99); } 72% { transform: translate3d(0.7%,1.0%,0) scale(1.02); } }",
-      "@keyframes washW3 { 0%,100% { transform: translate3d(-0.8%,1.1%,0) scale(0.99); } 45% { transform: translate3d(1.4%,-0.5%,0) scale(1.01); } }",
-      "@keyframes washC1 { 0%,100% { transform: translate3d(1.2%,0.7%,0) scale(1.01); } 38% { transform: translate3d(-0.5%,-1.0%,0) scale(0.99); } 72% { transform: translate3d(0.9%,0.8%,0) scale(1.015); } }",
-      "@keyframes washC2 { 0%,100% { transform: translate3d(-0.4%,-0.9%,0) scale(1); } 52% { transform: translate3d(1.0%,0.6%,0) scale(1.01); } }",
-      "@keyframes washMix  { 0%,100% { transform: translate3d(-0.5%,0.4%,0) scale(1); } 50% { transform: translate3d(0.7%,-0.5%,0) scale(1.01); } }",
-      "@keyframes washB1   { 0%,100% { transform: translate3d(0.5%,-0.5%,0) scale(0.99); } 44% { transform: translate3d(-0.8%,0.6%,0) scale(1.01); } }",
-      "@keyframes washB2   { 0%,100% { transform: translate3d(-0.4%,0.8%,0) scale(1.01); } 55% { transform: translate3d(0.6%,-0.4%,0) scale(0.99); } }",
-      "@keyframes washOpacity { 0%,100% { opacity: 0.88; } 28% { opacity: 1.0; } 62% { opacity: 0.82; } }",
+      "@keyframes washW1 { 0%,100% { transform: translate3d(-4%,-2%,0) scale(1.0) rotate(-2deg); } 50% { transform: translate3d(3%,2%,0) scale(1.06) rotate(2deg); } }",
+      "@keyframes washW2 { 0%,100% { transform: translate3d(3%,-3%,0) scale(0.98) rotate(2deg); } 50% { transform: translate3d(-3%,2%,0) scale(1.05) rotate(-2deg); } }",
+      "@keyframes washW3 { 0%,100% { transform: translate3d(-3%,3%,0) scale(0.97) rotate(-3deg); } 50% { transform: translate3d(4%,-2%,0) scale(1.04) rotate(2deg); } }",
+      "@keyframes washC1 { 0%,100% { transform: translate3d(3%,2%,0) scale(1.0); } 50% { transform: translate3d(-2%,-3%,0) scale(1.05); } }",
+      "@keyframes washC2 { 0%,100% { transform: translate3d(-2%,-3%,0) scale(0.98); } 50% { transform: translate3d(3%,2%,0) scale(1.05); } }",
+      "@keyframes washMix  { 0%,100% { transform: translate3d(-3%,2%,0) scale(0.98); } 50% { transform: translate3d(3%,-2%,0) scale(1.06); } }",
+      "@keyframes washB1   { 0%,100% { transform: translate3d(3%,-2%,0) scale(0.99); } 50% { transform: translate3d(-3%,3%,0) scale(1.04); } }",
+      "@keyframes washB2   { 0%,100% { transform: translate3d(-2%,3%,0) scale(1.0); } 50% { transform: translate3d(3%,-2%,0) scale(1.05); } }",
+      "@keyframes washPink { 0%,100% { transform: translate3d(-2%,-3%,0) scale(1.0); } 50% { transform: translate3d(3%,2%,0) scale(1.06); } }",
+      "@keyframes washOpacity { 0%,100% { opacity: 0.95; } 28% { opacity: 1.0; } 62% { opacity: 0.90; } }",
       "@keyframes colChevronBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }",
       ".bg-star  { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; animation: bgStarTwinkle ease-in-out infinite; }",
       ".bg-cloud { position: fixed; top: 0; pointer-events: none; z-index: -1; animation: cloudDrift linear infinite; }",
@@ -1710,16 +1711,17 @@ export default function App() {
       ".theme-plasma-spark { animation: plasmaSpark ease-in-out infinite; will-change: transform, opacity; }",
       ".theme-cinder-layer { animation: cinderBreathe 16s ease-in-out infinite; will-change: transform, opacity; }",
       ".theme-cinder-particle { position: fixed; border-radius: 999px; pointer-events: none; animation-name: cinderDrift, cinderFlicker; animation-timing-function: linear, ease-in-out; animation-iteration-count: infinite, infinite; will-change: transform, opacity, filter; }",
-      ".theme-wash-layer { will-change: transform, opacity; }",
-      ".theme-wash-w1 { animation: washW1 42s ease-in-out infinite, washOpacity 28s ease-in-out infinite; }",
-      ".theme-wash-w2 { animation: washW2 36s ease-in-out infinite, washOpacity 32s ease-in-out infinite; animation-delay: -14s, -4s; }",
-      ".theme-wash-w3 { animation: washW3 52s ease-in-out infinite, washOpacity 24s ease-in-out infinite; animation-delay: -22s, -16s; }",
-      ".theme-wash-c1 { animation: washC1 45s ease-in-out infinite, washOpacity 36s ease-in-out infinite; animation-delay: -6s, -22s; }",
-      ".theme-wash-c2     { animation: washC2  38s ease-in-out infinite, washOpacity 29s ease-in-out infinite; animation-delay: -30s, -11s; }",
-      ".theme-wash-mix    { animation: washMix 58s ease-in-out infinite, washOpacity 42s ease-in-out infinite; animation-delay: -18s, -26s; }",
-      ".theme-wash-bleed1 { animation: washB1  48s ease-in-out infinite, washOpacity 38s ease-in-out infinite; animation-delay: -8s, -14s; }",
-      ".theme-wash-bleed2 { animation: washB2  44s ease-in-out infinite, washOpacity 35s ease-in-out infinite; animation-delay: -34s, -7s; }",
-      "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-w1, .theme-wash-w2, .theme-wash-w3, .theme-wash-c1, .theme-wash-c2, .theme-wash-mix, .theme-wash-bleed1, .theme-wash-bleed2, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } }",
+      ".theme-wash-layer { will-change: transform, opacity; contain: paint; backface-visibility: hidden; transform: translateZ(0); }",
+      ".theme-wash-w1 { animation: washW1 22s ease-in-out infinite, washOpacity 24s ease-in-out infinite; }",
+      ".theme-wash-w2 { animation: washW2 20s ease-in-out infinite, washOpacity 26s ease-in-out infinite; animation-delay: -8s, -4s; }",
+      ".theme-wash-w3 { animation: washW3 28s ease-in-out infinite, washOpacity 22s ease-in-out infinite; animation-delay: -14s, -10s; }",
+      ".theme-wash-c1 { animation: washC1 24s ease-in-out infinite, washOpacity 28s ease-in-out infinite; animation-delay: -6s, -18s; }",
+      ".theme-wash-c2     { animation: washC2  21s ease-in-out infinite, washOpacity 25s ease-in-out infinite; animation-delay: -12s, -7s; }",
+      ".theme-wash-mix    { animation: washMix 28s ease-in-out infinite, washOpacity 26s ease-in-out infinite; animation-delay: -18s, -16s; }",
+      ".theme-wash-bleed1 { animation: washB1  26s ease-in-out infinite, washOpacity 24s ease-in-out infinite; animation-delay: -8s, -14s; }",
+      ".theme-wash-bleed2 { animation: washB2  23s ease-in-out infinite, washOpacity 27s ease-in-out infinite; animation-delay: -16s, -7s; }",
+      ".theme-wash-pink { animation: washPink 22s ease-in-out infinite, washOpacity 26s ease-in-out infinite; animation-delay: -9s, -3s; }",
+      "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-w1, .theme-wash-w2, .theme-wash-w3, .theme-wash-c1, .theme-wash-c2, .theme-wash-mix, .theme-wash-bleed1, .theme-wash-bleed2, .theme-wash-pink, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } }",
       "html, body { overflow-x: hidden; }",
       "* { scrollbar-width: none !important; -ms-overflow-style: none !important; }",
       "*::-webkit-scrollbar { display: none !important; }",
@@ -3644,6 +3646,7 @@ export default function App() {
   // ── Render ────────────────────────────────────────────────────
   const themeValue = { isDark, theme, accent, glass, glassBar, settingsRowGlass, glassEnabled, surfaceStyle, appBg, bgGlow1, bgGlow2 };
   const settingsValue = { settings, settingsRef, updateSetting, updateSettingsBatch };
+  const washPink = accent.glow;
 
   return (
     <ThemeProvider value={themeValue}>
@@ -3702,15 +3705,15 @@ export default function App() {
                 <feTurbulence type="fractalNoise" baseFrequency="0.013 0.009" numOctaves="4" seed="7" result="edgeNoise"/>
                 <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="preBlurred"/>
                 <feComponentTransfer in="preBlurred" result="shaped">
-                  <feFuncA type="table" tableValues="0 0 0.02 0.10 0.34 0.68 0.90 1"/>
+                  <feFuncA type="table" tableValues="0 0 0.05 0.22 0.52 0.80 0.95 1"/>
                 </feComponentTransfer>
-                <feDisplacementMap in="shaped" in2="edgeNoise" scale="56" xChannelSelector="R" yChannelSelector="G"/>
+                <feDisplacementMap in="shaped" in2="edgeNoise" scale="80" xChannelSelector="R" yChannelSelector="G"/>
               </filter>
               {/* wash-flow: asymmetric vertical blur → displacement — drips and downward spread */}
               <filter id="wash-flow" x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="linearRGB">
                 <feTurbulence type="fractalNoise" baseFrequency="0.018 0.007" numOctaves="3" seed="23" result="flowNoise"/>
                 <feGaussianBlur in="SourceGraphic" stdDeviation="0.8 3.5" result="flowed"/>
-                <feDisplacementMap in="flowed" in2="flowNoise" scale="36" xChannelSelector="R" yChannelSelector="G"/>
+                <feDisplacementMap in="flowed" in2="flowNoise" scale="50" xChannelSelector="R" yChannelSelector="G"/>
               </filter>
               {/* wash-drag: asymmetric horizontal blur → displacement — brushstroke / paint pull */}
               <filter id="wash-drag" x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="linearRGB">
@@ -3721,26 +3724,61 @@ export default function App() {
             </defs>
           </svg>
 
+          <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `radial-gradient(ellipse 100% 100% at 50% 50%, ${accent.glow}0.08) 0%, transparent 70%)`,
+          }} />
+
+          <div className="theme-wash-layer" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 28% 78% at -4% 50%, ${accent.glow}0.24) 0%, ${accent.glow}0.18) 36%, transparent 68%),
+              radial-gradient(ellipse 42% 30% at 20% -7%, ${accent.glow}0.18) 0%, ${accent.glow}0.12) 42%, transparent 72%),
+              radial-gradient(ellipse 46% 26% at 28% 107%, ${accent.glow}0.16) 0%, ${accent.glow}0.12) 40%, transparent 70%)
+            `,
+            animation: "washMix 32s ease-in-out infinite, washOpacity 30s ease-in-out infinite",
+            animationDelay: "-11s, -6s",
+          }} />
+
+          <div className="theme-wash-layer" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 30% 76% at 104% 48%, rgba(78,150,255,0.22) 0%, rgba(78,150,255,0.16) 36%, transparent 68%),
+              radial-gradient(ellipse 48% 28% at 78% 105%, rgba(88,136,255,0.18) 0%, rgba(88,136,255,0.12) 42%, transparent 72%),
+              radial-gradient(ellipse 36% 26% at 100% 6%, rgba(134,122,255,0.14) 0%, rgba(134,122,255,0.10) 42%, transparent 72%)
+            `,
+            animation: "washB1 34s ease-in-out infinite, washOpacity 32s ease-in-out infinite",
+            animationDelay: "-17s, -13s",
+          }} />
+
+          <div className="theme-wash-layer" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 52% 24% at 54% -5%, rgba(238,98,166,0.16) 0%, rgba(238,98,166,0.12) 40%, transparent 72%),
+              radial-gradient(ellipse 38% 22% at 56% 104%, rgba(238,98,166,0.10) 0%, rgba(238,98,166,0.08) 44%, transparent 74%)
+            `,
+            animation: "washPink 36s ease-in-out infinite, washOpacity 34s ease-in-out infinite",
+            animationDelay: "-21s, -9s",
+          }} />
+
           {/* Warm primary — compound shape: main pool + side lobe + pigment hotspot + upper corner bloom.
               Multiple overlapping radials form an amoeba-like region; feComponentTransfer makes edges
               non-linear so they dry unevenly rather than fading uniformly. */}
           <div className="theme-wash-layer theme-wash-w1" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
             background: `
-              radial-gradient(ellipse 44% 36% at 10% 47%, ${accent.glow}0.22) 0%, ${accent.glow}0.62) 30%, ${accent.glow}0.20) 52%, transparent 63%),
-              radial-gradient(ellipse 30% 44% at 3% 52%, ${accent.glow}0.16) 0%, ${accent.glow}0.50) 34%, ${accent.glow}0.14) 56%, transparent 67%),
-              radial-gradient(ellipse 16% 12% at 24% 43%, ${accent.glow}0.74) 0%, ${accent.glow}0.22) 38%, transparent 52%),
-              radial-gradient(ellipse 22% 17% at -2% 20%, ${accent.glow}0.12) 0%, ${accent.glow}0.44) 40%, ${accent.glow}0.10) 60%, transparent 70%)
+              radial-gradient(ellipse 62% 52% at 18% 47%, ${accent.glow}0.25) 0%, ${accent.glow}0.72) 30%, ${accent.glow}0.24) 52%, transparent 63%),
+              radial-gradient(ellipse 42% 62% at 12% 54%, ${accent.glow}0.19) 0%, ${accent.glow}0.60) 34%, ${accent.glow}0.17) 56%, transparent 67%),
+              radial-gradient(ellipse 22% 17% at 30% 43%, ${accent.glow}0.81) 0%, ${accent.glow}0.25) 38%, transparent 52%),
+              radial-gradient(ellipse 31% 24% at 8% 24%, ${accent.glow}0.14) 0%, ${accent.glow}0.53) 40%, ${accent.glow}0.12) 60%, transparent 70%),
+              radial-gradient(ellipse 50% 30% at 20% 85%, ${accent.glow}0.38) 0%, ${accent.glow}0.47) 28%, transparent 58%)
             `,
-            filter: "url(#wash-edge)",
+            filter: "url(#wash-edge) hue-rotate(20deg) saturate(0.82)",
           }} />
 
           {/* Warm secondary — lower pools + faint top-center bleed. wash-flow gives vertical drip
               character so these sit differently than the main body's spread. */}
           <div className="theme-wash-layer theme-wash-w2" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
             background: `
-              radial-gradient(ellipse 20% 16% at 15% 74%, ${accent.glow}0.12) 0%, ${accent.glow}0.40) 42%, transparent 58%),
-              radial-gradient(ellipse 14% 11% at 8% 88%, ${accent.glow}0.08) 0%, ${accent.glow}0.32) 44%, transparent 60%),
-              radial-gradient(ellipse 10% 8% at 44% 14%, ${accent.glow}0.08) 0%, ${accent.glow}0.30) 46%, transparent 62%)
+              radial-gradient(ellipse 28% 22% at 24% 72%, ${accent.glow}0.17) 0%, ${accent.glow}0.55) 42%, transparent 58%),
+              radial-gradient(ellipse 20% 15% at 18% 86%, ${accent.glow}0.11) 0%, ${accent.glow}0.45) 44%, transparent 60%),
+              radial-gradient(ellipse 14% 11% at 48% 18%, ${accent.glow}0.11) 0%, ${accent.glow}0.42) 46%, transparent 62%),
+              radial-gradient(ellipse 40% 24% at 42% 92%, ${accent.glow}0.22) 0%, ${accent.glow}0.42) 32%, transparent 62%)
             `,
             filter: "url(#wash-flow)",
           }} />
@@ -3751,10 +3789,18 @@ export default function App() {
               piece drifts differently and the two never merge into a clean line. */}
           <div className="theme-wash-layer theme-wash-w3" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
             background: `
-              radial-gradient(ellipse 34% 7% at 18% 59%, ${accent.glow}0.06) 0%, ${accent.glow}0.24) 36%, transparent 55%),
-              radial-gradient(ellipse 18% 5% at 46% 45%, ${accent.glow}0.04) 0%, ${accent.glow}0.16) 42%, transparent 60%)
+              radial-gradient(ellipse 48% 10% at 26% 59%, ${accent.glow}0.08) 0%, ${accent.glow}0.34) 36%, transparent 55%),
+              radial-gradient(ellipse 25% 7% at 50% 45%, ${accent.glow}0.06) 0%, ${accent.glow}0.22) 42%, transparent 60%)
             `,
             filter: "url(#wash-flow)",
+          }} />
+
+          <div className="theme-wash-layer theme-wash-pink" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 56% 49% at 50% 25%, ${washPink}0.50) 0%, ${washPink}0.65) 28%, ${washPink}0.18) 50%, transparent 65%),
+              radial-gradient(ellipse 35% 28% at 58% 38%, ${washPink}0.20) 0%, ${washPink}0.42) 38%, transparent 58%)
+            `,
+            filter: "url(#wash-edge) hue-rotate(320deg) saturate(0.95)",
           }} />
 
           {/* Cool primary — compound right-side region. hue-rotate(148°) maps warm accent to a
@@ -3762,22 +3808,23 @@ export default function App() {
               4th radial: tight hotspot for internal pigment density variation (dried-edge pooling). */}
           <div className="theme-wash-layer theme-wash-c1" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
             background: `
-              radial-gradient(ellipse 38% 32% at 82% 46%, ${accent.glow}0.18) 0%, ${accent.glow}0.54) 30%, ${accent.glow}0.16) 52%, transparent 62%),
-              radial-gradient(ellipse 24% 30% at 95% 36%, ${accent.glow}0.14) 0%, ${accent.glow}0.44) 34%, ${accent.glow}0.10) 54%, transparent 65%),
-              radial-gradient(ellipse 14% 11% at 68% 72%, ${accent.glow}0.06) 0%, ${accent.glow}0.22) 46%, transparent 62%),
-              radial-gradient(ellipse 10% 8% at 87% 44%, ${accent.glow}0.60) 0%, ${accent.glow}0.16) 36%, transparent 50%)
+              radial-gradient(ellipse 55% 46% at 72% 46%, ${accent.glow}0.25) 0%, ${accent.glow}0.74) 30%, ${accent.glow}0.22) 52%, transparent 62%),
+              radial-gradient(ellipse 34% 42% at 84% 38%, ${accent.glow}0.20) 0%, ${accent.glow}0.62) 34%, ${accent.glow}0.14) 54%, transparent 65%),
+              radial-gradient(ellipse 20% 15% at 62% 70%, ${accent.glow}0.08) 0%, ${accent.glow}0.30) 46%, transparent 62%),
+              radial-gradient(ellipse 14% 11% at 78% 44%, ${accent.glow}0.84) 0%, ${accent.glow}0.22) 36%, transparent 50%),
+              radial-gradient(ellipse 40% 28% at 75% 80%, ${accent.glow}0.45) 0%, ${accent.glow}0.55) 28%, transparent 55%)
             `,
-            filter: "url(#wash-edge) hue-rotate(148deg) saturate(0.58)",
+            filter: "url(#wash-edge) hue-rotate(205deg) saturate(0.9)",
           }} />
 
           {/* Cool upper — slightly different hue angle (130°) adds variation within cool region;
               more desaturated (0.52) so upper corner reads as a diluted wash, not a second color. */}
           <div className="theme-wash-layer theme-wash-c2" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
             background: `
-              radial-gradient(ellipse 16% 20% at 98% 20%, ${accent.glow}0.10) 0%, ${accent.glow}0.38) 40%, transparent 58%),
-              radial-gradient(ellipse 12% 10% at 78% 82%, ${accent.glow}0.08) 0%, ${accent.glow}0.28) 44%, transparent 60%)
+              radial-gradient(ellipse 22% 28% at 88% 24%, ${accent.glow}0.14) 0%, ${accent.glow}0.53) 40%, transparent 58%),
+              radial-gradient(ellipse 17% 14% at 72% 78%, ${accent.glow}0.11) 0%, ${accent.glow}0.39) 44%, transparent 60%)
             `,
-            filter: "url(#wash-edge) hue-rotate(130deg) saturate(0.52)",
+            filter: "url(#wash-edge) hue-rotate(260deg) saturate(0.85)",
           }} />
 
           {/* Center meeting zone — ring gradient (opaque center=0 → peak at 46% → fade) simulates
@@ -3785,11 +3832,11 @@ export default function App() {
               faintly toward center, breaking the hard warm/cool boundary. */}
           <div className="theme-wash-layer theme-wash-mix" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
             background: `
-              radial-gradient(ellipse 18% 54% at 52% 54%, ${accent.glow}0.0) 0%, ${accent.glow}0.26) 46%, transparent 62%),
-              radial-gradient(ellipse 12% 9% at 40% 32%, ${accent.glow}0.04) 0%, ${accent.glow}0.20) 48%, transparent 63%),
-              radial-gradient(ellipse 32% 18% at 66% 50%, ${accent.glow}0.0) 0%, ${accent.glow}0.08) 52%, transparent 68%)
+              radial-gradient(ellipse 45% 70% at 60% 48%, ${accent.glow}0.08) 0%, ${accent.glow}0.60) 46%, ${accent.glow}0.18) 62%, transparent 72%),
+              radial-gradient(ellipse 17% 13% at 44% 34%, ${accent.glow}0.10) 0%, ${accent.glow}0.36) 48%, transparent 66%),
+              radial-gradient(ellipse 45% 25% at 62% 55%, ${accent.glow}0.04) 0%, ${accent.glow}0.22) 52%, transparent 70%)
             `,
-            filter: "url(#wash-edge)",
+            filter: "url(#wash-edge) hue-rotate(260deg) saturate(0.72)",
           }} />
 
           {/* Cool cohesion bridge — extremely faint cool wash reaching from right region toward
@@ -3797,10 +3844,10 @@ export default function App() {
               two separate paintings. Very low opacity; hue-rotate matches C1 exactly. */}
           <div className="theme-wash-layer theme-wash-bleed1" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
             background: `
-              radial-gradient(ellipse 52% 28% at 72% 52%, ${accent.glow}0.0) 0%, ${accent.glow}0.14) 48%, transparent 64%),
-              radial-gradient(ellipse 20% 14% at 58% 62%, ${accent.glow}0.02) 0%, ${accent.glow}0.10) 50%, transparent 66%)
+              radial-gradient(ellipse 73% 39% at 66% 52%, ${accent.glow}0.0) 0%, ${accent.glow}0.20) 48%, transparent 64%),
+              radial-gradient(ellipse 28% 20% at 56% 62%, ${accent.glow}0.03) 0%, ${accent.glow}0.14) 50%, transparent 66%)
             `,
-            filter: "url(#wash-edge) hue-rotate(148deg) saturate(0.44)",
+            filter: "url(#wash-edge) hue-rotate(205deg) saturate(0.7)",
           }} />
 
           {/* Tertiary whisper — barely visible golden hue (hue-rotate 68°) at two small spots.
@@ -3808,10 +3855,10 @@ export default function App() {
               watercolor. Must stay near invisible: max opacity 0.12 at peak. */}
           <div className="theme-wash-layer theme-wash-bleed2" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
             background: `
-              radial-gradient(ellipse 12% 9% at 74% 78%, ${accent.glow}0.03) 0%, ${accent.glow}0.11) 44%, transparent 60%),
-              radial-gradient(ellipse 8% 6% at 28% 18%, ${accent.glow}0.02) 0%, ${accent.glow}0.09) 46%, transparent 62%)
+              radial-gradient(ellipse 17% 13% at 70% 76%, ${accent.glow}0.04) 0%, ${accent.glow}0.15) 44%, transparent 60%),
+              radial-gradient(ellipse 11% 8% at 34% 22%, ${accent.glow}0.03) 0%, ${accent.glow}0.13) 46%, transparent 62%)
             `,
-            filter: "url(#wash-edge) hue-rotate(68deg) saturate(0.32)",
+            filter: "url(#wash-edge) hue-rotate(68deg) saturate(0.5)",
           }} />
 
           {/* Paper grain — fractal noise at overlay blend; two-axis baseFrequency gives fibrous paper feel */}

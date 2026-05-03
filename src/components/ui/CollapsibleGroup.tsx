@@ -43,6 +43,20 @@ export function CollapsibleGroup({
 }: CollapsibleGroupProps) {
   const { glass, accent, isDark, theme, surfaceStyle } = useTheme();
   const isMaterial = surfaceStyle === "material";
+  const materialFocusStyle: CSSProperties = isMaterial ? {
+    border: `2px solid ${accent.primary}`,
+    background: isDark
+      ? `color-mix(in srgb, var(--material-elevation-3) 82%, ${accent.primary} 18%)`
+      : `color-mix(in srgb, var(--material-elevation-3) 88%, ${accent.primary} 12%)`,
+    boxShadow: "var(--material-shadow-high)",
+  } : {};
+  const materialSubFocusStyle: CSSProperties = isMaterial ? {
+    border: `2px solid ${accent.primary}`,
+    background: isDark
+      ? `color-mix(in srgb, var(--material-inset-row-active) 82%, ${accent.primary} 18%)`
+      : `color-mix(in srgb, var(--material-inset-row-active) 88%, ${accent.primary} 12%)`,
+    boxShadow: "var(--material-shadow-medium)",
+  } : {};
   const parentStyle: CSSProperties = {
     ...glass,
     borderRadius: value ? "14px 14px 0 0" : 14,
@@ -58,6 +72,7 @@ export function CollapsibleGroup({
           border: `1px solid ${isMaterial ? accent.primary : accent.glow + "0.6)"}`,
           boxShadow: isMaterial ? "var(--material-shadow-medium)" : `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`,
           background: isMaterial ? "var(--material-elevation-3)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`,
+          ...(isMaterial ? materialFocusStyle : {}),
         }
       : { border: isMaterial ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)" }),
   };
@@ -110,6 +125,7 @@ export function CollapsibleGroup({
                 idx < items.length - 1 && !isMaterial
                   ? `1px solid ${isMaterial ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`
                   : "none",
+              ...(item.focused && isMaterial ? materialSubFocusStyle : {}),
             };
 
             if (item.type === "cycle") {

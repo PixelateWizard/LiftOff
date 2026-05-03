@@ -19,6 +19,10 @@
 - **Aero background depth gradient** — a subtle neutral linear gradient overlays the page background in Aero mode. Light theme: 4% white at the top fading to 2.5% dark at the bottom, adding vertical depth without re-tinting the accent-colored background. Dark theme: barely perceptible 1.2–1.8% tonal shift that does not compete with the star field. No accent color is mixed into the gradient.
 
 ### Changed
+- **Wash theme** now reads as richer liquid tie-dye / marble ink: larger overlapping pigment blobs, peach-softened warm regions, blue and lavender cool regions, a stronger lavender meeting zone, subtle edge/corner color fills, denser dried-edge interiors, and a warmer paper base.
+- **Wash theme performance** improved by keeping the organic SVG displacement filters on the main pigment blobs while converting the soft perimeter fill layers to cheaper unfiltered radial washes. This preserves the filled-edge look while reducing WebView2 paint/compositor load during navigation.
+- **Material Settings focus** now uses an opaque, slightly accent-tinted raised surface with a single 2px accent border and stronger elevation. The earlier transparent tint, double-border/outline treatment, and left accent bar were removed to better match the Material surface model.
+- **Clear Settings row height** now matches the other surface modes by using the same row padding in Settings.
 - **Theme list** now uses animated environment names: Space, Sky, Plasma, Cinder, and Wash. Legacy theme values (`dark`, `light`, `system`, `ember`, and `bloom`) are normalized to the new names where possible.
 - **Cinder accent behavior** now uses the selected accent only as a subtle undertone in heat pockets and brighter particles, preserving the warm smoldering identity while supporting cold-flame, arcane, or chemical-fire accents.
 - **Wash + Material styling** adds a softer light Material token set with neutral off-white fills and low-contrast accent-tinted shadows when Wash is active.
