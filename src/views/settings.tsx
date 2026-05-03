@@ -5,7 +5,7 @@ import { CollapsibleGroup, ToggleKnob, GamepadIconPreview } from "../components/
 import { ControllerTestWidget } from "../components/ControllerTestWidget";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
-import { ACCENTS, APP_VERSION, GITHUB_REPO } from "../constants";
+import { ACCENTS, APP_VERSION, GITHUB_REPO, THEME_OPTIONS, normalizeThemeKey } from "../constants";
 import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem } from "../types";
 
 // ── Section definitions ────────────────────────────────────────
@@ -19,14 +19,20 @@ export const SETTINGS_SECTIONS = [
 ] as const;
 
 /** Build full SETTINGS_ITEMS array with translated labels, annotated with section index. */
-export function buildSettingsItems(t: TFunction, isDark: boolean): SettingsItem[] {
+export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsItem[] {
   const D = (key: string, section: number): SettingsDividerItem => ({ key: `div_${key}`, section, type: "divider", label: t(`settings.dividers.${key}`) as string });
+  const bgLabel =
+    activeTheme === "space" ? t("settings.backgroundStars") :
+    activeTheme === "sky" ? t("settings.backgroundClouds") :
+    activeTheme === "plasma" ? t("settings.backgroundPlasma") :
+    activeTheme === "cinder" ? t("settings.backgroundCinder") :
+    t("settings.backgroundWash");
   return [
     // ── Appearance ───────────────────────────────────────────────
     D("theme", 0),
     { key: "accent",        section: 0, label: t("settings.accentColor"),  type: "accent" },
-    { key: "theme",         section: 0, label: t("settings.theme"),         type: "cycle",  options: ["dark","light","system"] },
-    { key: "stars_enabled", section: 0, label: isDark ? t("settings.backgroundStars") : t("settings.backgroundClouds"), type: "toggle" },
+    { key: "theme",         section: 0, label: t("settings.theme"),         type: "cycle",  options: [...THEME_OPTIONS] },
+    { key: "stars_enabled", section: 0, label: bgLabel, type: "toggle" },
     { key: "surface_style", section: 0, label: t("settings.surfaceStyle"),                                                  type: "cycle",  options: ["glass", "aero", "material", "clear"] },
 
     D("home", 0),
@@ -207,7 +213,7 @@ export function SettingsScreen({
   const { settings, updateSetting } = useSettings();
   const wideLayout = settings.wide_layout ?? false;
 
-  const ALL_ITEMS = buildSettingsItems(t, isDark);
+  const ALL_ITEMS = buildSettingsItems(t, normalizeThemeKey(String(settings.theme)));
   const sectionItems = ALL_ITEMS.filter((i) => i.section === settingsSection);
   const navigableItems = getSectionNavigableItems(settingsSection, ALL_ITEMS, settings, { gameCollections, appCollections });
   const isMaterial = surfaceStyle === "material";
@@ -438,7 +444,9 @@ export function SettingsScreen({
 
     if (item.type === "cycle") {
       const opts = item.options;
-      const curVal = settings[item.key] as string;
+      const curVal = item.key === "theme"
+        ? normalizeThemeKey(String(settings[item.key]))
+        : settings[item.key] as string;
       const cur = opts.indexOf(curVal);
       return (
         <div key={item.key} ref={rowRef} style={rowStyle}>

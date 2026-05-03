@@ -30,7 +30,7 @@ export interface AccentColors {
 
 // ── Settings value union types ─────────────────────────────────
 
-export type ThemeMode        = "dark" | "light" | "system";
+export type ThemeMode        = "space" | "sky" | "plasma" | "cinder" | "wash" | "ember" | "dark" | "light" | "system";
 export type DefaultTab       = "Home" | "Games" | "Apps";
 export type RepeatSpeed      = "slow" | "normal" | "fast";
 export type AnimatedHeroes   = "static" | "animated" | "custom";

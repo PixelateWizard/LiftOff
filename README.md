@@ -21,7 +21,7 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 - **Pinned apps** — pin your most-used games and apps to the top of any tab
 - **Manage visibility** — hide apps from view and restore them anytime from the same menu
 - **Search** — on-screen virtual keyboard for controller-only searching
-- **Themes** — dark, light, and system-follow modes with 8 accent colors including an Xbox-inspired neon green; each accent defines WCAG-compliant text colors for both light and dark mode so active buttons and nav pills always meet contrast requirements
+- **Animated themes** — Space, Sky, Plasma, Cinder, and Wash are animated environments; each theme picks a sensible default Surface Style while still letting you override surfaces manually
 - **Surface Style** — four visual materials: Glass (frosted blur panels), Aero (polished transparent acrylic with sharp specular highlights), Material (solid matte surfaces with shadow-based elevation), and Clear (flat matte)
 - **Recent apps** — quick access to what you launched last
 - **Battery indicator** — shows charge level and charging status
@@ -79,7 +79,8 @@ When a card is focused on the Games or Apps tab, press **Menu** to open the cont
 | Setting | Description |
 |---------|-------------|
 | Accent Color | Ember, Ocean, Neon, Rose, Midnight |
-| Theme | Dark / Light / System |
+| Theme | Space / Sky / Plasma / Cinder / Wash |
+| Theme Surface Defaults | Space → Clear, Sky → Aero, Plasma → Glass, Cinder → Glass, Wash → Material; Surface Style can still be changed manually afterward |
 | Surface Style | Glass — frosted blur panels; Aero — polished acrylic with specular highlights, glossy active elements, and a subtle neutral depth gradient behind the UI; Material — opaque matte cards, inset grouped settings, and soft physical shadows; Clear — flat matte |
 | Immersive Home | Fullscreen cinematic hero with floating pinned shelf |
 | Show Cover on Home | Show the 2:3 cover art card in the hero section |
@@ -94,7 +95,7 @@ When a card is focused on the Games or Apps tab, press **Menu** to open the cont
 | Default Tab | Which tab opens on launch |
 | Stick Repeat Speed | How fast held directions repeat (Slow / Normal / Fast) |
 | Launch at Startup | Start LiftOff with Windows |
-| Animated Stars | Toggle the background star field |
+| Theme Effects | Toggle the active theme's background effects: stars, clouds, plasma, cinder, or wash |
 | Hero Art Mode | Static / Animated / Custom — Static forces static banners everywhere; Animated uses animated art everywhere; Custom lets you choose per game via Change Hero Art |
 | UI Scale | Override the automatic UI scale (useful for non-standard display sizes) |
 | Controller Test | Live display of button states and axes for your active gamepad |

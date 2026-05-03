@@ -181,13 +181,13 @@ fn default_bottombar_alignment()  -> String { "left".to_string() }
 fn default_gamepad_platform()     -> String { "xbox".to_string() }
 fn default_gamepad_btn_size()     -> String { "small".to_string() }
 fn default_topbar_show_bumpers()  -> bool   { false }
-fn default_surface_style()        -> String { "glass".to_string() }
+fn default_surface_style()        -> String { "clear".to_string() }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
             accent: "ember".to_string(),
-            theme: "dark".to_string(),
+            theme: "space".to_string(),
             stars_enabled: true,
             default_tab: "Home".to_string(),
             scan_steam: true,
@@ -230,7 +230,7 @@ impl Default for Settings {
             gamepad_btn_size: "small".to_string(),
             gamepad_auto_detect: true,
             topbar_show_bumpers: false,
-            surface_style: "glass".to_string(),
+            surface_style: "clear".to_string(),
         }
     }
 }

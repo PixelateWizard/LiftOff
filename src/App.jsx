@@ -32,7 +32,7 @@ import { AppBottomBar } from "./components/layout/AppBottomBar";
 import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO,
   ACCENTS, THEMES, CLOUD_SHAPES, CLOUD_CONFIGS, KB_ALPHA, KB_NUMS,
-  SCAN_KEYS, DEFAULT_SETTINGS,
+  SCAN_KEYS, DEFAULT_SETTINGS, THEME_SURFACE_DEFAULTS, normalizeThemeKey, isDarkThemeKey,
 } from "./constants";
 
 
@@ -1263,14 +1263,12 @@ export default function App() {
   const btnPressTime          = useRef({});
   const btnRepeating          = useRef({});
 
-  const resolvedTheme = settings.theme === "system"
-    ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
-    : settings.theme;
-  const isDark = resolvedTheme === "dark";
+  const resolvedTheme = normalizeThemeKey(settings.theme);
+  const isDark = isDarkThemeKey(resolvedTheme);
 
   // Memoized so homeContent useMemo deps stay stable across unrelated re-renders
   // (clock ticks every 10s, battery polls every 10s would otherwise bust the memo constantly)
-  const theme = useMemo(() => THEMES[resolvedTheme] || THEMES.dark, [resolvedTheme]);
+  const theme = useMemo(() => THEMES[resolvedTheme] || THEMES.space, [resolvedTheme]);
   const accent = useMemo(() => {
     const base = ACCENTS[settings.accent] || ACCENTS.ember;
     const resolved = (!isDark && base.lightPrimary) ? { ...base, primary: base.lightPrimary } : base;
@@ -1283,32 +1281,43 @@ export default function App() {
   const surfaceStyle = settings.surface_style ?? "glass";
   const glassEnabled = surfaceStyle !== "clear";
   const isMaterial = surfaceStyle === "material";
+  const isWash = resolvedTheme === "wash";
   const materialTokens = useMemo(() => ({
-    "--material-bg-primary": isDark ? "#141312" : `color-mix(in srgb, ${accent.lightBg} 86%, #f7f4ef 14%)`,
-    "--material-bg-secondary": isDark ? "#1b1917" : `color-mix(in srgb, ${accent.lightBg} 72%, #ffffff 28%)`,
+    "--material-bg-primary": isDark ? "#141312" : isWash ? "#f7f4ef" : `color-mix(in srgb, ${accent.lightBg} 86%, #f7f4ef 14%)`,
+    "--material-bg-secondary": isDark ? "#1b1917" : isWash ? "#faf8f4" : `color-mix(in srgb, ${accent.lightBg} 72%, #ffffff 28%)`,
     "--material-shadow-low": isDark
       ? "0 6px 18px rgba(0,0,0,0.22), 0 14px 38px rgba(0,0,0,0.16)"
-      : "0 5px 18px rgba(18,18,20,0.075), 0 14px 36px rgba(18,18,20,0.052)",
+      : isWash ? `0 5px 18px color-mix(in srgb, ${accent.primary} 18%, rgba(38,26,16,0.14) 82%), 0 14px 36px rgba(38,26,16,0.10)` : "0 5px 18px rgba(18,18,20,0.075), 0 14px 36px rgba(18,18,20,0.052)",
     "--material-shadow-medium": isDark
       ? "0 10px 28px rgba(0,0,0,0.28), 0 22px 56px rgba(0,0,0,0.20)"
-      : "0 9px 28px rgba(18,18,20,0.105), 0 22px 54px rgba(18,18,20,0.075)",
+      : isWash ? `0 9px 26px color-mix(in srgb, ${accent.primary} 20%, rgba(38,26,16,0.17) 80%), 0 22px 52px rgba(38,26,16,0.12)` : "0 9px 28px rgba(18,18,20,0.105), 0 22px 54px rgba(18,18,20,0.075)",
     "--material-shadow-high": isDark
       ? "0 14px 36px rgba(0,0,0,0.34), 0 32px 72px rgba(0,0,0,0.24)"
-      : "0 13px 36px rgba(18,18,20,0.13), 0 30px 72px rgba(18,18,20,0.09)",
+      : isWash ? `0 12px 34px color-mix(in srgb, ${accent.primary} 22%, rgba(38,26,16,0.20) 78%), 0 28px 68px rgba(38,26,16,0.14)` : "0 13px 36px rgba(18,18,20,0.13), 0 30px 72px rgba(18,18,20,0.09)",
     "--material-shadow-pressed": isDark
       ? "0 4px 14px rgba(0,0,0,0.22), 0 10px 28px rgba(0,0,0,0.14)"
       : "0 4px 14px rgba(18,18,20,0.075), 0 10px 28px rgba(18,18,20,0.045)",
-    "--material-elevation-1": isDark ? "#1a1816" : `color-mix(in srgb, ${accent.lightBg} 58%, #ffffff 42%)`,
-    "--material-elevation-2": isDark ? "#201d1a" : `color-mix(in srgb, ${accent.lightBg} 36%, #ffffff 64%)`,
+    "--material-elevation-1": isDark ? "#1a1816" : isWash ? "#fdfaf7" : `color-mix(in srgb, ${accent.lightBg} 58%, #ffffff 42%)`,
+    "--material-elevation-2": isDark ? "#201d1a" : isWash ? "#ffffff" : `color-mix(in srgb, ${accent.lightBg} 36%, #ffffff 64%)`,
     "--material-elevation-3": isDark ? "#26221f" : "#ffffff",
     "--material-inset-bg": isDark ? "#24221f" : `color-mix(in srgb, ${accent.lightBg} 82%, #efe7dc 18%)`,
     "--material-inset-row": isDark ? "#282620" : `color-mix(in srgb, ${accent.lightBg} 68%, #fff8ee 32%)`,
     "--material-inset-row-active": isDark ? "#2d2924" : `color-mix(in srgb, ${accent.lightBg} 42%, #ffffff 58%)`,
     "--material-inset-top-edge": isDark ? "rgba(255,255,255,0.055)" : "rgba(18,18,20,0.075)",
     "--material-inset-bottom-edge": isDark ? "rgba(255,255,255,0.025)" : "rgba(255,255,255,0.62)",
-    "--material-border-subtle": isDark ? "rgba(255,255,255,0.025)" : "rgba(18,18,20,0.03)",
-  }), [isDark, accent.lightBg]);
-  const appBg  = isMaterial ? materialTokens["--material-bg-primary"] : (isDark ? "#100a06" : accent.lightBg);
+    "--material-border-subtle": isDark ? "rgba(255,255,255,0.025)" : isWash ? "rgba(42,30,20,0.035)" : "rgba(18,18,20,0.03)",
+  }), [isDark, isWash, accent.lightBg, accent.primary]);
+  const appBg  = isMaterial
+    ? materialTokens["--material-bg-primary"]
+    : resolvedTheme === "plasma"
+      ? "#05050b"
+      : resolvedTheme === "cinder"
+        ? "#100806"
+        : resolvedTheme === "wash"
+          ? "#f8f5f0"
+        : resolvedTheme === "space"
+          ? "#070910"
+          : accent.lightBg;
 
   const bgGlow1 = isMaterial ? "transparent" : `${accent.glow}${isDark ? "0.07)" : "0.08)"}`;
   const bgGlow2 = isMaterial ? "transparent" : `${accent.glow}${isDark ? "0.05)" : "0.06)"}`;
@@ -1679,9 +1688,38 @@ export default function App() {
       "@keyframes spin          { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }",
       "@keyframes bgStarTwinkle { 0%, 100% { opacity: 0.08; transform: scale(1); } 50% { opacity: 0.35; transform: scale(1.2); } }",
       "@keyframes cloudDrift    { from { transform: translateX(110vw); } to { transform: translateX(-110vw); } }",
+      "@keyframes plasmaFlow    { 0% { transform: translate3d(-4%, -2%, 0) rotate(-8deg) scale(1.04); } 50% { transform: translate3d(4%, 2%, 0) rotate(7deg) scale(1.10); } 100% { transform: translate3d(-4%, -2%, 0) rotate(-8deg) scale(1.04); } }",
+      "@keyframes plasmaPulse   { 0%, 100% { opacity: 0.48; filter: saturate(1.15); } 50% { opacity: 0.68; filter: saturate(1.35); } }",
+      "@keyframes plasmaSpark   { 0%, 100% { opacity: 0.12; transform: translate3d(0, 0, 0) scale(0.9); } 50% { opacity: 0.42; transform: translate3d(8px, -14px, 0) scale(1.12); } }",
+      "@keyframes cinderDrift   { 0% { transform: translate3d(0, 8vh, 0) scale(0.8); opacity: 0; } 18% { opacity: 0.28; } 42% { opacity: 0.62; } 76% { opacity: 0.30; } 100% { transform: translate3d(var(--cinder-drift-x, 10px), -106vh, 0) scale(0.92); opacity: 0; } }",
+      "@keyframes cinderFlicker { 0%, 100% { filter: brightness(0.8); } 35% { filter: brightness(1.35); } 58% { filter: brightness(0.95); } 78% { filter: brightness(1.65); } }",
+      "@keyframes cinderBreathe { 0%, 100% { opacity: 0.54; transform: scale(1); } 50% { opacity: 0.74; transform: scale(1.035); } }",
+      "@keyframes washW1 { 0%,100% { transform: translate3d(-1.5%,-0.8%,0) scale(1); } 33% { transform: translate3d(0.8%,0.6%,0) scale(1.02); } 66% { transform: translate3d(-0.4%,1.2%,0) scale(0.986); } }",
+      "@keyframes washW2 { 0%,100% { transform: translate3d(0.6%,-1.2%,0) scale(1.01); } 38% { transform: translate3d(-1.1%,0.5%,0) scale(0.99); } 72% { transform: translate3d(0.7%,1.0%,0) scale(1.02); } }",
+      "@keyframes washW3 { 0%,100% { transform: translate3d(-0.8%,1.1%,0) scale(0.99); } 45% { transform: translate3d(1.4%,-0.5%,0) scale(1.01); } }",
+      "@keyframes washC1 { 0%,100% { transform: translate3d(1.2%,0.7%,0) scale(1.01); } 38% { transform: translate3d(-0.5%,-1.0%,0) scale(0.99); } 72% { transform: translate3d(0.9%,0.8%,0) scale(1.015); } }",
+      "@keyframes washC2 { 0%,100% { transform: translate3d(-0.4%,-0.9%,0) scale(1); } 52% { transform: translate3d(1.0%,0.6%,0) scale(1.01); } }",
+      "@keyframes washMix  { 0%,100% { transform: translate3d(-0.5%,0.4%,0) scale(1); } 50% { transform: translate3d(0.7%,-0.5%,0) scale(1.01); } }",
+      "@keyframes washB1   { 0%,100% { transform: translate3d(0.5%,-0.5%,0) scale(0.99); } 44% { transform: translate3d(-0.8%,0.6%,0) scale(1.01); } }",
+      "@keyframes washB2   { 0%,100% { transform: translate3d(-0.4%,0.8%,0) scale(1.01); } 55% { transform: translate3d(0.6%,-0.4%,0) scale(0.99); } }",
+      "@keyframes washOpacity { 0%,100% { opacity: 0.88; } 28% { opacity: 1.0; } 62% { opacity: 0.82; } }",
       "@keyframes colChevronBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }",
       ".bg-star  { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; animation: bgStarTwinkle ease-in-out infinite; }",
       ".bg-cloud { position: fixed; top: 0; pointer-events: none; z-index: -1; animation: cloudDrift linear infinite; }",
+      ".theme-plasma-layer { animation: plasmaFlow 28s ease-in-out infinite, plasmaPulse 9s ease-in-out infinite; will-change: transform, opacity; }",
+      ".theme-plasma-spark { animation: plasmaSpark ease-in-out infinite; will-change: transform, opacity; }",
+      ".theme-cinder-layer { animation: cinderBreathe 16s ease-in-out infinite; will-change: transform, opacity; }",
+      ".theme-cinder-particle { position: fixed; border-radius: 999px; pointer-events: none; animation-name: cinderDrift, cinderFlicker; animation-timing-function: linear, ease-in-out; animation-iteration-count: infinite, infinite; will-change: transform, opacity, filter; }",
+      ".theme-wash-layer { will-change: transform, opacity; }",
+      ".theme-wash-w1 { animation: washW1 42s ease-in-out infinite, washOpacity 28s ease-in-out infinite; }",
+      ".theme-wash-w2 { animation: washW2 36s ease-in-out infinite, washOpacity 32s ease-in-out infinite; animation-delay: -14s, -4s; }",
+      ".theme-wash-w3 { animation: washW3 52s ease-in-out infinite, washOpacity 24s ease-in-out infinite; animation-delay: -22s, -16s; }",
+      ".theme-wash-c1 { animation: washC1 45s ease-in-out infinite, washOpacity 36s ease-in-out infinite; animation-delay: -6s, -22s; }",
+      ".theme-wash-c2     { animation: washC2  38s ease-in-out infinite, washOpacity 29s ease-in-out infinite; animation-delay: -30s, -11s; }",
+      ".theme-wash-mix    { animation: washMix 58s ease-in-out infinite, washOpacity 42s ease-in-out infinite; animation-delay: -18s, -26s; }",
+      ".theme-wash-bleed1 { animation: washB1  48s ease-in-out infinite, washOpacity 38s ease-in-out infinite; animation-delay: -8s, -14s; }",
+      ".theme-wash-bleed2 { animation: washB2  44s ease-in-out infinite, washOpacity 35s ease-in-out infinite; animation-delay: -34s, -7s; }",
+      "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-w1, .theme-wash-w2, .theme-wash-w3, .theme-wash-c1, .theme-wash-c2, .theme-wash-mix, .theme-wash-bleed1, .theme-wash-bleed2, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } }",
       "html, body { overflow-x: hidden; }",
       "* { scrollbar-width: none !important; -ms-overflow-style: none !important; }",
       "*::-webkit-scrollbar { display: none !important; }",
@@ -1718,15 +1756,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const currentIsDark = (() => {
-      const resolved = settings.theme === "system"
-        ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
-        : settings.theme;
-      return resolved === "dark";
-    })();
-    document.querySelectorAll(".bg-star, .bg-cloud").forEach(s => s.remove());
+    const activeTheme = normalizeThemeKey(settings.theme);
+    document.querySelectorAll(".bg-star, .bg-cloud, .theme-plasma-spark, .theme-cinder-particle").forEach(s => s.remove());
     if (!settings.stars_enabled) return;
-    if (currentIsDark) {
+    if (activeTheme === "space") {
       for (let i = 0; i < 60; i++) {
         const star = document.createElement("div");
         star.className = "bg-star";
@@ -1739,7 +1772,7 @@ export default function App() {
         star.style.background = "rgba(245,237,232,0.9)";
         const sc = document.getElementById("star-container"); if (sc) sc.appendChild(star);
       }
-    } else {
+    } else if (activeTheme === "sky") {
       CLOUD_CONFIGS.forEach((cfg) => {
         const div = document.createElement("div");
         div.className = "bg-cloud";
@@ -1752,9 +1785,50 @@ export default function App() {
         div.querySelector("svg").style.fill = "rgba(255,255,255,0.9)";
         const cc = document.getElementById("cloud-container"); if (cc) cc.appendChild(div);
       });
+    } else if (activeTheme === "plasma") {
+      for (let i = 0; i < 22; i++) {
+        const spark = document.createElement("div");
+        spark.className = "theme-plasma-spark";
+        const size = (Math.random() * 3 + 1.2) + "px";
+        spark.style.position = "fixed";
+        spark.style.borderRadius = "999px";
+        spark.style.pointerEvents = "none";
+        spark.style.width = spark.style.height = size;
+        spark.style.left = Math.random() * 100 + "vw";
+        spark.style.top = Math.random() * 100 + "vh";
+        spark.style.background = accent.primary;
+        spark.style.boxShadow = `0 0 ${Math.random() * 10 + 8}px ${accent.light}`;
+        spark.style.animationDuration = (Math.random() * 7 + 6) + "s";
+        spark.style.animationDelay = -(Math.random() * 8) + "s";
+        const pc = document.getElementById("plasma-particle-container"); if (pc) pc.appendChild(spark);
+      }
+    } else if (activeTheme === "cinder") {
+      for (let i = 0; i < 42; i++) {
+        const cinder = document.createElement("div");
+        cinder.className = "theme-cinder-particle";
+        const bright = Math.random() > 0.82;
+        const size = bright ? Math.random() * 3.2 + 2.2 : Math.random() * 2.4 + 1.1;
+        const drift = (Math.random() * 24 - 12).toFixed(1);
+        const duration = Math.random() * 6 + 4;
+        const flickerDuration = Math.random() * 1.8 + 1.2;
+        cinder.style.setProperty("--cinder-drift-x", `${drift}px`);
+        cinder.style.width = `${size}px`;
+        cinder.style.height = `${size * (Math.random() * 1.15 + 0.85)}px`;
+        cinder.style.left = Math.random() * 100 + "vw";
+        cinder.style.bottom = "-8vh";
+        cinder.style.background = bright
+          ? `color-mix(in srgb, ${accent.primary} 18%, #ffd6a3 82%)`
+          : `color-mix(in srgb, ${accent.primary} 12%, #ff6a2b 88%)`;
+        cinder.style.boxShadow = bright
+          ? `0 0 ${Math.random() * 14 + 12}px color-mix(in srgb, ${accent.primary} 20%, #ffd6a3 80%)`
+          : `0 0 ${Math.random() * 9 + 7}px color-mix(in srgb, ${accent.primary} 14%, #ff6a2b 86%)`;
+        cinder.style.animationDuration = `${duration}s, ${flickerDuration}s`;
+        cinder.style.animationDelay = `-${Math.random() * duration}s, -${Math.random() * flickerDuration}s`;
+        const cc = document.getElementById("cinder-particle-container"); if (cc) cc.appendChild(cinder);
+      }
     }
-    return () => document.querySelectorAll(".bg-star, .bg-cloud").forEach(s => s.remove());
-  }, [settings.stars_enabled, settings.theme, settings.accent, loading]);
+    return () => document.querySelectorAll(".bg-star, .bg-cloud, .theme-plasma-spark, .theme-cinder-particle").forEach(s => s.remove());
+  }, [settings.stars_enabled, settings.theme, settings.accent, loading, accent.primary, accent.light]);
 
   useEffect(() => {
     const tick = () => {
@@ -1975,6 +2049,11 @@ export default function App() {
     setSettings(prev => {
       const updated = { ...prev, [key]: value };
       if (key === "transparent_bars") { updated.transparent_topbar = value; updated.transparent_bottombar = value; }
+      if (key === "theme") {
+        const nextTheme = normalizeThemeKey(value);
+        updated.theme = nextTheme;
+        updated.surface_style = THEME_SURFACE_DEFAULTS[nextTheme] || updated.surface_style;
+      }
       settingsRef.current = updated;
       invoke("save_settings", { settings: updated }).catch(console.error);
       return updated;
@@ -1993,6 +2072,13 @@ export default function App() {
   const updateSettingsBatch = (updates) => {
     setSettings(prev => {
       const updated = { ...prev, ...updates };
+      if (Object.prototype.hasOwnProperty.call(updates, "theme")) {
+        const nextTheme = normalizeThemeKey(updates.theme);
+        updated.theme = nextTheme;
+        if (!Object.prototype.hasOwnProperty.call(updates, "surface_style")) {
+          updated.surface_style = THEME_SURFACE_DEFAULTS[nextTheme] || updated.surface_style;
+        }
+      }
       settingsRef.current = updated;
       invoke("save_settings", { settings: updated }).catch(console.error);
       return updated;
@@ -2221,7 +2307,7 @@ export default function App() {
     }, 50);
   };
 
-  const ALL_SETTINGS_ITEMS = buildSettingsItems(t, isDark);
+  const ALL_SETTINGS_ITEMS = buildSettingsItems(t, resolvedTheme);
   const navigableSettings = getSectionNavigableItems(settingsSection, ALL_SETTINGS_ITEMS, settings, { gameCollections, appCollections });
 
   // ── handleNav ─────────────────────────────────────────────────
@@ -2431,7 +2517,7 @@ export default function App() {
       if (key === "ArrowRight" || key === "Enter") {
         if (!item) return;
         if (item.type === "toggle")  updateSetting(item.key, !currentSettings[item.key]);
-        else if (item.type === "cycle")  { const opts = item.options; const cur = opts.indexOf(currentSettings[item.key]); updateSetting(item.key, opts[(cur + 1) % opts.length]); }
+        else if (item.type === "cycle")  { const opts = item.options; const curVal = item.key === "theme" ? normalizeThemeKey(currentSettings[item.key]) : currentSettings[item.key]; const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur + 1) % opts.length]); }
         else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur + 1) % keys.length]); }
         else if (item.type === "slider") {
           const cur = currentSettings[item.key] ?? 1.0;
@@ -2465,7 +2551,7 @@ export default function App() {
       if (key === "ArrowLeft") {
         if (!item) return;
         if (item.type === "toggle")  updateSetting(item.key, !currentSettings[item.key]);
-        else if (item.type === "cycle")  { const opts = item.options; const cur = opts.indexOf(currentSettings[item.key]); updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length]); }
+        else if (item.type === "cycle")  { const opts = item.options; const curVal = item.key === "theme" ? normalizeThemeKey(currentSettings[item.key]) : currentSettings[item.key]; const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length]); }
         else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur - 1 + keys.length) % keys.length]); }
         else if (item.type === "slider") {
           const cur = currentSettings[item.key] ?? 1.0;
@@ -3565,7 +3651,179 @@ export default function App() {
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
     <div style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1 }} ref={outerRef}>
 
-      <div style={{ position: "fixed", inset: 0, background: appBg, zIndex: -2 }} />
+      <div style={{ position: "fixed", inset: 0, zIndex: -2, background: appBg }} />
+      {settings.stars_enabled && resolvedTheme === "plasma" && (
+        <>
+          <div className="theme-plasma-layer" style={{ position: "fixed", inset: "-18%", zIndex: -1, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 42% 30% at 22% 28%, color-mix(in srgb, ${accent.primary} 62%, transparent 38%) 0%, transparent 62%),
+              radial-gradient(ellipse 36% 28% at 78% 64%, color-mix(in srgb, ${accent.light} 44%, transparent 56%) 0%, transparent 68%),
+              linear-gradient(118deg, transparent 8%, color-mix(in srgb, ${accent.dark} 44%, transparent 56%) 22%, transparent 42%, color-mix(in srgb, ${accent.primary} 34%, transparent 66%) 58%, transparent 82%)
+            `,
+            opacity: 0.62,
+            filter: "blur(24px)",
+            mixBlendMode: "screen",
+          }} />
+          <div id="plasma-particle-container" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }} />
+        </>
+      )}
+      {settings.stars_enabled && resolvedTheme === "cinder" && (
+        <>
+          <div className="theme-cinder-layer" style={{ position: "fixed", inset: "-10%", zIndex: -1, pointerEvents: "none",
+            background: `
+              radial-gradient(circle at 20% 70%, color-mix(in srgb, ${accent.primary} 12%, rgba(255,106,43,0.10) 88%) 0%, transparent 40%),
+              radial-gradient(circle at 80% 30%, rgba(255,80,40,0.08) 0%, transparent 45%),
+              radial-gradient(circle at 50% 50%, rgba(255,140,80,0.05) 0%, transparent 60%),
+              radial-gradient(ellipse 46% 28% at 72% 82%, color-mix(in srgb, ${accent.primary} 14%, rgba(255,214,163,0.08) 86%) 0%, transparent 72%),
+              linear-gradient(180deg, #120909 0%, #1a0d0d 58%, #2a0f0f 100%)
+            `,
+            opacity: 0.92,
+            filter: "blur(16px)",
+          }} />
+          <div style={{ position: "fixed", inset: "-12%", zIndex: -1, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 34% 22% at 18% 76%, color-mix(in srgb, ${accent.primary} 12%, rgba(255,106,43,0.09) 88%) 0%, transparent 74%),
+              radial-gradient(ellipse 28% 18% at 76% 34%, color-mix(in srgb, ${accent.dark} 10%, rgba(255,214,163,0.06) 90%) 0%, transparent 78%)
+            `,
+            opacity: 0.72,
+            filter: "blur(34px)",
+            mixBlendMode: "screen",
+          }} />
+          <div id="cinder-particle-container" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }} />
+        </>
+      )}
+      {settings.stars_enabled && resolvedTheme === "wash" && (
+        <>
+          {/* Three specialized SVG filters */}
+          <svg style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }} aria-hidden="true">
+            <defs>
+              {/* wash-edge: pre-blur → non-linear alpha (dried/pooled edges) → organic displacement */}
+              <filter id="wash-edge" x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="linearRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.013 0.009" numOctaves="4" seed="7" result="edgeNoise"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="preBlurred"/>
+                <feComponentTransfer in="preBlurred" result="shaped">
+                  <feFuncA type="table" tableValues="0 0 0.02 0.10 0.34 0.68 0.90 1"/>
+                </feComponentTransfer>
+                <feDisplacementMap in="shaped" in2="edgeNoise" scale="56" xChannelSelector="R" yChannelSelector="G"/>
+              </filter>
+              {/* wash-flow: asymmetric vertical blur → displacement — drips and downward spread */}
+              <filter id="wash-flow" x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="linearRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.018 0.007" numOctaves="3" seed="23" result="flowNoise"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="0.8 3.5" result="flowed"/>
+                <feDisplacementMap in="flowed" in2="flowNoise" scale="36" xChannelSelector="R" yChannelSelector="G"/>
+              </filter>
+              {/* wash-drag: asymmetric horizontal blur → displacement — brushstroke / paint pull */}
+              <filter id="wash-drag" x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="linearRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.007 0.022" numOctaves="3" seed="41" result="dragNoise"/>
+                <feGaussianBlur in="SourceGraphic" stdDeviation="5.5 0.6" result="dragged"/>
+                <feDisplacementMap in="dragged" in2="dragNoise" scale="24" xChannelSelector="R" yChannelSelector="G"/>
+              </filter>
+            </defs>
+          </svg>
+
+          {/* Warm primary — compound shape: main pool + side lobe + pigment hotspot + upper corner bloom.
+              Multiple overlapping radials form an amoeba-like region; feComponentTransfer makes edges
+              non-linear so they dry unevenly rather than fading uniformly. */}
+          <div className="theme-wash-layer theme-wash-w1" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 44% 36% at 10% 47%, ${accent.glow}0.22) 0%, ${accent.glow}0.62) 30%, ${accent.glow}0.20) 52%, transparent 63%),
+              radial-gradient(ellipse 30% 44% at 3% 52%, ${accent.glow}0.16) 0%, ${accent.glow}0.50) 34%, ${accent.glow}0.14) 56%, transparent 67%),
+              radial-gradient(ellipse 16% 12% at 24% 43%, ${accent.glow}0.74) 0%, ${accent.glow}0.22) 38%, transparent 52%),
+              radial-gradient(ellipse 22% 17% at -2% 20%, ${accent.glow}0.12) 0%, ${accent.glow}0.44) 40%, ${accent.glow}0.10) 60%, transparent 70%)
+            `,
+            filter: "url(#wash-edge)",
+          }} />
+
+          {/* Warm secondary — lower pools + faint top-center bleed. wash-flow gives vertical drip
+              character so these sit differently than the main body's spread. */}
+          <div className="theme-wash-layer theme-wash-w2" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 20% 16% at 15% 74%, ${accent.glow}0.12) 0%, ${accent.glow}0.40) 42%, transparent 58%),
+              radial-gradient(ellipse 14% 11% at 8% 88%, ${accent.glow}0.08) 0%, ${accent.glow}0.32) 44%, transparent 60%),
+              radial-gradient(ellipse 10% 8% at 44% 14%, ${accent.glow}0.08) 0%, ${accent.glow}0.30) 46%, transparent 62%)
+            `,
+            filter: "url(#wash-flow)",
+          }} />
+
+          {/* Warm tendrils — two shapes at different heights and widths break the horizontal read.
+              Left section thicker, right section thinner and offset upward; the gap between them
+              creates a natural break. wash-flow's vertical asymmetry adds downward bleeding so each
+              piece drifts differently and the two never merge into a clean line. */}
+          <div className="theme-wash-layer theme-wash-w3" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 34% 7% at 18% 59%, ${accent.glow}0.06) 0%, ${accent.glow}0.24) 36%, transparent 55%),
+              radial-gradient(ellipse 18% 5% at 46% 45%, ${accent.glow}0.04) 0%, ${accent.glow}0.16) 42%, transparent 60%)
+            `,
+            filter: "url(#wash-flow)",
+          }} />
+
+          {/* Cool primary — compound right-side region. hue-rotate(148°) maps warm accent to a
+              muted teal; saturate(0.58) keeps it soft so it reads as supporting, not competing.
+              4th radial: tight hotspot for internal pigment density variation (dried-edge pooling). */}
+          <div className="theme-wash-layer theme-wash-c1" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 38% 32% at 82% 46%, ${accent.glow}0.18) 0%, ${accent.glow}0.54) 30%, ${accent.glow}0.16) 52%, transparent 62%),
+              radial-gradient(ellipse 24% 30% at 95% 36%, ${accent.glow}0.14) 0%, ${accent.glow}0.44) 34%, ${accent.glow}0.10) 54%, transparent 65%),
+              radial-gradient(ellipse 14% 11% at 68% 72%, ${accent.glow}0.06) 0%, ${accent.glow}0.22) 46%, transparent 62%),
+              radial-gradient(ellipse 10% 8% at 87% 44%, ${accent.glow}0.60) 0%, ${accent.glow}0.16) 36%, transparent 50%)
+            `,
+            filter: "url(#wash-edge) hue-rotate(148deg) saturate(0.58)",
+          }} />
+
+          {/* Cool upper — slightly different hue angle (130°) adds variation within cool region;
+              more desaturated (0.52) so upper corner reads as a diluted wash, not a second color. */}
+          <div className="theme-wash-layer theme-wash-c2" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 16% 20% at 98% 20%, ${accent.glow}0.10) 0%, ${accent.glow}0.38) 40%, transparent 58%),
+              radial-gradient(ellipse 12% 10% at 78% 82%, ${accent.glow}0.08) 0%, ${accent.glow}0.28) 44%, transparent 60%)
+            `,
+            filter: "url(#wash-edge) hue-rotate(130deg) saturate(0.52)",
+          }} />
+
+          {/* Center meeting zone — ring gradient (opaque center=0 → peak at 46% → fade) simulates
+              pigment accumulation where two wet washes touch. 3rd radial extends cool cohesion
+              faintly toward center, breaking the hard warm/cool boundary. */}
+          <div className="theme-wash-layer theme-wash-mix" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 18% 54% at 52% 54%, ${accent.glow}0.0) 0%, ${accent.glow}0.26) 46%, transparent 62%),
+              radial-gradient(ellipse 12% 9% at 40% 32%, ${accent.glow}0.04) 0%, ${accent.glow}0.20) 48%, transparent 63%),
+              radial-gradient(ellipse 32% 18% at 66% 50%, ${accent.glow}0.0) 0%, ${accent.glow}0.08) 52%, transparent 68%)
+            `,
+            filter: "url(#wash-edge)",
+          }} />
+
+          {/* Cool cohesion bridge — extremely faint cool wash reaching from right region toward
+              center. Connects the two color masses so the split feels like wet diffusion, not
+              two separate paintings. Very low opacity; hue-rotate matches C1 exactly. */}
+          <div className="theme-wash-layer theme-wash-bleed1" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 52% 28% at 72% 52%, ${accent.glow}0.0) 0%, ${accent.glow}0.14) 48%, transparent 64%),
+              radial-gradient(ellipse 20% 14% at 58% 62%, ${accent.glow}0.02) 0%, ${accent.glow}0.10) 50%, transparent 66%)
+            `,
+            filter: "url(#wash-edge) hue-rotate(148deg) saturate(0.44)",
+          }} />
+
+          {/* Tertiary whisper — barely visible golden hue (hue-rotate 68°) at two small spots.
+              Breaks the two-color look; adds the "accidental third pigment" quality of real
+              watercolor. Must stay near invisible: max opacity 0.12 at peak. */}
+          <div className="theme-wash-layer theme-wash-bleed2" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 12% 9% at 74% 78%, ${accent.glow}0.03) 0%, ${accent.glow}0.11) 44%, transparent 60%),
+              radial-gradient(ellipse 8% 6% at 28% 18%, ${accent.glow}0.02) 0%, ${accent.glow}0.09) 46%, transparent 62%)
+            `,
+            filter: "url(#wash-edge) hue-rotate(68deg) saturate(0.32)",
+          }} />
+
+          {/* Paper grain — fractal noise at overlay blend; two-axis baseFrequency gives fibrous paper feel */}
+          <svg style={{ position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: 1, pointerEvents: "none", opacity: 0.092, mixBlendMode: "overlay" }} aria-hidden="true">
+            <filter id="wash-grain-filter">
+              <feTurbulence type="fractalNoise" baseFrequency="0.72 0.58" numOctaves="4" seed="13" stitchTiles="stitch"/>
+              <feColorMatrix type="saturate" values="0"/>
+            </filter>
+            <rect width="100%" height="100%" filter="url(#wash-grain-filter)"/>
+          </svg>
+        </>
+      )}
       {surfaceStyle === "aero" && (
         <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none",
           background: isDark
@@ -3573,10 +3831,10 @@ export default function App() {
             : "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.025) 100%)",
         }} />
       )}
-      {isDark && settings.stars_enabled && (
+      {resolvedTheme === "space" && settings.stars_enabled && (
         <div id="star-container" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }} />
       )}
-      {!isDark && settings.stars_enabled && (
+      {resolvedTheme === "sky" && settings.stars_enabled && (
         <div id="cloud-container" style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none", overflow: "hidden" }} />
       )}
       {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={() => setLaunchingApp(null)} />}

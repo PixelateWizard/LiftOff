@@ -19,9 +19,32 @@ export const ACCENTS: Record<string, {
 };
 
 export const THEMES: Record<string, { text: string; textDim: string; textFaint: string }> = {
-  dark:  { text: "#f5ede8", textDim: "rgba(245,237,232,0.4)", textFaint: "rgba(245,237,232,0.3)" },
-  light: { text: "#2a1a0e", textDim: "rgba(42,26,14,0.5)",    textFaint: "rgba(42,26,14,0.35)"  },
+  space:  { text: "#f5ede8", textDim: "rgba(245,237,232,0.4)", textFaint: "rgba(245,237,232,0.3)" },
+  sky:    { text: "#2a1a0e", textDim: "rgba(42,26,14,0.5)",    textFaint: "rgba(42,26,14,0.35)"  },
+  plasma: { text: "#f7f1ff", textDim: "rgba(247,241,255,0.44)", textFaint: "rgba(247,241,255,0.30)" },
+  cinder: { text: "#fff0e6", textDim: "rgba(255,240,230,0.44)", textFaint: "rgba(255,240,230,0.30)" },
+  wash:   { text: "#241b16", textDim: "rgba(36,27,22,0.54)",    textFaint: "rgba(36,27,22,0.36)" },
 };
+
+export const THEME_OPTIONS = ["space", "sky", "plasma", "cinder", "wash"] as const;
+
+export const THEME_SURFACE_DEFAULTS: Record<string, string> = {
+  space: "clear",
+  sky: "aero",
+  plasma: "glass",
+  cinder: "glass",
+  wash: "material",
+};
+
+export const normalizeThemeKey = (theme: string | undefined) => {
+  if (theme === "light") return "sky";
+  if (theme === "dark" || theme === "system") return "space";
+  if (theme === "ember") return "cinder";
+  if (theme === "bloom") return "wash";
+  return THEME_OPTIONS.includes(theme as any) ? theme as typeof THEME_OPTIONS[number] : "space";
+};
+
+export const isDarkThemeKey = (theme: string | undefined) => !["sky", "wash"].includes(normalizeThemeKey(theme));
 
 export const CLOUD_SHAPES = [
   `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg"><ellipse cx="100" cy="55" rx="95" ry="28"/><ellipse cx="70" cy="45" rx="45" ry="35"/><ellipse cx="110" cy="38" rx="52" ry="40"/><ellipse cx="150" cy="48" rx="38" ry="30"/></svg>`,
@@ -64,7 +87,7 @@ export const KB_NUMS = [
 export const SCAN_KEYS = ["scan_steam", "scan_xbox", "scan_uwp", "scan_desktop", "scan_battlenet"] as const;
 
 export const DEFAULT_SETTINGS = {
-  accent: "ember", theme: "dark", stars_enabled: true, wide_layout: false, transparent_bars: false, transparent_topbar: false, transparent_bottombar: false, hide_bottom_bar: false,
+  accent: "ember", theme: "space", stars_enabled: true, wide_layout: false, transparent_bars: false, transparent_topbar: false, transparent_bottombar: false, hide_bottom_bar: false,
   default_tab: "Home", scan_steam: true, scan_xbox: true,
   scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
   launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
@@ -75,7 +98,7 @@ export const DEFAULT_SETTINGS = {
   show_home_collections: false, show_home_collection_names: true, show_hero_cover: true,
   gamepad_platform: "xbox", gamepad_icons_colored: false, gamepad_icons_filled: true, gamepad_icons_theme_color: false,
   gamepad_btn_size: "small", gamepad_auto_detect: true,
-  surface_style: "glass",
+  surface_style: "clear",
 } as const;
 
 export type AccentKey = keyof typeof ACCENTS;
