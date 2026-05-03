@@ -59,7 +59,7 @@ export function CollapsibleGroup({
   } : {};
   const parentStyle: CSSProperties = {
     ...glass,
-    borderRadius: value ? "14px 14px 0 0" : 14,
+    borderRadius: value ? (isMaterial ? "8px 8px 0 0" : "16px 16px 0 0") : isMaterial ? 8 : 16,
     padding: "14px 20px",
     marginBottom: value ? 0 : 8,
     display: "flex",
@@ -81,7 +81,7 @@ export function CollapsibleGroup({
     marginBottom: 8,
     padding: isMaterial ? "5px 6px 6px" : undefined,
     background: isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
-    borderRadius: isMaterial ? "0 0 12px 12px" : "0 0 14px 14px",
+    borderRadius: isMaterial ? "0 0 8px 8px" : "0 0 16px 16px",
     border: `1px solid ${isMaterial ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
     borderTop: isMaterial ? "1px solid var(--material-inset-top-edge)" : "none",
     boxShadow: isMaterial

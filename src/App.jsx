@@ -974,7 +974,7 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
 }
 
 // ── SgdbBrowserModal ──────────────────────────────────────────
-function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait", artType = "grid", repeatSpeed = "normal", accent, theme, isDark, glass, onClose, onSet, onReset }) {
+function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait", artType = "grid", repeatSpeed = "normal", accent, theme, isDark, glass, surfaceStyle = "glass", onClose, onSet, onReset }) {
   const { t } = useTranslation();
   const showSgdb = app?.app_type === "game";
   const [activeTab, setActiveTab] = useState(showSgdb ? "browse" : "upload");
@@ -1013,7 +1013,7 @@ function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait"
 
   return (
     <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
-      <div style={{ ...glass, borderRadius: 20, padding: 20, width: "min(860px, 92vw)", height: "min(600px, 85vh)", display: "flex", flexDirection: "column",
+      <div style={{ ...glass, borderRadius: surfaceStyle === "material" ? 16 : 24, padding: 20, width: "min(860px, 92vw)", height: "min(600px, 85vh)", display: "flex", flexDirection: "column",
         border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.4)`, fontFamily: "'Segoe UI', sans-serif" }}>
         <div style={{ marginBottom: 4 }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: theme.text }}>{app.name}</div>
@@ -1228,6 +1228,7 @@ export default function App() {
   const outerRef              = useRef(null);
   const homeScrollRef         = useRef(null);
   const tabScrollRef          = useRef(null);
+  const pinnedShelfRef        = useRef(null);
   const drawerScrollRef       = useRef(null);
   const handleNavRef          = useRef(null);
   const tabRef                = useRef("Home");
@@ -1287,6 +1288,7 @@ export default function App() {
   const surfaceStyle = settings.surface_style ?? "glass";
   const glassEnabled = surfaceStyle !== "clear";
   const isMaterial = surfaceStyle === "material";
+  const cinematicLight = settings.cinematic_home && !isDark;
   const isWash = resolvedTheme === "wash";
   const materialTokens = useMemo(() => ({
     "--material-bg-primary": isDark ? "#141312" : isWash ? "#f7f4ef" : `color-mix(in srgb, ${accent.lightBg} 86%, #f7f4ef 14%)`,
@@ -1353,7 +1355,9 @@ export default function App() {
       // Sharp-knee gradient: bright at top edge, rapid falloff — light striking from above
       background:           isDark
         ? "linear-gradient(180deg, rgba(255,255,255,0.36) 0%, rgba(255,255,255,0.16) 12%, rgba(255,255,255,0.08) 100%)"
-        : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.76) 12%, rgba(255,255,255,0.58) 100%)",
+        : cinematicLight
+          ? "linear-gradient(180deg, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.52) 15%, rgba(255,255,255,0.34) 100%)"
+          : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.76) 12%, rgba(255,255,255,0.58) 100%)",
       backdropFilter:       isDark ? "blur(14px) saturate(160%) brightness(1.06)" : "blur(16px) saturate(140%) brightness(1.02)",
       WebkitBackdropFilter: isDark ? "blur(14px) saturate(160%) brightness(1.06)" : "blur(16px) saturate(140%) brightness(1.02)",
       // Thin neutral rim; accent ring sits just outside via box-shadow
@@ -1366,7 +1370,9 @@ export default function App() {
     return {
       background:           isDark
         ? "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.06) 100%)"
-        : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
+        : cinematicLight
+          ? "linear-gradient(180deg, rgba(255,255,255,0.50) 0%, rgba(255,255,255,0.26) 100%)"
+          : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
       backdropFilter:       isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)",
       WebkitBackdropFilter: isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)",
       border:               `1px solid ${isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.55)"}`,
@@ -1374,7 +1380,7 @@ export default function App() {
         ? "inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.22), 0 10px 32px rgba(0,0,0,0.35)"
         : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
     };
-  }, [isDark, glassEnabled, surfaceStyle, accent.glow, _flatGlass]);
+  }, [isDark, cinematicLight, glassEnabled, surfaceStyle, accent.glow, _flatGlass]);
 
   // Lighter glass variant for top/bottom bars — less visual weight than cards.
   // Dark mode layers a dark scrim over the white tint so text stays readable over
@@ -1392,7 +1398,9 @@ export default function App() {
       // Hero Aero surface: strongest edge reflectivity, tighter knee, stronger specular than cards/rows
       background:           isDark
         ? "linear-gradient(180deg, rgba(0,0,0,0.14), rgba(0,0,0,0.05)), linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.14) 20%, rgba(255,255,255,0.07) 100%)"
-        : "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.82) 15%, rgba(255,255,255,0.60) 100%)",
+        : cinematicLight
+          ? "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.56) 15%, rgba(255,255,255,0.38) 100%)"
+          : "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.82) 15%, rgba(255,255,255,0.60) 100%)",
       backdropFilter:       isDark ? "blur(12px) saturate(130%) brightness(0.91)" : "blur(16px) saturate(140%) brightness(1.02)",
       WebkitBackdropFilter: isDark ? "blur(12px) saturate(130%) brightness(0.91)" : "blur(16px) saturate(140%) brightness(1.02)",
       border:               `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.85)"}`,
@@ -1403,7 +1411,9 @@ export default function App() {
     return {
       background:           isDark
         ? "linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.10)), linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.045))"
-        : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
+        : cinematicLight
+          ? "linear-gradient(180deg, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.28) 100%)"
+          : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
       backdropFilter:       isDark ? "blur(28px) saturate(115%) brightness(0.88)" : "blur(28px) saturate(160%) brightness(1.02)",
       WebkitBackdropFilter: isDark ? "blur(28px) saturate(115%) brightness(0.88)" : "blur(28px) saturate(160%) brightness(1.02)",
       border:               `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)"}`,
@@ -1411,7 +1421,7 @@ export default function App() {
         ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.16), 0 6px 20px rgba(0,0,0,0.25)"
         : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
     };
-  }, [isDark, glassEnabled, surfaceStyle, accent.glow, _flatGlass]);
+  }, [isDark, cinematicLight, glassEnabled, surfaceStyle, accent.glow, _flatGlass]);
 
   // Ultra-light glass for settings rows — quieter than cards, accent-tinted.
   // Uses accent.glow (already "rgba(r,g,b,") so tint is zero-cost and theme-aware.
@@ -2261,7 +2271,9 @@ export default function App() {
       // On Home tab, pinned is a horizontal pill shelf — scroll focused pill into view horizontally
       if (tab === "Home") {
         setTimeout(() => {
-          if (focusedCardRef.current) {
+          if (focusIndex === 0 && pinnedShelfRef.current) {
+            pinnedShelfRef.current.scrollTo({ left: 0, behavior: "smooth" });
+          } else if (focusedCardRef.current) {
             if (outerRef.current) outerRef.current.style.overflowY = "hidden";
             focusedCardRef.current.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
             if (outerRef.current) { outerRef.current.style.overflowY = ""; outerRef.current.scrollTop = 0; }
@@ -2373,6 +2385,7 @@ export default function App() {
       .filter(Boolean)
       .filter(a => currentTab === "Home" || currentTab === "All" ? true
         : currentTab === "Games" ? a.app_type === "game" : a.app_type === "app");
+    const homePinnedVisible = currentTab === "Home" && currentSettings.show_home_pinned !== false && fPinned.length > 0;
 
     // ══ SEARCH OVERLAY ════════════════════════════════════════════
     if (searchOpenRef.current) {
@@ -2573,15 +2586,46 @@ export default function App() {
     }
 
     if (currentTab === "Home") {
+      const focusFirstHomeDrawerItem = () => {
+        if (!settingsRef.current.show_home_collections) return false;
+        if (fRecent.length > 0) {
+          setFocusSection("recent"); focusSectionRef.current = "recent";
+          setFocusIndex(0); focusIndexRef.current = 0;
+          return true;
+        }
+        const allCols = [
+          ...gameCollectionsRef.current.map(col => ({
+            id: col.id,
+            items: appsRef.current.filter(a => a.app_type === "game" && (gameMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
+          })),
+          ...appCollectionsRef.current.map(col => ({
+            id: col.id,
+            items: appsRef.current.filter(a => a.app_type === "app" && (appMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
+          })),
+        ].filter(c => c.items.length > 0);
+        if (allCols.length === 0) return false;
+        setFocusSection("home_collections"); focusSectionRef.current = "home_collections";
+        setHomeColFocusRow(0); homeColFocusRowRef.current = 0;
+        setHomeColFocusCol(0); homeColFocusColRef.current = 0;
+        return true;
+      };
+
+      if (section === "pinned" && !homePinnedVisible) {
+        setFocusSection("hero"); focusSectionRef.current = "hero";
+        setFocusIndex(0); focusIndexRef.current = 0;
+        return;
+      }
+
       if (section === "hero") {
         if (key === "ArrowLeft")  { const ni = Math.max(heroIndexRef.current - 1, 0); setHeroIndex(ni); heroIndexRef.current = ni; }
         if (key === "ArrowRight") { const ni = Math.min(heroIndexRef.current + 1, Math.min(fRecentGames.length, 6) - 1); setHeroIndex(ni); heroIndexRef.current = ni; }
         if (key === "ArrowUp") {
-          if (!settingsRef.current.cinematic_home && fPinned.length > 0) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
+          if (!settingsRef.current.cinematic_home && homePinnedVisible) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
         }
         if (key === "ArrowDown") {
           if (settingsRef.current.cinematic_home) {
-            if (fPinned.length > 0) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
+            if (homePinnedVisible) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
+            else { focusFirstHomeDrawerItem(); }
           } else {
             if (fRecent.length > 0) { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(0); focusIndexRef.current = 0; }
           }
@@ -2629,7 +2673,7 @@ export default function App() {
         if (key === "ArrowUp") {
           if (settingsRef.current.cinematic_home) {
             // In cinematic mode, recent is inside the slide panel — up goes back to pinned
-            if (fPinned.length > 0) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
+            if (homePinnedVisible) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
             else { setFocusSection("hero"); focusSectionRef.current = "hero"; }
           } else {
             setFocusSection("hero"); focusSectionRef.current = "hero";
@@ -2697,7 +2741,7 @@ export default function App() {
               setFocusSection("recent"); focusSectionRef.current = "recent";
               setFocusIndex(0); focusIndexRef.current = 0;
             } else if (settingsRef.current.cinematic_home) {
-              if (fPinned.length > 0) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
+              if (homePinnedVisible) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
               else { setFocusSection("hero"); focusSectionRef.current = "hero"; }
             } else {
               setFocusSection("hero"); focusSectionRef.current = "hero";
@@ -2968,12 +3012,13 @@ export default function App() {
 
   const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, onRightClick }) => {
     const art = customArt[app.id] || gameArt[app.id];
+    const cardRadius = surfaceStyle === "material" ? 8 : 16;
     return (
       <div ref={cardRef} onClick={onClick} onDoubleClick={onDoubleClick}
         onContextMenu={onRightClick ? (e) => { e.preventDefault(); onRightClick(e, app); } : undefined}
         style={focused
-          ? { ...glass, border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: 16, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease", boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 40px ${accent.glow}0.2)`, transform: "scale(1.04) translateY(-1px)" }
-          : { ...glass, border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)", borderRadius: 16, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease" }
+          ? { ...glass, border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease", boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 40px ${accent.glow}0.2)`, transform: "scale(1.04) translateY(-1px)" }
+          : { ...glass, border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)", borderRadius: cardRadius, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease" }
         }
       >
         {art
@@ -2984,7 +3029,7 @@ export default function App() {
           <span style={{ fontSize: 12, fontWeight: 600, color: "white", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</span>
         </div>
         <PinBadge isPinned={isPinned} />
-        {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: 16, pointerEvents: "none" }} />}
+        {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, pointerEvents: "none" }} />}
       </div>
     );
   };
@@ -3086,7 +3131,19 @@ export default function App() {
     const materialHero = surfaceStyle === "material";
     const materialHeroText = isDark ? "#fffefd" : "#18110b";
     const materialHeroDimText = isDark ? "rgba(255,250,245,0.72)" : "rgba(24,17,11,0.66)";
-    const heroSideOverlay = materialHero
+    const materialCinematicHero = materialHero && settings.cinematic_home;
+    const surfaceCardRadius = surfaceStyle === "material" ? 8 : 16;
+    const modalSurfaceRadius = surfaceStyle === "material" ? 16 : 24;
+    const launchRadius = surfaceStyle === "material" ? 8 : 999;
+    const cinematicBottomLaneFree = settings.cinematic_home && settings.hide_bottom_bar && !settings.show_home_collections;
+    const cinematicPinnedVisible = settings.show_home_pinned !== false && homePinnedApps.length > 0;
+    const cinematicPinnedAtBottom = cinematicBottomLaneFree && cinematicPinnedVisible;
+    const cinematicHeroAtBottom = cinematicBottomLaneFree && !cinematicPinnedVisible;
+    const cinematicHeroNearChevron = settings.cinematic_home && settings.hide_bottom_bar && settings.show_home_collections && !cinematicPinnedVisible;
+    const cinematicHeroBottom = cinematicHeroAtBottom ? 24 : cinematicPinnedAtBottom ? 88 : cinematicHeroNearChevron ? 72 : 122;
+    const heroSideOverlay = materialCinematicHero
+      ? "transparent"
+      : materialHero
       ? (isDark
           ? (heroBanner
               ? "linear-gradient(to right, rgba(8,6,5,0.78) 0%, rgba(8,6,5,0.44) 34%, rgba(8,6,5,0.07) 70%, transparent 100%)"
@@ -3108,7 +3165,9 @@ export default function App() {
       : isDark
         ? "linear-gradient(to bottom, transparent, rgba(6,3,1,0.95))"
         : `linear-gradient(to bottom, transparent, ${appBg}bb)`;
-    const heroTextAnchorOverlay = materialHero
+    const heroTextAnchorOverlay = materialCinematicHero
+      ? "transparent"
+      : materialHero
       ? (isDark
           ? "radial-gradient(ellipse 46% 42% at 16% 72%, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.18) 34%, transparent 68%)"
           : "radial-gradient(ellipse 46% 42% at 16% 72%, rgba(39,27,18,0.18) 0%, rgba(39,27,18,0.09) 34%, transparent 68%)")
@@ -3121,14 +3180,14 @@ export default function App() {
         <div style={{
           ...(settings.cinematic_home
             ? { position: "fixed", inset: 0, zIndex: 0 }
-            : { position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: 20, flexShrink: 0 }),
+            : { position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: surfaceCardRadius, flexShrink: 0 }),
           overflow: "hidden", display: "flex", flexDirection: "column",
           border: settings.cinematic_home ? "none" : heroFocused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.5)"}` : `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
           boxShadow: settings.cinematic_home ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
           background: materialHero ? appBg : isDark ? "#0a0502" : appBg,
         }}>
-          <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: settings.cinematic_home ? 0 : 20, overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: settings.cinematic_home ? 0 : surfaceCardRadius, overflow: "hidden" }}>
             {heroGames.map((game, idx) => {
               const isActive = idx === heroIdx;
               const isNearby = Math.abs(idx - heroIdx) <= 1;
@@ -3180,7 +3239,7 @@ export default function App() {
           {/* Pinned bar — hidden in cinematic mode, shown separately below hero */}
           {!settings.cinematic_home && settings.show_home_pinned !== false && <div style={{ position: "relative", zIndex: 2, padding: "16px 20px 0", flexShrink: 0 }}>
             {homePinnedApps.length > 0 ? (
-              <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 4, paddingBottom: 4 }}>
+              <div ref={pinnedShelfRef} style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 4, paddingBottom: 4 }}>
                 {homePinnedApps.map((app, i) => {
                   const focused = focusSec === "pinned" && focusIdx === i;
                   const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
@@ -3190,7 +3249,7 @@ export default function App() {
                       onDoubleClick={() => triggerLaunch(app, recentRef.current)}
                       style={{
                         display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
-                        flexShrink: 0, cursor: "pointer", borderRadius: 10, transition: "all 0.15s ease",
+                        flexShrink: 0, cursor: "pointer", borderRadius: surfaceCardRadius, transition: "all 0.15s ease",
                         background: focused ? accent.primary : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "aero" ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.10) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.70) 100%)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)") : "rgba(8,4,2,0.55)",
                         backdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(12px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(12px)",
                         border: `1px solid ${focused ? accent.primary : surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : surfaceStyle === "aero" ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.70)") : "rgba(255,255,255,0.14)"}`,
@@ -3210,29 +3269,49 @@ export default function App() {
           </div>}
 
           {/* Hero content */}
-          <div style={settings.cinematic_home
-            ? { position: "fixed", left: 0, right: 0, bottom: "120px", zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
+          <div style={materialCinematicHero
+            ? {
+                position: "absolute",
+                bottom: cinematicHeroBottom,
+                left: 24,
+                zIndex: 4,
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 20,
+                padding: "20px 24px 20px 20px",
+                borderRadius: surfaceCardRadius,
+                background: `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, ${isDark ? "var(--material-elevation-2)" : "var(--material-elevation-3)"}`,
+                border: "1px solid var(--material-border-subtle)",
+                boxShadow: "var(--material-shadow-high)",
+                maxWidth: 480,
+                pointerEvents: "auto",
+              }
+            : settings.cinematic_home
+            ? { position: "fixed", left: 0, right: 0, bottom: cinematicHeroAtBottom ? 0 : cinematicPinnedAtBottom ? "84px" : cinematicHeroNearChevron ? "68px" : "120px", zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
             : { position: "relative", zIndex: 1, flex: 1, display: "flex", alignItems: "flex-end", padding: "0 20px 20px" }}>
             {settings.show_hero_cover !== false && (
-              <div style={{ flexShrink: 0, width: "clamp(80px, 10vw, 150px)", aspectRatio: "2/3", marginRight: 20 }}>
+              <div style={materialCinematicHero
+                ? { flexShrink: 0, width: 90, height: 135 }
+                : { flexShrink: 0, width: "clamp(80px, 10vw, 150px)", aspectRatio: "2/3", marginRight: 20 }}>
                 {heroArt
-                  ? <img key={heroGame?.id} src={heroArt} alt={heroGame?.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.7)", animation: "heroArtFade 0.3s ease forwards" }} />
+                  ? <img key={heroGame?.id} src={heroArt} alt={heroGame?.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8, boxShadow: materialCinematicHero ? (isDark ? "var(--material-shadow-medium)" : "0 4px 14px rgba(39,27,18,0.18), 0 10px 28px rgba(39,27,18,0.10)") : "0 8px 32px rgba(0,0,0,0.7)", animation: "heroArtFade 0.3s ease forwards" }} />
                   : heroGame
-                    ? <img src={`/assets/liftoff_cover_${settings.accent}.svg`} alt={heroGame.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 10, boxShadow: "0 8px 32px rgba(0,0,0,0.7)" }} />
-                    : <div style={{ width: "100%", height: "100%", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
+                    ? <img src={`/assets/liftoff_cover_${settings.accent}.svg`} alt={heroGame.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8, boxShadow: materialCinematicHero ? (isDark ? "var(--material-shadow-medium)" : "0 4px 14px rgba(39,27,18,0.18), 0 10px 28px rgba(39,27,18,0.10)") : "0 8px 32px rgba(0,0,0,0.7)" }} />
+                    : <div style={{ width: "100%", height: "100%", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
                 }
               </div>
             )}
             {heroGame ? (
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: accent.primary, marginBottom: 6, fontWeight: 600 }}>
+              <div style={materialCinematicHero ? { display: "flex", flexDirection: "column", gap: 6, minWidth: 0 } : { flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: materialCinematicHero ? 11 : 10, letterSpacing: materialCinematicHero ? "0.10em" : "0.2em", textTransform: "uppercase", color: accent.primary, marginBottom: materialCinematicHero ? 0 : 6, fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
                   {heroIdx === 0 ? t('home.resumePlaying') : t('home.recentlyPlayed')}
                 </div>
-                <div style={{ fontSize: "clamp(22px, 3.2vw, 48px)", fontWeight: 700, color: materialHero ? materialHeroText : theme.text, marginBottom: 4, lineHeight: 1.05, textShadow: materialHero ? (isDark ? "0 2px 14px rgba(0,0,0,0.64)" : "0 1px 0 rgba(255,255,255,0.32), 0 2px 10px rgba(39,27,18,0.12)") : isDark ? "0 2px 20px rgba(0,0,0,0.8)" : "none" }}>{heroGame.name}</div>
-                <div style={{ fontSize: 11, color: materialHero ? materialHeroDimText : theme.textDim, marginBottom: 16 }}>{t('home.game')}</div>
+                <div style={{ fontSize: materialCinematicHero ? 28 : "clamp(22px, 3.2vw, 48px)", fontWeight: 700, color: materialCinematicHero ? (isDark ? "rgba(255,250,245,0.95)" : "rgba(28,20,14,0.92)") : materialHero ? materialHeroText : theme.text, marginBottom: materialCinematicHero ? 0 : 4, lineHeight: materialCinematicHero ? 1.1 : 1.05, textShadow: materialCinematicHero ? "none" : materialHero ? (isDark ? "0 2px 14px rgba(0,0,0,0.64)" : "0 1px 0 rgba(255,255,255,0.32), 0 2px 10px rgba(39,27,18,0.12)") : isDark ? "0 2px 20px rgba(0,0,0,0.8)" : "none" }}>{heroGame.name}</div>
+                <div style={{ fontSize: materialCinematicHero ? 12 : 11, color: materialCinematicHero ? (isDark ? "rgba(255,250,245,0.45)" : "rgba(28,20,14,0.42)") : materialHero ? materialHeroDimText : theme.textDim, marginBottom: materialCinematicHero ? 4 : 16 }}>{t('home.game')}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div onClick={() => triggerLaunch(heroGame, recentRef.current)}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 24px", borderRadius: 10, cursor: "pointer", transition: "all 0.15s ease", fontWeight: 600, fontSize: 14,
+                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, minWidth: materialCinematicHero ? 130 : undefined, padding: materialCinematicHero ? "10px 20px" : "10px 24px", borderRadius: launchRadius, cursor: "pointer", transition: "all 0.15s ease", fontWeight: 600, fontSize: 14,
                       background: heroFocused ? accent.primary : surfaceStyle === "material" ? "var(--material-elevation-3)" : surfaceStyle === "aero" ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.11) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.72) 100%)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)",
                       color: heroFocused ? activeTextColor : materialHero ? materialHeroText : theme.text,
                       border: `1px solid ${heroFocused ? accent.primary : surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : surfaceStyle === "aero" ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`,
@@ -3247,7 +3326,7 @@ export default function App() {
                       {heroGames.slice(0, 6).map((_, i) => (
                         <div key={i} onClick={() => { setHeroIndex(i); heroIndexRef.current = i; }}
                           style={{ width: i === heroIdx ? 20 : 6, height: 6, borderRadius: 3, cursor: "pointer", transition: "all 0.2s ease",
-                            background: i === heroIdx ? accent.primary : isDark ? "rgba(245,237,232,0.25)" : "rgba(0,0,0,0.2)" }} />
+                            background: i === heroIdx ? accent.primary : materialCinematicHero ? (isDark ? "rgba(255,250,245,0.20)" : "rgba(28,20,14,0.18)") : isDark ? "rgba(245,237,232,0.25)" : "rgba(0,0,0,0.2)" }} />
                       ))}
                     </div>
                   )}
@@ -3261,8 +3340,8 @@ export default function App() {
         </div>
 
         {/* ── CINEMATIC PINNED SHELF — fixed overlay above bottom bar ── */}
-        {settings.cinematic_home && settings.show_home_pinned !== false && homePinnedApps.length > 0 && (
-          <div style={{ position: "fixed", left: 0, right: 0, bottom: "60px", zIndex: 2, padding: "0 24px 12px", display: "flex", gap: 8, overflowX: "auto", pointerEvents: "auto" }}>
+        {settings.cinematic_home && cinematicPinnedVisible && (
+          <div ref={pinnedShelfRef} style={{ position: "fixed", left: 0, right: 0, bottom: cinematicPinnedAtBottom ? 0 : "60px", zIndex: 2, padding: cinematicPinnedAtBottom ? "0 24px 14px" : "0 24px 12px", display: "flex", gap: 8, overflowX: "auto", pointerEvents: "auto" }}>
               {homePinnedApps.map((app, i) => {
                 const focused = focusSec === "pinned" && focusIdx === i;
                 const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
@@ -3272,7 +3351,7 @@ export default function App() {
                     onDoubleClick={() => triggerLaunch(app, recentRef.current)}
                     style={{
                       display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
-                      flexShrink: 0, cursor: "pointer", borderRadius: 10, transition: "all 0.15s ease",
+                      flexShrink: 0, cursor: "pointer", borderRadius: surfaceCardRadius, transition: "all 0.15s ease",
                       background: focused ? accent.primary : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "aero" ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.10) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.70) 100%)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.18)",
                       backdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : undefined, WebkitBackdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : undefined,
                       border: `1px solid ${focused ? accent.primary : surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : surfaceStyle === "aero" ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.22)"}`,
@@ -3308,7 +3387,7 @@ export default function App() {
                     <div key={app.id} ref={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                      style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative", transition: "all 0.15s ease",
+                      style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, overflow: "hidden", cursor: "pointer", position: "relative", transition: "all 0.15s ease",
                         border: `1px solid ${focused ? (surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)") : (surfaceStyle === "material" ? "var(--material-border-subtle)" : "rgba(255,255,255,0.08)")}`,
                         boxShadow: focused ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
                         transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" }}>
@@ -3320,7 +3399,7 @@ export default function App() {
                         <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
                       </div>
                       <PinBadge isPinned={isPinned} small />
-                      {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: 12, pointerEvents: "none" }} />}
+                      {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
                     </div>
                   );
                 }
@@ -3332,7 +3411,7 @@ export default function App() {
                     <div key={app.id} ref={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                      style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative", transition: "all 0.15s ease",
+                      style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, overflow: "hidden", cursor: "pointer", position: "relative", transition: "all 0.15s ease",
                         border: `1px solid ${focused ? (surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)") : (surfaceStyle === "material" ? "var(--material-border-subtle)" : "rgba(255,255,255,0.08)")}`,
                         boxShadow: focused ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
                         transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" }}>
@@ -3341,7 +3420,7 @@ export default function App() {
                         <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
                       </div>
                       <PinBadge isPinned={isPinned} small />
-                      {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: 12, pointerEvents: "none" }} />}
+                      {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
                     </div>
                   );
                 }
@@ -3351,7 +3430,7 @@ export default function App() {
                     onDoubleClick={() => triggerLaunch(app, recentRef.current)}
                     style={{ ...glass, background: surfaceStyle === "material" ? "var(--material-elevation-2)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)", backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
                       border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : tintBorder}`,
-                      flexShrink: 0, borderRadius: 12, cursor: "pointer", transition: "all 0.15s ease",
+                      flexShrink: 0, borderRadius: surfaceCardRadius, cursor: "pointer", transition: "all 0.15s ease",
                       width: CARD_W, height: CARD_H, boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px", position: "relative",
                       ...(focused ? { background: surfaceStyle === "material" ? "var(--material-elevation-3)" : isDark ? `${accent.glow}0.1)` : `${accent.glow}0.07)`, boxShadow: surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, transform: "scale(1.05) translateY(-3px)" } : {}) }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", position: "relative", zIndex: 1 }}>
@@ -3403,7 +3482,7 @@ export default function App() {
                         ref={focused ? focusedCardRef : null}
                         onClick={() => { setFocusSection("home_collections"); focusSectionRef.current = "home_collections"; setHomeColFocusRow(rowIdx); homeColFocusRowRef.current = rowIdx; setHomeColFocusCol(colIdx); homeColFocusColRef.current = colIdx; }}
                         onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                        style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative", transition: "box-shadow 0.15s ease, outline 0.15s ease",
+                        style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, overflow: "hidden", cursor: "pointer", position: "relative", transition: "box-shadow 0.15s ease, outline 0.15s ease",
                           outline: focused ? `2px solid ${accent.primary}` : "2px solid transparent",
                           outlineOffset: "2px",
                           border: "1px solid rgba(255,255,255,0.08)",
@@ -3425,7 +3504,7 @@ export default function App() {
                       ref={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("home_collections"); focusSectionRef.current = "home_collections"; setHomeColFocusRow(rowIdx); homeColFocusRowRef.current = rowIdx; setHomeColFocusCol(colIdx); homeColFocusColRef.current = colIdx; }}
                       onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                      style={{ ...glass, flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer",
+                      style={{ ...glass, flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, overflow: "hidden", cursor: "pointer",
                         outline: focused ? `2px solid ${accent.primary}` : "2px solid transparent",
                         outlineOffset: "2px",
                         ...(focused ? { border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.4)"}`, boxShadow: surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)` } : {}),
@@ -3525,7 +3604,7 @@ export default function App() {
                               ref={recFocused ? focusedCardRef : null}
                               onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                               onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                              style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: 12, overflow: "hidden", cursor: "pointer", position: "relative",
+                              style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, overflow: "hidden", cursor: "pointer", position: "relative",
                                 border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.08)",
                                 outline: recFocused ? `2px solid ${accent.primary}` : "2px solid transparent",
                                 outlineOffset: "2px",
@@ -3901,7 +3980,7 @@ export default function App() {
           artType={artPickerMode}
           cropMode={artPickerMode === "hero" ? "hero" : artPickerApp?.app_type === "game" ? "portrait" : "square"}
           repeatSpeed={settings.repeat_speed}
-          accent={accent} theme={theme} isDark={isDark} glass={glass}
+          accent={accent} theme={theme} isDark={isDark} glass={glass} surfaceStyle={surfaceStyle}
           onClose={closeArtPicker}
           onSet={(id, result) => {
             if (typeof result === "string" && result.startsWith("data:")) {
@@ -4167,7 +4246,7 @@ export default function App() {
       {libraryRefreshStatus === "scanning" && (
         <div style={{ position: "fixed", inset: 0, zIndex: 5000, display: "flex", alignItems: "center", justifyContent: "center",
           background: surfaceStyle === "material" ? (isDark ? "rgba(23,21,19,0.96)" : "rgba(244,240,235,0.96)") : isDark ? "rgba(10,5,2,0.75)" : "rgba(240,230,220,0.75)", backdropFilter: surfaceStyle === "material" ? undefined : "blur(12px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : "blur(12px)" }}>
-          <div style={{ ...glass, borderRadius: 20, padding: "32px 48px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
+          <div style={{ ...glass, borderRadius: surfaceStyle === "material" ? 16 : 24, padding: "32px 48px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
             border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.3)` }}>
             <div className="splash-dots" style={{ opacity: 1 }}>
               <div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" />

@@ -234,7 +234,7 @@ export function SettingsScreen({
 
   const makeRowStyle = (focused: boolean, sub = false) => ({
     ...settingsRowGlass,
-    borderRadius: 14,
+    borderRadius: isMaterial ? 8 : 16,
     padding: "12px 20px",
     marginBottom: sub ? 6 : 8,
     display: "flex",
@@ -302,7 +302,7 @@ export function SettingsScreen({
           marginBottom: 8,
           padding: isMaterial ? "5px 6px 6px" : undefined,
           background: isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
-          borderRadius: isMaterial ? "0 0 12px 12px" : "0 0 14px 14px",
+          borderRadius: isMaterial ? "0 0 8px 8px" : "0 0 16px 16px",
           border: `1px solid ${isMaterial ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
           borderTop: isMaterial ? "1px solid var(--material-inset-top-edge)" : "none",
           boxShadow: isMaterial
@@ -314,7 +314,7 @@ export function SettingsScreen({
         };
         const parentStyle = {
           ...settingsRowGlass,
-          borderRadius: val ? "14px 14px 0 0" : 14,
+          borderRadius: val ? (isMaterial ? "8px 8px 0 0" : "16px 16px 0 0") : isMaterial ? 8 : 16,
           padding: "12px 20px",
           marginBottom: val ? 0 : 8,
           display: "flex",
@@ -630,14 +630,14 @@ export function SettingsScreen({
 
     if (item.type === "icon_preview")
       return (
-        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: 14, padding: "14px 20px", marginBottom: 8 }}>
+        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: isMaterial ? 8 : 16, padding: "14px 20px", marginBottom: 8 }}>
           <GamepadIconPreview />
         </div>
       );
 
     if (item.type === "controller_test")
       return (
-        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: 14, padding: "12px 20px", marginBottom: 8 }}>
+        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8 }}>
           <ControllerTestWidget />
         </div>
       );
@@ -668,7 +668,7 @@ export function SettingsScreen({
         );
 
       return (
-        <div key={item.key} ref={rowRef} style={{ ...settingsRowGlass, borderRadius: 14, padding: "12px 20px", marginBottom: 8, ...(focused ? {
+        <div key={item.key} ref={rowRef} style={{ ...settingsRowGlass, borderRadius: isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8, ...(focused ? {
           border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + (surfaceStyle === "aero" ? "0.50)" : "0.45)")}`,
           backdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
           WebkitBackdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",

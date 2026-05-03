@@ -73,6 +73,7 @@ export function AppHeader({
   const isHome         = tab === "Home";
   const uiScale        = settings.ui_scale ?? 1;
   const subtabGap      = Math.round(16 / uiScale);
+  const navRadius      = surfaceStyle === "material" ? 8 : 16;
 
   const navContent = (
     <>
@@ -169,7 +170,7 @@ export function AppHeader({
       <div style={{ position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{
           ...widthConstraints(wideLayout, false, true, uiScale),
-          ...glassBar, borderRadius: 16,
+          ...glassBar, borderRadius: navRadius,
           display: "flex", flexDirection: "column",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "10px 20px" }}>
@@ -189,7 +190,7 @@ export function AppHeader({
       <div style={{
         display: "flex", alignItems: "center", gap: 16, padding: "10px 20px",
         ...widthConstraints(wideLayout, transparentNav, true, uiScale),
-        ...(transparentNav ? {} : { ...glassBar, borderRadius: 16 }),
+        ...(transparentNav ? {} : { ...glassBar, borderRadius: navRadius }),
       }}>
         {navContent}
       </div>
@@ -199,7 +200,7 @@ export function AppHeader({
         tabbarBg ? (
           <div style={{
             ...widthConstraints(wideLayout, false, false, uiScale),
-            ...glassBar, borderRadius: 12,
+            ...glassBar, borderRadius: navRadius,
             marginTop: subtabGap,
           }}>
             {subtab}

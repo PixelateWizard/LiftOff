@@ -26,7 +26,7 @@ export default function ModalShell({
   zIndex = 2000,
   onOverlayClick,
 }: ModalShellProps) {
-  const { glass, accent, theme, isDark } = useTheme();
+  const { glass, accent, theme, isDark, surfaceStyle } = useTheme();
   const hasBody = children != null && children !== false;
 
   return (
@@ -45,7 +45,7 @@ export default function ModalShell({
           ...glass,
           width: `min(${width}px, 90vw)`,
           ...(maxHeight ? { maxHeight } : {}),
-          borderRadius: 20,
+          borderRadius: surfaceStyle === "material" ? 16 : 24,
           display: "flex", flexDirection: "column",
           overflow: "hidden",
           border: `1px solid ${accent.glow}0.3)`,

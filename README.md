@@ -14,7 +14,7 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 - **Live library refresh** — rescan without restarting; auto-refreshes when scan settings change
 - **Game art** — cover art and hero banners fetched automatically from SteamGridDB; cached locally to minimize API calls
 - **Animated hero banners** — animated WebM/WebP/GIF hero art supported where available, with static fallback; per-game or global control via Hero Art Mode setting
-- **Hero spotlight** — full-width landscape banner art in the Home tab hero section
+- **Hero spotlight** — full-width landscape banner art in the Home tab hero section, with an immersive fullscreen layout option
 - **App cards** — non-game app cards use dark frosted glass with a subtle icon-color border accent
 - **Custom cover art** — right-click or press Menu on any game or app to open the context menu, then choose **Change Art** (or **Change Hero Art** for games); games use a 2:3 portrait crop, apps use a square crop; reset to default anytime
 - **Context menu** — right-click or press Menu on any card to Open, Pin/Unpin, Change Art, or (for games) Change Hero Art
@@ -82,7 +82,7 @@ When a card is focused on the Games or Apps tab, press **Menu** to open the cont
 | Theme | Space / Sky / Plasma / Cinder / Wash |
 | Theme Surface Defaults | Space → Clear, Sky → Aero, Plasma → Glass, Cinder → Glass, Wash → Material; Surface Style can still be changed manually afterward |
 | Surface Style | Glass — frosted blur panels; Aero — polished acrylic with specular highlights, glossy active elements, and a subtle neutral depth gradient behind the UI; Material — opaque paper-textured cards, inset grouped settings, warmer cream light surfaces, dark aged-paper tooth, stronger focused-row elevation, and soft physical shadows; Clear — flat matte |
-| Immersive Home | Fullscreen cinematic hero with floating pinned shelf |
+| Immersive Home | Fullscreen cinematic hero with floating pinned shelf; when the bottom bar and collections drawer are hidden, pinned items and hero content settle into the freed bottom lane |
 | Show Cover on Home | Show the 2:3 cover art card in the hero section |
 | Show Pinned on Home | Show or hide the pinned items shelf on the home screen |
 | Show Collections on Home | Display game/app collections as card rows on the home screen |

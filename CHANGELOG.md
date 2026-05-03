@@ -28,6 +28,8 @@
 - **Cinder accent behavior** now uses the selected accent only as a subtle undertone in heat pockets and brighter particles, preserving the warm smoldering identity while supporting cold-flame, arcane, or chemical-fire accents.
 - **Wash + Material styling** adds a softer light Material token set with neutral off-white fills and low-contrast accent-tinted shadows when Wash is active.
 - **Material Immersive Home hero** now uses directional, accent-aware gradients instead of a uniform fog layer. Light mode reduces the milky overlay and adds a localized title-anchor shade; dark mode strengthens the left-side text anchor while opening the right side so artwork keeps depth. The Launch CTA uses a solid raised Material surface with shadow-based contrast.
+- **Material Immersive Home hero card** now uses a self-contained paper card in cinematic Material mode, removing the extra fog overlay and keeping the artwork unobstructed while preserving readable launch controls.
+- **Immersive Home bottom-lane layout** now adapts when the bottom bar and collections drawer are hidden: the pinned shelf moves into the freed bottom-bar lane, and hero content stays close above it; if pinned is hidden too, hero content drops to the bottom lane.
 - **Material elevation hierarchy** was refined across header, bottom bar, cards, settings rows, active elements, and modals. Raised surfaces use stronger soft shadows; pressed/active states reduce elevation; borders are kept extremely subtle.
 - **Material accent usage** now stays focused on active tabs, toggles, focus states, selected rows, and CTAs. Panel backgrounds are no longer broadly accent-tinted or glow-driven.
 - **Aero — directional highlight sharpened**: knee position moved from 18% to 12% on cards, 25% to 15% on rows. Sub-specular bloom tightened from 6 px to 4 px with slightly higher opacity. Effect: light appears to strike from a clear overhead point rather than diffusing evenly downward.
@@ -44,6 +46,7 @@
 
 ### Bug Fixes
 - Fixed Material light mode hero/background theme updates when switching from dark to light. The hero no longer appends hex alpha suffixes to `color-mix()` background values, which produced invalid CSS for Material.
+- Fixed Home pinned shelf horizontal navigation so returning to the left-most pinned pill restores the shelf's starting padding instead of parking the focused pill against the viewport edge.
 - Fixed gamepad navigation on the Games tab causing game cards to slide behind the subtab row at UI scale above 100%. Root cause: `scrollIntoView` scrolls all scrollable ancestors including the root div under CSS `transform: scale()`. Fix temporarily marks the root div as non-scrollable before each `scrollIntoView` call so only the inner scroll container animates.
 
 ---
