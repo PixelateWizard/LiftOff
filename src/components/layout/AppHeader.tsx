@@ -16,6 +16,9 @@ interface Props {
   battery: number;
   batteryWidth: string;
   batteryColor: string;
+  batteryTextColor: string;
+  batteryBoltFill: string;
+  batteryBoltStroke: string;
   charging: boolean;
   headerTabItems: TabItem[];
   headerActiveIndex: number;
@@ -56,7 +59,7 @@ function widthConstraints(wideLayout: boolean, transparent: boolean, topMargin: 
 
 export function AppHeader({
   tab, tabs, switchTab,
-  date, time, hasBattery, battery, batteryWidth, batteryColor, charging,
+  date, time, hasBattery, battery, batteryWidth, batteryColor, batteryTextColor, batteryBoltFill, batteryBoltStroke, charging,
   headerTabItems, headerActiveIndex, headerOnSelect, headerRightActions,
 }: Props) {
   const { t } = useTranslation();
@@ -140,11 +143,11 @@ export function AppHeader({
               </div>
               {charging && (
                 <svg width="8" height="11" viewBox="0 0 8 12" fill="none" style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", pointerEvents: "none" }}>
-                  <path d="M5 1L1 7h3l-1 4 4-6H4l1-4z" fill="#4ae88a" stroke="#4ae88a" strokeWidth="0.3" strokeLinejoin="round"/>
+                  <path d="M5 1L1 7h3l-1 4 4-6H4l1-4z" fill={batteryBoltFill} stroke={batteryBoltStroke} strokeWidth="0.45" strokeLinejoin="round"/>
                 </svg>
               )}
             </div>
-            <span style={{ fontSize: 11, color: charging ? "#4ae88a" : theme.textDim, ...(isDark && glassEnabled && surfaceStyle !== "material" ? { textShadow: "0 1px 2px rgba(0,0,0,0.55)" } : {}) }}>{battery}%</span>
+            <span style={{ fontSize: 11, color: batteryTextColor, ...(isDark && glassEnabled && surfaceStyle !== "material" ? { textShadow: "0 1px 2px rgba(0,0,0,0.55)" } : {}) }}>{battery}%</span>
           </div>
         )}
       </div>

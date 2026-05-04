@@ -14,7 +14,7 @@
 - **Glossy active elements in Aero mode** — active nav tab pill (AppHeader), focused pinned pills (regular and cinematic shelf), and Launch CTA all get a triple-inset glossy highlight in Aero mode: hard 1 px specular (`rgba(255,255,255,0.80)`), feathered bloom, and a dark bottom rim — giving a dimensional glossy-button appearance. Glass and Clear retain their original plain glow.
 - **Surface Style setting** — replaces the previous Glass UI on/off toggle. Four options: Glass (frosted blur panels), Aero (polished acrylic), Material (solid matte surfaces), Clear (flat matte).
 - **Three-tier glass hierarchy** — `glass` (cards), `glassBar` (nav/dock bars), `settingsRowGlass` (settings rows) have distinct weights for intentional visual depth. Each tier has separate Glass and Aero variants.
-- **Immersive home drawer surfaces** — the cinematic home slide-up drawer now follows the selected surface style: Glass/Aero use layered blur treatments, while Material uses a solid raised slab with shadow-based depth.
+- **Immersive home drawer surfaces** — the cinematic home slide-up drawer now follows the selected surface style: dark Glass/Aero use layered blur treatments; light Glass stays transparent and blur-heavy, light Aero uses brighter acrylic highlights, Clear uses a subtly translucent warm sheet, and Material uses a solid raised slab with shadow-based depth.
 - **Glass inactive treatment for interactive elements** — when Glass or Aero is active, unfocused section filter pills, home pinned items, and the Launch CTA render with the surface treatment: white-tint background, blur backdrop, brighter border, and a subtle `inset 0 1px 0` top highlight.
 - **Show Pinned on Home** — new toggle in Settings → Appearance → Home to hide the pinned items shelf from both the regular and immersive home screen without unpinning any items.
 - **Aero background depth gradient** — a subtle neutral linear gradient overlays the page background in Aero mode. Light theme: 4% white at the top fading to 2.5% dark at the bottom, adding vertical depth without re-tinting the accent-colored background. Dark theme: barely perceptible 1.2–1.8% tonal shift that does not compete with the star field. No accent color is mixed into the gradient.
@@ -24,6 +24,13 @@
 - **Wash theme performance** improved by keeping the organic SVG displacement filters on the main pigment blobs while converting the soft perimeter fill layers to cheaper unfiltered radial washes. This preserves the filled-edge look while reducing WebView2 paint/compositor load during navigation.
 - **Material Settings focus** now uses an opaque, slightly accent-tinted raised surface with a single 2px accent border and stronger elevation. The earlier transparent tint, double-border/outline treatment, and left accent bar were removed to better match the Material surface model.
 - **Clear Settings row height** now matches the other surface modes by using the same row padding in Settings.
+- **Surface border radii** were standardized to the 8pt grid. Clear now matches Glass/Aero radii across primary surfaces: 16px for nav, bottom bar, hero cards, pinned pills, game/app cards, and settings rows; 24px for modals/drawers; 8px for cover art; pill controls remain 50%. Material keeps the tighter physical-paper set: 8px for cards/rows/pills/CTAs and 16px for modals/drawers.
+- **Focused card scroll handling** now uses explicit, scale-aware scroll math against the active Home/tab scroll container instead of relying on `scrollIntoView`. This keeps focused cards out from under sticky chrome at non-100% UI scale and avoids root-container scroll jumps.
+- **Home recents shelves** now support oversized card scales more gracefully. Regular Home recents scroll horizontally with gamepad focus and scroll vertically when large cards would fall below the viewport; immersive drawer recents use the same horizontal focus behavior.
+- **Immersive drawer row spacing** now gives focused recents and collection cards enough lane padding for outlines and shadows, avoiding clipped glow/elevation at row edges.
+- **Battery charging colors** now use a darker green in light mode and a separate high-contrast lightning bolt fill/stroke so the charging icon stays visible even near 100%.
+- **Lunar/bright-accent toggles in dark mode** now use a dark enabled knob and dimensional accent track so switched-on toggles remain distinguishable from neutral off/white controls.
+- **Home pinned shelf label contrast** now respects light mode for non-Material surfaces, using the theme text color instead of the dark-mode white label color.
 - **Theme list** now uses animated environment names: Space, Sky, Plasma, Cinder, and Wash. Legacy theme values (`dark`, `light`, `system`, `ember`, and `bloom`) are normalized to the new names where possible.
 - **Cinder accent behavior** now uses the selected accent only as a subtle undertone in heat pockets and brighter particles, preserving the warm smoldering identity while supporting cold-flame, arcane, or chemical-fire accents.
 - **Wash + Material styling** adds a softer light Material token set with neutral off-white fills and low-contrast accent-tinted shadows when Wash is active.
@@ -47,7 +54,8 @@
 ### Bug Fixes
 - Fixed Material light mode hero/background theme updates when switching from dark to light. The hero no longer appends hex alpha suffixes to `color-mix()` background values, which produced invalid CSS for Material.
 - Fixed Home pinned shelf horizontal navigation so returning to the left-most pinned pill restores the shelf's starting padding instead of parking the focused pill against the viewport edge.
-- Fixed gamepad navigation on the Games tab causing game cards to slide behind the subtab row at UI scale above 100%. Root cause: `scrollIntoView` scrolls all scrollable ancestors including the root div under CSS `transform: scale()`. Fix temporarily marks the root div as non-scrollable before each `scrollIntoView` call so only the inner scroll container animates.
+- Fixed immersive drawer recent app cards showing letter placeholders when the lightweight recent record lacked `icon_base64`; drawer recents now look up the full `AppEntry` through `allAppsRef`.
+- Fixed gamepad navigation on the Games tab causing game cards to slide behind the subtab row at UI scale above 100%. Root cause: `scrollIntoView` can scroll the scaled root ancestor under CSS `transform: scale()`. Main card navigation now uses explicit inner-scroller math; remaining `scrollIntoView` paths keep the root overflow guard.
 
 ---
 

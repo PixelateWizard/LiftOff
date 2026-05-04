@@ -1229,6 +1229,7 @@ export default function App() {
   const homeScrollRef         = useRef(null);
   const tabScrollRef          = useRef(null);
   const pinnedShelfRef        = useRef(null);
+  const recentShelfRef        = useRef(null);
   const drawerScrollRef       = useRef(null);
   const handleNavRef          = useRef(null);
   const tabRef                = useRef("Home");
@@ -2238,20 +2239,71 @@ export default function App() {
 
   useEffect(() => {
     if (tab === "Settings") return;
-    const hasPinned = pinsRef.current.length > 0;
-    const gridIsOffscreen = tab !== "Home" && hasPinned;
-    const scrollToTop = () => {
+    const visiblePinnedAboveGrid = tab !== "Home"
+      && !(tab === "Games" && gameSourceTabRef.current !== "All")
+      && !(tab === "Apps" && appCollectionTabRef.current !== "All")
+      && pinsRef.current
+        .map(id => appsRef.current.find(a => a.id === id))
+        .filter(Boolean)
+        .some(a => tab === "Games" ? a.app_type === "game" : a.app_type === "app");
+    const scrollToTop = (behavior = "smooth") => {
       const scroller = tab === "Home" ? homeScrollRef.current : tabScrollRef.current;
-      if (scroller) scroller.scrollTo({ top: 0, behavior: "instant" });
+      if (scroller) scroller.scrollTo({ top: 0, behavior });
+    };
+    const scrollFocusedCardIntoView = () => {
+      const scroller = tab === "Home" ? homeScrollRef.current : tabScrollRef.current;
+      const card = focusedCardRef.current;
+      if (!scroller || !card) return;
+      const scale = settings.ui_scale ?? 1;
+      const sr = scroller.getBoundingClientRect();
+      const cr = card.getBoundingClientRect();
+      const topClearance = 100;
+      const bottomClearance = 80;
+      const cardTop = (cr.top - sr.top) / scale;
+      const cardBottom = (cr.bottom - sr.top) / scale;
+      const visH = scroller.clientHeight;
+      let newTop = scroller.scrollTop;
+      if (cardTop < topClearance) {
+        newTop = scroller.scrollTop + cardTop - topClearance;
+      } else if (cardBottom > visH - bottomClearance) {
+        newTop = scroller.scrollTop + cardBottom - (visH - bottomClearance);
+      }
+      scroller.scrollTo({ top: Math.max(0, newTop), behavior: "smooth" });
+    };
+    const scrollFocusedCardHorizontally = (container, resetWhenFirst = false) => {
+      const card = focusedCardRef.current;
+      if (!container || !card) return;
+      if (resetWhenFirst && focusIndex === 0) {
+        container.scrollTo({ left: 0, behavior: "smooth" });
+        return;
+      }
+      const scale = settings.ui_scale ?? 1;
+      const sr = container.getBoundingClientRect();
+      const cr = card.getBoundingClientRect();
+      const edgePad = 18;
+      const cardLeft = (cr.left - sr.left) / scale;
+      const cardRight = (cr.right - sr.left) / scale;
+      let newLeft = container.scrollLeft;
+      if (cardLeft < edgePad) {
+        newLeft = container.scrollLeft + cardLeft - edgePad;
+      } else if (cardRight > container.clientWidth - edgePad) {
+        newLeft = container.scrollLeft + cardRight - (container.clientWidth - edgePad);
+      }
+      container.scrollTo({ left: Math.max(0, newLeft), behavior: "smooth" });
     };
     if (focusSection === "hero") {
       setTimeout(scrollToTop, 50);
     } else if (focusSection === "recent") {
       if (settingsRef.current?.cinematic_home) {
-        // In cinematic mode, scroll drawer back to top so recents are fully visible
-        setTimeout(() => { if (drawerScrollRef.current) drawerScrollRef.current.scrollTo({ top: 0, behavior: "smooth" }); }, 50);
+        setTimeout(() => {
+          if (drawerScrollRef.current) drawerScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+          scrollFocusedCardHorizontally(recentShelfRef.current, true);
+        }, 50);
       } else {
-        setTimeout(scrollToTop, 50);
+        setTimeout(() => {
+          scrollFocusedCardIntoView();
+          scrollFocusedCardHorizontally(recentShelfRef.current, true);
+        }, 50);
       }
     } else if (focusSection === "home_collections") {
       if (focusedRowRef.current) {
@@ -2260,6 +2312,9 @@ export default function App() {
           const rowRect = focusedRowRef.current.getBoundingClientRect();
           const scrollTarget = drawerScrollRef.current.scrollTop + rowRect.top - drawerRect.top - 16;
           drawerScrollRef.current.scrollTo({ top: scrollTarget, behavior: "smooth" });
+          if (focusedCardRef.current) {
+            focusedCardRef.current.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+          }
         } else {
           focusedRowRef.current.style.scrollMarginTop    = "120px";
           focusedRowRef.current.style.scrollMarginBottom = "80px";
@@ -2281,28 +2336,16 @@ export default function App() {
         }, 80);
       }
     } else if (focusSection === "grid" && focusIndex < currentCols) {
-      const hasPinned = pinsRef.current.length > 0;
-      const gridPushedDown = tab !== "Home" && hasPinned;
-      if (!gridPushedDown) {
-        // No pinned section — grid starts near top, snap there
-        setTimeout(scrollToTop, 50);
-      } else if (focusedCardRef.current) {
-        // Pinned section pushes grid down — scroll first row into view properly
-        focusedCardRef.current.style.scrollMarginTop    = "100px";
-        focusedCardRef.current.style.scrollMarginBottom = "80px";
-        // Temporarily hide root overflow so scrollIntoView only animates tabScrollRef, not the root div
-        if (outerRef.current) outerRef.current.style.overflowY = "hidden";
-        focusedCardRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
-        if (outerRef.current) { outerRef.current.style.overflowY = ""; outerRef.current.scrollTop = 0; }
+      if (visiblePinnedAboveGrid && focusedCardRef.current) {
+        scrollFocusedCardIntoView();
+      } else {
+        const scroller = tab === "Home" ? homeScrollRef.current : tabScrollRef.current;
+        if (scroller) scroller.scrollTo({ top: 0, behavior: "smooth" });
       }
     } else if (focusedCardRef.current) {
-      focusedCardRef.current.style.scrollMarginTop    = "100px";
-      focusedCardRef.current.style.scrollMarginBottom = "80px";
-      if (outerRef.current) outerRef.current.style.overflowY = "hidden";
-      focusedCardRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
-      if (outerRef.current) { outerRef.current.style.overflowY = ""; outerRef.current.scrollTop = 0; }
+      scrollFocusedCardIntoView();
     }
-  }, [focusSection, focusIndex, homeColFocusRow, tab]);
+  }, [focusSection, focusIndex, homeColFocusRow, tab, gameSourceTab, appCollectionTab, pins, apps, settings.ui_scale]);
 
   const switchTab = (newTab) => {
     setTab(newTab); tabRef.current = newTab;
@@ -2846,9 +2889,14 @@ export default function App() {
       if (key === "ArrowRight") { const ni = Math.min(index + 1, fPinned.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
       if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                  setFocusIndex(ni); focusIndexRef.current = ni; }
       if (key === "ArrowUp") {
-        setFocusSection("subtabs"); focusSectionRef.current = "subtabs";
-        setSubtabFocusIndex(0); subtabFocusIndexRef.current = 0;
-        playSound();
+        if (index >= pinnedCols) {
+          const ni = index - pinnedCols;
+          setFocusIndex(ni); focusIndexRef.current = ni;
+        } else {
+          setFocusSection("subtabs"); focusSectionRef.current = "subtabs";
+          setSubtabFocusIndex(0); subtabFocusIndexRef.current = 0;
+          playSound();
+        }
       }
       if (key === "ArrowDown") {
         const ni = index + pinnedCols;
@@ -2867,7 +2915,8 @@ export default function App() {
       if (key === "ArrowUp") {
         if (index < cols) {
           if (fPinned.length > 0) {
-            const pinnedTarget = Math.min(index % pinnedCols, fPinned.length - 1);
+            const lastPinnedRowStart = Math.floor((fPinned.length - 1) / pinnedCols) * pinnedCols;
+            const pinnedTarget = Math.min(lastPinnedRowStart + (index % pinnedCols), fPinned.length - 1);
             setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(pinnedTarget); focusIndexRef.current = pinnedTarget;
           } else {
             setFocusSection("subtabs"); focusSectionRef.current = "subtabs";
@@ -3101,7 +3150,10 @@ export default function App() {
   };
   // ─────────────────────────────────────────────────────────────
 
-  const batteryColor = charging ? "#4ae88a" : battery > 20 ? accent.primary : "#e84a4a";
+  const batteryColor = charging ? (isDark ? "#4ae88a" : "#1fb463") : battery > 20 ? accent.primary : "#e84a4a";
+  const batteryTextColor = charging ? (isDark ? "#4ae88a" : "#159653") : theme.textDim;
+  const batteryBoltFill = isDark ? "rgba(8,24,15,0.96)" : "rgba(4,46,26,0.96)";
+  const batteryBoltStroke = isDark ? "rgba(255,255,255,0.70)" : "rgba(255,255,255,0.82)";
   const batteryWidth = battery > 0 ? `${battery}%` : "72%";
 
 
@@ -3135,6 +3187,106 @@ export default function App() {
     const surfaceCardRadius = surfaceStyle === "material" ? 8 : 16;
     const modalSurfaceRadius = surfaceStyle === "material" ? 16 : 24;
     const launchRadius = surfaceStyle === "material" ? 8 : 999;
+    const heroTextColor = isDark ? theme.text : "rgba(34,24,18,0.96)";
+    const heroSubtextColor = isDark ? theme.textDim : "rgba(48,34,25,0.68)";
+    const heroLabelColor = isDark ? accent.primary : (accent.lightPrimary || accent.primary);
+    const heroTextShadow = isDark ? "0 2px 14px rgba(0,0,0,0.42)" : "0 1px 0 rgba(255,255,255,0.45)";
+    const heroReadabilityOverlayStyle = (() => {
+      if (isDark) {
+        return {
+          background: "linear-gradient(90deg, rgba(5,4,8,0.68) 0%, rgba(5,4,8,0.46) 34%, rgba(5,4,8,0.16) 58%, rgba(5,4,8,0) 78%)",
+        };
+      }
+      if (surfaceStyle === "material") {
+        return {
+          background: "transparent",
+        };
+      }
+      if (surfaceStyle === "aero") {
+        return {
+          background: "linear-gradient(90deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.18) 30%, rgba(255,255,255,0.06) 48%, rgba(255,255,255,0) 68%)",
+          backdropFilter: "blur(0.6px) saturate(1.02)",
+          WebkitBackdropFilter: "blur(0.6px) saturate(1.02)",
+        };
+      }
+      if (surfaceStyle === "glass") {
+        return {
+          background: "linear-gradient(90deg, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0.14) 30%, rgba(255,255,255,0.05) 48%, rgba(255,255,255,0) 68%)",
+          backdropFilter: "blur(0.8px) saturate(1.04)",
+          WebkitBackdropFilter: "blur(0.8px) saturate(1.04)",
+        };
+      }
+      return {
+        background: "linear-gradient(90deg, rgba(255,250,244,0.72) 0%, rgba(255,250,244,0.48) 32%, rgba(255,250,244,0.18) 58%, rgba(255,250,244,0) 82%)",
+      };
+    })();
+    const heroCopySurfaceStyle = (() => {
+      if (isDark) return {};
+      if (surfaceStyle === "material") {
+        return {
+          background: "var(--material-elevation-3)",
+          border: "1px solid rgba(80,48,28,0.10)",
+          borderRadius: 16,
+          padding: "14px 18px",
+          boxShadow: "0 8px 22px rgba(39,27,18,0.12), 0 18px 42px rgba(39,27,18,0.08)",
+        };
+      }
+      if (surfaceStyle === "aero") {
+        return {
+          background: "rgba(255,255,255,0.12)",
+          border: "1px solid rgba(255,255,255,0.22)",
+          backdropFilter: "blur(8px) saturate(1.04)",
+          WebkitBackdropFilter: "blur(8px) saturate(1.04)",
+          borderRadius: 16,
+          padding: "14px 18px",
+        };
+      }
+      if (surfaceStyle === "glass") {
+        return {
+          background: "rgba(255,255,255,0.11)",
+          border: "1px solid rgba(255,255,255,0.20)",
+          backdropFilter: "blur(9px) saturate(1.05)",
+          WebkitBackdropFilter: "blur(9px) saturate(1.05)",
+          borderRadius: 16,
+          padding: "14px 18px",
+        };
+      }
+      return {};
+    })();
+    const getHeroPinnedIdleStyle = () => {
+      if (isDark) {
+        return {
+          background: "rgba(8,4,2,0.55)",
+          border: "rgba(255,255,255,0.14)",
+          color: theme.text,
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14)",
+        };
+      }
+      if (surfaceStyle === "material") {
+        return {
+          background: "rgba(250,241,230,0.88)",
+          border: "rgba(80,48,28,0.14)",
+          color: heroTextColor,
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42)",
+        };
+      }
+      if (surfaceStyle === "clear") {
+        return {
+          background: "rgba(255,255,255,0.46)",
+          border: "rgba(80,48,28,0.10)",
+          color: heroTextColor,
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.55)",
+        };
+      }
+      return {
+        background: surfaceStyle === "aero" ? "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.44) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.64) 0%, rgba(255,255,255,0.38) 100%)",
+        border: "rgba(255,255,255,0.58)",
+        color: heroTextColor,
+        boxShadow: surfaceStyle === "aero"
+          ? "inset 0 1px 0 rgba(255,255,255,0.96), inset 0 -1px 0 rgba(0,0,0,0.07)"
+          : "inset 0 1px 0 rgba(255,255,255,0.78), inset 0 -1px 0 rgba(0,0,0,0.08)",
+      };
+    };
     const cinematicBottomLaneFree = settings.cinematic_home && settings.hide_bottom_bar && !settings.show_home_collections;
     const cinematicPinnedVisible = settings.show_home_pinned !== false && homePinnedApps.length > 0;
     const cinematicPinnedAtBottom = cinematicBottomLaneFree && cinematicPinnedVisible;
@@ -3181,7 +3333,7 @@ export default function App() {
           ...(settings.cinematic_home
             ? { position: "fixed", inset: 0, zIndex: 0 }
             : { position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: surfaceCardRadius, flexShrink: 0 }),
-          overflow: "hidden", display: "flex", flexDirection: "column",
+          overflow: settings.cinematic_home ? "hidden" : "visible", display: "flex", flexDirection: "column",
           border: settings.cinematic_home ? "none" : heroFocused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.5)"}` : `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
           boxShadow: settings.cinematic_home ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
@@ -3235,14 +3387,33 @@ export default function App() {
             <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: materialHero ? "42%" : "55%", zIndex: 2, background: heroBottomOverlay }} />
             {materialHero && <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroTextAnchorOverlay }} />}
           </div>
+          {!settings.cinematic_home && (
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                pointerEvents: "none",
+                zIndex: 1,
+                ...(homePinnedApps.length > 0 && settings.show_home_pinned !== false
+                  ? {
+                      WebkitMaskImage: "linear-gradient(to bottom, transparent 0px, transparent 86px, black 132px)",
+                      maskImage: "linear-gradient(to bottom, transparent 0px, transparent 86px, black 132px)",
+                    }
+                  : {}),
+                ...heroReadabilityOverlayStyle,
+              }}
+            />
+          )}
 
           {/* Pinned bar — hidden in cinematic mode, shown separately below hero */}
           {!settings.cinematic_home && settings.show_home_pinned !== false && <div style={{ position: "relative", zIndex: 2, padding: "16px 20px 0", flexShrink: 0 }}>
             {homePinnedApps.length > 0 ? (
-              <div ref={pinnedShelfRef} style={{ display: "flex", gap: 8, overflowX: "auto", paddingTop: 4, paddingBottom: 4 }}>
+              <div ref={pinnedShelfRef} style={{ display: "flex", gap: 8, overflowX: "auto", padding: "10px 14px 14px", margin: "-6px -14px -10px" }}>
                 {homePinnedApps.map((app, i) => {
                   const focused = focusSec === "pinned" && focusIdx === i;
                   const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
+                  const idlePinned = getHeroPinnedIdleStyle();
                   return (
                     <div key={app.id} ref={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
@@ -3250,15 +3421,18 @@ export default function App() {
                       style={{
                         display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
                         flexShrink: 0, cursor: "pointer", borderRadius: surfaceCardRadius, transition: "all 0.15s ease",
-                        background: focused ? accent.primary : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "aero" ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.10) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.70) 100%)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)") : "rgba(8,4,2,0.55)",
-                        backdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(12px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(12px)",
-                        border: `1px solid ${focused ? accent.primary : surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : surfaceStyle === "aero" ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.70)") : "rgba(255,255,255,0.14)"}`,
-                        boxShadow: focused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 3px 14px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-medium)" : `0 2px 12px ${accent.glow}0.6)`) : surfaceStyle === "aero" ? (isDark ? `inset 0 1px 0 rgba(255,255,255,0.42), inset 0 -1px 0 rgba(0,0,0,0.10), 0 0 0 1px ${accent.glow}0.12)` : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 0 0 1px ${accent.glow}0.10)`) : surfaceStyle === "material" ? "var(--material-shadow-low)" : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none",
+                        background: focused ? accent.primary : idlePinned.background,
+                        backdropFilter: undefined,
+                        WebkitBackdropFilter: undefined,
+                        border: `1px solid ${focused ? accent.primary : idlePinned.border}`,
+                        boxShadow: focused
+                          ? `0 3px 10px ${accent.glow}0.38)`
+                          : idlePinned.boxShadow,
                       }}>
                       {art
                         ? <img src={art} alt={app.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
                         : <AppIcon app={app} size={24} />}
-                      <div style={{ fontSize: 12, fontWeight: 500, color: focused ? activeTextColor : surfaceStyle === "material" ? (isDark ? "rgba(255,250,245,0.84)" : "rgba(31,22,15,0.82)") : "rgba(245,237,232,0.88)", whiteSpace: "nowrap", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: focused ? activeTextColor : idlePinned.color, whiteSpace: "nowrap", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
                     </div>
                   );
                 })}
@@ -3303,20 +3477,34 @@ export default function App() {
               </div>
             )}
             {heroGame ? (
-              <div style={materialCinematicHero ? { display: "flex", flexDirection: "column", gap: 6, minWidth: 0 } : { flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: materialCinematicHero ? 11 : 10, letterSpacing: materialCinematicHero ? "0.10em" : "0.2em", textTransform: "uppercase", color: accent.primary, marginBottom: materialCinematicHero ? 0 : 6, fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
+              <div style={materialCinematicHero ? { display: "flex", flexDirection: "column", gap: 6, minWidth: 0 } : { flex: settings.cinematic_home ? 1 : "0 1 auto", minWidth: 0, maxWidth: settings.cinematic_home ? undefined : "min(780px, 100%)", alignSelf: settings.cinematic_home ? undefined : "flex-end", ...(!settings.cinematic_home ? heroCopySurfaceStyle : {}), ...(!settings.cinematic_home && settings.show_hero_cover !== false ? { minHeight: "clamp(120px, 15vw, 225px)", boxSizing: "border-box", justifyContent: "center", display: "flex", flexDirection: "column" } : {}) }}>
+                <div style={{ fontSize: materialCinematicHero ? 11 : 10, letterSpacing: materialCinematicHero ? "0.10em" : "0.2em", textTransform: "uppercase", color: materialCinematicHero ? accent.primary : settings.cinematic_home ? accent.primary : heroLabelColor, marginBottom: materialCinematicHero ? 0 : 6, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, textShadow: materialCinematicHero || settings.cinematic_home ? undefined : heroTextShadow }}>
                   {heroIdx === 0 ? t('home.resumePlaying') : t('home.recentlyPlayed')}
                 </div>
-                <div style={{ fontSize: materialCinematicHero ? 28 : "clamp(22px, 3.2vw, 48px)", fontWeight: 700, color: materialCinematicHero ? (isDark ? "rgba(255,250,245,0.95)" : "rgba(28,20,14,0.92)") : materialHero ? materialHeroText : theme.text, marginBottom: materialCinematicHero ? 0 : 4, lineHeight: materialCinematicHero ? 1.1 : 1.05, textShadow: materialCinematicHero ? "none" : materialHero ? (isDark ? "0 2px 14px rgba(0,0,0,0.64)" : "0 1px 0 rgba(255,255,255,0.32), 0 2px 10px rgba(39,27,18,0.12)") : isDark ? "0 2px 20px rgba(0,0,0,0.8)" : "none" }}>{heroGame.name}</div>
-                <div style={{ fontSize: materialCinematicHero ? 12 : 11, color: materialCinematicHero ? (isDark ? "rgba(255,250,245,0.45)" : "rgba(28,20,14,0.42)") : materialHero ? materialHeroDimText : theme.textDim, marginBottom: materialCinematicHero ? 4 : 16 }}>{t('home.game')}</div>
+                <div style={{ fontSize: materialCinematicHero ? 28 : "clamp(22px, 3.2vw, 48px)", fontWeight: 700, color: materialCinematicHero ? (isDark ? "rgba(255,250,245,0.95)" : "rgba(28,20,14,0.92)") : settings.cinematic_home ? (materialHero ? materialHeroText : theme.text) : heroTextColor, marginBottom: materialCinematicHero ? 0 : 4, lineHeight: materialCinematicHero ? 1.1 : 1.05, textShadow: materialCinematicHero ? "none" : settings.cinematic_home ? (materialHero ? (isDark ? "0 2px 14px rgba(0,0,0,0.64)" : "0 1px 0 rgba(255,255,255,0.32), 0 2px 10px rgba(39,27,18,0.12)") : isDark ? "0 2px 20px rgba(0,0,0,0.8)" : "none") : heroTextShadow }}>{heroGame.name}</div>
+                <div style={{ fontSize: materialCinematicHero ? 12 : 11, color: materialCinematicHero ? (isDark ? "rgba(255,250,245,0.45)" : "rgba(28,20,14,0.42)") : settings.cinematic_home ? (materialHero ? materialHeroDimText : theme.textDim) : heroSubtextColor, marginBottom: materialCinematicHero ? 4 : 16, textShadow: materialCinematicHero || settings.cinematic_home ? undefined : heroTextShadow }}>{t('home.game')}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div onClick={() => triggerLaunch(heroGame, recentRef.current)}
                     style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, minWidth: materialCinematicHero ? 130 : undefined, padding: materialCinematicHero ? "10px 20px" : "10px 24px", borderRadius: launchRadius, cursor: "pointer", transition: "all 0.15s ease", fontWeight: 600, fontSize: 14,
-                      background: heroFocused ? accent.primary : surfaceStyle === "material" ? "var(--material-elevation-3)" : surfaceStyle === "aero" ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.11) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.72) 100%)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)",
-                      color: heroFocused ? activeTextColor : materialHero ? materialHeroText : theme.text,
-                      border: `1px solid ${heroFocused ? accent.primary : surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : surfaceStyle === "aero" ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`,
+                      background: settings.cinematic_home
+                        ? (heroFocused ? accent.primary : surfaceStyle === "material" ? "var(--material-elevation-3)" : surfaceStyle === "aero" ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.11) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.72) 100%)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)")
+                        : heroFocused
+                          ? accent.primary
+                          : isDark
+                            ? "rgba(255,255,255,0.12)"
+                            : surfaceStyle === "material"
+                              ? "rgba(250,241,230,0.72)"
+                              : surfaceStyle === "clear"
+                                ? "rgba(255,255,255,0.34)"
+                                : "rgba(255,255,255,0.28)",
+                      color: heroFocused ? activeTextColor : settings.cinematic_home ? (materialHero ? materialHeroText : theme.text) : heroTextColor,
+                      border: settings.cinematic_home
+                        ? `1px solid ${heroFocused ? accent.primary : surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : surfaceStyle === "aero" ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`
+                        : `1px solid ${heroFocused ? accent.primary : isDark ? "rgba(255,255,255,0.2)" : surfaceStyle === "material" ? "rgba(80,48,28,0.14)" : "rgba(255,255,255,0.34)"}`,
                       backdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(8px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(8px)",
-                      boxShadow: heroFocused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 4px 24px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-high)" : `0 4px 24px ${accent.glow}0.5)`) : surfaceStyle === "aero" ? (isDark ? `inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -1px 0 rgba(0,0,0,0.12), 0 0 0 1px ${accent.glow}0.12)` : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 0 0 1px ${accent.glow}0.10)`) : surfaceStyle === "material" ? (isDark ? "0 8px 22px rgba(0,0,0,0.36), 0 20px 46px rgba(0,0,0,0.24)" : "0 8px 22px rgba(39,27,18,0.16), 0 18px 44px rgba(39,27,18,0.10)") : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none",
+                      boxShadow: settings.cinematic_home
+                        ? (heroFocused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 4px 24px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-high)" : `0 4px 24px ${accent.glow}0.5)`) : surfaceStyle === "aero" ? (isDark ? `inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -1px 0 rgba(0,0,0,0.12), 0 0 0 1px ${accent.glow}0.12)` : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 0 0 1px ${accent.glow}0.10)`) : surfaceStyle === "material" ? (isDark ? "0 8px 22px rgba(0,0,0,0.36), 0 20px 46px rgba(0,0,0,0.24)" : "0 8px 22px rgba(39,27,18,0.16), 0 18px 44px rgba(39,27,18,0.10)") : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none")
+                        : heroFocused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 4px 24px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-high)" : `0 4px 24px ${accent.glow}0.5)`) : "none",
                     }}>
                     <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5l7 3.5-7 3.5z"/></svg>
                     {t('home.launch')}
@@ -3326,7 +3514,7 @@ export default function App() {
                       {heroGames.slice(0, 6).map((_, i) => (
                         <div key={i} onClick={() => { setHeroIndex(i); heroIndexRef.current = i; }}
                           style={{ width: i === heroIdx ? 20 : 6, height: 6, borderRadius: 3, cursor: "pointer", transition: "all 0.2s ease",
-                            background: i === heroIdx ? accent.primary : materialCinematicHero ? (isDark ? "rgba(255,250,245,0.20)" : "rgba(28,20,14,0.18)") : isDark ? "rgba(245,237,232,0.25)" : "rgba(0,0,0,0.2)" }} />
+                            background: i === heroIdx ? accent.primary : settings.cinematic_home ? (materialCinematicHero ? (isDark ? "rgba(255,250,245,0.20)" : "rgba(28,20,14,0.18)") : isDark ? "rgba(245,237,232,0.25)" : "rgba(0,0,0,0.2)") : isDark ? "rgba(245,237,232,0.25)" : "rgba(48,32,24,0.22)" }} />
                       ))}
                     </div>
                   )}
@@ -3373,7 +3561,23 @@ export default function App() {
           {homeFilteredRecent.length === 0 ? (
             <div style={{ fontSize: 13, color: theme.textFaint, paddingBottom: settings.show_home_collections ? 16 : 100 }}>{t('home.noRecents')}</div>
           ) : (
-            <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: settings.show_home_collections ? 16 : 100, paddingTop: 8, marginTop: -8, paddingLeft: 6, paddingRight: 6 }}>
+            <div
+              ref={recentShelfRef}
+              style={{
+                display: "flex",
+                gap: 10,
+                overflowX: "auto",
+                paddingTop: 16,
+                paddingBottom: settings.show_home_collections ? 32 : 120,
+                paddingLeft: 18,
+                paddingRight: 18,
+                marginTop: -16,
+                marginLeft: -18,
+                marginRight: -18,
+                scrollPaddingLeft: 18,
+                scrollPaddingRight: 18,
+              }}
+            >
               {homeFilteredRecent.map((app, i) => {
                 const focused = focusSec === "recent" && focusIdx === i;
                 const isPinned = pins.includes(app.id);
@@ -3466,14 +3670,15 @@ export default function App() {
           const collectionRows = allCols.map((col, rowIdx) => {
             const rowFocused = colsFocused && homeColFocusRow === rowIdx;
             return (
-            <div key={col.id} ref={rowFocused ? focusedRowRef : null} style={{ marginBottom: 28 }}>
+            <div key={col.id} ref={rowFocused ? focusedRowRef : null} style={{ marginBottom: 24 }}>
               {settings.show_home_collection_names && (
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, paddingBottom: 10, paddingLeft: 4 }}>
                   {col.name}
                 </div>
               )}
-              <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4, paddingLeft: 4, paddingRight: 4, paddingTop: 8 }}>
+              <div style={{ display: "flex", gap: 10, overflowX: "auto", padding: "16px 18px 28px", margin: "-16px -18px -20px", scrollPaddingLeft: 18, scrollPaddingRight: 18 }}>
                 {col.items.map((app, colIdx) => {
+                  const fullApp = allAppsRef.current.find(a => a.id === app.id) || app;
                   const art = customArt[app.id] || (app.app_type === "game" ? gameArt[app.id] : null);
                   const focused = colsFocused && homeColFocusRow === rowIdx && homeColFocusCol === colIdx;
                   if (app.app_type === "game") {
@@ -3490,8 +3695,8 @@ export default function App() {
                           scrollMarginTop: "120px",
                         }}>
                         {art
-                          ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                          : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={app} size={36} /></div>
+                        ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
                         }
                         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
                           <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
@@ -3512,7 +3717,7 @@ export default function App() {
                         transition: "box-shadow 0.15s ease, outline 0.15s ease",
                         scrollMarginTop: "120px",
                       }}>
-                      <AppIcon app={app} size={40} />
+                      <AppIcon app={fullApp} size={40} />
                       <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
                     </div>
                   );
@@ -3556,22 +3761,31 @@ export default function App() {
                       ? (surfaceStyle === "aero"
                           ? "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.08) 100%)"
                           : "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)")
-                      : "linear-gradient(180deg, rgba(255,255,255,0.80) 0%, rgba(255,255,255,0.65) 100%)",
+                      : surfaceStyle === "aero"
+                        ? "linear-gradient(180deg, rgba(255,255,255,0.74) 0%, rgba(255,255,255,0.52) 100%)"
+                        : "linear-gradient(180deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.38) 100%)",
                     backdropFilter: isDark
                       ? (surfaceStyle === "aero" ? "blur(18px) saturate(130%) brightness(0.88)" : "blur(32px) saturate(140%) brightness(0.85)")
-                      : "blur(32px) saturate(150%) brightness(1.02)",
+                      : surfaceStyle === "aero"
+                        ? "blur(18px) saturate(145%) brightness(1.04)"
+                        : "blur(32px) saturate(150%) brightness(1.02)",
                     WebkitBackdropFilter: isDark
                       ? (surfaceStyle === "aero" ? "blur(18px) saturate(130%) brightness(0.88)" : "blur(32px) saturate(140%) brightness(0.85)")
-                      : "blur(32px) saturate(150%) brightness(1.02)",
-                    borderTop: `1px solid ${isDark ? (surfaceStyle === "aero" ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.14)") : "rgba(255,255,255,0.6)"}`,
+                      : surfaceStyle === "aero"
+                        ? "blur(18px) saturate(145%) brightness(1.04)"
+                        : "blur(32px) saturate(150%) brightness(1.02)",
+                    borderTop: `1px solid ${isDark ? (surfaceStyle === "aero" ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.14)") : surfaceStyle === "aero" ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.58)"}`,
                     boxShadow: isDark
                       ? (surfaceStyle === "aero" ? "0 -6px 32px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.22)" : "0 -8px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)")
-                      : "0 -8px 40px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8)",
+                      : surfaceStyle === "aero"
+                        ? "0 -8px 34px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(0,0,0,0.04)"
+                        : "0 -8px 40px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.72)",
                   } : {
-                    background: appBg,
-                    backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+                    background: isDark ? appBg : "rgba(255,250,244,0.88)",
+                    backdropFilter: isDark ? "blur(24px)" : "blur(10px)",
+                    WebkitBackdropFilter: isDark ? "blur(24px)" : "blur(10px)",
                     borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-                    boxShadow: "0 -8px 40px rgba(0,0,0,0.4)",
+                    boxShadow: isDark ? "0 -8px 40px rgba(0,0,0,0.4)" : "0 -8px 32px rgba(43,31,20,0.12)",
                   }),
                   transform: panelOpen ? "translateY(0)" : "translateY(100%)",
                   transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
@@ -3588,16 +3802,17 @@ export default function App() {
                   </div>
 
                   {/* Scrollable content */}
-                  <div ref={drawerScrollRef} style={{ flex: 1, overflowY: "auto", paddingTop: 8 }}>
+                  <div ref={drawerScrollRef} style={{ flex: 1, overflowY: "auto", padding: "8px 0 0" }}>
                     {/* Recents row — fully navigable */}
                     {homeFilteredRecent.length > 0 && (
-                    <div style={{ marginBottom: 28, padding: "0 24px" }}>
+                    <div style={{ marginBottom: 24, padding: "0 24px" }}>
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, paddingBottom: 10, paddingLeft: 4, paddingTop: 8 }}>
                         {t('home.recentlyPlayed').replace('▶ ', '')}
                       </div>
-                      <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 8, paddingLeft: 4, paddingRight: 4, paddingTop: 8 }}>
+                      <div ref={recentShelfRef} style={{ display: "flex", gap: 10, overflowX: "auto", padding: "16px 18px 28px", margin: "-16px -18px -20px", scrollPaddingLeft: 18, scrollPaddingRight: 18 }}>
                         {homeFilteredRecent.map((app, i) => {
                           const recFocused = focusSec === "recent" && focusIdx === i;
+                          const fullApp = allAppsRef.current.find(a => a.id === app.id) || app;
                           const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : (customArt[app.id] || null);
                           return (
                             <div key={app.id}
@@ -3613,7 +3828,7 @@ export default function App() {
                               }}>
                               {art
                                 ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={app} size={36} /></div>
+                                : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
                               }
                               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
                                 <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
@@ -4423,6 +4638,9 @@ export default function App() {
           battery={battery}
           batteryWidth={batteryWidth}
           batteryColor={batteryColor}
+          batteryTextColor={batteryTextColor}
+          batteryBoltFill={batteryBoltFill}
+          batteryBoltStroke={batteryBoltStroke}
           charging={charging}
           headerTabItems={headerTabItems}
           headerActiveIndex={headerActiveIndex}

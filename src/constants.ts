@@ -14,7 +14,7 @@ export const ACCENTS: Record<string, {
   rose:     { primary: "#E97CA9", lightPrimary: "#da4583", light: "#ff6caa", dark: "#c9286a", glow: "rgba(232,74,138,",  lightBg: "#f5dde8", darkText: true, lightDarkText: false, },
   midnight: { primary: "#8a4ae8", light: "#aa6cff", dark: "#6a28c9", glow: "rgba(138,74,232,",  lightBg: "#e8ddff" },
   nova:      { primary: "#e03030", light: "#ff6060", dark: "#b01010", glow: "rgba(224,48,48,",   lightBg: "#fde8e8", },
-  steel:   { primary: "#909090", light: "#c0c0c0", dark: "#606060", glow: "rgba(144,144,144,", lightBg: "#f0f0f0", darkText: true },
+  steel:   { primary: "#909090", lightPrimary: "#747474", light: "#c0c0c0", dark: "#606060", glow: "rgba(144,144,144,", lightBg: "#f0f0f0", darkText: true },
   lunar:    { primary: "#dcdcdc", lightPrimary: "#1c1c1c", light: "#f5f5f5", dark: "#a8a8a8", glow: "rgba(220,220,220,", lightGlow: "rgba(28,28,28,", lightBg: "#ececec", darkText: true, lightDarkText: false, },
 };
 

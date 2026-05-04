@@ -14,17 +14,17 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 - **Live library refresh** — rescan without restarting; auto-refreshes when scan settings change
 - **Game art** — cover art and hero banners fetched automatically from SteamGridDB; cached locally to minimize API calls
 - **Animated hero banners** — animated WebM/WebP/GIF hero art supported where available, with static fallback; per-game or global control via Hero Art Mode setting
-- **Hero spotlight** — full-width landscape banner art in the Home tab hero section, with an immersive fullscreen layout option
+- **Hero spotlight** — full-width landscape banner art in the Home tab hero section, with an immersive fullscreen layout option and surface-aware readability treatments
 - **App cards** — non-game app cards use dark frosted glass with a subtle icon-color border accent
 - **Custom cover art** — right-click or press Menu on any game or app to open the context menu, then choose **Change Art** (or **Change Hero Art** for games); games use a 2:3 portrait crop, apps use a square crop; reset to default anytime
 - **Context menu** — right-click or press Menu on any card to Open, Pin/Unpin, Change Art, or (for games) Change Hero Art
-- **Pinned apps** — pin your most-used games and apps to the top of any tab
+- **Pinned apps** — pin your most-used games and apps to the top of any tab; Home pinned shelves support controller-friendly horizontal scrolling
 - **Manage visibility** — hide apps from view and restore them anytime from the same menu
 - **Search** — on-screen virtual keyboard for controller-only searching
 - **Animated themes** — Space, Sky, Plasma, Cinder, and Wash are animated environments; Wash uses rich liquid tie-dye marble-ink color fields with optimized edge fills for smooth navigation
 - **Surface Style** — four visual materials: Glass (frosted blur panels), Aero (polished transparent acrylic with sharp specular highlights), Material (solid opaque paper-textured cards with shadow-based elevation and clear focus states), and Clear (flat matte)
-- **Recent apps** — quick access to what you launched last
-- **Battery indicator** — shows charge level and charging status
+- **Recent apps** — quick access to what you launched last; Home recents support large card sizes with horizontal gamepad scrolling
+- **Battery indicator** — shows charge level and charging status with light/dark contrast-safe charging colors
 - **Controller test** — live button and axis display in Settings to verify your gamepad mapping
 - **Check for updates** — one-button update check from Settings
 - **Splash screen** with launch sounds
@@ -81,8 +81,8 @@ When a card is focused on the Games or Apps tab, press **Menu** to open the cont
 | Accent Color | Ember, Ocean, Neon, Rose, Midnight |
 | Theme | Space / Sky / Plasma / Cinder / Wash |
 | Theme Surface Defaults | Space → Clear, Sky → Aero, Plasma → Glass, Cinder → Glass, Wash → Material; Surface Style can still be changed manually afterward |
-| Surface Style | Glass — frosted blur panels; Aero — polished acrylic with specular highlights, glossy active elements, and a subtle neutral depth gradient behind the UI; Material — opaque paper-textured cards, inset grouped settings, warmer cream light surfaces, dark aged-paper tooth, stronger focused-row elevation, and soft physical shadows; Clear — flat matte |
-| Immersive Home | Fullscreen cinematic hero with floating pinned shelf; when the bottom bar and collections drawer are hidden, pinned items and hero content settle into the freed bottom lane |
+| Surface Style | Glass — frosted blur panels; Aero — polished acrylic with specular highlights, glossy active elements, and a subtle neutral depth gradient behind the UI; Material — opaque paper-textured cards, tighter 8px card radii, inset grouped settings, warmer cream light surfaces, dark aged-paper tooth, stronger focused-row elevation, and soft physical shadows; Clear — flat matte with the same 16px primary surface radii as Glass/Aero. Immersive drawers follow the active surface: glassy Glass/Aero, subtly translucent Clear, opaque Material |
+| Immersive Home | Fullscreen cinematic hero with floating pinned shelf; when the bottom bar and collections drawer are hidden, pinned items and hero content settle into the freed bottom lane. The slide-up drawer supports horizontal recents and collection rows with unclipped focus shadows |
 | Show Cover on Home | Show the 2:3 cover art card in the hero section |
 | Show Pinned on Home | Show or hide the pinned items shelf on the home screen |
 | Show Collections on Home | Display game/app collections as card rows on the home screen |
