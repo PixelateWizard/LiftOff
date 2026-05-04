@@ -19,6 +19,7 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 - **Custom cover art** — right-click or press Menu on any game or app to open the context menu, then choose **Change Art** (or **Change Hero Art** for games); games use a 2:3 portrait crop, apps use a square crop; reset to default anytime
 - **Context menu** — right-click or press Menu on any card to Open, Pin/Unpin, Change Art, or (for games) Change Hero Art
 - **Pinned apps** — pin your most-used games and apps to the top of any tab; Home pinned shelves support controller-friendly horizontal scrolling
+- **Launch focus feedback** — after a launch succeeds, LiftOff checks whether Windows focused the app, keeps the overlay open if the app appears to be running behind LiftOff, and offers a controller-friendly **Try to focus again** action
 - **Manage visibility** — hide apps from view and restore them anytime from the same menu
 - **Search** — on-screen virtual keyboard for controller-only searching
 - **Animated themes** — Space, Sky, Plasma, Cinder, and Wash are animated environments; Wash uses rich liquid tie-dye marble-ink color fields with optimized edge fills for smooth navigation
@@ -59,6 +60,10 @@ Download the latest installer from the [Releases](../../releases) page and run i
 ### Context Menu (controller)
 
 When a card is focused on the Games or Apps tab, press **Menu** to open the context menu. Navigate with **D-pad up/down**, confirm with **A**, and close with **B**. Games also have a **Change Hero Art** option to pick custom hero banner art from SteamGridDB.
+
+### Launch Overlay (controller)
+
+After launching an app or game, LiftOff keeps the launch overlay visible long enough to check whether Windows moved focus to the launched window. If the app is running but still behind LiftOff, use **D-pad / left stick** to choose between **Try to focus again** and **Got it**, press **A** to activate the focused button, or press **B** / **Escape** to dismiss. LiftOff only shows **Failed to launch** when the launch command itself fails.
 
 ---
 

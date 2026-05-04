@@ -1,8 +1,11 @@
 # Changelog
 
-## [Unreleased]
+## [2.0.0] - Unreleased
 
 ### Added
+- **Launch focus feedback** - launch overlay now distinguishes between launched-and-focused, launched-but-running-behind-LiftOff, failed-to-launch, and launched-but-unconfirmed states. Focus detection uses a one-shot Win32 foreground/window check, never treats missing focus as launch failure, and offers a controller-friendly **Try to focus again** action for unfocused/unconfirmed launches.
+- **Moi's UI/settings work** - added and documented contributions from [moi952](https://github.com/moi952), including French translation and i18n, SteamGridDB art browsing, custom game sources, rename support, component architecture work, display preferences, wide/cinematic layout controls, transparent/top/bottom bar options, cover scaling, tab bar and bottom bar customization, home collection controls, and gamepad icon/auto-detection settings.
+- **Immersive / cinematic Home mode** - added a fullscreen hero-first Home layout with large background artwork, controller-friendly Launch CTA, floating pinned shelf, and slide-up drawer access to recents and collections. The mode is available from Settings and works with the existing gamepad navigation model.
 - **Wash theme** — new light animated environment that pairs with Material by default. Wash simulates a watercolor paper field using SVG-filtered compound radial gradients: warm accent pigment pools on the left, muted cool teal washes on the right, a central pigment-accumulation ring where the two wet masses meet, a faint cool cohesion bridge connecting the regions, and a barely visible tertiary hue whisper for depth. Paper grain SVG at overlay blend and `feComponentTransfer`-based dried-edge shaping give an organic, non-circular appearance. Restrained Material shadows keep cards as solid soft surfaces above the wash field.
 - **Cinder theme** — renamed and upgraded the previous smoldering environment into a darker heat theme. Cinder uses layered heat-field gradients, asymmetrical glow pockets, drifting cinder particles with randomized speed/size/flicker, and subtle accent undertones without turning into a flat accent wash.
 - **Theme default surface mapping** — selecting a theme now applies a default Surface Style without locking it: Space → Clear, Sky → Aero, Plasma → Glass, Cinder → Glass, Wash → Material. Manual Surface Style changes remain independent until the next theme selection.

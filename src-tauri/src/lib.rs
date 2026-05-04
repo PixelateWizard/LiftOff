@@ -9,18 +9,23 @@ use windows::{
     Win32::UI::Shell::{SHGetFileInfoW, ShellExecuteW, SHFILEINFOW, SHGFI_FLAGS, SHGFI_ICON, SHGFI_LARGEICON},
     Win32::UI::WindowsAndMessaging::{
         DestroyIcon, DrawIconEx, GetForegroundWindow, DI_NORMAL, SW_SHOWNORMAL,
-        EnumWindows, IsWindowVisible, GetWindowTextLengthW, GetWindowThreadProcessId,
+        EnumWindows, IsWindowVisible, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
         SetForegroundWindow, ShowWindow, SW_SHOW,
         GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN,
     },
-    Win32::Foundation::{BOOL, LPARAM},
+    Win32::Foundation::{BOOL, CloseHandle, LPARAM},
     Win32::Graphics::Gdi::{
         GetDC, ReleaseDC, GetDIBits, CreateCompatibleDC, CreateCompatibleBitmap, SelectObject,
         DeleteDC, DeleteObject, PatBlt, BLACKNESS,
         BITMAPINFOHEADER, BITMAPINFO, DIB_RGB_COLORS, RGBQUAD,
     },
     Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS},
+    Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    },
 };
+use windows::core::PWSTR;
 use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 use std::collections::HashMap;
 use tauri_plugin_autostart::MacosLauncher;
@@ -1777,6 +1782,271 @@ fn poll_for_window(
     state.found
 }
 
+#[derive(Serialize)]
+struct LaunchFocusResult {
+    running: bool,
+    focused: bool,
+    matched_window_title: Option<String>,
+    matched_pid: Option<u32>,
+    confidence: String,
+}
+
+#[derive(Clone)]
+struct LaunchWindowCandidate {
+    hwnd: isize,
+    pid: u32,
+    title: String,
+    exe_path: Option<String>,
+}
+
+struct LaunchWindowCollectState {
+    windows: *mut Vec<LaunchWindowCandidate>,
+    our_hwnd: isize,
+}
+
+unsafe extern "system" fn enum_launch_window_callback(
+    hwnd: windows::Win32::Foundation::HWND,
+    lparam: LPARAM,
+) -> BOOL {
+    let state = &mut *(lparam.0 as *mut LaunchWindowCollectState);
+    let hwnd_val = hwnd.0 as isize;
+
+    if hwnd_val == state.our_hwnd { return BOOL(1); }
+    if !IsWindowVisible(hwnd).as_bool() { return BOOL(1); }
+
+    let Some(title) = get_window_title(hwnd) else { return BOOL(1); };
+    let mut pid: u32 = 0;
+    GetWindowThreadProcessId(hwnd, Some(&mut pid));
+    (*state.windows).push(LaunchWindowCandidate {
+        hwnd: hwnd_val,
+        pid,
+        title,
+        exe_path: process_exe_path(pid),
+    });
+
+    BOOL(1)
+}
+
+fn get_window_title(hwnd: windows::Win32::Foundation::HWND) -> Option<String> {
+    unsafe {
+        let len = GetWindowTextLengthW(hwnd);
+        if len <= 0 { return None; }
+
+        let mut buf = vec![0u16; len as usize + 1];
+        let copied = GetWindowTextW(hwnd, &mut buf);
+        if copied <= 0 { return None; }
+
+        let title = String::from_utf16_lossy(&buf[..copied as usize]).trim().to_string();
+        if title.is_empty() { None } else { Some(title) }
+    }
+}
+
+fn process_exe_path(pid: u32) -> Option<String> {
+    if pid == 0 { return None; }
+
+    unsafe {
+        let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let mut buf = vec![0u16; 32768];
+        let mut size = buf.len() as u32;
+        let result = QueryFullProcessImageNameW(
+            process,
+            PROCESS_NAME_WIN32,
+            PWSTR(buf.as_mut_ptr()),
+            &mut size,
+        );
+        let _ = CloseHandle(process);
+
+        result.ok()?;
+        if size == 0 { return None; }
+        Some(String::from_utf16_lossy(&buf[..size as usize]))
+    }
+}
+
+fn collect_launch_windows() -> Vec<LaunchWindowCandidate> {
+    let mut windows = Vec::new();
+    let mut state = LaunchWindowCollectState {
+        windows: &mut windows as *mut _,
+        our_hwnd: OUR_HWND.load(Ordering::Relaxed),
+    };
+
+    unsafe {
+        let _ = EnumWindows(
+            Some(enum_launch_window_callback),
+            LPARAM(&mut state as *mut _ as isize),
+        );
+    }
+
+    windows
+}
+
+fn normalize_match_text(value: &str) -> String {
+    value
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .flat_map(|c| c.to_lowercase())
+        .collect()
+}
+
+fn launch_exe_path(launch_path: &str) -> Option<String> {
+    let direct_path = if let Some(rest) = launch_path.strip_prefix("bnet-exec:") {
+        rest.split_once('|').map(|(exe, _)| exe).unwrap_or(rest)
+    } else {
+        launch_path
+    };
+
+    let lower = direct_path.to_lowercase();
+    if lower.ends_with(".exe")
+        && !lower.starts_with("shell:")
+        && !lower.contains("://")
+        && !lower.ends_with(".lnk")
+    {
+        Some(direct_path.to_string())
+    } else {
+        None
+    }
+}
+
+fn file_name_lower(path: &str) -> Option<String> {
+    Path::new(path)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_lowercase())
+}
+
+fn match_launch_window_score(
+    candidate: &LaunchWindowCandidate,
+    name: &str,
+    launch_path: &str,
+    source: &str,
+) -> u32 {
+    let name_norm = normalize_match_text(name);
+    let title_norm = normalize_match_text(&candidate.title);
+    let launch_exe = launch_exe_path(launch_path);
+    let launch_file = launch_exe.as_deref().and_then(file_name_lower);
+    let candidate_exe = candidate.exe_path.as_deref().unwrap_or_default();
+    let candidate_file = file_name_lower(candidate_exe);
+    let mut score = 0;
+
+    if let (Some(expected), Some(actual)) = (launch_exe.as_ref(), candidate.exe_path.as_ref()) {
+        if expected.eq_ignore_ascii_case(actual) {
+            score = score.max(100);
+        }
+    }
+
+    if let (Some(expected), Some(actual)) = (launch_file.as_ref(), candidate_file.as_ref()) {
+        if expected == actual {
+            score = score.max(90);
+        }
+    }
+
+    if !name_norm.is_empty() && title_norm.contains(&name_norm) {
+        score = score.max(60);
+    }
+
+    if let Some(actual) = candidate_file.as_ref() {
+        let exe_stem = actual.trim_end_matches(".exe");
+        let exe_norm = normalize_match_text(exe_stem);
+        if exe_norm.len() >= 4 && !name_norm.is_empty()
+            && (name_norm.contains(&exe_norm) || exe_norm.contains(&name_norm))
+        {
+            score = score.max(50);
+        }
+    }
+
+    let source_lower = source.to_lowercase();
+    if score == 0 && ["steam", "xbox", "uwp", "battle.net", "battlenet"]
+        .iter()
+        .any(|s| source_lower.contains(s))
+    {
+        let matched_words = name
+            .split(|c: char| !c.is_ascii_alphanumeric())
+            .filter(|word| word.len() >= 4)
+            .filter(|word| title_norm.contains(&normalize_match_text(word)))
+            .count();
+        if matched_words > 0 {
+            score = 30;
+        }
+    }
+
+    score
+}
+
+fn confidence_for_score(score: u32) -> String {
+    if score >= 80 {
+        "high".to_string()
+    } else if score >= 45 {
+        "medium".to_string()
+    } else {
+        "low".to_string()
+    }
+}
+
+fn best_launch_window(
+    name: &str,
+    launch_path: &str,
+    source: &str,
+) -> Option<(LaunchWindowCandidate, u32)> {
+    collect_launch_windows()
+        .into_iter()
+        .filter_map(|window| {
+            let score = match_launch_window_score(&window, name, launch_path, source);
+            (score > 0).then_some((window, score))
+        })
+        .max_by_key(|(_, score)| *score)
+}
+
+#[tauri::command]
+fn check_launch_focus(name: String, launch_path: String, source: String) -> LaunchFocusResult {
+    let foreground_hwnd = unsafe { GetForegroundWindow().0 as isize };
+    let windows = collect_launch_windows();
+    let mut best: Option<(LaunchWindowCandidate, u32)> = None;
+    let mut focused = false;
+
+    for window in windows {
+        let score = match_launch_window_score(&window, &name, &launch_path, &source);
+        if score == 0 { continue; }
+        if window.hwnd == foreground_hwnd {
+            focused = true;
+        }
+        if best.as_ref().map(|(_, best_score)| score > *best_score).unwrap_or(true) {
+            best = Some((window, score));
+        }
+    }
+
+    if let Some((window, score)) = best {
+        LaunchFocusResult {
+            running: true,
+            focused,
+            matched_window_title: Some(window.title),
+            matched_pid: Some(window.pid),
+            confidence: confidence_for_score(score),
+        }
+    } else {
+        LaunchFocusResult {
+            running: false,
+            focused: false,
+            matched_window_title: None,
+            matched_pid: None,
+            confidence: "low".to_string(),
+        }
+    }
+}
+
+#[tauri::command]
+fn try_focus_launched_app(name: String, launch_path: String, source: String) -> bool {
+    let Some((window, _)) = best_launch_window(&name, &launch_path, &source) else {
+        return false;
+    };
+
+    unsafe {
+        let hwnd = windows::Win32::Foundation::HWND(window.hwnd as _);
+        let _ = ShowWindow(hwnd, SW_SHOW);
+        let _ = SetForegroundWindow(hwnd);
+    }
+
+    true
+}
+
 #[tauri::command]
 async fn launch_app(
     path: String,
@@ -1915,12 +2185,11 @@ async fn launch_app(
             unsafe {
                 let hwnd = windows::Win32::Foundation::HWND(found as _);
                 let _ = SetForegroundWindow(hwnd);
-                ShowWindow(hwnd, SW_SHOW);
+                let _ = ShowWindow(hwnd, SW_SHOW);
             }
-            let _ = handle.emit("launch-success", ());
-        } else {
-            let _ = handle.emit("launch-failed", ());
         }
+
+        let _ = handle.emit("launch-success", ());
     });
 
     Ok(())
@@ -1959,7 +2228,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec![])))
         .invoke_handler(tauri::generate_handler![
-            get_apps, get_all_apps, launch_app, fetch_game_art, get_cached_art_bulk, get_recents, get_recent_games, get_battery,
+            get_apps, get_all_apps, launch_app, check_launch_focus, try_focus_launched_app, fetch_game_art, get_cached_art_bulk, get_recents, get_recent_games, get_battery,
             set_gamepad_ready, get_settings, save_settings, clear_recents,
             clear_art_cache, set_frontend_active, open_osk,
             get_pins, toggle_pin,

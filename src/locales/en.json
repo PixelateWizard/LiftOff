@@ -10,8 +10,14 @@
     "other": "Other"
   },
   "launch": {
-    "launching": "Launching",
+    "launching": "Launching...",
+    "verifying": "Checking window focus...",
+    "focused": "Launched",
+    "runningUnfocused": "Launched, but it may be behind LiftOff. Open the app switcher to find it.",
+    "unconfirmed": "LiftOff launched it, but could not confirm the active window. Check the app switcher.",
     "failed": "Failed to launch",
+    "gotIt": "Got it / B",
+    "tryFocusAgain": "Try to focus again",
     "dismiss": "Dismiss  ·  B"
   },
   "artPicker": {

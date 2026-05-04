@@ -10,7 +10,13 @@
     "other": "Autres"
   },
   "launch": {
-    "launching": "Lancement",
+    "launching": "Lancement...",
+    "verifying": "Verification de la fenetre active...",
+    "focused": "Lance",
+    "runningUnfocused": "Lance, mais il est peut-etre derriere LiftOff. Ouvrez le selecteur d'applications pour le trouver.",
+    "unconfirmed": "LiftOff l'a lance, mais n'a pas pu confirmer la fenetre active. Verifiez le selecteur d'applications.",
+    "gotIt": "Compris / B",
+    "tryFocusAgain": "Essayer de focaliser",
     "failed": "Échec du lancement",
     "dismiss": "Ignorer  ·  B"
   },

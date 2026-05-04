@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "./i18n";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import FileBrowser from "./components/FileBrowser";
 import GamepadKeyboard from "./components/GamepadKeyboard";
 import { GamepadBtn } from "./components/GamepadBtn";
@@ -43,7 +43,11 @@ const PAPER_GRAIN_LIGHT = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/20
 const PAPER_GRAIN_DARK  = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72 0.54' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23p)' opacity='0.075'/%3E%3C/svg%3E";
 
 const launchApp = (app) =>
-  invoke("launch_app", { path: app.launch_path, id: app.id, name: app.name, appType: app.app_type });
+  invoke("launch_app", { path: app.launch_path, id: app.id, name: app.name, appType: app.app_type })
+    .catch((err) => {
+      window.setTimeout(() => emit("launch-failed").catch(() => {}), 250);
+      throw err;
+    });
 
 function SplashScreen({ exiting }) {
   const audioRefStart = useRef(new Audio(startingSound));
@@ -182,10 +186,26 @@ const ss = {
 function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
   const { t } = useTranslation();
   const art = app?.app_type === "game" ? (customArt?.[app?.id] || gameArt[app?.id]) : null;
-  const [status, setStatus] = useState("launching"); // "launching" | "failed"
+  const [status, setStatus] = useState("launching");
+  // "launching" | "verifying" | "focused" | "running_unfocused" | "unconfirmed" | "failed"
+  const [focusedAction, setFocusedAction] = useState("dismiss");
   const rafRef   = useRef(null);
-  const lastEsc  = useRef(false);
+  const lastGp   = useRef({});
   const mounted  = useRef(true);
+  const statusRef = useRef(status);
+  const focusedActionRef = useRef(focusedAction);
+
+  useEffect(() => { statusRef.current = status; }, [status]);
+  useEffect(() => { focusedActionRef.current = focusedAction; }, [focusedAction]);
+  useEffect(() => {
+    if (status === "running_unfocused" || status === "unconfirmed") {
+      setFocusedAction("focus");
+      focusedActionRef.current = "focus";
+    } else if (status === "failed") {
+      setFocusedAction("dismiss");
+      focusedActionRef.current = "dismiss";
+    }
+  }, [status]);
 
   useEffect(() => {
     mounted.current = true;
@@ -208,9 +228,36 @@ function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
     `;
     document.head.appendChild(style);
 
-    // Tauri event listeners — dismiss on success, show error on failure.
+    // Tauri event listeners: success means the launch command worked; focus is verified separately.
     let unlistenSuccess, unlistenFailed;
-    listen("launch-success", () => { if (mounted.current) onDone(); })
+    listen("launch-success", async () => {
+      if (!mounted.current) return;
+
+      setStatus("verifying");
+
+      try {
+        const result = await invoke("check_launch_focus", {
+          name: app.name,
+          launchPath: app.launch_path,
+          source: app.source,
+        });
+
+        if (!mounted.current) return;
+
+        if (result.focused) {
+          setStatus("focused");
+          window.setTimeout(() => {
+            if (mounted.current) onDone();
+          }, 700);
+        } else if (result.running) {
+          setStatus("running_unfocused");
+        } else {
+          setStatus("unconfirmed");
+        }
+      } catch {
+        if (mounted.current) setStatus("unconfirmed");
+      }
+    })
       .then(fn => { unlistenSuccess = fn; });
     listen("launch-failed", () => { if (mounted.current) setStatus("failed"); })
       .then(fn => { unlistenFailed = fn; });
@@ -228,10 +275,45 @@ function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
         const state = readGpState(gp);
         if (suppressFrames > 0) {
           suppressFrames--;
-        } else if (state.Escape && !lastEsc.current) {
-          onDone();
+          lastGp.current = state;
+        } else {
+          const currentStatus = statusRef.current;
+          const actions = currentStatus === "running_unfocused" || currentStatus === "unconfirmed"
+            ? ["focus", "dismiss"]
+            : currentStatus === "failed"
+              ? ["dismiss"]
+              : [];
+
+          if (actions.length > 0) {
+            const movedPrev = (state.ArrowLeft && !lastGp.current.ArrowLeft) || (state.ArrowUp && !lastGp.current.ArrowUp);
+            const movedNext = (state.ArrowRight && !lastGp.current.ArrowRight) || (state.ArrowDown && !lastGp.current.ArrowDown);
+            if (movedPrev || movedNext) {
+              const i = Math.max(0, actions.indexOf(focusedActionRef.current));
+              const next = movedPrev
+                ? actions[Math.max(i - 1, 0)]
+                : actions[Math.min(i + 1, actions.length - 1)];
+              if (next !== focusedActionRef.current) {
+                setFocusedAction(next);
+                focusedActionRef.current = next;
+              }
+            }
+
+            if (state.Enter && !lastGp.current.Enter) {
+              if (focusedActionRef.current === "focus") {
+                invoke("try_focus_launched_app", {
+                  name: app.name,
+                  launchPath: app.launch_path,
+                  source: app.source,
+                }).catch(() => {});
+              } else {
+                onDone();
+              }
+            }
+          }
+
+          if (state.Escape && !lastGp.current.Escape) onDone();
+          lastGp.current = state;
         }
-        lastEsc.current = state.Escape;
       }
       rafRef.current = requestAnimationFrame(poll);
     };
@@ -246,6 +328,42 @@ function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
       unlistenFailed?.();
     };
   }, []);
+
+  const isBusy = status === "launching" || status === "verifying";
+  const canRetryFocus = status === "running_unfocused" || status === "unconfirmed";
+  const statusColor = status === "failed"
+    ? "rgba(255,90,90,0.95)"
+    : status === "focused"
+      ? "rgba(145,255,175,0.95)"
+      : "rgba(255,255,255,0.72)";
+  const statusText = status === "launching"
+    ? t("launch.launching")
+    : status === "verifying"
+      ? t("launch.verifying")
+      : status === "focused"
+        ? t("launch.focused")
+        : status === "running_unfocused"
+          ? t("launch.runningUnfocused")
+          : status === "unconfirmed"
+            ? t("launch.unconfirmed")
+            : t("launch.failed");
+  const buttonStyle = (action) => ({
+    padding: "8px 22px", borderRadius: 10, cursor: "pointer",
+    fontFamily: "'Segoe UI', sans-serif", fontSize: 13, fontWeight: 600,
+    background: focusedAction === action ? `${accent.glow}0.32)` : `${accent.glow}0.18)`,
+    border: `1px solid ${focusedAction === action ? accent.primary : `${accent.glow}0.5)`}`,
+    color: "rgba(255,255,255,0.85)",
+    letterSpacing: "0.06em",
+    boxShadow: focusedAction === action ? `0 0 0 2px ${accent.glow}0.18), 0 0 24px ${accent.glow}0.22)` : "none",
+    transform: focusedAction === action ? "translateY(-1px)" : "none",
+  });
+  const tryFocusAgain = () => {
+    invoke("try_focus_launched_app", {
+      name: app.name,
+      launchPath: app.launch_path,
+      source: app.source,
+    }).catch(() => {});
+  };
 
   return (
     <div className="launch-overlay" style={{ position: "fixed", inset: 0, zIndex: 9000, background: "rgba(0,0,0,0.88)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
@@ -265,29 +383,28 @@ function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
       </div>
       <div className="launch-text" style={{ fontFamily: "'Segoe UI', sans-serif", textAlign: "center" }}>
         <div style={{ fontSize: 22, fontWeight: 700, color: "white", marginBottom: 8, letterSpacing: "0.02em" }}>{app?.name}</div>
-        {status === "launching" ? (
+        {isBusy ? (
           <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
-            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.22)", letterSpacing: "0.1em", textTransform: "uppercase" }}>{t('launch.launching')}</span>
+            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.42)", letterSpacing: "0.1em", textTransform: "uppercase" }}>{statusText}</span>
             <span style={{ display: "flex", gap: 3 }}>
               {[0,1,2].map(i => <span key={i} className="launch-dot" style={{ width: 4, height: 4, borderRadius: "50%", background: accent.primary, display: "inline-block" }} />)}
             </span>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <div style={{ fontSize: 13, color: "rgba(255,90,90,0.95)", letterSpacing: "0.05em" }}>{t('launch.failed')}</div>
-            <button
-              onClick={onDone}
-              style={{
-                padding: "8px 22px", borderRadius: 10, cursor: "pointer",
-                fontFamily: "'Segoe UI', sans-serif", fontSize: 13, fontWeight: 600,
-                background: `${accent.glow}0.18)`,
-                border: `1px solid ${accent.glow}0.5)`,
-                color: "rgba(255,255,255,0.85)",
-                letterSpacing: "0.06em",
-              }}
-            >
-              {t('launch.dismiss')}
-            </button>
+            <div style={{ maxWidth: 360, fontSize: 13, lineHeight: 1.45, color: statusColor, letterSpacing: "0.05em" }}>{statusText}</div>
+            {(status === "failed" || canRetryFocus) && (
+              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                {canRetryFocus && (
+                  <button onClick={tryFocusAgain} onMouseEnter={() => setFocusedAction("focus")} style={buttonStyle("focus")}>
+                    {t("launch.tryFocusAgain")}
+                  </button>
+                )}
+                <button onClick={onDone} onMouseEnter={() => setFocusedAction("dismiss")} style={buttonStyle("dismiss")}>
+                  {canRetryFocus ? t("launch.gotIt") : t("launch.dismiss")}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -1484,7 +1601,7 @@ export default function App() {
     lastLaunchTime.current = now;
     playSoundGameStart();
     setLaunchingApp(app);
-    launchApp(app);
+    launchApp(app).catch((err) => console.warn("launch_app failed", err));
     const updated = [app, ...rec.filter(r => r.id !== app.id)].slice(0, 10);
     setRecent(updated); recentRef.current = updated;
     if (app.app_type === "game") {
