@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "./i18n";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
-import { emit, listen } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import FileBrowser from "./components/FileBrowser";
 import GamepadKeyboard from "./components/GamepadKeyboard";
 import { GamepadBtn } from "./components/GamepadBtn";
@@ -18,17 +18,26 @@ import ContextMenuModal from "./components/modals/ContextMenuModal";
 import HideModal from "./components/modals/HideModal";
 import LibraryActionsModal from "./components/modals/LibraryActionsModal";
 import EditNameModal from "./components/modals/EditNameModal";
-import uiSound from "./assets/uiSound.mp3";
-import uiSoundAlt from "./assets/uiSoundAlt.mp3";
-import startingSound from "./assets/appLaunchSound.wav";
-import appStartSound from "./assets/gameLaunchSound.wav";
-import appLoadedSound from "./assets/appLoadedSound.wav";
 import { SettingsScreen, buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "./views/settings";
+import { HomeView } from "./views/HomeView";
+import { GamesView } from "./views/GamesView";
+import { AppsView } from "./views/AppsView";
 import { GamepadProvider } from "./contexts/GamepadContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { AppHeader } from "./components/layout/AppHeader";
 import { AppBottomBar } from "./components/layout/AppBottomBar";
+import { AppBackground } from "./components/app/AppBackground";
+import { AppMainContent } from "./components/app/AppMainContent";
+import { AppOverlays } from "./components/app/AppOverlays";
+import { SplashScreen } from "./components/launch/SplashScreen";
+import { LaunchOverlay } from "./components/launch/LaunchOverlay";
+import { SteamGridArtPickerModal } from "./components/art/SteamGridArtPickerModal";
+import { launchApp } from "./hooks/useLaunchApp";
+import { useAudioFeedback } from "./hooks/useAudioFeedback";
+import { useCustomArt } from "./hooks/useCustomArt";
+import { usePersistentJson } from "./hooks/usePersistentJson";
+import { detectPlatform, getBestGamepad, readGpState } from "./utils/gamepad";
 import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO,
   ACCENTS, THEMES, CLOUD_SHAPES, CLOUD_CONFIGS, KB_ALPHA, KB_NUMS,
@@ -41,1186 +50,6 @@ import {
 // Dark mode: stronger (0.075 opacity) to read as tooth on dark paper fills.
 const PAPER_GRAIN_LIGHT = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72 0.54' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23p)' opacity='0.038'/%3E%3C/svg%3E";
 const PAPER_GRAIN_DARK  = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72 0.54' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23p)' opacity='0.075'/%3E%3C/svg%3E";
-
-const launchApp = (app) =>
-  invoke("launch_app", { path: app.launch_path, id: app.id, name: app.name, appType: app.app_type })
-    .catch((err) => {
-      window.setTimeout(() => emit("launch-failed").catch(() => {}), 250);
-      throw err;
-    });
-
-function SplashScreen({ exiting }) {
-  const audioRefStart = useRef(new Audio(startingSound));
-
-  useEffect(() => {
-    audioRefStart.current.currentTime = 0;
-    audioRefStart.current.play().catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (exiting) { audioRefStart.current.pause(); audioRefStart.current.currentTime = 0; }
-  }, [exiting]);
-
-  useEffect(() => {
-    const style = document.createElement("style");
-    style.id = "splash-styles";
-    style.textContent = `
-      @keyframes splashRocket {
-        0%   { opacity: 0; transform: translateY(40px) scale(0.8); }
-        20%  { opacity: 1; transform: translateY(0px) scale(1); }
-        70%  { opacity: 1; transform: translateY(0px) scale(1); }
-        85%  { opacity: 1; transform: translateY(-8px) scale(1.05); }
-        100% { opacity: 1; transform: translateY(0px) scale(1); }
-      }
-      @keyframes splashRocketExit {
-        0%   { opacity: 1; transform: translateY(0px) scale(1); }
-        100% { opacity: 0; transform: translateY(-140px) scale(0.6); }
-      }
-      @keyframes splashFlicker {
-        0%   { transform: scaleY(1) scaleX(1); opacity: 0.95; }
-        100% { transform: scaleY(1.06) scaleX(0.97); opacity: 0.85; }
-      }
-      @keyframes splashFadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes splashFadeOut { 0% { opacity: 1; } 100% { opacity: 0; } }
-      @keyframes splashDot {
-        0%, 100% { background: rgba(232,113,74,0.3); transform: scale(1); }
-        50%      { background: #e8714a; transform: scale(1.3); }
-      }
-      @keyframes splashGlow    { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.15); opacity: 1; } }
-      @keyframes splashTrail   { 0% { opacity: 0.9; transform: scaleY(1); } 100% { opacity: 0.3; transform: scaleY(0.6); } }
-      @keyframes starFall {
-        0%   { transform: translateY(-10px); opacity: 0; }
-        5%   { opacity: 1; } 95% { opacity: 1; }
-        100% { transform: translateY(110vh); opacity: 0; }
-      }
-      @keyframes cursorBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-      .splash-rocket  { animation: splashRocket 2.5s cubic-bezier(0.4,0,0.2,1) forwards; animation-delay: 0.5s; opacity: 0; position: relative; }
-      .splash-flame   { animation: splashFlicker 0.25s ease-in-out infinite alternate; transform-origin: top center; }
-      .splash-word    { animation: splashFadeUp 0.6s ease forwards; animation-delay: 0.9s; opacity: 0; }
-      .splash-dots    { animation: splashFadeUp 0.4s ease forwards; animation-delay: 1.5s; opacity: 0; display: flex; gap: 6px; }
-      .splash-dot     { width: 5px; height: 5px; border-radius: 50%; animation: splashDot 1.2s ease-in-out infinite; background: rgba(232,113,74,0.3); }
-      .splash-dot:nth-child(2) { animation-delay: 0.2s; }
-      .splash-dot:nth-child(3) { animation-delay: 0.4s; }
-      .splash-glow    { animation: splashGlow 2s ease-in-out infinite; }
-      .splash-trail1  { animation: splashTrail 0.4s ease-in-out infinite alternate; }
-      .splash-trail2  { animation: splashTrail 0.4s ease-in-out infinite alternate; animation-delay: 0.08s; }
-      .splash-trail3  { animation: splashTrail 0.4s ease-in-out infinite alternate; animation-delay: 0.13s; }
-      .splash-star    { animation: starFall linear infinite; position: absolute; border-radius: 50%; background: rgba(245,237,232,0.6); }
-      .splash-exiting .splash-rocket { animation: splashRocketExit 0.6s cubic-bezier(0.4,0,0.2,1) forwards !important; }
-      .splash-exiting .splash-word, .splash-exiting .splash-dots { animation: splashFadeOut 0.35s ease forwards !important; }
-      .splash-exiting { animation: splashFadeOut 0.8s ease forwards; }
-      .kb-cursor      { animation: cursorBlink 1s ease-in-out infinite; }
-      @keyframes pinPop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.3); } 100% { transform: scale(1); opacity: 1; } }
-      .pin-pop { animation: pinPop 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-    `;
-    document.head.appendChild(style);
-    const container = document.getElementById("splash-stars");
-    if (container) {
-      for (let i = 0; i < 80; i++) {
-        const star = document.createElement("div");
-        star.className = "splash-star";
-        star.style.left = Math.random() * 100 + "%";
-        star.style.top  = Math.random() * 100 + "%";
-        const size = (Math.random() * 2.5 + 0.5) + "px";
-        star.style.width = star.style.height = size;
-        star.style.animationDuration = (Math.random() * 3 + 2) + "s";
-        star.style.animationDelay    = -(Math.random() * 5) + "s";
-        star.style.opacity = (Math.random() * 0.5 + 0.3).toString();
-        container.appendChild(star);
-      }
-    }
-    return () => { document.getElementById("splash-styles")?.remove(); };
-  }, []);
-
-  return (
-    <div style={ss.outer} className={exiting ? "splash-exiting" : ""}>
-      <div className="splash-glow" style={ss.glow} />
-      <div style={ss.stars} id="splash-stars" />
-      <div style={ss.inner}>
-        <div className="splash-rocket" style={{ opacity: 0 }}>
-          <svg width="80" height="80" viewBox="0 0 32 32" fill="none">
-            <path d="M16 2 L21 9 L22 19 Q22 22 19 22 L13 22 Q10 22 10 19 L11 9 Z" fill="url(#splashGrad)"/>
-            <circle cx="16" cy="13" r="3.5" fill="white" opacity="0.9"/>
-            <circle cx="16" cy="13" r="2" fill="#bde0ff" opacity="0.7"/>
-            <circle cx="17" cy="12" r="0.7" fill="white"/>
-            <path d="M10 18 L5 25 L11 21 Z" fill="#c94f28"/>
-            <path d="M22 18 L27 25 L21 21 Z" fill="#c94f28"/>
-            <g className="splash-flame">
-              <path d="M12 22 Q14 30 16 27 Q18 30 20 22" fill="#ffb347" opacity="0.95"/>
-              <path d="M13.5 22 Q15 28 16 26 Q17 28 18.5 22" fill="#fff176" opacity="0.75"/>
-            </g>
-            <defs>
-              <linearGradient id="splashGrad" x1="16" y1="2" x2="16" y2="22" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#ff9a6c"/>
-                <stop offset="100%" stopColor="#c94f28"/>
-              </linearGradient>
-            </defs>
-          </svg>
-          <div style={ss.trail}>
-            <div className="splash-trail1" style={ss.tl1} />
-            <div className="splash-trail2" style={ss.tl2} />
-            <div className="splash-trail3" style={ss.tl3} />
-          </div>
-        </div>
-        <div className="splash-word" style={{ ...ss.wordmark, opacity: 0 }}>LiftOff</div>
-        <div className="splash-dots" style={{ opacity: 0 }}>
-          <div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const ss = {
-  outer:    { position: "fixed", inset: 0, background: "#100a06", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 },
-  glow:     { position: "fixed", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(180,60,20,0.25) 0%, transparent 70%)", pointerEvents: "none" },
-  stars:    { position: "fixed", inset: 0, pointerEvents: "none", zIndex: 1 },
-  inner:    { display: "flex", flexDirection: "column", alignItems: "center", gap: 24, position: "relative", zIndex: 2 },
-  trail:    { position: "absolute", bottom: -22, left: "50%", transform: "translateX(-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 },
-  tl1:      { width: 4, height: 14, borderRadius: 2, background: "linear-gradient(to bottom, rgba(255,200,80,0.8), transparent)" },
-  tl2:      { width: 3, height: 10, borderRadius: 2, background: "linear-gradient(to bottom, rgba(255,140,50,0.5), transparent)", marginLeft: 5 },
-  tl3:      { width: 3, height: 8,  borderRadius: 2, background: "linear-gradient(to bottom, rgba(255,140,50,0.5), transparent)", marginLeft: -5 },
-  wordmark: { fontWeight: 700, fontSize: 36, letterSpacing: "0.04em", background: "linear-gradient(135deg, #ff9a6c, #e8714a)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", fontFamily: "'Segoe UI', sans-serif" },
-};
-
-function LaunchOverlay({ app, gameArt, customArt, accent, onDone }) {
-  const { t } = useTranslation();
-  const art = app?.app_type === "game" ? (customArt?.[app?.id] || gameArt[app?.id]) : null;
-  const [status, setStatus] = useState("launching");
-  // "launching" | "verifying" | "focused" | "running_unfocused" | "unconfirmed" | "failed"
-  const [focusedAction, setFocusedAction] = useState("dismiss");
-  const rafRef   = useRef(null);
-  const lastGp   = useRef({});
-  const mounted  = useRef(true);
-  const statusRef = useRef(status);
-  const focusedActionRef = useRef(focusedAction);
-
-  useEffect(() => { statusRef.current = status; }, [status]);
-  useEffect(() => { focusedActionRef.current = focusedAction; }, [focusedAction]);
-  useEffect(() => {
-    if (status === "running_unfocused" || status === "unconfirmed") {
-      setFocusedAction("focus");
-      focusedActionRef.current = "focus";
-    } else if (status === "failed") {
-      setFocusedAction("dismiss");
-      focusedActionRef.current = "dismiss";
-    }
-  }, [status]);
-
-  useEffect(() => {
-    mounted.current = true;
-
-    const style = document.createElement("style");
-    style.id = "launch-overlay-styles";
-    style.textContent = `
-      @keyframes overlayFadeIn   { from { opacity: 0; } to { opacity: 1; } }
-      @keyframes launchIconPop   { 0% { transform: scale(0.7); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
-      @keyframes launchTextFade  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-      @keyframes launchDot       { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
-      @keyframes launchGlowPulse { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.2); opacity: 1; } }
-      .launch-overlay { animation: overlayFadeIn 0.25s ease forwards; }
-      .launch-icon    { animation: launchIconPop 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-      .launch-text    { animation: launchTextFade 0.3s ease forwards; animation-delay: 0.3s; opacity: 0; }
-      .launch-dot     { animation: launchDot 1s ease-in-out infinite; }
-      .launch-dot:nth-child(2) { animation-delay: 0.15s; }
-      .launch-dot:nth-child(3) { animation-delay: 0.3s; }
-      .launch-glow    { animation: launchGlowPulse 1.5s ease-in-out infinite; }
-    `;
-    document.head.appendChild(style);
-
-    // Tauri event listeners: success means the launch command worked; focus is verified separately.
-    let unlistenSuccess, unlistenFailed;
-    listen("launch-success", async () => {
-      if (!mounted.current) return;
-
-      setStatus("verifying");
-
-      try {
-        const result = await invoke("check_launch_focus", {
-          name: app.name,
-          launchPath: app.launch_path,
-          source: app.source,
-        });
-
-        if (!mounted.current) return;
-
-        if (result.focused) {
-          setStatus("focused");
-          window.setTimeout(() => {
-            if (mounted.current) onDone();
-          }, 700);
-        } else if (result.running) {
-          setStatus("running_unfocused");
-        } else {
-          setStatus("unconfirmed");
-        }
-      } catch {
-        if (mounted.current) setStatus("unconfirmed");
-      }
-    })
-      .then(fn => { unlistenSuccess = fn; });
-    listen("launch-failed", () => { if (mounted.current) setStatus("failed"); })
-      .then(fn => { unlistenFailed = fn; });
-
-    // Keyboard dismiss (Escape).
-    const handleKey = (e) => { if (e.key === "Escape") onDone(); };
-    window.addEventListener("keydown", handleKey);
-
-    // Gamepad B button dismiss. Suppress the first several frames so the
-    // button press that triggered launch doesn't immediately close the overlay.
-    let suppressFrames = 10;
-    const poll = () => {
-      const gp = getBestGamepad();
-      if (gp) {
-        const state = readGpState(gp);
-        if (suppressFrames > 0) {
-          suppressFrames--;
-          lastGp.current = state;
-        } else {
-          const currentStatus = statusRef.current;
-          const actions = currentStatus === "running_unfocused" || currentStatus === "unconfirmed"
-            ? ["focus", "dismiss"]
-            : currentStatus === "failed"
-              ? ["dismiss"]
-              : [];
-
-          if (actions.length > 0) {
-            const movedPrev = (state.ArrowLeft && !lastGp.current.ArrowLeft) || (state.ArrowUp && !lastGp.current.ArrowUp);
-            const movedNext = (state.ArrowRight && !lastGp.current.ArrowRight) || (state.ArrowDown && !lastGp.current.ArrowDown);
-            if (movedPrev || movedNext) {
-              const i = Math.max(0, actions.indexOf(focusedActionRef.current));
-              const next = movedPrev
-                ? actions[Math.max(i - 1, 0)]
-                : actions[Math.min(i + 1, actions.length - 1)];
-              if (next !== focusedActionRef.current) {
-                setFocusedAction(next);
-                focusedActionRef.current = next;
-              }
-            }
-
-            if (state.Enter && !lastGp.current.Enter) {
-              if (focusedActionRef.current === "focus") {
-                invoke("try_focus_launched_app", {
-                  name: app.name,
-                  launchPath: app.launch_path,
-                  source: app.source,
-                }).catch(() => {});
-              } else {
-                onDone();
-              }
-            }
-          }
-
-          if (state.Escape && !lastGp.current.Escape) onDone();
-          lastGp.current = state;
-        }
-      }
-      rafRef.current = requestAnimationFrame(poll);
-    };
-    rafRef.current = requestAnimationFrame(poll);
-
-    return () => {
-      mounted.current = false;
-      document.getElementById("launch-overlay-styles")?.remove();
-      window.removeEventListener("keydown", handleKey);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      unlistenSuccess?.();
-      unlistenFailed?.();
-    };
-  }, []);
-
-  const isBusy = status === "launching" || status === "verifying";
-  const canRetryFocus = status === "running_unfocused" || status === "unconfirmed";
-  const statusColor = status === "failed"
-    ? "rgba(255,90,90,0.95)"
-    : status === "focused"
-      ? "rgba(145,255,175,0.95)"
-      : "rgba(255,255,255,0.72)";
-  const statusText = status === "launching"
-    ? t("launch.launching")
-    : status === "verifying"
-      ? t("launch.verifying")
-      : status === "focused"
-        ? t("launch.focused")
-        : status === "running_unfocused"
-          ? t("launch.runningUnfocused")
-          : status === "unconfirmed"
-            ? t("launch.unconfirmed")
-            : t("launch.failed");
-  const buttonStyle = (action) => ({
-    padding: "8px 22px", borderRadius: 10, cursor: "pointer",
-    fontFamily: "'Segoe UI', sans-serif", fontSize: 13, fontWeight: 600,
-    background: focusedAction === action ? `${accent.glow}0.32)` : `${accent.glow}0.18)`,
-    border: `1px solid ${focusedAction === action ? accent.primary : `${accent.glow}0.5)`}`,
-    color: "rgba(255,255,255,0.85)",
-    letterSpacing: "0.06em",
-    boxShadow: focusedAction === action ? `0 0 0 2px ${accent.glow}0.18), 0 0 24px ${accent.glow}0.22)` : "none",
-    transform: focusedAction === action ? "translateY(-1px)" : "none",
-  });
-  const tryFocusAgain = () => {
-    invoke("try_focus_launched_app", {
-      name: app.name,
-      launchPath: app.launch_path,
-      source: app.source,
-    }).catch(() => {});
-  };
-
-  return (
-    <div className="launch-overlay" style={{ position: "fixed", inset: 0, zIndex: 9000, background: "rgba(0,0,0,0.88)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
-      <div className="launch-glow" style={{ position: "absolute", width: 320, height: 320, borderRadius: "50%", background: `radial-gradient(circle, ${accent.glow}0.25) 0%, transparent 70%)`, pointerEvents: "none" }} />
-      <div className="launch-icon" style={{ position: "relative", zIndex: 1 }}>
-        {art ? (
-          <img src={art} alt={app.name} style={{ width: 160, height: 240, borderRadius: 16, objectFit: "cover", boxShadow: `0 8px 40px ${accent.glow}0.5), 0 0 0 2px ${accent.glow}0.3)` }} />
-        ) : app?.icon_base64 ? (
-          <div style={{ width: 120, height: 120, borderRadius: 24, background: `${accent.glow}0.15)`, border: `2px solid ${accent.glow}0.4)`, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 8px 40px ${accent.glow}0.4)`, overflow: "hidden" }}>
-            <img src={`data:image/png;base64,${app.icon_base64}`} alt={app.name} style={{ width: 72, height: 72, maxWidth: "100%", maxHeight: "100%", borderRadius: 12, objectFit: "contain", objectPosition: "center", display: "block" }} />
-          </div>
-        ) : (
-          <div style={{ width: 120, height: 120, borderRadius: 24, background: `${accent.glow}0.2)`, border: `2px solid ${accent.glow}0.4)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 52, fontWeight: 700, color: accent.primary, boxShadow: `0 8px 40px ${accent.glow}0.4)` }}>
-            {app?.name?.charAt(0).toUpperCase()}
-          </div>
-        )}
-      </div>
-      <div className="launch-text" style={{ fontFamily: "'Segoe UI', sans-serif", textAlign: "center" }}>
-        <div style={{ fontSize: 22, fontWeight: 700, color: "white", marginBottom: 8, letterSpacing: "0.02em" }}>{app?.name}</div>
-        {isBusy ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
-            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.42)", letterSpacing: "0.1em", textTransform: "uppercase" }}>{statusText}</span>
-            <span style={{ display: "flex", gap: 3 }}>
-              {[0,1,2].map(i => <span key={i} className="launch-dot" style={{ width: 4, height: 4, borderRadius: "50%", background: accent.primary, display: "inline-block" }} />)}
-            </span>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-            <div style={{ maxWidth: 360, fontSize: 13, lineHeight: 1.45, color: statusColor, letterSpacing: "0.05em" }}>{statusText}</div>
-            {(status === "failed" || canRetryFocus) && (
-              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-                {canRetryFocus && (
-                  <button onClick={tryFocusAgain} onMouseEnter={() => setFocusedAction("focus")} style={buttonStyle("focus")}>
-                    {t("launch.tryFocusAgain")}
-                  </button>
-                )}
-                <button onClick={onDone} onMouseEnter={() => setFocusedAction("dismiss")} style={buttonStyle("dismiss")}>
-                  {canRetryFocus ? t("launch.gotIt") : t("launch.dismiss")}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Custom Art Picker Modal ───────────────────────────────────
-function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "portrait", accent, theme, isDark, glass, onClose, onSet, onReset }) {
-  const { t } = useTranslation();
-  const fileRef = useRef(null);
-  const [preview, setPreview] = useState(currentArt || null);
-  const [pendingData, setPendingData] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [focusedBtn, setFocusedBtn] = useState("browse");
-
-  const pendingDataRef  = useRef(null);
-  const focusedBtnRef   = useRef("browse");
-  const lastBtnRef      = useRef({});
-
-  // Compute which buttons are visible given current pending state
-  const getButtons = () => {
-    const btns = ["browse"];
-    if (pendingDataRef.current) btns.push("save");
-    if (hasCustomArt && !pendingDataRef.current) btns.push("reset");
-    btns.push("cancel");
-    return btns;
-  };
-
-  const handleSave = () => {
-    if (!pendingDataRef.current) return;
-    setSaving(true);
-    invoke("set_custom_art", { id: app.id, data: pendingDataRef.current })
-      .then(() => { onSet(app.id, pendingDataRef.current); onClose(); })
-      .catch(console.error)
-      .finally(() => setSaving(false));
-  };
-  const handleReset = () => {
-    invoke("clear_custom_art", { id: app.id })
-      .then(() => { onReset(app.id); onClose(); })
-      .catch(console.error);
-  };
-
-  // Keep latest handlers accessible inside the RAF closure
-  const handleSaveRef  = useRef(handleSave);
-  const handleResetRef = useRef(handleReset);
-  useEffect(() => { handleSaveRef.current  = handleSave; });
-  useEffect(() => { handleResetRef.current = handleReset; });
-
-  const handleFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        const TW = cropMode === "square" ? 500 : 600;
-        const TH = cropMode === "square" ? 500 : 900;
-        const canvas = document.createElement("canvas");
-        canvas.width = TW; canvas.height = TH;
-        const ctx = canvas.getContext("2d");
-        const scale = Math.max(TW / img.width, TH / img.height);
-        const sw = TW / scale, sh = TH / scale;
-        const sx = (img.width  - sw) / 2;
-        const sy = (img.height - sh) / 2;
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, TW, TH);
-        const url = canvas.toDataURL("image/jpeg", 0.88);
-        setPreview(url);
-        setPendingData(url);
-        pendingDataRef.current = url;
-        setFocusedBtn("save"); focusedBtnRef.current = "save";
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Own RAF gamepad poll — runs while modal is mounted
-  useEffect(() => {
-    let rAFId;
-    const poll = () => {
-      const gp = getBestGamepad();
-      if (gp) {
-        const state = readGpState(gp);
-        const btns  = getButtons();
-
-        if (state.ArrowDown && !lastBtnRef.current.ArrowDown) {
-          const i    = btns.indexOf(focusedBtnRef.current);
-          const next = btns[Math.min(i + 1, btns.length - 1)];
-          if (next !== focusedBtnRef.current) { setFocusedBtn(next); focusedBtnRef.current = next; }
-        }
-        if (state.ArrowUp && !lastBtnRef.current.ArrowUp) {
-          const i    = btns.indexOf(focusedBtnRef.current);
-          const next = btns[Math.max(i - 1, 0)];
-          if (next !== focusedBtnRef.current) { setFocusedBtn(next); focusedBtnRef.current = next; }
-        }
-        if (state.Enter && !lastBtnRef.current.Enter) {
-          const btn = focusedBtnRef.current;
-          if (btn === "browse") fileRef.current?.click();
-          else if (btn === "save")   handleSaveRef.current();
-          else if (btn === "reset")  handleResetRef.current();
-          else if (btn === "cancel") onClose();
-        }
-        if (state.Escape && !lastBtnRef.current.Escape) onClose();
-
-        lastBtnRef.current = state;
-      }
-      rAFId = requestAnimationFrame(poll);
-    };
-    rAFId = requestAnimationFrame(poll);
-    return () => cancelAnimationFrame(rAFId);
-  }, []);
-
-  const btnStyle = (key, bg, color, extra = {}) => {
-    const focused = focusedBtn === key;
-    return {
-      padding: "10px 20px", borderRadius: 10, cursor: "pointer",
-      fontFamily: "'Segoe UI', sans-serif", fontSize: 14, fontWeight: 600,
-      border: focused ? `2px solid ${accent.primary}` : "2px solid transparent",
-      width: "100%", background: bg, color,
-      transition: "all 0.15s ease",
-      boxShadow: focused ? `0 0 0 2px ${accent.glow}0.4), 0 0 16px ${accent.glow}0.2)` : "none",
-      transform: focused ? "scale(1.02)" : "scale(1)",
-      ...extra,
-    };
-  };
-
-  return (
-    <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
-      <div style={{ ...glass, borderRadius: 20, padding: 24, width: 380 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: theme.text, marginBottom: 4 }}>{app.name}</div>
-        <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 16 }}>{t('artPicker.replaceCoverArt')}</div>
-        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-          {/* Preview — fixed width, 2:3 tall */}
-          <div style={{ flexShrink: 0, width: 110 }}>
-            {preview
-              ? <img src={preview} alt="" style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
-              : <div style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>{t('artPicker.noArt')}</span></div>
-            }
-          </div>
-          {/* Controls */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
-            <button onClick={() => fileRef.current?.click()} style={btnStyle("browse", `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, accent.darkText ? "#1a1a1a" : "white")}>{t('artPicker.browseImage')}</button>
-            {pendingData && <button onClick={handleSave} disabled={saving} style={btnStyle("save", "#4a9c4a", "white", { opacity: saving ? 0.6 : 1 })}>{saving ? t('artPicker.saving') : t('common.save')}</button>}
-            {hasCustomArt && !pendingData && <button onClick={handleReset} style={btnStyle("reset", "rgba(255,255,255,0.08)", theme.text)}>{t('artPicker.resetToDefault')}</button>}
-            <button onClick={onClose} style={btnStyle("cancel", "rgba(255,255,255,0.05)", theme.textDim)}>{t('common.cancel')}</button>
-            <div style={{ display: "flex", justifyContent: "center", gap: 12, paddingTop: 4 }}>
-              {[
-                { bg: "#4a9c4a", label: t('gamepad.aConfirm') },
-                { bg: "#b03030", label: t('gamepad.bCancel') },
-              ].map(({ bg, label }) => (
-                <span key={label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                  <span style={{ width: 18, height: 18, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "white", flexShrink: 0 }}>{label[0]}</span>
-                  {label.slice(1)}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── SGDB thumbnail card ──────────────────────────────────────
-// Only one thumbnail video plays at a time — module-level reference to the active element
-let _activeThumbVideo = null;
-
-function ThumbnailCard({ result, selected, isSelected, accent, theme, thumbW, aspect, onClick, ...rest }) {
-  const { t } = useTranslation();
-  const [hovered, setHovered] = useState(false);
-  const [videoSrc, setVideoSrc] = useState(null);
-  const videoRef = useRef(null);
-  const active = isSelected || hovered;
-  // A real static thumbnail exists only when thumb differs from the full content URL
-  const hasStaticThumb = result.thumb !== result.url;
-  const urlLower = result.url.toLowerCase();
-  const isVideoFormat = /\.(webm|mp4)$/i.test(urlLower);
-  const isGifOrWebp = /\.(gif|webp)$/i.test(urlLower);
-
-  // Set src only on first activation — never clears (keeps it buffered for re-hover)
-  useEffect(() => {
-    if (active && !videoSrc) setVideoSrc(result.url);
-  }, [active]);
-
-  // Play/pause imperatively based on active state
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v || !videoSrc) return;
-    if (active) {
-      if (_activeThumbVideo && _activeThumbVideo !== v) {
-        _activeThumbVideo.pause();
-        _activeThumbVideo.currentTime = 0;
-      }
-      _activeThumbVideo = v;
-      v.play().catch(() => {});
-    } else {
-      if (_activeThumbVideo === v) _activeThumbVideo = null;
-      v.pause();
-      v.currentTime = 0;
-    }
-  }, [active, videoSrc]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      const v = videoRef.current;
-      if (v && _activeThumbVideo === v) _activeThumbVideo = null;
-    };
-  }, []);
-
-  const fillStyle = { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" };
-
-  return (
-    <div
-      style={{
-        position: "relative", width: thumbW, aspectRatio: aspect, cursor: "pointer",
-        borderRadius: 8, overflow: "hidden",
-        outline: selected ? `2px solid ${accent.primary}` : "2px solid transparent",
-        outlineOffset: -2, transition: "outline 0.1s", flexShrink: 0,
-        transform: "translateZ(0)", willChange: "opacity",
-      }}
-      onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      {...rest}
-    >
-      {/* Bottom layer: static thumb when available, otherwise placeholder when idle */}
-      {hasStaticThumb
-        ? <img src={result.thumb} alt="" style={fillStyle} />
-        : !active && (
-          <div style={{
-            ...fillStyle,
-            background: "linear-gradient(135deg, rgba(30,15,8,0.95) 0%, rgba(50,25,10,0.9) 100%)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-              {t('sgdb.hoverToPreview')}
-            </span>
-          </div>
-        )
-      }
-
-      {/* Top layer: animated content — only rendered/loaded when active */}
-      {result.is_animated && (
-        isVideoFormat ? (
-          <video
-            ref={videoRef}
-            src={videoSrc || undefined}
-            muted
-            loop
-            playsInline
-            preload="none"
-            style={{ ...fillStyle, opacity: active ? 1 : 0, transition: "opacity 0.15s" }}
-          />
-        ) : isGifOrWebp ? (
-          <img
-            src={active ? result.url : undefined}
-            alt=""
-            style={{ ...fillStyle, opacity: active ? 1 : 0, transition: "opacity 0.15s" }}
-          />
-        ) : null
-      )}
-
-      {result.is_animated && hasStaticThumb && (
-        <div style={{
-          position: "absolute", top: 5, left: 5, padding: "2px 5px", borderRadius: 4,
-          background: accent.primary, color: accent.darkText ? "#1a1a1a" : "white", fontSize: 8, fontWeight: 700, letterSpacing: "0.05em",
-        }}>
-          ANIM
-        </div>
-      )}
-
-      {active && (
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0, padding: "4px 6px",
-          background: "rgba(0,0,0,0.72)", display: "flex", gap: 6, alignItems: "center",
-        }}>
-          {result.author && (
-            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-              {result.author}
-            </span>
-          )}
-          {result.upvotes > 0 && (
-            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.55)", flexShrink: 0 }}>▲{result.upvotes}</span>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── SgdbBrowser ───────────────────────────────────────────────
-const HERO_FILTERS = ["all", "animated", "static"];
-
-function SgdbBrowser({ app, artType, accent, theme, isDark, onSet, onClose, repeatSpeed = "normal" }) {
-  const { t } = useTranslation();
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [selectedIdx, setSelectedIdx] = useState(null);
-  const [heroFilter, setHeroFilter] = useState("all");
-  const [downloading, setDownloading] = useState(false);
-
-  const selectedIdxRef = useRef(null);
-  const heroFilterRef = useRef("all");
-  const lastBtnRef = useRef({});
-  const btnPressTimeRef = useRef({});
-  const btnRepeatingRef = useRef({});
-  const btnRepeatTimeRef = useRef({});
-  const filteredResultsRef = useRef([]);
-  const scrollContainerRef = useRef(null);
-
-  const filteredResults = useMemo(() => {
-    if (artType !== "hero" || heroFilter === "all") return results;
-    if (heroFilter === "animated") return results.filter(r => r.is_animated);
-    return results.filter(r => !r.is_animated);
-  }, [results, heroFilter, artType]);
-
-  useEffect(() => { filteredResultsRef.current = filteredResults; }, [filteredResults]);
-  useEffect(() => { heroFilterRef.current = heroFilter; }, [heroFilter]);
-  useEffect(() => {
-    if (selectedIdx === null || !scrollContainerRef.current) return;
-    const el = scrollContainerRef.current.querySelector(`[data-sgdb-idx="${selectedIdx}"]`);
-    if (!el) return;
-    const c = scrollContainerRef.current;
-    const elRect = el.getBoundingClientRect();
-    const cRect  = c.getBoundingClientRect();
-    const elTop    = elRect.top  - cRect.top;
-    const elBottom = elRect.bottom - cRect.top;
-    if (elBottom > c.clientHeight) c.scrollTop += elBottom - c.clientHeight + 8;
-    else if (elTop < 0)            c.scrollTop = Math.max(0, c.scrollTop + elTop - 8);
-  }, [selectedIdx, filteredResults]);
-
-  const loadResults = () => {
-    setLoading(true);
-    setError(false);
-    setSelectedIdx(null);
-    selectedIdxRef.current = null;
-    invoke("search_sgdb_art", { gameName: app.name, artType })
-      .then(data => { setResults(data); setLoading(false); })
-      .catch(() => { setError(true); setLoading(false); });
-  };
-
-  useEffect(() => { loadResults(); }, []);
-
-  const GRID_COLS   = artType === "grid" ? 4 : 2;
-  const THUMB_W     = artType === "grid" ? 148 : 258;
-  const THUMB_ASPECT = artType === "grid" ? "2/3" : "16/9";
-
-  const handleSelect = () => {
-    const idx = selectedIdxRef.current;
-    const list = filteredResultsRef.current;
-    if (idx === null || idx >= list.length) return;
-    const chosen = list[idx];
-    setDownloading(true);
-    invoke("download_sgdb_art", { gameName: app.name, url: chosen.url, artType })
-      .then(path => {
-        if (path) { onSet(app.id, path); onClose(); }
-        else setDownloading(false);
-      })
-      .catch(() => setDownloading(false));
-  };
-  const handleSelectRef = useRef(handleSelect);
-  useEffect(() => { handleSelectRef.current = handleSelect; });
-
-  useEffect(() => {
-    let rAFId;
-    const poll = (now) => {
-      const gp = getBestGamepad();
-      if (gp) {
-        const state = readGpState(gp);
-        const list  = filteredResultsRef.current;
-        const cur   = selectedIdxRef.current;
-        const iDelay = repeatSpeed === "slow" ? 500 : repeatSpeed === "fast" ? 250 : 400;
-        const rDelay = repeatSpeed === "slow" ? 150 : repeatSpeed === "fast" ? 60  : 100;
-
-        const fireDir = (key) => {
-          const c = selectedIdxRef.current;
-          const l = filteredResultsRef.current;
-          if (key === "ArrowRight") {
-            const next = c === null ? 0 : Math.min(c + 1, l.length - 1);
-            if (next !== c) { setSelectedIdx(next); selectedIdxRef.current = next; }
-          } else if (key === "ArrowLeft") {
-            if (c === null && l.length > 0) { setSelectedIdx(0); selectedIdxRef.current = 0; }
-            else if (c !== null && c > 0) { setSelectedIdx(c - 1); selectedIdxRef.current = c - 1; }
-          } else if (key === "ArrowDown") {
-            if (c === null && l.length > 0) { setSelectedIdx(0); selectedIdxRef.current = 0; }
-            else if (c !== null) {
-              const next = Math.min(c + GRID_COLS, l.length - 1);
-              if (next !== c) { setSelectedIdx(next); selectedIdxRef.current = next; }
-            }
-          } else if (key === "ArrowUp") {
-            if (c !== null && c - GRID_COLS >= 0) { const next = c - GRID_COLS; setSelectedIdx(next); selectedIdxRef.current = next; }
-          }
-        };
-
-        for (const key of ["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"]) {
-          const pressed = state[key], wasPressed = lastBtnRef.current[key];
-          if (pressed && !wasPressed) {
-            btnPressTimeRef.current[key] = now;
-            btnRepeatingRef.current[key] = false;
-            btnRepeatTimeRef.current[key] = now;
-            fireDir(key);
-          } else if (pressed && wasPressed) {
-            const held = now - (btnPressTimeRef.current[key] || now);
-            if (!btnRepeatingRef.current[key] && held >= iDelay) {
-              btnRepeatingRef.current[key] = true;
-              btnRepeatTimeRef.current[key] = now;
-              fireDir(key);
-            } else if (btnRepeatingRef.current[key] && now - (btnRepeatTimeRef.current[key] || 0) >= rDelay) {
-              btnRepeatTimeRef.current[key] = now;
-              fireDir(key);
-            }
-          } else if (!pressed) {
-            btnPressTimeRef.current[key] = 0;
-            btnRepeatingRef.current[key] = false;
-          }
-        }
-
-        if (state.Enter && !lastBtnRef.current.Enter) handleSelectRef.current();
-        if (state.Escape && !lastBtnRef.current.Escape) onClose();
-        if (artType === "hero") {
-          if (state.TriggerLeft && !lastBtnRef.current.TriggerLeft) {
-            const i = HERO_FILTERS.indexOf(heroFilterRef.current);
-            const next = HERO_FILTERS[Math.max(i - 1, 0)];
-            if (next !== heroFilterRef.current) { setHeroFilter(next); heroFilterRef.current = next; setSelectedIdx(null); selectedIdxRef.current = null; }
-          }
-          if (state.TriggerRight && !lastBtnRef.current.TriggerRight) {
-            const i = HERO_FILTERS.indexOf(heroFilterRef.current);
-            const next = HERO_FILTERS[Math.min(i + 1, HERO_FILTERS.length - 1)];
-            if (next !== heroFilterRef.current) { setHeroFilter(next); heroFilterRef.current = next; setSelectedIdx(null); selectedIdxRef.current = null; }
-          }
-        }
-
-        lastBtnRef.current = state;
-      }
-      rAFId = requestAnimationFrame(poll);
-    };
-    rAFId = requestAnimationFrame(poll);
-    return () => cancelAnimationFrame(rAFId);
-  }, [artType, GRID_COLS, repeatSpeed]);
-
-  if (loading) return (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div className="splash-dots" style={{ opacity: 1 }}>
-        <div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" />
-      </div>
-    </div>
-  );
-
-  if (error) return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
-      <span style={{ color: theme.textDim, fontSize: 13 }}>{t('sgdb.failedToLoad')}</span>
-      <button onClick={loadResults}
-        style={{ padding: "8px 20px", borderRadius: 8, background: `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, color: accent.darkText ? "#1a1a1a" : "white", fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer" }}>
-        {t('common.retry')}
-      </button>
-    </div>
-  );
-
-  return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      {artType === "hero" && (
-        <div style={{ display: "flex", gap: 6, paddingBottom: 10 }}>
-          {["all", "animated", "static"].map(f => (
-            <button key={f}
-              onClick={() => { setHeroFilter(f); setSelectedIdx(null); selectedIdxRef.current = null; }}
-              style={{ padding: "4px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", border: "none",
-                background: heroFilter === f ? accent.primary : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"),
-                color: heroFilter === f ? (accent.darkText ? "#1a1a1a" : "white") : theme.text }}>
-              {t(`sgdb.filter.${f}`)}
-            </button>
-          ))}
-        </div>
-      )}
-      <div ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
-        <div style={{ display: "grid",
-          gridTemplateColumns: `repeat(${GRID_COLS}, ${THUMB_W}px)`, gap: 8, alignContent: "start", paddingRight: 4, paddingBottom: 4 }}>
-          {filteredResults.map((r, i) => (
-            <ThumbnailCard key={r.url} result={r} selected={selectedIdx === i} isSelected={selectedIdx === i}
-              accent={accent} theme={theme} thumbW={THUMB_W} aspect={THUMB_ASPECT}
-              data-sgdb-idx={i}
-              onClick={() => { setSelectedIdx(i); selectedIdxRef.current = i; }} />
-          ))}
-          {filteredResults.length === 0 && (
-            <div style={{ gridColumn: "1 / -1", textAlign: "center", color: theme.textDim, fontSize: 13, padding: 24 }}>
-              {t('sgdb.noResults')}
-            </div>
-          )}
-        </div>
-      </div>
-      <div style={{ paddingTop: 10, display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ display: "flex", gap: 12, marginRight: "auto" }}>
-          {[{ bg: "#4a9c4a", label: t('gamepad.aSelect') }, { bg: "#b03030", label: t('gamepad.bCancel') }].map(({ bg, label }) => (
-            <span key={label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-              <span style={{ width: 18, height: 18, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "white", flexShrink: 0 }}>{label[0]}</span>
-              {label.slice(1)}
-            </span>
-          ))}
-          {artType === "hero" && (
-            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-              <span style={{ height: 18, minWidth: 20, borderRadius: 4, background: "rgba(255,255,255,0.52)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "white", padding: "0 3px" }}>LT</span>
-              <span style={{ height: 18, minWidth: 20, borderRadius: 4, background: "rgba(255,255,255,0.52)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 7, fontWeight: 700, color: "white", padding: "0 3px" }}>RT</span>
-              {t('sgdb.filter.label')}
-            </span>
-          )}
-        </div>
-        <button onClick={onClose}
-          style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none",
-            background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)", color: theme.text }}>
-          {t('common.cancel')}
-        </button>
-        <button onClick={handleSelect} disabled={selectedIdx === null || downloading}
-          style={{ padding: "8px 20px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-            cursor: selectedIdx !== null && !downloading ? "pointer" : "default", border: "none",
-            background: selectedIdx !== null && !downloading
-              ? `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`
-              : (isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"),
-            color: selectedIdx !== null && !downloading ? (accent.darkText ? "#1a1a1a" : "white") : theme.textDim, transition: "all 0.15s" }}>
-          {downloading ? t('sgdb.downloading') : t('common.select')}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── UploadTab ─────────────────────────────────────────────────
-function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accent, theme, isDark, onClose, onSet, onReset }) {
-  const { t } = useTranslation();
-  const fileRef = useRef(null);
-  const [preview, setPreview] = useState(currentArt || null);
-  const [pendingData, setPendingData] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [focusedBtn, setFocusedBtn] = useState("browse");
-
-  const pendingDataRef  = useRef(null);
-  const focusedBtnRef   = useRef("browse");
-  const lastBtnRef      = useRef({});
-
-  const getButtons = () => {
-    const btns = ["browse"];
-    if (pendingDataRef.current) btns.push("save");
-    if (hasCustomArt && !pendingDataRef.current) btns.push("reset");
-    btns.push("cancel");
-    return btns;
-  };
-
-  const handleSave = () => {
-    if (!pendingDataRef.current) return;
-    setSaving(true);
-    const storageId = cropMode === "hero" ? "hero:" + app.id : app.id;
-    invoke("set_custom_art", { id: storageId, data: pendingDataRef.current })
-      .then(() => { onSet(app.id, pendingDataRef.current); onClose(); })
-      .catch(console.error)
-      .finally(() => setSaving(false));
-  };
-  const handleReset = () => {
-    const storageId = cropMode === "hero" ? "hero:" + app.id : app.id;
-    invoke("clear_custom_art", { id: storageId })
-      .then(() => { onReset(app.id); onClose(); })
-      .catch(console.error);
-  };
-
-  const handleSaveRef  = useRef(handleSave);
-  const handleResetRef = useRef(handleReset);
-  useEffect(() => { handleSaveRef.current  = handleSave; });
-  useEffect(() => { handleResetRef.current = handleReset; });
-
-  const handleFile = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        const TW = cropMode === "square" ? 500 : cropMode === "hero" ? 1920 : 600;
-        const TH = cropMode === "square" ? 500 : cropMode === "hero" ?  620 : 900;
-        const canvas = document.createElement("canvas");
-        canvas.width = TW; canvas.height = TH;
-        const ctx = canvas.getContext("2d");
-        const scale = Math.max(TW / img.width, TH / img.height);
-        const sw = TW / scale, sh = TH / scale;
-        const sx = (img.width  - sw) / 2;
-        const sy = (img.height - sh) / 2;
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, TW, TH);
-        const url = canvas.toDataURL("image/jpeg", 0.88);
-        setPreview(url);
-        setPendingData(url);
-        pendingDataRef.current = url;
-        setFocusedBtn("save"); focusedBtnRef.current = "save";
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
-
-  useEffect(() => {
-    const gp0 = getBestGamepad();
-    if (gp0) lastBtnRef.current = readGpState(gp0);
-
-    let rAFId;
-    const poll = () => {
-      const gp = getBestGamepad();
-      if (gp) {
-        const state = readGpState(gp);
-        const btns  = getButtons();
-
-        if (state.ArrowDown && !lastBtnRef.current.ArrowDown) {
-          const i    = btns.indexOf(focusedBtnRef.current);
-          const next = btns[Math.min(i + 1, btns.length - 1)];
-          if (next !== focusedBtnRef.current) { setFocusedBtn(next); focusedBtnRef.current = next; }
-        }
-        if (state.ArrowUp && !lastBtnRef.current.ArrowUp) {
-          const i    = btns.indexOf(focusedBtnRef.current);
-          const next = btns[Math.max(i - 1, 0)];
-          if (next !== focusedBtnRef.current) { setFocusedBtn(next); focusedBtnRef.current = next; }
-        }
-        if (state.Enter && !lastBtnRef.current.Enter) {
-          const btn = focusedBtnRef.current;
-          if (btn === "browse") fileRef.current?.click();
-          else if (btn === "save")   handleSaveRef.current();
-          else if (btn === "reset")  handleResetRef.current();
-          else if (btn === "cancel") onClose();
-        }
-        if (state.Escape && !lastBtnRef.current.Escape) onClose();
-
-        lastBtnRef.current = state;
-      }
-      rAFId = requestAnimationFrame(poll);
-    };
-    rAFId = requestAnimationFrame(poll);
-    return () => cancelAnimationFrame(rAFId);
-  }, []);
-
-  const btnStyle = (key, bg, color, extra = {}) => {
-    const focused = focusedBtn === key;
-    return {
-      padding: "10px 20px", borderRadius: 10, cursor: "pointer",
-      fontFamily: "'Segoe UI', sans-serif", fontSize: 14, fontWeight: 600,
-      border: focused ? `2px solid ${accent.primary}` : "2px solid transparent",
-      width: "100%", background: bg, color,
-      transition: "all 0.15s ease",
-      boxShadow: focused ? `0 0 0 2px ${accent.glow}0.4), 0 0 16px ${accent.glow}0.2)` : "none",
-      transform: focused ? "scale(1.02)" : "scale(1)",
-      ...extra,
-    };
-  };
-
-  return (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ width: 380 }}>
-        <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 16 }}>{t('artPicker.uploadCustomImage')}</div>
-        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-          <div style={{ flexShrink: 0, width: cropMode === "hero" ? 220 : 110 }}>
-            {preview
-              ? <img src={preview} alt="" style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? "1920/620" : "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
-              : <div style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? "1920/620" : "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>{t('artPicker.noArt')}</span></div>
-            }
-          </div>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
-            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
-            <button onClick={() => fileRef.current?.click()} style={btnStyle("browse", `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`, accent.darkText ? "#1a1a1a" : "white")}>{t('artPicker.browseImage')}</button>
-            {pendingData && <button onClick={handleSave} disabled={saving} style={btnStyle("save", "#4a9c4a", "white", { opacity: saving ? 0.6 : 1 })}>{saving ? t('artPicker.saving') : t('common.save')}</button>}
-            {hasCustomArt && !pendingData && <button onClick={handleReset} style={btnStyle("reset", "rgba(255,255,255,0.08)", theme.text)}>{t('artPicker.resetToDefault')}</button>}
-            <button onClick={onClose} style={btnStyle("cancel", "rgba(255,255,255,0.05)", theme.textDim)}>{t('common.cancel')}</button>
-            <div style={{ display: "flex", justifyContent: "center", gap: 12, paddingTop: 4 }}>
-              {[
-                { bg: "#4a9c4a", label: t('gamepad.aConfirm') },
-                { bg: "#b03030", label: t('gamepad.bCancel') },
-              ].map(({ bg, label }) => (
-                <span key={label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-                  <span style={{ width: 18, height: 18, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "white", flexShrink: 0 }}>{label[0]}</span>
-                  {label.slice(1)}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── SgdbBrowserModal ──────────────────────────────────────────
-function SgdbBrowserModal({ app, currentArt, hasCustomArt, cropMode = "portrait", artType = "grid", repeatSpeed = "normal", accent, theme, isDark, glass, surfaceStyle = "glass", onClose, onSet, onReset }) {
-  const { t } = useTranslation();
-  const showSgdb = app?.app_type === "game";
-  const [activeTab, setActiveTab] = useState(showSgdb ? "browse" : "upload");
-  const lastBtnRef = useRef({});
-
-  useEffect(() => {
-    let rAFId;
-    const poll = () => {
-      const gp = getBestGamepad();
-      if (gp) {
-        const state = readGpState(gp);
-        if (state.BumperLeft  && !lastBtnRef.current.BumperLeft  && showSgdb) setActiveTab("browse");
-        if (state.BumperRight && !lastBtnRef.current.BumperRight && showSgdb) setActiveTab("upload");
-        lastBtnRef.current = state;
-      }
-      rAFId = requestAnimationFrame(poll);
-    };
-    rAFId = requestAnimationFrame(poll);
-    return () => cancelAnimationFrame(rAFId);
-  }, []);
-
-  const badgeStyle = {
-    height: 18, minWidth: 24, borderRadius: 4,
-    background: isDark ? "rgba(255,255,255,0.52)" : "rgba(0,0,0,0.15)",
-    display: "inline-flex", alignItems: "center", justifyContent: "center",
-    fontSize: 8, fontWeight: 700, color: isDark ? "white" : "#333", padding: "0 4px",
-  };
-
-  const tabBtnStyle = (tab) => ({
-    padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-    cursor: "pointer", border: "none",
-    background: activeTab === tab ? `linear-gradient(135deg, ${accent.primary}, ${accent.dark})` : "transparent",
-    color: activeTab === tab ? (accent.darkText ? "#1a1a1a" : "white") : theme.textDim,
-    transition: "all 0.15s",
-  });
-
-  return (
-    <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
-      <div style={{ ...glass, borderRadius: surfaceStyle === "material" ? 16 : 24, padding: 20, width: "min(860px, 92vw)", height: "min(600px, 85vh)", display: "flex", flexDirection: "column",
-        border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.4)`, fontFamily: "'Segoe UI', sans-serif" }}>
-        <div style={{ marginBottom: 4 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: theme.text }}>{app.name}</div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, paddingBottom: 10,
-          borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
-          {showSgdb && <span style={badgeStyle}>LB</span>}
-          {showSgdb && <button onClick={() => setActiveTab("browse")} style={tabBtnStyle("browse")}>{t('artModal.browseSgdb')}</button>}
-          <button onClick={() => setActiveTab("upload")} style={tabBtnStyle("upload")}>{t('artModal.uploadFile')}</button>
-          {showSgdb && <span style={badgeStyle}>RB</span>}
-        </div>
-        {showSgdb && activeTab === "browse"
-          ? <SgdbBrowser app={app} artType={artType} repeatSpeed={repeatSpeed} accent={accent} theme={theme} isDark={isDark}
-              onSet={onSet} onClose={onClose} />
-          : <UploadTab app={app} currentArt={currentArt} hasCustomArt={hasCustomArt} cropMode={cropMode}
-              accent={accent} theme={theme} isDark={isDark}
-              onClose={onClose} onSet={onSet} onReset={onReset} />
-        }
-      </div>
-    </div>
-  );
-}
-
-// ── Gamepad selector ─────────────────────────────────────────
-// Some USB devices (headset adapters, audio dongles) expose a HID interface
-// that the browser registers as a gamepad. They have 0–2 buttons and no axes.
-// Prefer standard-mapped controllers with ≥4 axes first (rules out audio HID),
-// then fall back to any gamepad with ≥4 buttons and axes, then gps[0].
-function getBestGamepad() {
-  const gps = Array.from(navigator.getGamepads()).filter(Boolean);
-  // Real gamepads always have ≥4 axes (two analog sticks).
-  // Audio HID devices (e.g. Jabra headsets) register as gamepads but expose
-  // buttons (volume/mute) with zero or very few axes — this filter excludes them.
-  return (
-    gps.find(gp => gp.mapping === "standard" && gp.axes.length >= 4) ||
-    gps.find(gp => gp.buttons.length >= 4    && gp.axes.length >= 4) ||
-    gps[0] || null
-  );
-}
-
-// ── Gamepad state reader ──────────────────────────────────────
-// Centralises button mapping so both the main poll and the modal poll
-// benefit from the same non-standard-controller fixes.
-//
-// Standard ("standard" mapping) controllers use Chromium's XInput layout:
-//   buttons 0-3  = A/B/X/Y   buttons 4-7  = LB/RB/LT/RT
-//   buttons 9    = Start      buttons 12-15 = D-pad Up/Down/Left/Right
-//
-// Non-standard (DirectInput / raw HID / some GameSir modes) often report the
-// D-pad as a hat-switch on axes[6] (X) and axes[7] (Y) instead of buttons.
-// Using optional chaining (?.pressed) avoids crashes if a controller reports
-// fewer buttons than expected.
-function readGpState(gp) {
-  const btn = (i) => !!gp.buttons[i]?.pressed;
-  // Hat-switch axes present on many DirectInput / non-standard controllers
-  const hatLeft  = (gp.axes[6] ?? 0) < -0.5;
-  const hatRight = (gp.axes[6] ?? 0) >  0.5;
-  const hatUp    = (gp.axes[7] ?? 0) < -0.5;
-  const hatDown  = (gp.axes[7] ?? 0) >  0.5;
-  return {
-    ArrowUp:      btn(12) || hatUp    || gp.axes[1] < -0.5,
-    ArrowDown:    btn(13) || hatDown  || gp.axes[1] >  0.5,
-    ArrowLeft:    btn(14) || hatLeft  || gp.axes[0] < -0.5,
-    ArrowRight:   btn(15) || hatRight || gp.axes[0] >  0.5,
-    Enter:        btn(0),
-    Escape:       btn(1),
-    ButtonX:      btn(2),
-    ButtonY:      btn(3),
-    BumperLeft:   btn(4),
-    BumperRight:  btn(5),
-    TriggerLeft:  btn(6),
-    TriggerRight: btn(7),
-    Select:       btn(8),
-    Start:        btn(9),
-  };
-}
-
-// Detect controller platform from gamepad ID string
-function detectPlatform(gpId) {
-  const id = (gpId || "").toLowerCase();
-  if (id.includes("054c") || id.includes("dualshock") || id.includes("dualsense") ||
-      id.includes("playstation") || id.includes("sony")) return "ps";
-  if (id.includes("057e") || id.includes("nintendo") || id.includes("switch") ||
-      id.includes("pro controller") || id.includes("joycon")) return "switch";
-  if (id.includes("xbox") || id.includes("xinput") || id.includes("045e") ||
-      id.includes("microsoft")) return "xbox";
-  return null; // unknown
-}
-
-// ─────────────────────────────────────────────────────────────
 
 async function sampleIconColor(base64) {
   return new Promise((resolve) => {
@@ -1282,15 +111,10 @@ export default function App() {
   const [battery, setBattery]                       = useState(0);
   const [charging, setCharging]                     = useState(false);
   const [hasBattery, setHasBattery]                 = useState(false);
-  const [gameArt, setGameArt]                       = useState({});
-  const [heroStatic, setHeroStatic]                 = useState({});
-  const [heroAnimated, setHeroAnimated]             = useState({});
-  const [customArt, setCustomArt]                   = useState({});
-  const [customHeroArt, setCustomHeroArt]           = useState({});
   const [artPickerApp, setArtPickerApp]             = useState(null);
   const [artPickerMode, setArtPickerMode]           = useState("grid"); // "grid" | "hero"
   const [contextMenu, setContextMenu]               = useState(null); // { x, y, app, focusedIdx }
-  const [heroCustomType, setHeroCustomType]         = useState(() => { try { return JSON.parse(localStorage.getItem("liftoff_heroCustomType") || "{}"); } catch { return {}; } });
+  const [heroCustomType, setHeroCustomType]         = usePersistentJson("liftoff_heroCustomType", {});
   const [cacheClearLoading, setCacheClearLoading]   = useState(false);
   const [cacheClearStatus, setCacheClearStatus]     = useState({ line1: "", line2: "" });
   const [launchingApp, setLaunchingApp]             = useState(null);
@@ -1331,8 +155,6 @@ export default function App() {
   const kbNumModeRef        = useRef(false);
   // ─────────────────────────────────────────────────────────────
 
-  const customArtRef          = useRef({});
-  const customHeroArtRef      = useRef({});
   const artPickerAppRef       = useRef(null);
   const artPickerModeRef      = useRef("grid");
   const contextMenuRef        = useRef(null);
@@ -1381,12 +203,30 @@ export default function App() {
   const autoScaleRef          = useRef(1.0);
   const settingsFocusIndexRef = useRef(0);
   const heroIndexRef          = useRef(0);
-  const audioCtxRef           = useRef(null);
-  const audioBuffers          = useRef({});
+  const launchingAppRef       = useRef(null);
   const lastBtn               = useRef({});
   // FIX 2: per-button press timestamp and repeating flag for hold-repeat in RAF
   const btnPressTime          = useRef({});
   const btnRepeating          = useRef({});
+
+  const { playSound, playSoundAlt, playSoundGameStart, playAppLoadedSound } = useAudioFeedback();
+  const {
+    gameArt,
+    setGameArt,
+    heroStatic,
+    setHeroStatic,
+    heroAnimated,
+    setHeroAnimated,
+    customArt,
+    setCustomArt,
+    customHeroArt,
+    setCustomHeroArt,
+    customArtRef,
+    customHeroArtRef,
+    loadCustomArt,
+    fetchGameArt,
+    clearGameArt,
+  } = useCustomArt();
 
   const resolvedTheme = normalizeThemeKey(settings.theme);
   const isDark = isDarkThemeKey(resolvedTheme);
@@ -1600,7 +440,7 @@ export default function App() {
     }
     lastLaunchTime.current = now;
     playSoundGameStart();
-    setLaunchingApp(app);
+    setLaunchingApp(app); launchingAppRef.current = app;
     launchApp(app).catch((err) => console.warn("launch_app failed", err));
     const updated = [app, ...rec.filter(r => r.id !== app.id)].slice(0, 10);
     setRecent(updated); recentRef.current = updated;
@@ -1612,6 +452,25 @@ export default function App() {
   const _triggerLaunchRef = useRef(_triggerLaunchImpl);
   _triggerLaunchRef.current = _triggerLaunchImpl;
   const triggerLaunch = useRef((app, rec) => _triggerLaunchRef.current(app, rec)).current;
+
+  const closeLaunchOverlay = () => {
+    const gp = getBestGamepad();
+    if (gp) {
+      const s = readGpState(gp);
+      suppressUntilRelease.current = {
+        Enter: s.Enter,
+        Escape: s.Escape,
+        Select: s.Select,
+        ButtonX: s.ButtonX,
+        ButtonY: s.ButtonY,
+        BumperLeft: s.BumperLeft,
+        BumperRight: s.BumperRight,
+        Start: s.Start,
+      };
+    }
+    setLaunchingApp(null);
+    launchingAppRef.current = null;
+  };
 
   // ── Pin helpers ───────────────────────────────────────────────
   const togglePin = (app) => {
@@ -1773,7 +632,7 @@ export default function App() {
           }
 
           if (pressed && !wasPressed) {
-            if (!showHideModalRef.current && !showLibraryActionsRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
+            if (!launchingAppRef.current && !showHideModalRef.current && !showLibraryActionsRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
             btnPressTime.current[key]  = now;
             btnRepeating.current[key]  = false;
           } else if (pressed && wasPressed && REPEATABLE.has(key)) {
@@ -1781,10 +640,10 @@ export default function App() {
             if (!btnRepeating.current[key] && heldMs >= initialDelay) {
               btnRepeating.current[key] = true;
               btnPressTime.current[key] = now;
-              if (!showHideModalRef.current && !showLibraryActionsRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
+              if (!launchingAppRef.current && !showHideModalRef.current && !showLibraryActionsRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
             } else if (btnRepeating.current[key] && heldMs >= repeatDelay) {
               btnPressTime.current[key] = now;
-              if (!showHideModalRef.current && !showLibraryActionsRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
+              if (!launchingAppRef.current && !showHideModalRef.current && !showLibraryActionsRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
             }
           } else if (!pressed && wasPressed) {
             btnPressTime.current[key]  = 0;
@@ -1980,45 +839,6 @@ export default function App() {
     return () => clearInterval(id);
   }, [settings.time_format, i18n.language]);
 
-  const getAudioCtx = () => {
-    if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
-    return audioCtxRef.current;
-  };
-
-  const preloadAudio = async (key, url) => {
-    try {
-      const ctx = getAudioCtx();
-      const res = await fetch(url);
-      const arr = await res.arrayBuffer();
-      audioBuffers.current[key] = await ctx.decodeAudioData(arr);
-    } catch (e) {}
-  };
-
-  const playBuffer = (key) => {
-    try {
-      const ctx = getAudioCtx();
-      if (ctx.state === "suspended") ctx.resume();
-      const buf = audioBuffers.current[key];
-      if (!buf) return;
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(ctx.destination);
-      src.start(0);
-    } catch (e) {}
-  };
-
-  const playSound          = () => playBuffer("ui");
-  const playSoundAlt       = () => playBuffer("uiAlt");
-  const playSoundGameStart = () => playBuffer("gameStart");
-
-  // Preload all sounds up front so first play has zero decode lag
-  useEffect(() => {
-    preloadAudio("ui",        uiSound);
-    preloadAudio("uiAlt",     uiSoundAlt);
-    preloadAudio("gameStart", appStartSound);
-    preloadAudio("appLoaded", appLoadedSound);
-  }, []);
-
   useEffect(() => {
     const fetchBattery = () => { invoke("get_battery").then(info => { if (info.percent > 0) { setBattery(info.percent); setHasBattery(true); } setCharging(info.charging); }); };
     fetchBattery();
@@ -2054,15 +874,7 @@ export default function App() {
         if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
       });
     });
-    invoke("get_custom_art").then(art => {
-      const heroArt = {}, gridArt = {};
-      for (const [k, v] of Object.entries(art)) {
-        if (k.startsWith("hero:")) heroArt[k.slice(5)] = v;
-        else gridArt[k] = v;
-      }
-      setCustomArt(gridArt); customArtRef.current = gridArt;
-      setCustomHeroArt(heroArt); customHeroArtRef.current = heroArt;
-    }).catch(() => {});
+    loadCustomArt();
     invoke("get_recents").then(recents => {
       if (recents.length > 0) { setRecent(recents); recentRef.current = recents; }
     });
@@ -2111,7 +923,7 @@ export default function App() {
       }
       fetchGameArt(visible.filter(a => a.app_type === "game"));
       setSplashExiting(true);
-      playBuffer("appLoaded");
+      playAppLoadedSound();
       setTimeout(() => {
         setLoading(false);
         setTimeout(() => invoke("set_gamepad_ready"), 2000);
@@ -2119,66 +931,36 @@ export default function App() {
       }, 800);
     }).catch((e) => { console.error("Failed to load apps:", e); setLoading(false); });
   }, []);
-
-  // Convert a path-or-URL returned from Rust into a browser-loadable URL.
-  // New entries are local file paths (asset:// via convertFileSrc); old cached entries
-  // that were stored as remote https:// URLs still work as-is.
-  const toUrl = (pathOrUrl) => {
-    if (!pathOrUrl) return null;
-    if (pathOrUrl.startsWith("http")) return pathOrUrl;
-    return convertFileSrc(pathOrUrl);
-  };
-
-  const fetchGameArt = async (games, onProgress) => {
-    if (!games.length) return;
-    // Bulk cache read — instant disk read, no HTTP — hydrates all previously cached art at once
-    try {
-      const bulk = await invoke("get_cached_art_bulk", { gameNames: games.map(g => g.name) });
-      const newGrid = {}, newAnimated = {}, newStatic = {};
-      games.forEach(game => {
-        const b = bulk[game.name];
-        if (!b) return;
-        if (b.grid)          newGrid[game.id]     = toUrl(b.grid);
-        if (b.hero_animated) newAnimated[game.id] = toUrl(b.hero_animated);
-        if (b.hero_static)   newStatic[game.id]   = toUrl(b.hero_static);
-      });
-      if (Object.keys(newGrid).length)     setGameArt(prev => ({ ...prev, ...newGrid }));
-      if (Object.keys(newAnimated).length) setHeroAnimated(prev => ({ ...prev, ...newAnimated }));
-      if (Object.keys(newStatic).length)   setHeroStatic(prev => ({ ...prev, ...newStatic }));
-    } catch {}
-    // Per-game fetch — batched to avoid rate-limiting SteamGridDB
-    let done = 0;
-    const total = games.length;
-    const BATCH = 4;
-    for (let i = 0; i < games.length; i += BATCH) {
-      const batchGrid = {}, batchAnimated = {}, batchStatic = {};
-      await Promise.all(games.slice(i, i + BATCH).map(game =>
-        invoke("fetch_game_art", { gameName: game.name })
-          .then(bundle => {
-            if (bundle.grid)          batchGrid[game.id]     = toUrl(bundle.grid);
-            if (bundle.hero_animated) batchAnimated[game.id] = toUrl(bundle.hero_animated);
-            if (bundle.hero_static)   batchStatic[game.id]   = toUrl(bundle.hero_static);
-            onProgress?.(++done, total, game.name);
-          })
-          .catch(() => { onProgress?.(++done, total, game.name); })
-      ));
-      if (Object.keys(batchGrid).length)     setGameArt(prev => ({ ...prev, ...batchGrid }));
-      if (Object.keys(batchAnimated).length) setHeroAnimated(prev => ({ ...prev, ...batchAnimated }));
-      if (Object.keys(batchStatic).length)   setHeroStatic(prev => ({ ...prev, ...batchStatic }));
-    }
-  };
-
   const handleClearCache = async () => {
     setCacheClearLoading(true);
     setCacheClearStatus({ line1: t('cache.clearing'), line2: t('cache.removingFiles') });
     await invoke("clear_art_cache");
-    setGameArt({}); setHeroAnimated({}); setHeroStatic({});
+    clearGameArt();
     const games = appsRef.current.filter(a => a.app_type === "game");
     setCacheClearStatus({ line1: t('cache.downloadingArtwork'), line2: t('cache.startingDownload', { count: games.length }) });
     await fetchGameArt(games, (done, total, lastName) => {
       setCacheClearStatus({ line1: t('cache.downloadingArtwork'), line2: t('cache.progress', { name: lastName ? `${lastName} — ` : "", done, total }) });
     });
     setCacheClearLoading(false);
+  };
+
+  const handleClearRecents = async () => {
+    setCacheClearLoading(true);
+    setCacheClearStatus({ line1: t('cache.clearingRecents'), line2: t('cache.removingRecents') });
+    try {
+      await Promise.all([
+        invoke("clear_recents"),
+        new Promise(resolve => window.setTimeout(resolve, 450)),
+      ]);
+      setRecent([]);
+      recentRef.current = [];
+      setRecentGames([]);
+      recentGamesRef.current = [];
+      setHeroIndex(0);
+      heroIndexRef.current = 0;
+    } finally {
+      setCacheClearLoading(false);
+    }
   };
 
   const updateSetting = (key, value) => {
@@ -2366,6 +1148,7 @@ export default function App() {
     const scrollToTop = (behavior = "smooth") => {
       const scroller = tab === "Home" ? homeScrollRef.current : tabScrollRef.current;
       if (scroller) scroller.scrollTo({ top: 0, behavior });
+      if (tab === "Home" && outerRef.current) outerRef.current.scrollTo({ top: 0, behavior });
     };
     const scrollFocusedCardIntoView = () => {
       const scroller = tab === "Home" ? homeScrollRef.current : tabScrollRef.current;
@@ -2376,8 +1159,18 @@ export default function App() {
       const cr = card.getBoundingClientRect();
       const topClearance = 100;
       const bottomClearance = 80;
-      const cardTop = (cr.top - sr.top) / scale;
-      const cardBottom = (cr.bottom - sr.top) / scale;
+      let cardTop = (cr.top - sr.top) / scale;
+      let cardBottom = (cr.bottom - sr.top) / scale;
+      let layoutTop = 0;
+      let node = card;
+      while (node && node !== scroller && node instanceof HTMLElement) {
+        layoutTop += node.offsetTop;
+        node = node.offsetParent;
+      }
+      if (node === scroller) {
+        cardTop = layoutTop - scroller.scrollTop;
+        cardBottom = cardTop + card.offsetHeight;
+      }
       const visH = scroller.clientHeight;
       let newTop = scroller.scrollTop;
       if (cardTop < topClearance) {
@@ -2493,7 +1286,7 @@ export default function App() {
   // ── handleNav ─────────────────────────────────────────────────
   const handleNav = (key) => {
     // Modal intercepts all input via its own poll — main nav must not run
-    if (showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current) return;
+    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current) return;
 
     // Art picker open — only Escape closes it (user interacts via touch/mouse)
     if (artPickerAppRef.current) {
@@ -2705,7 +1498,7 @@ export default function App() {
           updateSetting(item.key, Math.min(item.max, Math.round((cur + item.step) * 100) / 100));
         }
         else if (item.type === "action") {
-          if (item.key === "clear_recents") invoke("clear_recents").then(() => { setRecent([]); recentRef.current = []; });
+          if (item.key === "clear_recents") handleClearRecents();
           if (item.key === "clear_cache")   handleClearCache();
           if (item.key === "reset_scale")   updateSetting("ui_scale", autoScaleRef.current);
         }
@@ -3993,7 +2786,7 @@ export default function App() {
       updateStatus={updateStatus}
       updateInfo={updateInfo}
       checkForUpdates={checkForUpdates}
-      onClearRecents={() => { invoke("clear_recents").then(() => { setRecent([]); recentRef.current = []; }); }}
+      onClearRecents={handleClearRecents}
       handleClearCache={handleClearCache}
       autoScale={autoScaleRef.current}
       sliderDraft={sliderDraft}
@@ -4063,247 +2856,18 @@ export default function App() {
   // ── Render ────────────────────────────────────────────────────
   const themeValue = { isDark, theme, accent, glass, glassBar, settingsRowGlass, glassEnabled, surfaceStyle, appBg, bgGlow1, bgGlow2 };
   const settingsValue = { settings, settingsRef, updateSetting, updateSettingsBatch };
-  const washPink = accent.glow;
 
   return (
     <ThemeProvider value={themeValue}>
     <SettingsProvider value={settingsValue}>
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
-    <div style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1 }} ref={outerRef}>
+    <div style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
 
-      <div style={{ position: "fixed", inset: 0, zIndex: -2, background: isMaterial ? `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, ${appBg}` : appBg }} />
-      {settings.stars_enabled && resolvedTheme === "plasma" && (
-        <>
-          <div className="theme-plasma-layer" style={{ position: "fixed", inset: "-18%", zIndex: -1, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 42% 30% at 22% 28%, color-mix(in srgb, ${accent.primary} 62%, transparent 38%) 0%, transparent 62%),
-              radial-gradient(ellipse 36% 28% at 78% 64%, color-mix(in srgb, ${accent.light} 44%, transparent 56%) 0%, transparent 68%),
-              linear-gradient(118deg, transparent 8%, color-mix(in srgb, ${accent.dark} 44%, transparent 56%) 22%, transparent 42%, color-mix(in srgb, ${accent.primary} 34%, transparent 66%) 58%, transparent 82%)
-            `,
-            opacity: 0.62,
-            filter: "blur(24px)",
-            mixBlendMode: "screen",
-          }} />
-          <div id="plasma-particle-container" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }} />
-        </>
-      )}
-      {settings.stars_enabled && resolvedTheme === "cinder" && (
-        <>
-          <div className="theme-cinder-layer" style={{ position: "fixed", inset: "-10%", zIndex: -1, pointerEvents: "none",
-            background: `
-              radial-gradient(circle at 20% 70%, color-mix(in srgb, ${accent.primary} 12%, rgba(255,106,43,0.10) 88%) 0%, transparent 40%),
-              radial-gradient(circle at 80% 30%, rgba(255,80,40,0.08) 0%, transparent 45%),
-              radial-gradient(circle at 50% 50%, rgba(255,140,80,0.05) 0%, transparent 60%),
-              radial-gradient(ellipse 46% 28% at 72% 82%, color-mix(in srgb, ${accent.primary} 14%, rgba(255,214,163,0.08) 86%) 0%, transparent 72%),
-              linear-gradient(180deg, #120909 0%, #1a0d0d 58%, #2a0f0f 100%)
-            `,
-            opacity: 0.92,
-            filter: "blur(16px)",
-          }} />
-          <div style={{ position: "fixed", inset: "-12%", zIndex: -1, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 34% 22% at 18% 76%, color-mix(in srgb, ${accent.primary} 12%, rgba(255,106,43,0.09) 88%) 0%, transparent 74%),
-              radial-gradient(ellipse 28% 18% at 76% 34%, color-mix(in srgb, ${accent.dark} 10%, rgba(255,214,163,0.06) 90%) 0%, transparent 78%)
-            `,
-            opacity: 0.72,
-            filter: "blur(34px)",
-            mixBlendMode: "screen",
-          }} />
-          <div id="cinder-particle-container" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }} />
-        </>
-      )}
-      {settings.stars_enabled && resolvedTheme === "wash" && (
-        <>
-          {/* Three specialized SVG filters */}
-          <svg style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }} aria-hidden="true">
-            <defs>
-              {/* wash-edge: pre-blur → non-linear alpha (dried/pooled edges) → organic displacement */}
-              <filter id="wash-edge" x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="linearRGB">
-                <feTurbulence type="fractalNoise" baseFrequency="0.013 0.009" numOctaves="4" seed="7" result="edgeNoise"/>
-                <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="preBlurred"/>
-                <feComponentTransfer in="preBlurred" result="shaped">
-                  <feFuncA type="table" tableValues="0 0 0.05 0.22 0.52 0.80 0.95 1"/>
-                </feComponentTransfer>
-                <feDisplacementMap in="shaped" in2="edgeNoise" scale="80" xChannelSelector="R" yChannelSelector="G"/>
-              </filter>
-              {/* wash-flow: asymmetric vertical blur → displacement — drips and downward spread */}
-              <filter id="wash-flow" x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="linearRGB">
-                <feTurbulence type="fractalNoise" baseFrequency="0.018 0.007" numOctaves="3" seed="23" result="flowNoise"/>
-                <feGaussianBlur in="SourceGraphic" stdDeviation="0.8 3.5" result="flowed"/>
-                <feDisplacementMap in="flowed" in2="flowNoise" scale="50" xChannelSelector="R" yChannelSelector="G"/>
-              </filter>
-              {/* wash-drag: asymmetric horizontal blur → displacement — brushstroke / paint pull */}
-              <filter id="wash-drag" x="-30%" y="-30%" width="160%" height="160%" colorInterpolationFilters="linearRGB">
-                <feTurbulence type="fractalNoise" baseFrequency="0.007 0.022" numOctaves="3" seed="41" result="dragNoise"/>
-                <feGaussianBlur in="SourceGraphic" stdDeviation="5.5 0.6" result="dragged"/>
-                <feDisplacementMap in="dragged" in2="dragNoise" scale="24" xChannelSelector="R" yChannelSelector="G"/>
-              </filter>
-            </defs>
-          </svg>
-
-          <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-            background: `radial-gradient(ellipse 100% 100% at 50% 50%, ${accent.glow}0.08) 0%, transparent 70%)`,
-          }} />
-
-          <div className="theme-wash-layer" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 28% 78% at -4% 50%, ${accent.glow}0.24) 0%, ${accent.glow}0.18) 36%, transparent 68%),
-              radial-gradient(ellipse 42% 30% at 20% -7%, ${accent.glow}0.18) 0%, ${accent.glow}0.12) 42%, transparent 72%),
-              radial-gradient(ellipse 46% 26% at 28% 107%, ${accent.glow}0.16) 0%, ${accent.glow}0.12) 40%, transparent 70%)
-            `,
-            animation: "washMix 32s ease-in-out infinite, washOpacity 30s ease-in-out infinite",
-            animationDelay: "-11s, -6s",
-          }} />
-
-          <div className="theme-wash-layer" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 30% 76% at 104% 48%, rgba(78,150,255,0.22) 0%, rgba(78,150,255,0.16) 36%, transparent 68%),
-              radial-gradient(ellipse 48% 28% at 78% 105%, rgba(88,136,255,0.18) 0%, rgba(88,136,255,0.12) 42%, transparent 72%),
-              radial-gradient(ellipse 36% 26% at 100% 6%, rgba(134,122,255,0.14) 0%, rgba(134,122,255,0.10) 42%, transparent 72%)
-            `,
-            animation: "washB1 34s ease-in-out infinite, washOpacity 32s ease-in-out infinite",
-            animationDelay: "-17s, -13s",
-          }} />
-
-          <div className="theme-wash-layer" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 52% 24% at 54% -5%, rgba(238,98,166,0.16) 0%, rgba(238,98,166,0.12) 40%, transparent 72%),
-              radial-gradient(ellipse 38% 22% at 56% 104%, rgba(238,98,166,0.10) 0%, rgba(238,98,166,0.08) 44%, transparent 74%)
-            `,
-            animation: "washPink 36s ease-in-out infinite, washOpacity 34s ease-in-out infinite",
-            animationDelay: "-21s, -9s",
-          }} />
-
-          {/* Warm primary — compound shape: main pool + side lobe + pigment hotspot + upper corner bloom.
-              Multiple overlapping radials form an amoeba-like region; feComponentTransfer makes edges
-              non-linear so they dry unevenly rather than fading uniformly. */}
-          <div className="theme-wash-layer theme-wash-w1" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 62% 52% at 18% 47%, ${accent.glow}0.25) 0%, ${accent.glow}0.72) 30%, ${accent.glow}0.24) 52%, transparent 63%),
-              radial-gradient(ellipse 42% 62% at 12% 54%, ${accent.glow}0.19) 0%, ${accent.glow}0.60) 34%, ${accent.glow}0.17) 56%, transparent 67%),
-              radial-gradient(ellipse 22% 17% at 30% 43%, ${accent.glow}0.81) 0%, ${accent.glow}0.25) 38%, transparent 52%),
-              radial-gradient(ellipse 31% 24% at 8% 24%, ${accent.glow}0.14) 0%, ${accent.glow}0.53) 40%, ${accent.glow}0.12) 60%, transparent 70%),
-              radial-gradient(ellipse 50% 30% at 20% 85%, ${accent.glow}0.38) 0%, ${accent.glow}0.47) 28%, transparent 58%)
-            `,
-            filter: "url(#wash-edge) hue-rotate(20deg) saturate(0.82)",
-          }} />
-
-          {/* Warm secondary — lower pools + faint top-center bleed. wash-flow gives vertical drip
-              character so these sit differently than the main body's spread. */}
-          <div className="theme-wash-layer theme-wash-w2" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 28% 22% at 24% 72%, ${accent.glow}0.17) 0%, ${accent.glow}0.55) 42%, transparent 58%),
-              radial-gradient(ellipse 20% 15% at 18% 86%, ${accent.glow}0.11) 0%, ${accent.glow}0.45) 44%, transparent 60%),
-              radial-gradient(ellipse 14% 11% at 48% 18%, ${accent.glow}0.11) 0%, ${accent.glow}0.42) 46%, transparent 62%),
-              radial-gradient(ellipse 40% 24% at 42% 92%, ${accent.glow}0.22) 0%, ${accent.glow}0.42) 32%, transparent 62%)
-            `,
-            filter: "url(#wash-flow)",
-          }} />
-
-          {/* Warm tendrils — two shapes at different heights and widths break the horizontal read.
-              Left section thicker, right section thinner and offset upward; the gap between them
-              creates a natural break. wash-flow's vertical asymmetry adds downward bleeding so each
-              piece drifts differently and the two never merge into a clean line. */}
-          <div className="theme-wash-layer theme-wash-w3" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 48% 10% at 26% 59%, ${accent.glow}0.08) 0%, ${accent.glow}0.34) 36%, transparent 55%),
-              radial-gradient(ellipse 25% 7% at 50% 45%, ${accent.glow}0.06) 0%, ${accent.glow}0.22) 42%, transparent 60%)
-            `,
-            filter: "url(#wash-flow)",
-          }} />
-
-          <div className="theme-wash-layer theme-wash-pink" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 56% 49% at 50% 25%, ${washPink}0.50) 0%, ${washPink}0.65) 28%, ${washPink}0.18) 50%, transparent 65%),
-              radial-gradient(ellipse 35% 28% at 58% 38%, ${washPink}0.20) 0%, ${washPink}0.42) 38%, transparent 58%)
-            `,
-            filter: "url(#wash-edge) hue-rotate(320deg) saturate(0.95)",
-          }} />
-
-          {/* Cool primary — compound right-side region. hue-rotate(148°) maps warm accent to a
-              muted teal; saturate(0.58) keeps it soft so it reads as supporting, not competing.
-              4th radial: tight hotspot for internal pigment density variation (dried-edge pooling). */}
-          <div className="theme-wash-layer theme-wash-c1" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 55% 46% at 72% 46%, ${accent.glow}0.25) 0%, ${accent.glow}0.74) 30%, ${accent.glow}0.22) 52%, transparent 62%),
-              radial-gradient(ellipse 34% 42% at 84% 38%, ${accent.glow}0.20) 0%, ${accent.glow}0.62) 34%, ${accent.glow}0.14) 54%, transparent 65%),
-              radial-gradient(ellipse 20% 15% at 62% 70%, ${accent.glow}0.08) 0%, ${accent.glow}0.30) 46%, transparent 62%),
-              radial-gradient(ellipse 14% 11% at 78% 44%, ${accent.glow}0.84) 0%, ${accent.glow}0.22) 36%, transparent 50%),
-              radial-gradient(ellipse 40% 28% at 75% 80%, ${accent.glow}0.45) 0%, ${accent.glow}0.55) 28%, transparent 55%)
-            `,
-            filter: "url(#wash-edge) hue-rotate(205deg) saturate(0.9)",
-          }} />
-
-          {/* Cool upper — slightly different hue angle (130°) adds variation within cool region;
-              more desaturated (0.52) so upper corner reads as a diluted wash, not a second color. */}
-          <div className="theme-wash-layer theme-wash-c2" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 22% 28% at 88% 24%, ${accent.glow}0.14) 0%, ${accent.glow}0.53) 40%, transparent 58%),
-              radial-gradient(ellipse 17% 14% at 72% 78%, ${accent.glow}0.11) 0%, ${accent.glow}0.39) 44%, transparent 60%)
-            `,
-            filter: "url(#wash-edge) hue-rotate(260deg) saturate(0.85)",
-          }} />
-
-          {/* Center meeting zone — ring gradient (opaque center=0 → peak at 46% → fade) simulates
-              pigment accumulation where two wet washes touch. 3rd radial extends cool cohesion
-              faintly toward center, breaking the hard warm/cool boundary. */}
-          <div className="theme-wash-layer theme-wash-mix" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 45% 70% at 60% 48%, ${accent.glow}0.08) 0%, ${accent.glow}0.60) 46%, ${accent.glow}0.18) 62%, transparent 72%),
-              radial-gradient(ellipse 17% 13% at 44% 34%, ${accent.glow}0.10) 0%, ${accent.glow}0.36) 48%, transparent 66%),
-              radial-gradient(ellipse 45% 25% at 62% 55%, ${accent.glow}0.04) 0%, ${accent.glow}0.22) 52%, transparent 70%)
-            `,
-            filter: "url(#wash-edge) hue-rotate(260deg) saturate(0.72)",
-          }} />
-
-          {/* Cool cohesion bridge — extremely faint cool wash reaching from right region toward
-              center. Connects the two color masses so the split feels like wet diffusion, not
-              two separate paintings. Very low opacity; hue-rotate matches C1 exactly. */}
-          <div className="theme-wash-layer theme-wash-bleed1" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 73% 39% at 66% 52%, ${accent.glow}0.0) 0%, ${accent.glow}0.20) 48%, transparent 64%),
-              radial-gradient(ellipse 28% 20% at 56% 62%, ${accent.glow}0.03) 0%, ${accent.glow}0.14) 50%, transparent 66%)
-            `,
-            filter: "url(#wash-edge) hue-rotate(205deg) saturate(0.7)",
-          }} />
-
-          {/* Tertiary whisper — barely visible golden hue (hue-rotate 68°) at two small spots.
-              Breaks the two-color look; adds the "accidental third pigment" quality of real
-              watercolor. Must stay near invisible: max opacity 0.12 at peak. */}
-          <div className="theme-wash-layer theme-wash-bleed2" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-            background: `
-              radial-gradient(ellipse 17% 13% at 70% 76%, ${accent.glow}0.04) 0%, ${accent.glow}0.15) 44%, transparent 60%),
-              radial-gradient(ellipse 11% 8% at 34% 22%, ${accent.glow}0.03) 0%, ${accent.glow}0.13) 46%, transparent 62%)
-            `,
-            filter: "url(#wash-edge) hue-rotate(68deg) saturate(0.5)",
-          }} />
-
-          {/* Paper grain — fractal noise at overlay blend; two-axis baseFrequency gives fibrous paper feel */}
-          <svg style={{ position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: 1, pointerEvents: "none", opacity: 0.092, mixBlendMode: "overlay" }} aria-hidden="true">
-            <filter id="wash-grain-filter">
-              <feTurbulence type="fractalNoise" baseFrequency="0.72 0.58" numOctaves="4" seed="13" stitchTiles="stitch"/>
-              <feColorMatrix type="saturate" values="0"/>
-            </filter>
-            <rect width="100%" height="100%" filter="url(#wash-grain-filter)"/>
-          </svg>
-        </>
-      )}
-      {surfaceStyle === "aero" && (
-        <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none",
-          background: isDark
-            ? "linear-gradient(180deg, rgba(255,255,255,0.012) 0%, rgba(0,0,0,0.018) 100%)"
-            : "linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.025) 100%)",
-        }} />
-      )}
-      {resolvedTheme === "space" && settings.stars_enabled && (
-        <div id="star-container" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }} />
-      )}
-      {resolvedTheme === "sky" && settings.stars_enabled && (
-        <div id="cloud-container" style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none", overflow: "hidden" }} />
-      )}
-      {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={() => setLaunchingApp(null)} />}
+      <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} />
+      <AppOverlays>
+      {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={closeLaunchOverlay} />}
       {artPickerApp && (
-        <SgdbBrowserModal
+        <SteamGridArtPickerModal
           app={artPickerApp}
           currentArt={artPickerMode === "hero"
             ? (customHeroArt[artPickerApp.id] || heroStatic[artPickerApp.id])
@@ -4320,9 +2884,7 @@ export default function App() {
                 const next = { ...customHeroArtRef.current, [id]: result };
                 setCustomHeroArt(next); customHeroArtRef.current = next;
                 setHeroCustomType(prev => {
-                  const next2 = { ...prev, [id]: "static" };
-                  try { localStorage.setItem("liftoff_heroCustomType", JSON.stringify(next2)); } catch {}
-                  return next2;
+                  return { ...prev, [id]: "static" };
                 });
                 if (settings.animated_heroes !== "custom") updateSetting("animated_heroes", "custom");
               } else {
@@ -4338,9 +2900,7 @@ export default function App() {
                 else        setHeroStatic(prev => ({ ...prev, [id]: url }));
                 const heroType = isAnim ? "animated" : "static";
                 setHeroCustomType(prev => {
-                  const next = { ...prev, [id]: heroType };
-                  try { localStorage.setItem("liftoff_heroCustomType", JSON.stringify(next)); } catch {}
-                  return next;
+                  return { ...prev, [id]: heroType };
                 });
                 if (settings.animated_heroes !== "custom") updateSetting("animated_heroes", "custom");
               } else {
@@ -4588,8 +3148,6 @@ export default function App() {
           </div>
         </div>
       )}
-      <div style={{ position: "fixed", top: "-80%", left: "-80%", width: "180%", height: "180%", borderRadius: "50%", background: `radial-gradient(circle, ${bgGlow1} 0%, transparent 55%)`, pointerEvents: "none", zIndex: 0 }} />
-      <div style={{ position: "fixed", bottom: "-80%", right: "-80%", width: "180%", height: "180%", borderRadius: "50%", background: `radial-gradient(circle, ${bgGlow2} 0%, transparent 55%)`, pointerEvents: "none", zIndex: 0 }} />
       {/* ══════════════ SEARCH OVERLAY ══════════════ */}
       {searchOpen && (
         <div style={{
@@ -4741,6 +3299,19 @@ export default function App() {
         </div>
       )}
       {/* ══════════════ END SEARCH OVERLAY ══════════════ */}
+      {cacheClearLoading && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 2147483000, display: "flex", alignItems: "center", justifyContent: "center", isolation: "isolate", fontFamily: "'Segoe UI', sans-serif" }}>
+          <div style={{ position: "absolute", inset: 0, zIndex: 0, background: "rgba(0,0,0,0.65)" }} />
+          <div style={{ position: "relative", zIndex: 1, background: surfaceStyle === "material" ? "var(--material-elevation-3)" : isDark ? "rgba(18,16,14,0.96)" : "rgba(252,248,244,0.96)", borderRadius: 18, padding: "36px 52px", textAlign: "center", display: "flex", flexDirection: "column", gap: 14, alignItems: "center",
+            backdropFilter: surfaceStyle === "material" ? undefined : "blur(18px) saturate(140%)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : "blur(18px) saturate(140%)",
+            boxShadow: "0 20px 80px rgba(0,0,0,0.55)", border: `1px solid ${isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.14)"}` }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", border: `3px solid ${accent.primary}`, borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
+            <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{cacheClearStatus.line1}</div>
+            <div style={{ fontSize: 13, color: theme.textDim }}>{cacheClearStatus.line2}</div>
+          </div>
+        </div>
+      )}
+      </AppOverlays>
 
       <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions) ? "none" : "auto" }}>
 
@@ -4766,6 +3337,7 @@ export default function App() {
         />
         {/* Tab content area — Home always mounted; cover layer hides it when elsewhere;
              clouds sit above cover, below all tab UI. */}
+        <AppMainContent>
         <div style={{ position: "relative", flex: 1, overflow: (settings.transparent_topbar && tab === "Home") || (settings.cinematic_home && tab === "Home") ? "auto" : "hidden" }}>
 
           {tab === "Settings" && (
@@ -4773,16 +3345,13 @@ export default function App() {
               <SettingsScreenWrapper />
             </div>
           )}
-          <div
-            ref={homeScrollRef}
-            style={{
-              position: "absolute", inset: 0, overflowY: settings.cinematic_home ? "visible" : "auto",
-              zIndex: 2,
-              pointerEvents: tab === "Home" ? "auto" : "none",
-              contentVisibility: tab === "Home" ? "visible" : "hidden",
-            }}>
+          <HomeView
+            scrollRef={homeScrollRef}
+            active={tab === "Home"}
+            cinematicHome={settings.cinematic_home}
+          >
             {homeContent}
-          </div>
+          </HomeView>
           {(tab === "Games" || tab === "Apps") && (() => {
               const SOURCES = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSources, ...gameCollections.map(c => c.name)];
               const APP_COLS = ["All", ...appCollections.map(c => c.name)];
@@ -4813,10 +3382,10 @@ export default function App() {
               const activeTabIndex = tab === "Games"
                 ? SOURCES.indexOf(gameSourceTab)
                 : APP_COLS.indexOf(appCollectionTab);
+              const LibraryView = tab === "Games" ? GamesView : AppsView;
 
               return (
-            <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
-              <div style={{ padding: `0 24px 0`, ...(settings.wide_layout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" }}>
+            <LibraryView scrollRef={tabScrollRef} wideLayout={settings.wide_layout}>
                 {/* Action buttons — hidden; kept for potential future use */}
                 <div style={{ display: "none" }}>
                   <div onClick={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("file"); setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(addAppIdx); subtabFocusIndexRef.current = addAppIdx; }}
@@ -4967,10 +3536,10 @@ export default function App() {
                 })}
               </div>
             )}
-          </div>
-            </div>
+            </LibraryView>
           ); })()}
         </div>
+        </AppMainContent>
 
         {/* Bottom bar */}
         <AppBottomBar
@@ -4979,6 +3548,7 @@ export default function App() {
         />
       </div>
 
+      <AppOverlays>
       {contextMenu && (() => {
         const ctxItems = [
           { label: t('contextMenu.open'),      action: () => { triggerLaunch(contextMenu.app, recentRef.current); setContextMenu(null); contextMenuRef.current = null; } },
@@ -5005,19 +3575,11 @@ export default function App() {
         );
       })()}
 
-      {cacheClearLoading && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: theme.card, borderRadius: 18, padding: "36px 52px", textAlign: "center", display: "flex", flexDirection: "column", gap: 14, alignItems: "center",
-            boxShadow: "0 8px 48px rgba(0,0,0,0.5)", border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}` }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", border: `3px solid ${accent.primary}`, borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
-            <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{cacheClearStatus.line1}</div>
-            <div style={{ fontSize: 13, color: theme.textDim }}>{cacheClearStatus.line2}</div>
-          </div>
-        </div>
-      )}
+      </AppOverlays>
     </div>
     </GamepadProvider>
     </SettingsProvider>
     </ThemeProvider>
   );
 }
+

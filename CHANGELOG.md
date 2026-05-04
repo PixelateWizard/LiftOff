@@ -1,10 +1,23 @@
 # Changelog
 
-## [2.0.0] - Unreleased
+## [2.0.0] - Alpha 1 & 2
 
 ### Added
 - **Launch focus feedback** - launch overlay now distinguishes between launched-and-focused, launched-but-running-behind-LiftOff, failed-to-launch, and launched-but-unconfirmed states. Focus detection uses a one-shot Win32 foreground/window check, never treats missing focus as launch failure, and offers a controller-friendly **Try to focus again** action for unfocused/unconfirmed launches.
-- **Moi's UI/settings work** - added and documented contributions from [moi952](https://github.com/moi952), including French translation and i18n, SteamGridDB art browsing, custom game sources, rename support, component architecture work, display preferences, wide/cinematic layout controls, transparent/top/bottom bar options, cover scaling, tab bar and bottom bar customization, home collection controls, and gamepad icon/auto-detection settings.
+- **French translation and full i18n system** - [moi952](https://github.com/moi952) added localization infrastructure, language selection, and French language support, including user-facing translations across settings, navigation, library actions, and modal workflows.
+- **SteamGridDB art browser** - [moi952](https://github.com/moi952) added an in-app SteamGridDB browsing flow for finding and applying artwork without leaving LiftOff.
+- **Manual game/app entries and custom scan folders** - [moi952](https://github.com/moi952) added support for manually added entries, custom scan folders, and custom sources beyond the built-in Steam/Xbox/UWP/Desktop/Battle.net sources.
+- **Rename support for custom entries** - [moi952](https://github.com/moi952) added the ability to rename custom apps/games from the UI.
+- **Display preferences** - [moi952](https://github.com/moi952) added language, time format, clock, date, and battery visibility settings.
+- **Independent cover scale sliders** - [moi952](https://github.com/moi952) added separate Home and Games cover scale controls so each view can be tuned independently.
+- **Layout customization settings** - [moi952](https://github.com/moi952) added wide layout, cinematic Home, hide bottom bar, transparent bar controls, and separate transparent top/bottom bar toggles.
+- **Navigation bar customization** - [moi952](https://github.com/moi952) added settings for bumper position, tab bar button display, text tabs, tab bar background, tab font weight, tab label casing, top-bar bumper hints, and bottom bar alignment.
+- **Home collections controls** - [moi952](https://github.com/moi952) added Home collection display options, including showing collections on Home and toggling collection names.
+- **Settings screen reorganization and subtabs** - [moi952](https://github.com/moi952) reorganized Settings into cleaner sections/subtabs with reusable grouped controls.
+- **Gamepad glyph icon system** - [moi952](https://github.com/moi952) added platform-aware controller glyphs for Xbox, PlayStation, and Switch-style layouts.
+- **Gamepad icon customization and auto-detection** - [moi952](https://github.com/moi952) added controller platform auto-detection plus gamepad icon style, color, theme-color, and size settings.
+- **Controller test widget polish** - [moi952](https://github.com/moi952) added the current controller test widget implementation as part of the settings/UI cleanup work.
+- **Component architecture refactor** - [moi952](https://github.com/moi952) split shared app state and chrome into reusable pieces such as `ThemeContext`, `SettingsContext`, `AppHeader`, and `AppBottomBar`, making the UI easier to evolve.
 - **Immersive / cinematic Home mode** - added a fullscreen hero-first Home layout with large background artwork, controller-friendly Launch CTA, floating pinned shelf, and slide-up drawer access to recents and collections. The mode is available from Settings and works with the existing gamepad navigation model.
 - **Wash theme** — new light animated environment that pairs with Material by default. Wash simulates a watercolor paper field using SVG-filtered compound radial gradients: warm accent pigment pools on the left, muted cool teal washes on the right, a central pigment-accumulation ring where the two wet masses meet, a faint cool cohesion bridge connecting the regions, and a barely visible tertiary hue whisper for depth. Paper grain SVG at overlay blend and `feComponentTransfer`-based dried-edge shaping give an organic, non-circular appearance. Restrained Material shadows keep cards as solid soft surfaces above the wash field.
 - **Cinder theme** — renamed and upgraded the previous smoldering environment into a darker heat theme. Cinder uses layered heat-field gradients, asymmetrical glow pockets, drifting cinder particles with randomized speed/size/flicker, and subtle accent undertones without turning into a flat accent wash.
@@ -55,11 +68,11 @@
 - **Active/focused text color** is now WCAG-aware: each accent defines `darkText` (dark mode) and `lightDarkText` (light mode) flags in `constants.ts`. Active elements resolve to warm near-black (`rgba(20,14,10,0.90)`) when the flag is true and white otherwise — replacing a previously hardcoded dark color that produced low-contrast text in light mode on accents with dark `lightPrimary` values.
 
 ### Bug Fixes
+- Fixed edit-name and related custom-entry workflow issues as part of [moi952](https://github.com/moi952)'s custom game rename and UI refinement work.
+- Cleaned up settings/subtab UI regressions and controller-facing settings behavior as part of [moi952](https://github.com/moi952)'s settings reorganization and glyph-icon work.
 - Fixed Material light mode hero/background theme updates when switching from dark to light. The hero no longer appends hex alpha suffixes to `color-mix()` background values, which produced invalid CSS for Material.
 - Fixed Home pinned shelf horizontal navigation so returning to the left-most pinned pill restores the shelf's starting padding instead of parking the focused pill against the viewport edge.
 - Fixed immersive drawer recent app cards showing letter placeholders when the lightweight recent record lacked `icon_base64`; drawer recents now look up the full `AppEntry` through `allAppsRef`.
 - Fixed gamepad navigation on the Games tab causing game cards to slide behind the subtab row at UI scale above 100%. Root cause: `scrollIntoView` can scroll the scaled root ancestor under CSS `transform: scale()`. Main card navigation now uses explicit inner-scroller math; remaining `scrollIntoView` paths keep the root overflow guard.
 
 ---
-
-## [1.2.2]

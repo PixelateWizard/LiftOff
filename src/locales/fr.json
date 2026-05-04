@@ -229,6 +229,8 @@
   "cache": {
     "clearing": "Nettoyage du cache",
     "removingFiles": "Suppression des fichiers d'art en cache…",
+    "clearingRecents": "Effacement de l'historique",
+    "removingRecents": "Suppression de l'historique recent…",
     "downloadingArtwork": "Téléchargement des illustrations",
     "startingDownload_one": "Démarrage pour {{count}} jeu…",
     "startingDownload_other": "Démarrage pour {{count}} jeux…",

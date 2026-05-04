@@ -712,7 +712,11 @@ fn get_screen_resolution() -> ScreenResolution {
 }
 
 #[tauri::command] fn get_settings() -> Settings { load_settings_inner() }
-#[tauri::command] fn clear_recents() -> Result<(), String> { save_recents(&vec![]); Ok(()) }
+#[tauri::command] fn clear_recents() -> Result<(), String> {
+    save_recents(&vec![]);
+    save_recent_games(&vec![]);
+    Ok(())
+}
 #[tauri::command] fn clear_art_cache() -> Result<(), String> {
     save_art_cache(&HashMap::new());
     save_hero_cache(&HashMap::new());

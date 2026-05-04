@@ -229,6 +229,8 @@
   "cache": {
     "clearing": "Clearing Cache",
     "removingFiles": "Removing cached artwork files…",
+    "clearingRecents": "Clearing Recently Played",
+    "removingRecents": "Removing recently played history…",
     "downloadingArtwork": "Downloading Artwork",
     "startingDownload_one": "Starting download for {{count}} game…",
     "startingDownload_other": "Starting download for {{count}} games…",

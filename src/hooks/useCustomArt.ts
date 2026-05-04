@@ -1,0 +1,112 @@
+import { useCallback, useRef, useState } from "react";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import type { App } from "../types";
+
+type ArtMap = Record<string, string>;
+
+export function useCustomArt() {
+  const [gameArt, setGameArt] = useState<ArtMap>({});
+  const [heroStatic, setHeroStatic] = useState<ArtMap>({});
+  const [heroAnimated, setHeroAnimated] = useState<ArtMap>({});
+  const [customArt, setCustomArt] = useState<ArtMap>({});
+  const [customHeroArt, setCustomHeroArt] = useState<ArtMap>({});
+
+  const customArtRef = useRef<ArtMap>({});
+  const customHeroArtRef = useRef<ArtMap>({});
+
+  const toUrl = useCallback((pathOrUrl?: string | null) => {
+    if (!pathOrUrl) return null;
+    if (pathOrUrl.startsWith("http")) return pathOrUrl;
+    return convertFileSrc(pathOrUrl);
+  }, []);
+
+  const loadCustomArt = useCallback(() => {
+    invoke<Record<string, string>>("get_custom_art")
+      .then(art => {
+        const heroArt: ArtMap = {};
+        const gridArt: ArtMap = {};
+        for (const [k, v] of Object.entries(art)) {
+          if (k.startsWith("hero:")) heroArt[k.slice(5)] = v;
+          else gridArt[k] = v;
+        }
+        setCustomArt(gridArt);
+        customArtRef.current = gridArt;
+        setCustomHeroArt(heroArt);
+        customHeroArtRef.current = heroArt;
+      })
+      .catch(() => {});
+  }, []);
+
+  const fetchGameArt = useCallback(async (
+    games: App[],
+    onProgress?: (done: number, total: number, lastName?: string) => void
+  ) => {
+    if (!games.length) return;
+
+    try {
+      const bulk = await invoke<Record<string, { grid?: string; hero_animated?: string; hero_static?: string }>>(
+        "get_cached_art_bulk",
+        { gameNames: games.map(g => g.name) }
+      );
+      const newGrid: ArtMap = {};
+      const newAnimated: ArtMap = {};
+      const newStatic: ArtMap = {};
+      games.forEach(game => {
+        const b = bulk[game.name];
+        if (!b) return;
+        if (b.grid) newGrid[game.id] = toUrl(b.grid) ?? "";
+        if (b.hero_animated) newAnimated[game.id] = toUrl(b.hero_animated) ?? "";
+        if (b.hero_static) newStatic[game.id] = toUrl(b.hero_static) ?? "";
+      });
+      if (Object.keys(newGrid).length) setGameArt(prev => ({ ...prev, ...newGrid }));
+      if (Object.keys(newAnimated).length) setHeroAnimated(prev => ({ ...prev, ...newAnimated }));
+      if (Object.keys(newStatic).length) setHeroStatic(prev => ({ ...prev, ...newStatic }));
+    } catch {}
+
+    let done = 0;
+    const total = games.length;
+    const BATCH = 4;
+    for (let i = 0; i < games.length; i += BATCH) {
+      const batchGrid: ArtMap = {};
+      const batchAnimated: ArtMap = {};
+      const batchStatic: ArtMap = {};
+      await Promise.all(games.slice(i, i + BATCH).map(game =>
+        invoke<{ grid?: string; hero_animated?: string; hero_static?: string }>("fetch_game_art", { gameName: game.name })
+          .then(bundle => {
+            if (bundle.grid) batchGrid[game.id] = toUrl(bundle.grid) ?? "";
+            if (bundle.hero_animated) batchAnimated[game.id] = toUrl(bundle.hero_animated) ?? "";
+            if (bundle.hero_static) batchStatic[game.id] = toUrl(bundle.hero_static) ?? "";
+            onProgress?.(++done, total, game.name);
+          })
+          .catch(() => { onProgress?.(++done, total, game.name); })
+      ));
+      if (Object.keys(batchGrid).length) setGameArt(prev => ({ ...prev, ...batchGrid }));
+      if (Object.keys(batchAnimated).length) setHeroAnimated(prev => ({ ...prev, ...batchAnimated }));
+      if (Object.keys(batchStatic).length) setHeroStatic(prev => ({ ...prev, ...batchStatic }));
+    }
+  }, [toUrl]);
+
+  const clearGameArt = useCallback(() => {
+    setGameArt({});
+    setHeroAnimated({});
+    setHeroStatic({});
+  }, []);
+
+  return {
+    gameArt,
+    setGameArt,
+    heroStatic,
+    setHeroStatic,
+    heroAnimated,
+    setHeroAnimated,
+    customArt,
+    setCustomArt,
+    customHeroArt,
+    setCustomHeroArt,
+    customArtRef,
+    customHeroArtRef,
+    loadCustomArt,
+    fetchGameArt,
+    clearGameArt,
+  };
+}
