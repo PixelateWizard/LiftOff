@@ -2057,6 +2057,7 @@ async fn launch_app(
     id: String,
     name: String,
     app_type: String,
+    run_as_admin: Option<bool>,
     app_handle: tauri::AppHandle
 ) -> Result<(), String> {
     let mut recents = load_recents();
@@ -2099,14 +2100,15 @@ async fn launch_app(
         // BNet spawns the game as a separate process; use snapshot-diff approach.
         child_pid = 0;
     } else if path.starts_with("steam://") {
-        // cmd /C start routes steam:// to the already-running Steam instance
-        // without opening the full client window (same mechanism Steam's own shortcuts use)
-        std::process::Command::new("cmd")
-            .args(["/C", "start", &path])
+        // Route through explorer.exe so the launch is always dispatched at
+        // Medium integrity (normal user level), even when LiftOff is elevated.
+        // This keeps tools like AnyFSE, which hook into game launches at
+        // normal integrity, able to intercept the launch correctly.
+        std::process::Command::new("explorer.exe")
+            .arg(&path)
             .creation_flags(CREATE_NO_WINDOW)
             .spawn()
             .map_err(|e| e.to_string())?;
-        // Steam handles the launch; game PID is not recoverable from cmd.
         child_pid = 0;
     } else if path.starts_with("shell:") {
         // shell:AppsFolder\{aumid} — UWP / Xbox Game Pass titles.
@@ -2150,12 +2152,35 @@ async fn launch_app(
         }
         child_pid = 0;
     } else {
-        // Direct exe — spawn without a cmd wrapper so we get the game's own PID.
-        let child = std::process::Command::new(&path)
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-            .map_err(|e| e.to_string())?;
-        child_pid = child.id();
+        // Direct exe launches can either spawn normally or elevate just this process.
+        let elevate = run_as_admin.unwrap_or(false);
+
+        if elevate {
+            // ShellExecuteW with "runas" triggers UAC for just this process.
+            // LiftOff itself does not need to be running as admin.
+            unsafe {
+                let op:   Vec<u16> = std::ffi::OsStr::new("runas")
+                    .encode_wide().chain(std::iter::once(0)).collect();
+                let file: Vec<u16> = std::ffi::OsStr::new(&path)
+                    .encode_wide().chain(std::iter::once(0)).collect();
+                ShellExecuteW(
+                    windows::Win32::Foundation::HWND::default(),
+                    windows::core::PCWSTR(op.as_ptr()),
+                    windows::core::PCWSTR(file.as_ptr()),
+                    windows::core::PCWSTR::null(),
+                    windows::core::PCWSTR::null(),
+                    SW_SHOWNORMAL,
+                );
+            }
+            // PID not recoverable from ShellExecute; fast-dismiss after delay.
+            child_pid = 0;
+        } else {
+            let child = std::process::Command::new(&path)
+                .creation_flags(CREATE_NO_WINDOW)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+            child_pid = child.id();
+        }
     }
 
     // Watch for the launched window in a background thread, then notify the frontend.

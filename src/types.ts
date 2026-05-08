@@ -6,7 +6,13 @@ export interface App {
   source?: string;
   launch_path?: string;
   icon_base64?: string;
+  runAsAdmin?: boolean;
   [key: string]: unknown;
+}
+
+export interface GameEntry extends App {
+  app_type?: "game";
+  runAsAdmin?: boolean;
 }
 
 /** Theme text colors */

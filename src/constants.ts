@@ -4,6 +4,13 @@ export const TABS = ["Home", "Games", "Apps", "Settings"] as const;
 export const APP_VERSION = "2.0.0";
 export const GITHUB_REPO = "PixelateWizard/LiftOff";
 
+// Key: `admin_pref_${gameId}`, Value: boolean
+export const getRunAsAdmin = (id: string): boolean =>
+  JSON.parse(localStorage.getItem(`admin_pref_${id}`) ?? "false");
+
+export const setRunAsAdmin = (id: string, val: boolean): void =>
+  localStorage.setItem(`admin_pref_${id}`, JSON.stringify(val));
+
 export const ACCENTS: Record<string, {
   primary: string; light: string; dark: string; glow: string; lightBg: string; lightPrimary?: string; lightGlow?: string; darkText?: boolean; lightDarkText?: boolean;
 }> = {

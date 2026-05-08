@@ -9,6 +9,8 @@ interface MenuItem {
   label: string;
   action: () => void;
   danger?: boolean;
+  sublabel?: string;
+  checked?: boolean;
 }
 
 interface Props {
@@ -68,7 +70,7 @@ export default function ContextMenuModal({ app, items, onClose }: Props) {
       onOverlayClick={onClose}
     >
       <div style={{ padding: "8px 0" }}>
-        {items.map(({ label, action, danger }, i) => {
+        {items.map(({ label, action, danger, sublabel, checked }, i) => {
           const focused = focusIdx === i;
           return (
             <div
@@ -76,11 +78,14 @@ export default function ContextMenuModal({ app, items, onClose }: Props) {
               onClick={action}
               onMouseEnter={() => { setFocusIdx(i); focusIdxRef.current = i; }}
               style={{
-                padding: "12px 24px",
+                padding: sublabel ? "10px 18px 10px 24px" : "12px 24px",
                 cursor: "pointer",
                 fontSize: 14,
                 fontWeight: 500,
                 color: danger ? "#e85a5a" : theme.text,
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
                 background: focused
                   ? (danger ? "rgba(232,90,90,0.1)" : (isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)"))
                   : "transparent",
@@ -88,7 +93,39 @@ export default function ContextMenuModal({ app, items, onClose }: Props) {
                 transition: "background 0.1s, border-color 0.1s",
               }}
             >
-              {label}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div>{label}</div>
+                {sublabel && (
+                  <div style={{ marginTop: 3, fontSize: 11, lineHeight: 1.25, fontWeight: 400, color: theme.textFaint }}>
+                    {sublabel}
+                  </div>
+                )}
+              </div>
+              {typeof checked === "boolean" && (
+                <div
+                  aria-hidden="true"
+                  style={{
+                    width: 34,
+                    height: 18,
+                    borderRadius: 999,
+                    flexShrink: 0,
+                    padding: 2,
+                    background: checked ? accent.primary : (isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.14)"),
+                    transition: "background 0.12s",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: "50%",
+                      background: checked ? "#fff" : (isDark ? "rgba(255,255,255,0.72)" : "rgba(255,255,255,0.95)"),
+                      transform: checked ? "translateX(16px)" : "translateX(0)",
+                      transition: "transform 0.12s",
+                    }}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
