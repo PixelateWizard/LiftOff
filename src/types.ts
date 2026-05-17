@@ -58,6 +58,7 @@ export interface Settings {
   accent: string;
   theme: ThemeMode;
   stars_enabled: boolean;
+  lofi_music_enabled: boolean;
   wide_layout: boolean;
   transparent_bars: boolean;
   transparent_topbar: boolean;

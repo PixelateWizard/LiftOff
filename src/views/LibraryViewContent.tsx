@@ -159,7 +159,7 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                           onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
                           onDoubleClick={() => triggerLaunch(app, recent)}
                           onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
-                          style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
+                          style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
                             border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
                             borderRadius: isPixel ? 0 : 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
                             ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}),
@@ -231,7 +231,7 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                       onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recent)}
                       onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
-                      style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
+                      style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
                         border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
                         borderRadius: isPixel ? 0 : 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
                         ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}),

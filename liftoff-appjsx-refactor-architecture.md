@@ -18,6 +18,7 @@ The north star: `App.jsx` should become the orchestration layer, not the entire 
   - `src/constants`
 - `src/contexts/ThemeContext.tsx` already exposes typed theme values.
 - `src/contexts/SettingsContext.tsx` already exposes typed settings values.
+- `src/theme/surfaces.ts` now centralizes theme/surface visual tokens through `useSurfaceTheme`, including `glass`, `glassBar`, `settingsRowGlass`, `surface`, `appBg`, and background glow values. Future theme and surface work should extend this layer instead of adding more inline styling branches to `App.jsx`.
 - `src/types.ts` already defines useful shared types such as:
   - `App`
   - `Settings`

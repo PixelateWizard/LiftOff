@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Expanded animated theme environments** - added Aurora, Synthwave, Lofi, Forest, and Webcore/Win9X theme support alongside the existing Space, Sky, Plasma, Cinder, and Wash environments.
+- **Win9X surface style** - renamed the former Pixel surface to Win9X and added square-edged, desktop-shell-inspired chrome, app cards, modals, title bars, dark-mode coloring, and Webcore-specific window styling.
+- **Webcore background refresh** - replaced the plain gray/Webcore window background with a Windows XP-inspired sky treatment using soft cloud puffs and a bouncing LiftOff logo screensaver element.
+- **Immersive Home hero-art toggle** - added a setting that keeps the immersive Home carousel, selected title, and cover art visible while hiding the large hero background artwork so the active theme background can show through.
+- **Shared surface token layer** - moved theme/surface styling decisions into `src/theme/surfaces.ts` via `useSurfaceTheme`, centralizing card, bar, settings-row, background, and surface tokens outside `App.jsx`.
+- **Cyberpunk HUD prototype** - replaced the in-progress cyberpunk skyline/rain experiment with a holographic HUD background prototype including grid lines, scan sweep, corner brackets, HUD readouts, hex outlines, and horizontal glitch sparks. Cyberpunk is kept in code but temporarily removed from the public theme selector.
+- **Lofi background music** - added theme-scoped Lofi background music that loops only while the Lofi theme is active, pauses when switching away, and can be disabled from Settings.
+
+### Changed
+- **Theme surface defaults updated** - Plasma now defaults to Neon, Forest defaults to Glass, Webcore defaults to Win9X, and Lofi defaults to Obsidian while manual Surface Style selection remains independent after theme selection.
+- **Synthwave background layering** - adjusted the synthwave ground/mountain layer so it no longer blocks app content.
+- **Webcore/Win9X UI polish** - removed rounded corners from Webcore app cards, nav, pills, and modals; aligned modal title bars with the Win9X-style nav title bar; and removed translucent focused settings/card states from the surface.
+- **Webcore immersive Home polish** - removed the cover-art gradient overlay in Webcore immersive Home and added a Win9X popup-style content shell behind the hero content.
+- **Forest background polish** - replaced sharp triangular tree silhouettes with more organic pine shapes.
+- **Settings nested tray borders** - reduced the odd border treatment around nested settings groups for non-Win9X surfaces while preserving Win9X bevel styling.
+- **Obsidian app tiles** - app tiles now use the same darker, low-transparency Obsidian treatment as the nav instead of picking up bright colour bleed from the background artwork.
+- **Lofi video background cleanup** - removed the old Lofi CSS-driven overlay animations now that the theme uses an animated MP4 background.
+- **Theme selector cleanup** - Cyberpunk is temporarily hidden from the theme cycle until the HUD prototype is ready for release.
+
 ## [2.0.0] - Alpha 1 & 2
 
 ### Added

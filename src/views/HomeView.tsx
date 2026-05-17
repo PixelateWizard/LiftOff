@@ -565,7 +565,7 @@ export function HomeView(props: HomeViewProps) {
                   <div key={app.id} ref={focused ? focusedCardRef : null}
                     onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                     onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                    style={{ ...glass, background: surfaceStyle === "material" ? "var(--material-elevation-2)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)", backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
+                    style={{ ...glass, background: surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)", backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
                       border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : tintBorder}`,
                       flexShrink: 0, borderRadius: surfaceCardRadius, cursor: "pointer", transition: "all 0.15s ease",
                       width: CARD_W, height: CARD_H, boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px", position: "relative",

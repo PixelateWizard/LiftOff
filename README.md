@@ -22,8 +22,8 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 - **Launch focus feedback** — after a launch succeeds, LiftOff checks whether Windows focused the app, keeps the overlay open if the app appears to be running behind LiftOff, and offers a controller-friendly **Try to focus again** action
 - **Manage visibility** — hide apps from view and restore them anytime from the same menu
 - **Search** — on-screen virtual keyboard for controller-only searching
-- **Animated themes** — Space, Sky, Plasma, Cinder, and Wash are animated environments; Wash uses rich liquid tie-dye marble-ink color fields with optimized edge fills for smooth navigation
-- **Surface Style** — four visual materials: Glass (frosted blur panels), Aero (polished transparent acrylic with sharp specular highlights), Material (solid opaque paper-textured cards with shadow-based elevation and clear focus states), and Clear (flat matte)
+- **Animated themes** — Space, Sky, Plasma, Cinder, Wash, Aurora, Synthwave, Lofi, Forest, and Webcore are animated environments; Webcore pairs with the Win9X surface for a retro desktop-shell look
+- **Surface Style** — visual materials include Glass, Aero, Material, Clear, Obsidian, Neon, and Win9X, with theme-specific defaults that can still be overridden manually
 - **Recent apps** — quick access to what you launched last; Home recents support large card sizes with horizontal gamepad scrolling
 - **Battery indicator** — shows charge level and charging status with light/dark contrast-safe charging colors
 - **Controller test** — live button and axis display in Settings to verify your gamepad mapping
@@ -84,11 +84,12 @@ After launching an app or game, LiftOff keeps the launch overlay visible long en
 | Setting | Description |
 |---------|-------------|
 | Accent Color | Ember, Ocean, Neon, Rose, Midnight |
-| Theme | Space / Sky / Plasma / Cinder / Wash |
-| Theme Surface Defaults | Space → Clear, Sky → Aero, Plasma → Glass, Cinder → Glass, Wash → Material; Surface Style can still be changed manually afterward |
-| Surface Style | Glass — frosted blur panels; Aero — polished acrylic with specular highlights, glossy active elements, and a subtle neutral depth gradient behind the UI; Material — opaque paper-textured cards, tighter 8px card radii, inset grouped settings, warmer cream light surfaces, dark aged-paper tooth, stronger focused-row elevation, and soft physical shadows; Clear — flat matte with the same 16px primary surface radii as Glass/Aero. Immersive drawers follow the active surface: glassy Glass/Aero, subtly translucent Clear, opaque Material |
-| Immersive Home | Fullscreen cinematic hero with floating pinned shelf; when the bottom bar and collections drawer are hidden, pinned items and hero content settle into the freed bottom lane. The slide-up drawer supports horizontal recents and collection rows with unclipped focus shadows |
+| Theme | Space / Sky / Plasma / Cinder / Wash / Aurora / Synthwave / Lofi / Forest / Webcore. Cyberpunk remains in code as a prototype but is temporarily hidden from the selector |
+| Theme Surface Defaults | Space -> Clear, Sky -> Aero, Plasma -> Neon, Cinder -> Glass, Wash -> Material, Aurora -> Glass, Synthwave -> Aero, Lofi -> Obsidian, Forest -> Glass, Webcore -> Win9X; Surface Style can still be changed manually afterward |
+| Surface Style | Glass - frosted blur panels; Aero - polished acrylic with specular highlights; Material - opaque paper-textured cards with shadow-based elevation; Clear - flat matte; Obsidian - dark restrained surfaces; Neon - high-glow arcade surfaces; Win9X - square retro desktop-shell surfaces with bevels, title bars, and no rounded corners |
+| Immersive Home | Fullscreen cinematic hero with floating pinned shelf; when the bottom bar and collections drawer are hidden, pinned items and hero content settle into the freed bottom lane. The slide-up drawer supports horizontal recents and collection rows with unclipped focus shadows. Webcore/Win9X can hide the large hero artwork so the theme background remains visible |
 | Show Cover on Home | Show the 2:3 cover art card in the hero section |
+| Show Immersive Hero Art | When Immersive Home is enabled, show or hide the large background hero artwork while keeping hero selection and cover artwork visible |
 | Show Pinned on Home | Show or hide the pinned items shelf on the home screen |
 | Show Collections on Home | Display game/app collections as card rows on the home screen |
 | Scan Steam | Include Steam games (supports custom install paths) |
@@ -100,7 +101,8 @@ After launching an app or game, LiftOff keeps the launch overlay visible long en
 | Default Tab | Which tab opens on launch |
 | Stick Repeat Speed | How fast held directions repeat (Slow / Normal / Fast) |
 | Launch at Startup | Start LiftOff with Windows |
-| Theme Effects | Toggle the active theme's background effects: stars, clouds, plasma, cinder, or wash |
+| Theme Effects | Toggle the active theme's background effects, including stars, clouds, plasma, cinder, wash, aurora, synthwave, lofi, forest, and Webcore effects |
+| Lo-fi Music | When the Lofi theme is active, toggle the theme's looping background music |
 | Hero Art Mode | Static / Animated / Custom — Static forces static banners everywhere; Animated uses animated art everywhere; Custom lets you choose per game via Change Hero Art |
 | UI Scale | Override the automatic UI scale (useful for non-standard display sizes) |
 | Controller Test | Live display of button states and axes for your active gamepad |

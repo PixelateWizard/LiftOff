@@ -43,7 +43,7 @@ export const THEMES: Record<string, { text: string; textDim: string; textFaint: 
 
 export const THEME_OPTIONS = [
   "space", "sky", "plasma", "cinder", "wash",
-  "aurora", "synthwave", "cyberpunk", "lofi", "forest", "webcore",
+  "aurora", "synthwave", "lofi", "forest", "webcore",
 ] as const;
 
 export const THEME_SURFACE_DEFAULTS: Record<string, string> = {
@@ -55,7 +55,7 @@ export const THEME_SURFACE_DEFAULTS: Record<string, string> = {
   aurora: "glass",
   synthwave: "aero",
   cyberpunk: "neon",
-  lofi: "material",
+  lofi: "obsidian",
   forest: "glass",
   webcore: "win9x",
 };
@@ -111,7 +111,7 @@ export const KB_NUMS = [
 export const SCAN_KEYS = ["scan_steam", "scan_xbox", "scan_uwp", "scan_desktop", "scan_battlenet"] as const;
 
 export const DEFAULT_SETTINGS = {
-  accent: "ember", theme: "space", stars_enabled: true, wide_layout: false, transparent_bars: false, transparent_topbar: false, transparent_bottombar: false, hide_bottom_bar: false,
+  accent: "ember", theme: "space", stars_enabled: true, lofi_music_enabled: true, wide_layout: false, transparent_bars: false, transparent_topbar: false, transparent_bottombar: false, hide_bottom_bar: false,
   default_tab: "Home", scan_steam: true, scan_xbox: true,
   scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
   launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,

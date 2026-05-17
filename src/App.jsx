@@ -571,35 +571,26 @@ export default function App() {
       ".theme-synthwave-horizon { animation:synthHorizonShim 7s ease-in-out infinite; }",
       "@keyframes cyberNeonPulse { 0%,100%{opacity:0.52} 50%{opacity:0.82} }",
       "@keyframes cyberNeonFlicker { 0%,84%,100%{opacity:1} 85%,87%{opacity:0.2} 91%,93%{opacity:0.65} }",
-      "@keyframes cyberRainFall { 0%{transform:translateY(-60px);opacity:0} 8%{opacity:1} 92%{opacity:0.65} 100%{transform:translateY(108vh) translateX(-50px);opacity:0} }",
+      "@keyframes cyberScanSweep { 0% { top: -2px; opacity:0.9; } 85% { opacity:0.7; } 100% { top: 100vh; opacity:0; } }",
+      "@keyframes cyberGlitchSpark { 0%,100%{opacity:0;transform:scaleX(0)} 6%{opacity:0.9;transform:scaleX(1)} 11%{opacity:0.4;transform:scaleX(0.5)} 15%{opacity:0.8;transform:scaleX(0.8)} 22%,100%{opacity:0;transform:scaleX(0)} }",
+      "@keyframes cyberHexPulse { 0%,100%{opacity:0.08} 50%{opacity:0.26} }",
+      "@keyframes cyberHudFade  { 0%,100%{opacity:0.20} 50%{opacity:0.55} }",
       ".theme-cyberpunk-glow { animation:cyberNeonPulse 7s ease-in-out infinite; }",
       ".theme-cyberpunk-glow-2 { animation:cyberNeonPulse 9s ease-in-out infinite; animation-delay:-4s; }",
       ".theme-cyberpunk-horizon { animation:cyberNeonPulse 5s ease-in-out infinite; }",
       ".theme-cyberpunk-flicker-1 { animation:cyberNeonFlicker 4s ease-in-out infinite; }",
       ".theme-cyberpunk-flicker-2 { animation:cyberNeonFlicker 5.5s ease-in-out infinite; animation-delay:-2s; }",
-      ".theme-cyberpunk-rain { position:fixed; z-index:2; border-radius:1px; pointer-events:none; animation-name:cyberRainFall; animation-timing-function:linear; animation-iteration-count:infinite; filter:drop-shadow(0 0 5px rgba(180,240,255,0.45)); }",
-      "@keyframes lofiGlowPulse { 0%,100%{opacity:0.28;transform:translate(-50%,-50%) scale(0.82);filter:brightness(0.95)} 50%{opacity:0.82;transform:translate(-50%,-50%) scale(1.24);filter:brightness(1.2)} }",
-      "@keyframes lofiLampBloom { 0%,100%{transform:translate(-50%,-50%) scale(0.94);filter:blur(10px) brightness(0.92)} 50%{transform:translate(-50%,-50%) scale(1.12);filter:blur(12px) brightness(1.16)} }",
-      "@keyframes lofiStarTwinkle { 0%,100%{opacity:0.30;transform:translate(-50%,-50%) scale(0.72)} 42%{opacity:1;transform:translate(-50%,-50%) scale(1.58)} 72%{opacity:0.62;transform:translate(-50%,-50%) scale(1.06)} }",
-      "@keyframes lofiMoonBreath { 0%,100%{opacity:0.32;filter:brightness(0.95)} 50%{opacity:0.74;filter:brightness(1.24)} }",
-      "@keyframes lofiMoonRimPulse { 0%,100%{opacity:0.28;transform:translate(-50%,-50%) scale(0.99)} 50%{opacity:0.62;transform:translate(-50%,-50%) scale(1.025)} }",
-      "@keyframes lofiWindowShimmer { 0%,100%{opacity:0.18;transform:translateX(-2%)} 50%{opacity:0.60;transform:translateX(2%)} }",
-      "@keyframes lofiSteamRise { 0%{transform:translateY(10px) translateX(0) scaleX(0.85);opacity:0} 34%{opacity:0.56} 68%{opacity:0.34} 100%{transform:translateY(-34px) translateX(10px) scaleX(1.2);opacity:0} }",
-      "@keyframes lofiHairBreeze { 0%,100%{opacity:0.24;transform:translateX(0) translateY(0) rotate(0deg)} 38%{opacity:0.68;transform:translateX(10px) translateY(-4px) rotate(-0.7deg)} 66%{opacity:0.44;transform:translateX(16px) translateY(1px) rotate(0.5deg)} }",
-      "@keyframes lofiGrainShift { 0%,100%{opacity:0.16} 50%{opacity:0.23} }",
-      ".theme-lofi-lamp { animation:lofiGlowPulse 8s ease-in-out infinite; }",
-      ".theme-lofi-window { animation:lofiGlowPulse 10s ease-in-out infinite; }",
-      ".theme-lofi-dust { position:fixed; border-radius:50%; pointer-events:none; animation-name:lofiSteamRise; animation-timing-function:ease-in-out; animation-iteration-count:infinite; will-change:transform,opacity; }",
-      ".lofi-effects { pointer-events:none; }",
-      ".lofi-light-glow { animation:lofiGlowPulse ease-in-out infinite; will-change:transform,opacity,filter; transform:translate(-50%,-50%); }",
-      ".lofi-lamp-glow { animation:lofiLampBloom ease-in-out infinite; will-change:transform,filter; }",
-      ".lofi-star { animation:lofiStarTwinkle ease-in-out infinite; will-change:transform,opacity; transform-origin:center; }",
-      ".lofi-moon-halo { animation:lofiMoonBreath 10s ease-in-out infinite; will-change:opacity,filter; }",
-      ".lofi-moon-rim { animation:lofiMoonRimPulse 10s ease-in-out infinite; will-change:transform,opacity; }",
-      ".lofi-window-shimmer { animation:lofiWindowShimmer 9s ease-in-out infinite; will-change:transform,opacity; }",
-      ".lofi-steam { animation:lofiSteamRise ease-in-out infinite; will-change:transform,opacity; transform-origin:bottom center; }",
-      ".lofi-hair-wisp { animation:lofiHairBreeze ease-in-out infinite; will-change:transform,opacity; vector-effect:non-scaling-stroke; }",
-      ".lofi-grain { animation:lofiGrainShift 12s steps(2,end) infinite; will-change:opacity; }",
+      ".theme-cyberpunk-scan { animation:cyberScanSweep 9s linear infinite; }",
+      ".theme-cyberpunk-hex-0 { animation:cyberHexPulse 14s ease-in-out infinite; }",
+      ".theme-cyberpunk-hex-1 { animation:cyberHexPulse 19s ease-in-out infinite; animation-delay:-5s; }",
+      ".theme-cyberpunk-hex-2 { animation:cyberHexPulse 23s ease-in-out infinite; animation-delay:-9s; }",
+      ".theme-cyberpunk-hex-3 { animation:cyberHexPulse 17s ease-in-out infinite; animation-delay:-13s; }",
+      ".theme-cyberpunk-hud-0 { animation:cyberHudFade 13s ease-in-out infinite; }",
+      ".theme-cyberpunk-hud-1 { animation:cyberHudFade 13s ease-in-out infinite; animation-delay:-2.5s; }",
+      ".theme-cyberpunk-hud-2 { animation:cyberHudFade 13s ease-in-out infinite; animation-delay:-5s; }",
+      ".theme-cyberpunk-hud-3 { animation:cyberHudFade 13s ease-in-out infinite; animation-delay:-7.5s; }",
+      ".theme-cyberpunk-hud-4 { animation:cyberHudFade 13s ease-in-out infinite; animation-delay:-10s; }",
+      ".theme-cyberpunk-rain { position:fixed; z-index:2; pointer-events:none; transform-origin:left center; animation-name:cyberGlitchSpark; animation-timing-function:ease-in-out; animation-iteration-count:infinite; }",
       "@keyframes forestMoonBeam { 0%,100%{opacity:0.55} 50%{opacity:0.72} }",
       "@keyframes forestFogDrift { 0%,100%{transform:translateX(0)} 50%{transform:translateX(2%)} }",
       "@keyframes forestFireflyDrift { 0%{transform:translate(0,0)} 25%{transform:translate(14px,-10px)} 50%{transform:translate(6px,-22px)} 75%{transform:translate(-8px,-14px)} 100%{transform:translate(0,0)} }",
@@ -622,7 +613,7 @@ export default function App() {
       ".theme-webcore-ghost-2 { animation:webGhostFloat2 22s ease-in-out infinite, webWinFlicker2 24s ease-in-out infinite; animation-delay:-8s; }",
       ".theme-webcore-ghost-3 { animation:webGhostFloat3 25s ease-in-out infinite, webWinFlicker3 30s ease-in-out infinite; animation-delay:-12s; }",
       ".theme-webcore-cursor { animation:webCursorBlink 1.1s step-end infinite; }",
-      "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-w1, .theme-wash-w2, .theme-wash-w3, .theme-wash-c1, .theme-wash-c2, .theme-wash-mix, .theme-wash-bleed1, .theme-wash-bleed2, .theme-wash-pink, .theme-aurora-b1, .theme-aurora-b2, .theme-aurora-b3, .theme-aurora-b4, .theme-aurora-shimmer, .theme-synthwave-sun, .theme-synthwave-horizon, .theme-cyberpunk-glow, .theme-cyberpunk-glow-2, .theme-cyberpunk-horizon, .theme-cyberpunk-flicker-1, .theme-cyberpunk-flicker-2, .theme-cyberpunk-rain, .theme-lofi-lamp, .theme-lofi-window, .theme-lofi-dust, .theme-lofi-light, .theme-lofi-glow, .theme-lofi-star, .theme-lofi-steam, .theme-lofi-grain, .lofi-light-glow, .lofi-lamp-glow, .lofi-star, .lofi-steam, .lofi-moon-halo, .lofi-moon-rim, .lofi-window-shimmer, .lofi-hair-wisp, .lofi-grain, .theme-forest-moonbeam, .theme-forest-fog, .theme-forest-fog-2, .theme-forest-firefly, .theme-webcore-ghost-0, .theme-webcore-ghost-1, .theme-webcore-ghost-2, .theme-webcore-ghost-3, .theme-webcore-cursor, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } .lofi-light-glow, .lofi-lamp-glow, .lofi-star, .lofi-steam, .lofi-moon-halo, .lofi-moon-rim, .lofi-window-shimmer, .lofi-hair-wisp, .lofi-grain { opacity:0.12 !important; } }",
+      "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-w1, .theme-wash-w2, .theme-wash-w3, .theme-wash-c1, .theme-wash-c2, .theme-wash-mix, .theme-wash-bleed1, .theme-wash-bleed2, .theme-wash-pink, .theme-aurora-b1, .theme-aurora-b2, .theme-aurora-b3, .theme-aurora-b4, .theme-aurora-shimmer, .theme-synthwave-sun, .theme-synthwave-horizon, .theme-cyberpunk-glow, .theme-cyberpunk-glow-2, .theme-cyberpunk-horizon, .theme-cyberpunk-flicker-1, .theme-cyberpunk-flicker-2, .theme-cyberpunk-scan, .theme-cyberpunk-rain, .theme-forest-moonbeam, .theme-forest-fog, .theme-forest-fog-2, .theme-forest-firefly, .theme-webcore-ghost-0, .theme-webcore-ghost-1, .theme-webcore-ghost-2, .theme-webcore-ghost-3, .theme-webcore-cursor, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } }",
       "html, body { overflow-x: hidden; }",
       "* { scrollbar-width: none !important; -ms-overflow-style: none !important; }",
       "*::-webkit-scrollbar { display: none !important; }",
@@ -768,17 +759,23 @@ export default function App() {
     } else if (activeTheme === "cyberpunk") {
       const container = document.getElementById("cyberpunk-rain-container");
       if (container) {
-        for (let i = 0; i < 55; i++) {
-          const drop = document.createElement("div");
-          drop.className = "theme-cyberpunk-rain";
-          drop.style.width = Math.random() > 0.82 ? "1.5px" : "0.8px";
-          drop.style.height = (30 + Math.random() * 60) + "px";
-          drop.style.left = (Math.random() * 110 - 5) + "vw";
-          drop.style.top = (-Math.random() * 30) + "vh";
-          drop.style.background = "linear-gradient(180deg,transparent 0%,rgba(205,248,255,0.82) 58%,rgba(150,220,255,0.24) 100%)";
-          drop.style.animationDuration = (1.8 + Math.random() * 2.4) + "s";
-          drop.style.animationDelay = -(Math.random() * 4) + "s";
-          container.appendChild(drop);
+        for (let i = 0; i < 20; i++) {
+          const spark = document.createElement("div");
+          spark.className = "theme-cyberpunk-rain";
+          spark.style.width = `${20 + Math.random() * 90}px`;
+          spark.style.height = "1px";
+          spark.style.left = `${Math.random() * 94}vw`;
+          spark.style.top = `${Math.random() * 90}vh`;
+          const usePrimary = Math.random() > 0.45;
+          spark.style.background = usePrimary
+            ? `color-mix(in srgb, ${accent.primary} 70%, rgba(0,229,255,1) 30%)`
+            : "rgba(0,229,255,0.9)";
+          spark.style.boxShadow = usePrimary
+            ? `0 0 6px ${accent.primary}`
+            : "0 0 6px rgba(0,229,255,0.7)";
+          spark.style.animationDuration = `${4 + Math.random() * 9}s`;
+          spark.style.animationDelay = `-${Math.random() * 12}s`;
+          container.appendChild(spark);
         }
       }
     } else if (activeTheme === "forest") {

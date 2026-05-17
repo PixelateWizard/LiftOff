@@ -38,7 +38,9 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     D("theme", 0),
     { key: "accent",        section: 0, label: t("settings.accentColor"),  type: "accent" },
     { key: "theme",         section: 0, label: t("settings.theme"),         type: "cycle",  options: [...THEME_OPTIONS] },
-    { key: "stars_enabled", section: 0, label: bgLabel, type: "toggle" },
+    { key: "stars_enabled", section: 0, label: bgLabel, type: "toggle", subItems: activeTheme === "lofi" ? [
+      { key: "lofi_music_enabled", label: t("settings.lofiMusic"), type: "toggle" },
+    ] : undefined },
     { key: "surface_style", section: 0, label: t("settings.surfaceStyle"),                                                  type: "cycle",  options: ["glass", "aero", "material", "clear", "obsidian", "neon", "win9x"] },
 
     D("home", 0),

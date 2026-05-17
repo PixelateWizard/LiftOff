@@ -164,13 +164,13 @@ function win9xSurface(surface: SurfaceTokens): CSSProperties {
 
 function obsidianSurface(): CSSProperties {
   return {
-    background: "rgba(0,0,0,0.46)",
-    backdropFilter: "blur(18px)",
-    WebkitBackdropFilter: "blur(18px)",
-    border: "1px solid rgba(255,255,255,0.06)",
-    borderTop: "1px solid rgba(255,255,255,0.13)",
-    borderBottom: "1px solid rgba(0,0,0,0.40)",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.30)",
+    background: "linear-gradient(180deg, rgba(10,8,18,0.62), rgba(10,8,18,0.58))",
+    backdropFilter: "blur(18px) saturate(120%) brightness(0.82)",
+    WebkitBackdropFilter: "blur(18px) saturate(120%) brightness(0.82)",
+    border: "1px solid rgba(255,180,80,0.08)",
+    borderTop: "1px solid rgba(255,210,150,0.14)",
+    borderBottom: "1px solid rgba(0,0,0,0.44)",
+    boxShadow: "inset 0 1px 0 rgba(255,210,150,0.08), inset 0 -1px 0 rgba(0,0,0,0.32), 0 10px 30px rgba(0,0,0,0.22)",
   };
 }
 
@@ -330,7 +330,7 @@ export function useSurfaceTheme(args: SurfaceThemeArgs) {
     : resolvedTheme === "space"     ? "#070910"
     : resolvedTheme === "aurora"    ? "#020b14"
     : resolvedTheme === "synthwave" ? "#07020e"
-    : resolvedTheme === "cyberpunk" ? "#01030a"
+    : resolvedTheme === "cyberpunk" ? "#01060f"
     : resolvedTheme === "lofi"      ? "#1e1108"
     : resolvedTheme === "forest"    ? "#010a04"
     : resolvedTheme === "webcore"   ? surface.panelBg
@@ -343,7 +343,9 @@ export function useSurfaceTheme(args: SurfaceThemeArgs) {
       ? undefined
       : surfaceStyle === "aero"
         ? (isDark ? "blur(12px) saturate(140%) brightness(1.05)" : "blur(14px) saturate(140%) brightness(1.02)")
-        : (isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)");
+        : surfaceStyle === "obsidian"
+          ? "blur(18px) saturate(120%) brightness(0.82)"
+          : (isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)");
 
   return {
     materialTokens,
