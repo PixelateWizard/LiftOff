@@ -36,8 +36,15 @@ import { SteamGridArtPickerModal } from "./components/art/SteamGridArtPickerModa
 import { useSurfaceTheme } from "./theme/surfaces";
 import { launchApp } from "./hooks/useLaunchApp";
 import { useAudioFeedback } from "./hooks/useAudioFeedback";
+import { useCollections } from "./hooks/useCollections";
 import { useCustomArt } from "./hooks/useCustomArt";
+import { useCustomSources } from "./hooks/useCustomSources";
+import { useLibraryData } from "./hooks/useLibraryData";
+import { useModalState } from "./hooks/useModalState";
 import { usePersistentJson } from "./hooks/usePersistentJson";
+import { useSearchState } from "./hooks/useSearchState";
+import { useSystemStatus } from "./hooks/useSystemStatus";
+import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { detectPlatform, getBestGamepad, readGpState } from "./utils/gamepad";
 import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO,
@@ -46,70 +53,16 @@ import {
   getRunAsAdmin, setRunAsAdmin,
 } from "./constants";
 
-
-async function sampleIconColor(base64) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    const canvas = document.createElement("canvas");
-    canvas.width = 16; canvas.height = 16;
-    const ctx = canvas.getContext("2d");
-    const timer = setTimeout(() => resolve(null), 3000);
-    img.onload = () => {
-      clearTimeout(timer);
-      try {
-        ctx.drawImage(img, 0, 0, 16, 16);
-        const data = ctx.getImageData(0, 0, 16, 16).data;
-        let r = 0, g = 0, b = 0, count = 0;
-        for (let i = 0; i < data.length; i += 4) {
-          if (data[i + 3] > 30) { r += data[i]; g += data[i + 1]; b += data[i + 2]; count++; }
-        }
-        resolve(count > 0 ? { r: Math.round(r / count), g: Math.round(g / count), b: Math.round(b / count) } : null);
-      } catch { resolve(null); }
-    };
-    img.onerror = () => { clearTimeout(timer); resolve(null); };
-    img.src = `data:image/png;base64,${base64}`;
-  });
-}
-
 export default function App() {
   const { t } = useTranslation();
   const [tab, setTab]                               = useState("Home");
-  const [apps, setApps]                             = useState([]);
-  const [recent, setRecent]                         = useState([]);
-  const [recentGames, setRecentGames]               = useState([]);
-  const [pins, setPins]                             = useState([]);
-  const [hidden, setHidden]                         = useState([]);
-  const [iconColors, setIconColors]                 = useState({});
   const [gameSourceTab, setGameSourceTab]           = useState("All"); // "All" | "Steam" | "Xbox" | "Other"
   const [subtabFocusIndex, setSubtabFocusIndex]     = useState(0);    // index within subtab row
-  const [showHideModal, setShowHideModal]           = useState(false);
-  const [showLibraryActions, setShowLibraryActions] = useState(false);
-  const [showFileBrowser, setShowFileBrowser]       = useState(null);  // null | "file" | "folder"
   const [addAppType, setAddAppType]                 = useState("game"); // "game" | "app"
-  const [pendingFile, setPendingFile]               = useState(null);  // FileEntry from FileBrowser
-  const [customSources, setCustomSources]           = useState([]);    // extra source names
-  const [customFolders, setCustomFolders]           = useState([]);    // { id, path, source, app_type, enabled }
-  const [appCollections, setAppCollections]         = useState([]);    // { id, name }
-  const [appMemberships, setAppMemberships]         = useState({});    // app_id -> [collection_id, ...]
-  const [appCollectionTab, setAppCollectionTab]     = useState("All"); // selected collection in Apps tab
-  const [gameCollections, setGameCollections]       = useState([]);    // { id, name }
-  const [gameMemberships, setGameMemberships]       = useState({});    // game_id -> [collection_id, ...]
-  const [showColModal, setShowColModal]             = useState(false); // collection manager modal
-  const [colPickerApp, setColPickerApp]             = useState(null);  // app whose collections are being edited
-  const [confirmDelete, setConfirmDelete]           = useState(null);  // app pending deletion confirm
-  const [showFolderManager, setShowFolderManager]   = useState(false); // folder manager modal
   const [loading, setLoading]                       = useState(true);
   const [splashExiting, setSplashExiting]           = useState(false);
   const [focusSection, setFocusSection]             = useState("hero");
   const [focusIndex, setFocusIndex]                 = useState(0);
-  const [time, setTime]                             = useState("");
-  const [date, setDate]                             = useState("");
-  const [battery, setBattery]                       = useState(0);
-  const [charging, setCharging]                     = useState(false);
-  const [hasBattery, setHasBattery]                 = useState(false);
-  const [artPickerApp, setArtPickerApp]             = useState(null);
-  const [artPickerMode, setArtPickerMode]           = useState("grid"); // "grid" | "hero"
-  const [contextMenu, setContextMenu]               = useState(null); // { x, y, app, focusedIdx }
   const [adminPrefsVersion, setAdminPrefsVersion]   = useState(0);
   const [heroCustomType, setHeroCustomType]         = usePersistentJson("liftoff_heroCustomType", {});
   const [cacheClearLoading, setCacheClearLoading]   = useState(false);
@@ -119,13 +72,8 @@ export default function App() {
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
   const [settingsSection, setSettingsSection]       = useState(0);
   const [heroIndex, setHeroIndex]                   = useState(0);
-  const [updateStatus, setUpdateStatus]             = useState(null); // null | "checking" | "up_to_date" | "available" | "error"
-  const [updateInfo, setUpdateInfo]                 = useState(null);
-  const [libraryRefreshStatus, setLibraryRefreshStatus] = useState(null); // null | "scanning" | "done"
   const [sliderDraft, setSliderDraft] = useState({ key: null, value: null });
   const sliderDraftRef = useRef({ key: null, value: null });
-  const [editNameApp, setEditNameApp] = useState(null);
-  const editNameAppRef = useRef(null);
   const [homeColFocusRow, setHomeColFocusRow] = useState(0);
   const [homeColFocusCol, setHomeColFocusCol] = useState(0);
   const homeColFocusRowRef = useRef(0);
@@ -135,26 +83,8 @@ export default function App() {
   });
 
   // ── Search state ──────────────────────────────────────────────
-  const [searchOpen, setSearchOpen]               = useState(false);
-  const [searchQuery, setSearchQuery]             = useState("");
-  const [searchMode, setSearchMode]               = useState("keyboard");
-  const [searchFocusIndex, setSearchFocusIndex]   = useState(0);
-  const [kbRow, setKbRow]                         = useState(0);
-  const [kbCol, setKbCol]                         = useState(0);
-  const [kbNumMode, setKbNumMode]                 = useState(false);
-
-  const searchOpenRef       = useRef(false);
-  const searchQueryRef      = useRef("");
-  const searchModeRef       = useRef("keyboard");
-  const searchFocusIndexRef = useRef(0);
-  const kbRowRef            = useRef(0);
-  const kbColRef            = useRef(0);
-  const kbNumModeRef        = useRef(false);
   // ─────────────────────────────────────────────────────────────
 
-  const artPickerAppRef       = useRef(null);
-  const artPickerModeRef      = useRef("grid");
-  const contextMenuRef        = useRef(null);
   const focusedCardRef        = useRef(null);
   const focusedRowRef         = useRef(null);
   const searchFocusedCardRef  = useRef(null);   // FIX 3: focused search result card ref
@@ -171,28 +101,8 @@ export default function App() {
   const tabRef                = useRef("Home");
   const focusSectionRef       = useRef("hero");
   const focusIndexRef         = useRef(0);
-  const appsRef               = useRef([]);
-  const allAppsRef            = useRef([]); // every app ever seen, including hidden ones
-  const recentRef             = useRef([]);
-  const recentGamesRef        = useRef([]);
-  const pinsRef               = useRef([]);
-  const hiddenRef             = useRef([]);
   const gameSourceTabRef      = useRef("All");
   const subtabFocusIndexRef   = useRef(0);
-  const showHideModalRef        = useRef(false);
-  const showLibraryActionsRef   = useRef(false);
-  const showFileBrowserRef    = useRef(null);
-  const pendingFileRef        = useRef(null);
-  const customSourcesRef      = useRef([]);
-  const appCollectionsRef     = useRef([]);
-  const appMembershipsRef     = useRef({});
-  const appCollectionTabRef   = useRef("All");
-  const gameCollectionsRef    = useRef([]);
-  const gameMembershipsRef    = useRef({});
-  const showColModalRef       = useRef(false);
-  const colPickerAppRef       = useRef(null);
-  const confirmDeleteRef      = useRef(null);
-  const showFolderManagerRef  = useRef(false);
   const suppressUntilRelease  = useRef({}); // buttons held when modal closed — suppress until released
   const isReadyRef            = useRef(false);
   const heroVideoRefs         = useRef({});
@@ -205,6 +115,51 @@ export default function App() {
   // FIX 2: per-button press timestamp and repeating flag for hold-repeat in RAF
   const btnPressTime          = useRef({});
   const btnRepeating          = useRef({});
+
+  const { time, date, battery, charging, hasBattery } = useSystemStatus({
+    timeFormat: settings.time_format,
+    language: i18n.language,
+    settingsRef,
+  });
+  const {
+    searchOpen, searchQuery, searchMode, searchFocusIndex,
+    kbRow, kbCol, kbNumMode,
+    setSearchOpen, setSearchQuery, setSearchMode, setSearchFocusIndex,
+    setKbRow, setKbCol, setKbNumMode,
+    searchOpenRef, searchQueryRef, searchModeRef, searchFocusIndexRef,
+    kbRowRef, kbColRef, kbNumModeRef,
+    openSearch, closeSearch, switchSearchMode,
+    kbDelete, kbSpace, kbToggleNum, fireKey,
+  } = useSearchState();
+  const {
+    showHideModal, showLibraryActions, showFileBrowser, pendingFile,
+    showColModal, colPickerApp, confirmDelete, showFolderManager,
+    artPickerApp, artPickerMode, contextMenu, editNameApp,
+    setShowHideModal, setShowLibraryActions, setShowFileBrowser, setPendingFile,
+    setShowColModal, setColPickerApp, setConfirmDelete, setShowFolderManager,
+    setArtPickerApp, setArtPickerMode, setContextMenu, setEditNameApp,
+    showHideModalRef, showLibraryActionsRef, showFileBrowserRef, pendingFileRef,
+    showColModalRef, colPickerAppRef, confirmDeleteRef, showFolderManagerRef,
+    artPickerAppRef, artPickerModeRef, contextMenuRef, editNameAppRef,
+  } = useModalState();
+  const {
+    appCollections, setAppCollections, appCollectionsRef,
+    appMemberships, setAppMemberships, appMembershipsRef,
+    appCollectionTab, setAppCollectionTab, appCollectionTabRef,
+    gameCollections, setGameCollections, gameCollectionsRef,
+    gameMemberships, setGameMemberships, gameMembershipsRef,
+  } = useCollections();
+  const {
+    customSources,
+    setCustomSources,
+    customSourcesRef,
+    customFolders,
+    setCustomFolders,
+  } = useCustomSources();
+  const { updateStatus, updateInfo, checkForUpdates } = useUpdateCheck({
+    appVersion: APP_VERSION,
+    githubRepo: GITHUB_REPO,
+  });
 
   const { playSound, playSoundAlt, playSoundGameStart, playAppLoadedSound } = useAudioFeedback();
   const {
@@ -224,6 +179,30 @@ export default function App() {
     fetchGameArt,
     clearGameArt,
   } = useCustomArt();
+  const {
+    apps, setApps, appsRef, allAppsRef,
+    recent, setRecent, recentRef,
+    recentGames, setRecentGames, recentGamesRef,
+    pins, setPins, pinsRef,
+    hidden, setHidden, hiddenRef,
+    iconColors,
+    libraryRefreshStatus,
+    togglePin,
+    toggleHidden,
+    refreshLibrary,
+  } = useLibraryData({
+    fetchGameArt,
+    onLoaded: () => {
+      setSplashExiting(true);
+      playAppLoadedSound();
+      setTimeout(() => {
+        setLoading(false);
+        setTimeout(() => invoke("set_gamepad_ready"), 2000);
+        setTimeout(() => { isReadyRef.current = true; }, 200);
+      }, 800);
+    },
+    onLoadError: () => setLoading(false),
+  });
 
   const resolvedTheme = normalizeThemeKey(settings.theme);
   const isDark = isDarkThemeKey(resolvedTheme);
@@ -312,13 +291,6 @@ export default function App() {
   };
 
   // ── Pin helpers ───────────────────────────────────────────────
-  const togglePin = (app) => {
-    invoke("toggle_pin", { appId: app.id }).then((updatedPins) => {
-      setPins(updatedPins);
-      pinsRef.current = updatedPins;
-    }).catch(console.error);
-  };
-
   // ── Library Actions modal ─────────────────────────────────────
   const openLibraryActionsModal = () => {
     if (document.activeElement) document.activeElement.blur();
@@ -381,54 +353,7 @@ export default function App() {
     });
   };
 
-  const toggleHidden = (appId) => {
-    invoke("toggle_hidden", { appId }).then((updatedHidden) => {
-      setHidden(updatedHidden);
-      hiddenRef.current = updatedHidden;
-      // Update visible apps list reactively
-      setApps(prev => {
-        const isNowHidden = updatedHidden.includes(appId);
-        const next = isNowHidden
-          ? prev.filter(a => a.id !== appId)
-          : [...prev, allAppsRef.current.find(a => a.id === appId)].filter(Boolean);
-        appsRef.current = next;
-        return next;
-      });
-    }).catch(console.error);
-  };
-
   // ── Search helpers ────────────────────────────────────────────
-  const openSearch = () => {
-    setSearchOpen(true);       searchOpenRef.current = true;
-    setSearchQuery("");         searchQueryRef.current = "";
-    setSearchMode("keyboard");  searchModeRef.current = "keyboard";
-    setSearchFocusIndex(0);    searchFocusIndexRef.current = 0;
-    setKbRow(0);               kbRowRef.current = 0;
-    setKbCol(0);               kbColRef.current = 0;
-    setKbNumMode(false);       kbNumModeRef.current = false;
-  };
-
-  const closeSearch = () => {
-    setSearchOpen(false);      searchOpenRef.current = false;
-    setSearchQuery("");         searchQueryRef.current = "";
-    setSearchMode("keyboard");  searchModeRef.current = "keyboard";
-    setSearchFocusIndex(0);    searchFocusIndexRef.current = 0;
-    setKbRow(0);               kbRowRef.current = 0;
-    setKbCol(0);               kbColRef.current = 0;
-    setKbNumMode(false);       kbNumModeRef.current = false;
-  };
-
-  const switchSearchMode = (mode) => {
-    setSearchMode(mode); searchModeRef.current = mode;
-    if (mode === "results")  { setSearchFocusIndex(0); searchFocusIndexRef.current = 0; }
-    if (mode === "keyboard") { setKbRow(0); kbRowRef.current = 0; setKbCol(0); kbColRef.current = 0; }
-  };
-
-  const kbDelete    = () => { const next = searchQueryRef.current.slice(0, -1); setSearchQuery(next); searchQueryRef.current = next; setSearchFocusIndex(0); searchFocusIndexRef.current = 0; };
-  const kbSpace     = () => { const next = searchQueryRef.current + " ";        setSearchQuery(next); searchQueryRef.current = next; setSearchFocusIndex(0); searchFocusIndexRef.current = 0; };
-  const kbToggleNum = () => { const next = !kbNumModeRef.current; setKbNumMode(next); kbNumModeRef.current = next; setKbRow(0); kbRowRef.current = 0; setKbCol(0); kbColRef.current = 0; };
-  const fireKey     = (key) => { const next = searchQueryRef.current + key; setSearchQuery(next); searchQueryRef.current = next; setSearchFocusIndex(0); searchFocusIndexRef.current = 0; };
-
   const searchResults = searchQuery.trim().length === 0
     ? []
     : apps.filter(a => a.name.toLowerCase().includes(searchQuery.trim().toLowerCase()));
@@ -622,20 +547,6 @@ export default function App() {
     return () => style.remove();
   }, []);
 
-  useEffect(() => { showFileBrowserRef.current = showFileBrowser; }, [showFileBrowser]);
-  useEffect(() => { pendingFileRef.current = pendingFile; }, [pendingFile]);
-  useEffect(() => { customSourcesRef.current = customSources; }, [customSources]);
-  useEffect(() => { appCollectionsRef.current = appCollections; }, [appCollections]);
-  useEffect(() => { appMembershipsRef.current = appMemberships; }, [appMemberships]);
-  useEffect(() => { appCollectionTabRef.current = appCollectionTab; }, [appCollectionTab]);
-  useEffect(() => { gameCollectionsRef.current = gameCollections; }, [gameCollections]);
-  useEffect(() => { gameMembershipsRef.current = gameMemberships; }, [gameMemberships]);
-  useEffect(() => { showColModalRef.current = showColModal; }, [showColModal]);
-  useEffect(() => { colPickerAppRef.current = colPickerApp; }, [colPickerApp]);
-  useEffect(() => { confirmDeleteRef.current = confirmDelete; }, [confirmDelete]);
-  useEffect(() => { showFolderManagerRef.current = showFolderManager; }, [showFolderManager]);
-  useEffect(() => { editNameAppRef.current = editNameApp; }, [editNameApp]);
-
   // Auto-detect controller platform on gamepad connect
   useEffect(() => {
     const handleConnected = (e) => {
@@ -815,27 +726,6 @@ export default function App() {
     return () => document.querySelectorAll(particleSelector).forEach(s => s.remove());
   }, [settings.stars_enabled, settings.theme, settings.accent, loading, accent.primary, accent.light]);
 
-  useEffect(() => {
-    const tick = () => {
-      const now = new Date();
-      const locale = i18n.language || "en";
-      const fmt = settingsRef.current.time_format;
-      const use12 = fmt === "12h" || (fmt === "auto" && new Intl.DateTimeFormat(locale, { hour: "numeric" }).resolvedOptions().hour12);
-      setTime(now.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit", hour12: use12 }));
-      setDate(now.toLocaleDateString(locale, { weekday: "short", month: "short", day: "numeric" }));
-    };
-    tick();
-    const id = setInterval(tick, 10000);
-    return () => clearInterval(id);
-  }, [settings.time_format, i18n.language]);
-
-  useEffect(() => {
-    const fetchBattery = () => { invoke("get_battery").then(info => { if (info.percent > 0) { setBattery(info.percent); setHasBattery(true); } setCharging(info.charging); }); };
-    fetchBattery();
-    const id = setInterval(fetchBattery, 10000);
-    return () => clearInterval(id);
-  }, []);
-
   // Prevent the root scroller from accumulating scroll offset. At scale > 1 Chromium's
   // scrollIntoView (called by gamepad focus) can climb past the inner tabScrollRef and
   // scroll the root instead, shifting the tab content area up behind the sticky header.
@@ -869,61 +759,6 @@ export default function App() {
       });
     });
     loadCustomArt();
-    invoke("get_recents").then(recents => {
-      if (recents.length > 0) { setRecent(recents); recentRef.current = recents; }
-    });
-    invoke("get_recent_games").then(games => {
-      if (games.length > 0) { setRecentGames(games); recentGamesRef.current = games; }
-    });
-    invoke("get_pins").then(loadedPins => {
-      setPins(loadedPins); pinsRef.current = loadedPins;
-    });
-    invoke("get_custom_data").then(data => {
-      const sources = [...new Set([
-        ...data.apps.map(a => a.source),
-        ...data.folders.map(f => f.source),
-      ])].filter(s => !["Steam","Xbox","Battle.net","Other","steam","xbox","battlenet","desktop","uwp"].includes(s));
-      setCustomSources(sources); customSourcesRef.current = sources;
-      setCustomFolders(data.folders || []);
-    }).catch(() => {});
-    invoke("get_app_collections").then(cols => {
-      setAppCollections(cols); appCollectionsRef.current = cols;
-    }).catch(() => {});
-    invoke("get_app_memberships").then(m => {
-      setAppMemberships(m); appMembershipsRef.current = m;
-    }).catch(() => {});
-    invoke("get_game_collections").then(cols => {
-      setGameCollections(cols); gameCollectionsRef.current = cols;
-    }).catch(() => {});
-    invoke("get_game_memberships").then(m => {
-      setGameMemberships(m); gameMembershipsRef.current = m;
-    }).catch(() => {});
-    Promise.all([invoke("get_all_apps"), invoke("get_hidden")]).then(([all, loadedHidden]) => {
-      allAppsRef.current = all;
-      setHidden(loadedHidden); hiddenRef.current = loadedHidden;
-      const visible = all.filter(a => !loadedHidden.includes(a.id));
-      setApps(visible); appsRef.current = visible;
-      visible.filter(a => a.app_type !== "game" && a.icon_base64).forEach(a => {
-        sampleIconColor(a.icon_base64).then(color => {
-          if (color) setIconColors(prev => ({ ...prev, [a.id]: color }));
-        });
-      });
-      invoke("get_recents").then(recents => {
-        if (recents.length === 0) { setRecent(visible.slice(0, 10)); recentRef.current = visible.slice(0, 10); }
-      });
-      if (recentGamesRef.current.length === 0) {
-        const gamesFallback = visible.filter(a => a.app_type === "game").slice(0, 6);
-        setRecentGames(gamesFallback); recentGamesRef.current = gamesFallback;
-      }
-      fetchGameArt(visible.filter(a => a.app_type === "game"));
-      setSplashExiting(true);
-      playAppLoadedSound();
-      setTimeout(() => {
-        setLoading(false);
-        setTimeout(() => invoke("set_gamepad_ready"), 2000);
-        setTimeout(() => { isReadyRef.current = true; }, 200);
-      }, 800);
-    }).catch((e) => { console.error("Failed to load apps:", e); setLoading(false); });
   }, []);
   const handleClearCache = async () => {
     setCacheClearLoading(true);
@@ -995,42 +830,6 @@ export default function App() {
       invoke("save_settings", { settings: updated }).catch(console.error);
       return updated;
     });
-  };
-
-  const checkForUpdates = () => {
-    setUpdateStatus("checking");
-    fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`)
-      .then(r => r.json())
-      .then(data => {
-        const latest = data.tag_name?.replace(/^v/, "");
-        if (!latest) { setUpdateStatus("error"); return; }
-        if (latest === APP_VERSION) {
-          setUpdateStatus("up_to_date");
-        } else {
-          setUpdateStatus("available");
-          setUpdateInfo(latest);
-        }
-      })
-      .catch(() => setUpdateStatus("error"));
-  };
-
-  const refreshLibrary = () => {
-    if (libraryRefreshStatus === "scanning") return;
-    setLibraryRefreshStatus("scanning");
-    Promise.all([invoke("get_all_apps"), invoke("get_hidden")]).then(([all, loadedHidden]) => {
-      allAppsRef.current = all;
-      setHidden(loadedHidden); hiddenRef.current = loadedHidden;
-      const visible = all.filter(a => !loadedHidden.includes(a.id));
-      setApps(visible); appsRef.current = visible;
-      visible.filter(a => a.app_type !== "game" && a.icon_base64).forEach(a => {
-        sampleIconColor(a.icon_base64).then(color => {
-          if (color) setIconColors(prev => ({ ...prev, [a.id]: color }));
-        });
-      });
-      fetchGameArt(visible.filter(a => a.app_type === "game"));
-      setLibraryRefreshStatus("done");
-      setTimeout(() => setLibraryRefreshStatus(null), 2500);
-    }).catch(() => setLibraryRefreshStatus(null));
   };
 
   const filteredApps = apps.filter((a) => {

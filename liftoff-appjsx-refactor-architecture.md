@@ -19,6 +19,9 @@ The north star: `App.jsx` should become the orchestration layer, not the entire 
 - `src/contexts/ThemeContext.tsx` already exposes typed theme values.
 - `src/contexts/SettingsContext.tsx` already exposes typed settings values.
 - `src/theme/surfaces.ts` now centralizes theme/surface visual tokens through `useSurfaceTheme`, including `glass`, `glassBar`, `settingsRowGlass`, `surface`, `appBg`, and background glow values. Future theme and surface work should extend this layer instead of adding more inline styling branches to `App.jsx`.
+- The hooks extraction pass is now implemented. `App.jsx` delegates system status, search state, modal state, collections, custom sources, library data, and update checking to dedicated hooks under `src/hooks/`.
+- `useModalState` intentionally owns only modal state, setters, mirrored refs, and ref-sync effects. `App.jsx` still owns `closeHideModal`, `closeLibraryActionsModal`, and `closeArtPicker` because those functions include gamepad button-suppression behavior.
+- `useLibraryData` owns apps, recents, pins, hidden state, icon color sampling, library refresh, and initial library load. `App.jsx` still owns splash-exit timing and `set_gamepad_ready` through `onLoaded` / `onLoadError` callbacks.
 - `src/types.ts` already defines useful shared types such as:
   - `App`
   - `Settings`
@@ -84,7 +87,11 @@ src/
     usePersistentJson.ts
     useCustomArt.ts
     useCollections.ts
+    useCustomSources.ts
     useModalState.ts
+    useSearchState.ts
+    useSystemStatus.ts
+    useUpdateCheck.ts
 
   utils/
     gamepad.ts
@@ -283,22 +290,33 @@ app collections
 app-specific empty states
 ```
 
-### Phase 5: extract hooks after components are stable
+### Phase 5: hooks extraction
 
-Do not prematurely abstract. First move code, then simplify.
+Status: implemented.
 
-Create hooks only after the component extraction builds successfully.
-
-Suggested hooks:
+Implemented hooks:
 
 ```txt
 src/hooks/useLibraryData.ts
 src/hooks/useCustomArt.ts
 src/hooks/useCollections.ts
-src/hooks/useGamepadNavigation.ts
+src/hooks/useCustomSources.ts
 src/hooks/useAudioFeedback.ts
 src/hooks/useModalState.ts
+src/hooks/useSearchState.ts
+src/hooks/useSystemStatus.ts
+src/hooks/useUpdateCheck.ts
 ```
+
+Deferred:
+
+```txt
+src/hooks/useGamepadNavigation.ts
+src/hooks/useAppSettings.ts
+src/hooks/useStartupBootstrap.ts
+```
+
+Do not prematurely abstract the remaining gamepad and settings paths. The current hook pass moved state domains first and kept gamepad-sensitive wrappers in `App.jsx`.
 
 ## State ownership
 
@@ -317,19 +335,20 @@ launchingApp
 isSplashVisible
 ```
 
-### Move to hooks later
+### Moved to hooks
 
 These are domains with side effects or reusable behavior:
 
 ```txt
 useLibraryData
   apps
-  games
+  recents
+  recent games
   refreshLibrary
   libraryRefreshStatus
   hidden apps
   pins
-  recents
+  icon colors
 
 useCustomArt
   customArt
@@ -341,14 +360,12 @@ useCustomArt
 useCollections
   gameCollections
   appCollections
-  collection operations
+  memberships
+  selected collection tab
 
-useGamepadNavigation
-  global poll loop
-  tab navigation
-  grid navigation
-  modal suppression
-  repeat-speed behavior
+useCustomSources
+  custom sources
+  custom folders
 
 useAudioFeedback
   UI sounds
@@ -356,8 +373,43 @@ useAudioFeedback
   loaded sounds
 
 useModalState
-  open/close modal helpers
-  selected app payload
+  modal open state
+  selected app payloads
+  modal mirrored refs
+
+useSearchState
+  keyboard state
+  search mode/focus state
+  search mirrored refs
+
+useSystemStatus
+  clock polling
+  battery polling
+
+useUpdateCheck
+  latest-release request state
+  update status/info
+```
+
+### Still in `App` for now
+
+```txt
+useGamepadNavigation candidate
+  global poll loop
+  tab navigation
+  grid navigation
+  modal suppression
+  repeat-speed behavior
+
+useAppSettings candidate
+  settings load/save
+  scan-triggered library refresh
+  language changes
+
+modal close helpers
+  closeHideModal
+  closeLibraryActionsModal
+  closeArtPicker
 ```
 
 The biggest long-term win is `useGamepadNavigation`, but do not start there. It is too entangled and too easy to break. Extract dumb visual islands first, then tackle behavior once the file is less cursed.
@@ -469,14 +521,24 @@ Create:
 
 Keep `src/views/settings.tsx` as the model for view-level files.
 
-Phase 5: hooks after components are stable
-Create hooks only after extraction builds:
+Phase 5: hooks extraction
+Status: implemented for the low-risk state domains.
+
+Implemented:
 - `src/hooks/useLibraryData.ts`
 - `src/hooks/useCustomArt.ts`
 - `src/hooks/useCollections.ts`
-- `src/hooks/useGamepadNavigation.ts`
+- `src/hooks/useCustomSources.ts`
 - `src/hooks/useAudioFeedback.ts`
 - `src/hooks/useModalState.ts`
+- `src/hooks/useSearchState.ts`
+- `src/hooks/useSystemStatus.ts`
+- `src/hooks/useUpdateCheck.ts`
+
+Deferred:
+- `src/hooks/useGamepadNavigation.ts`
+- `src/hooks/useAppSettings.ts`
+- `src/hooks/useStartupBootstrap.ts`
 
 Do not prematurely abstract. First move code, then simplify.
 
