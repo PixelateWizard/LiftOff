@@ -28,7 +28,7 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 - **Battery indicator** — shows charge level and charging status with light/dark contrast-safe charging colors
 - **Controller test** — live button and axis display in Settings to verify your gamepad mapping
 - **Check for updates** — one-button update check from Settings
-- **Splash screen** with launch sounds
+- **Splash screen** with launch sounds and controller-ready handoff after startup
 
 ---
 

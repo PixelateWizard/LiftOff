@@ -44,6 +44,7 @@ import { useLibraryData } from "./hooks/useLibraryData";
 import { useModalState } from "./hooks/useModalState";
 import { usePersistentJson } from "./hooks/usePersistentJson";
 import { useSearchState } from "./hooks/useSearchState";
+import { useStartupBootstrap } from "./hooks/useStartupBootstrap";
 import { useSystemStatus } from "./hooks/useSystemStatus";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { detectPlatform, getBestGamepad, readGpState } from "./utils/gamepad";
@@ -60,8 +61,6 @@ export default function App() {
   const [gameSourceTab, setGameSourceTab]           = useState("All"); // "All" | "Steam" | "Xbox" | "Other"
   const [subtabFocusIndex, setSubtabFocusIndex]     = useState(0);    // index within subtab row
   const [addAppType, setAddAppType]                 = useState("game"); // "game" | "app"
-  const [loading, setLoading]                       = useState(true);
-  const [splashExiting, setSplashExiting]           = useState(false);
   const [windowFocused, setWindowFocused]           = useState(true);
   const [focusSection, setFocusSection]             = useState("hero");
   const [focusIndex, setFocusIndex]                 = useState(0);
@@ -105,7 +104,6 @@ export default function App() {
   const gameSourceTabRef      = useRef("All");
   const subtabFocusIndexRef   = useRef(0);
   const suppressUntilRelease  = useRef({}); // buttons held when modal closed — suppress until released
-  const isReadyRef            = useRef(false);
   const heroVideoRefs         = useRef({});
   const autoScaleRef          = useRef(1.0);
   const settingsFocusIndexRef = useRef(0);
@@ -174,6 +172,9 @@ export default function App() {
     fetchGameArt,
     clearGameArt,
   } = useCustomArt();
+  const { loading, splashExiting, isReadyRef, onLoaded, onLoadError } = useStartupBootstrap({
+    onAppLoaded: playAppLoadedSound,
+  });
   const {
     apps, setApps, appsRef, allAppsRef,
     recent, setRecent, recentRef,
@@ -187,16 +188,8 @@ export default function App() {
     refreshLibrary,
   } = useLibraryData({
     fetchGameArt,
-    onLoaded: () => {
-      setSplashExiting(true);
-      playAppLoadedSound();
-      setTimeout(() => {
-        setLoading(false);
-        setTimeout(() => invoke("set_gamepad_ready"), 2000);
-        setTimeout(() => { isReadyRef.current = true; }, 200);
-      }, 800);
-    },
-    onLoadError: () => setLoading(false),
+    onLoaded,
+    onLoadError,
   });
   const {
     settings,
