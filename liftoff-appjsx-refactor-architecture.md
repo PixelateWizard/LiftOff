@@ -22,6 +22,9 @@ The north star: `App.jsx` should become the orchestration layer, not the entire 
 - The hooks extraction pass is now implemented. `App.jsx` delegates system status, search state, modal state, collections, custom sources, library data, and update checking to dedicated hooks under `src/hooks/`.
 - `useModalState` intentionally owns only modal state, setters, mirrored refs, and ref-sync effects. `App.jsx` still owns `closeHideModal`, `closeLibraryActionsModal`, and `closeArtPicker` because those functions include gamepad button-suppression behavior.
 - `useLibraryData` owns apps, recents, pins, hidden state, icon color sampling, library refresh, and initial library load. `App.jsx` still owns splash-exit timing and `set_gamepad_ready` through `onLoaded` / `onLoadError` callbacks.
+- `useAppSettings` is now implemented and owns settings state, `settingsRef`, persisted settings loading, save/update helpers, language switching, scan-key refresh triggers, default-tab loading, auto-scale detection, and the legacy `surface_style: "pixel"` to `"win9x"` migration.
+- Launch state now intentionally pauses the launcher while apps/games are active: `App.jsx` derives `appPaused` from launch/window focus state, pauses hero videos, applies the `app-launch-paused` CSS animation pause class, and passes `appPaused` to `AppBackground` so lofi music and the lofi background video pause too.
+- Returning from a LiftOff-launched app/game starts a short input cooldown before another app can launch. This is separate from the existing immediate relaunch guard and is meant to absorb stale keyboard/controller input when Windows focuses LiftOff again.
 - `src/types.ts` already defines useful shared types such as:
   - `App`
   - `Settings`
@@ -389,6 +392,14 @@ useSystemStatus
 useUpdateCheck
   latest-release request state
   update status/info
+
+useAppSettings
+  settings load/save
+  settingsRef
+  language changes
+  scan-triggered library refresh
+  default tab loading
+  UI auto-scale bootstrap
 ```
 
 ### Still in `App` for now
@@ -401,15 +412,16 @@ useGamepadNavigation candidate
   modal suppression
   repeat-speed behavior
 
-useAppSettings candidate
-  settings load/save
-  scan-triggered library refresh
-  language changes
-
 modal close helpers
   closeHideModal
   closeLibraryActionsModal
   closeArtPicker
+
+launch/session guards
+  launchingApp
+  appPaused
+  lofi/background pause coordination
+  post-focus launch cooldown
 ```
 
 The biggest long-term win is `useGamepadNavigation`, but do not start there. It is too entangled and too easy to break. Extract dumb visual islands first, then tackle behavior once the file is less cursed.

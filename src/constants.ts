@@ -119,7 +119,7 @@ export const DEFAULT_SETTINGS = {
   nav_bumpers_pos: "bottom",
   tabbar_show_buttons: "tabbar", tabbar_text_tabs: false, tabbar_with_background: false, tabbar_font_weight: "medium",
   bottombar_alignment: "left", tabbar_label_case: "default",
-  show_home_collections: false, show_home_collection_names: true, show_hero_cover: true,
+  show_home_collections: false, show_home_collection_names: true, show_hero_cover: true, show_home_pinned: true,
   gamepad_platform: "xbox", gamepad_icons_colored: false, gamepad_icons_filled: true, gamepad_icons_theme_color: false,
   gamepad_btn_size: "small", gamepad_auto_detect: true,
   surface_style: "clear",

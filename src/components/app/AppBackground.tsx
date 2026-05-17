@@ -15,10 +15,12 @@ interface AppBackgroundProps {
   isDark: boolean;
   isMaterial: boolean;
   surfaceStyle: string;
+  appPaused?: boolean;
 }
 
-export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1, bgGlow2, isDark, isMaterial, surfaceStyle }: AppBackgroundProps) {
+export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1, bgGlow2, isDark, isMaterial, surfaceStyle, appPaused = false }: AppBackgroundProps) {
   const lofiMusicRef = useRef<HTMLAudioElement | null>(null);
+  const lofiVideoRef = useRef<HTMLVideoElement | null>(null);
   const washPink = accent.glow;
   const isLofi = resolvedTheme === "lofi";
 
@@ -31,6 +33,11 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
     }
 
     const audio = lofiMusicRef.current;
+    if (appPaused) {
+      audio.pause();
+      return;
+    }
+
     if (!isLofi || settings.lofi_music_enabled === false) {
       audio.pause();
       audio.currentTime = 0;
@@ -52,12 +59,23 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
       window.removeEventListener("touchstart", play);
       audio.pause();
     };
-  }, [isLofi, settings.lofi_music_enabled]);
+  }, [appPaused, isLofi, settings.lofi_music_enabled]);
+
+  useEffect(() => {
+    const video = lofiVideoRef.current;
+    if (!video) return;
+    if (appPaused) {
+      video.pause();
+      return;
+    }
+    if (isLofi) video.play().catch(() => {});
+  }, [appPaused, isLofi]);
 
   return (
     <>
       {isLofi ? (
         <video
+          ref={lofiVideoRef}
           src={lofiBg}
           autoPlay
           muted

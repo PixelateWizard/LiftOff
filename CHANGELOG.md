@@ -10,6 +10,8 @@
 - **Shared surface token layer** - moved theme/surface styling decisions into `src/theme/surfaces.ts` via `useSurfaceTheme`, centralizing card, bar, settings-row, background, and surface tokens outside `App.jsx`.
 - **Cyberpunk HUD prototype** - replaced the in-progress cyberpunk skyline/rain experiment with a holographic HUD background prototype including grid lines, scan sweep, corner brackets, HUD readouts, hex outlines, and horizontal glitch sparks. Cyberpunk is kept in code but temporarily removed from the public theme selector.
 - **Lofi background music** - added theme-scoped Lofi background music that loops only while the Lofi theme is active, pauses when switching away, and can be disabled from Settings.
+- **Launch handoff pause and return cooldown** - added an `appPaused` path that pauses launcher animations, hero videos, and Lofi media while an app/game is being launched or LiftOff is out of focus, plus a short post-return cooldown before another launch can start.
+- **App settings hook** - moved settings bootstrap, refs, saving, update helpers, auto UI-scale setup, language sync, default-tab loading, and scan-toggle refresh tracking into `useAppSettings`.
 
 ### Changed
 - **Theme surface defaults updated** - Plasma now defaults to Neon, Forest defaults to Glass, Webcore defaults to Win9X, and Lofi defaults to Obsidian while manual Surface Style selection remains independent after theme selection.
@@ -21,6 +23,11 @@
 - **Obsidian app tiles** - app tiles now use the same darker, low-transparency Obsidian treatment as the nav instead of picking up bright colour bleed from the background artwork.
 - **Lofi video background cleanup** - removed the old Lofi CSS-driven overlay animations now that the theme uses an animated MP4 background.
 - **Theme selector cleanup** - Cyberpunk is temporarily hidden from the theme cycle until the HUD prototype is ready for release.
+- **App.jsx hook extraction** - moved system status, search state, modal state/refs, collections, custom sources, library data, update checks, and settings into dedicated hooks while keeping gamepad-sensitive close helpers in `App.jsx`.
+
+### Bug Fixes
+- **Accidental relaunch after closing apps/games** - returning to LiftOff after a launched app/game now snapshots held gamepad buttons and blocks launch attempts briefly, preventing stale confirm input from opening another item.
+- **Lofi playback during launches** - Lofi music and the Lofi video background now pause while a launched app/game is active or LiftOff loses focus.
 
 ## [2.0.0] - Alpha 1 & 2
 

@@ -35,6 +35,7 @@ import { LaunchOverlay } from "./components/launch/LaunchOverlay";
 import { SteamGridArtPickerModal } from "./components/art/SteamGridArtPickerModal";
 import { useSurfaceTheme } from "./theme/surfaces";
 import { launchApp } from "./hooks/useLaunchApp";
+import { useAppSettings } from "./hooks/useAppSettings";
 import { useAudioFeedback } from "./hooks/useAudioFeedback";
 import { useCollections } from "./hooks/useCollections";
 import { useCustomArt } from "./hooks/useCustomArt";
@@ -49,7 +50,7 @@ import { detectPlatform, getBestGamepad, readGpState } from "./utils/gamepad";
 import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO,
   ACCENTS, THEMES, CLOUD_SHAPES, CLOUD_CONFIGS, KB_ALPHA, KB_NUMS,
-  SCAN_KEYS, DEFAULT_SETTINGS, THEME_SURFACE_DEFAULTS, normalizeThemeKey, isDarkThemeKey,
+  normalizeThemeKey, isDarkThemeKey,
   getRunAsAdmin, setRunAsAdmin,
 } from "./constants";
 
@@ -61,6 +62,7 @@ export default function App() {
   const [addAppType, setAddAppType]                 = useState("game"); // "game" | "app"
   const [loading, setLoading]                       = useState(true);
   const [splashExiting, setSplashExiting]           = useState(false);
+  const [windowFocused, setWindowFocused]           = useState(true);
   const [focusSection, setFocusSection]             = useState("hero");
   const [focusIndex, setFocusIndex]                 = useState(0);
   const [adminPrefsVersion, setAdminPrefsVersion]   = useState(0);
@@ -68,7 +70,6 @@ export default function App() {
   const [cacheClearLoading, setCacheClearLoading]   = useState(false);
   const [cacheClearStatus, setCacheClearStatus]     = useState({ line1: "", line2: "" });
   const [launchingApp, setLaunchingApp]             = useState(null);
-  const [settings, setSettings]                     = useState({ ...DEFAULT_SETTINGS });
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
   const [settingsSection, setSettingsSection]       = useState(0);
   const [heroIndex, setHeroIndex]                   = useState(0);
@@ -106,7 +107,6 @@ export default function App() {
   const suppressUntilRelease  = useRef({}); // buttons held when modal closed — suppress until released
   const isReadyRef            = useRef(false);
   const heroVideoRefs         = useRef({});
-  const settingsRef           = useRef(settings);
   const autoScaleRef          = useRef(1.0);
   const settingsFocusIndexRef = useRef(0);
   const heroIndexRef          = useRef(0);
@@ -116,11 +116,6 @@ export default function App() {
   const btnPressTime          = useRef({});
   const btnRepeating          = useRef({});
 
-  const { time, date, battery, charging, hasBattery } = useSystemStatus({
-    timeFormat: settings.time_format,
-    language: i18n.language,
-    settingsRef,
-  });
   const {
     searchOpen, searchQuery, searchMode, searchFocusIndex,
     kbRow, kbCol, kbNumMode,
@@ -203,6 +198,24 @@ export default function App() {
     },
     onLoadError: () => setLoading(false),
   });
+  const {
+    settings,
+    settingsRef,
+    updateSetting,
+    updateSettingsBatch,
+  } = useAppSettings({
+    onScanKeyChange: refreshLibrary,
+    autoScaleRef,
+    onDefaultTabLoaded: (defaultTab) => {
+      setTab(defaultTab);
+      tabRef.current = defaultTab;
+    },
+  });
+  const { time, date, battery, charging, hasBattery } = useSystemStatus({
+    timeFormat: settings.time_format,
+    language: i18n.language,
+    settingsRef,
+  });
 
   const resolvedTheme = normalizeThemeKey(settings.theme);
   const isDark = isDarkThemeKey(resolvedTheme);
@@ -222,6 +235,7 @@ export default function App() {
   const surfaceStyle = settings.surface_style ?? "glass";
   const glassEnabled = surfaceStyle !== "clear";
   const isMaterial = surfaceStyle === "material";
+  const appPaused = !!launchingApp || !windowFocused;
   const cinematicLight = settings.cinematic_home && !isDark;
   const isWash = resolvedTheme === "wash";
   const {
@@ -248,15 +262,23 @@ export default function App() {
   const activeTextColor = isDark
     ? (accent.darkText ? "rgba(20, 14, 10, 0.90)" : "white")
     : (accent.lightDarkText ? "rgba(20, 14, 10, 0.90)" : "white");
+  const LAUNCH_RETURN_COOLDOWN_MS = 1800;
+  const launchedAppSessionRef = useRef(false);
+  const launchReturnCooldownUntil = useRef(0);
   const lastLaunchTime = useRef(0);
   const _triggerLaunchImpl = (app, rec) => {
     const now = Date.now();
     console.warn(`triggerLaunch @ ${new Date().toISOString()}`, app?.name, `(${now - lastLaunchTime.current}ms since last)`);
+    if (now < launchReturnCooldownUntil.current) {
+      console.warn("triggerLaunch BLOCKED - waiting for return-to-LiftOff input cooldown");
+      return;
+    }
     if (now - lastLaunchTime.current < 5000) {
       console.warn("triggerLaunch BLOCKED — too soon after last launch");
       return;
     }
     lastLaunchTime.current = now;
+    launchedAppSessionRef.current = true;
     playSoundGameStart();
     setLaunchingApp(app); launchingAppRef.current = app;
     launchApp(app).catch((err) => console.warn("launch_app failed", err));
@@ -424,7 +446,7 @@ export default function App() {
   }, []);
   // ─────────────────────────────────────────────────────────────
 
-  useEffect(() => { settingsRef.current = settings; settingsFocusIndexRef.current = settingsFocusIndex; heroIndexRef.current = heroIndex; });
+  useEffect(() => { settingsFocusIndexRef.current = settingsFocusIndex; heroIndexRef.current = heroIndex; });
 
   useEffect(() => {
     if (tab !== "Settings") return;
@@ -538,6 +560,7 @@ export default function App() {
       ".theme-webcore-ghost-2 { animation:webGhostFloat2 22s ease-in-out infinite, webWinFlicker2 24s ease-in-out infinite; animation-delay:-8s; }",
       ".theme-webcore-ghost-3 { animation:webGhostFloat3 25s ease-in-out infinite, webWinFlicker3 30s ease-in-out infinite; animation-delay:-12s; }",
       ".theme-webcore-cursor { animation:webCursorBlink 1.1s step-end infinite; }",
+      ".app-launch-paused, .app-launch-paused *:not(.launch-overlay):not(.launch-overlay *) { animation-play-state: paused !important; transition-property: none !important; }",
       "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-w1, .theme-wash-w2, .theme-wash-w3, .theme-wash-c1, .theme-wash-c2, .theme-wash-mix, .theme-wash-bleed1, .theme-wash-bleed2, .theme-wash-pink, .theme-aurora-b1, .theme-aurora-b2, .theme-aurora-b3, .theme-aurora-b4, .theme-aurora-shimmer, .theme-synthwave-sun, .theme-synthwave-horizon, .theme-cyberpunk-glow, .theme-cyberpunk-glow-2, .theme-cyberpunk-horizon, .theme-cyberpunk-flicker-1, .theme-cyberpunk-flicker-2, .theme-cyberpunk-scan, .theme-cyberpunk-rain, .theme-forest-moonbeam, .theme-forest-fog, .theme-forest-fog-2, .theme-forest-firefly, .theme-webcore-ghost-0, .theme-webcore-ghost-1, .theme-webcore-ghost-2, .theme-webcore-ghost-3, .theme-webcore-cursor, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } }",
       "html, body { overflow-x: hidden; }",
       "* { scrollbar-width: none !important; -ms-overflow-style: none !important; }",
@@ -553,7 +576,7 @@ export default function App() {
       if (!(settingsRef.current?.gamepad_auto_detect ?? true)) return;
       const platform = detectPlatform(e.gamepad.id);
       if (platform) {
-        setSettings(prev => ({ ...prev, gamepad_platform: platform }));
+        updateSetting("gamepad_platform", platform);
       }
     };
     window.addEventListener("gamepadconnected", handleConnected);
@@ -738,26 +761,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    Promise.all([invoke("get_screen_resolution"), invoke("get_settings")]).then(([res, s]) => {
-      const auto = Math.min(2.0, Math.max(0.75, Math.min(res.width / 1920, res.height / 1080)));
-      autoScaleRef.current = auto;
-      // ui_scale is null when never saved; substitute the auto-detected value.
-      const updated = { ...settingsRef.current, ...s, ui_scale: s.ui_scale ?? auto };
-      if (updated.surface_style === "pixel") updated.surface_style = "win9x";
-      setSettings(updated); settingsRef.current = updated;
-      if (s.surface_style === "pixel") invoke("save_settings", { settings: updated }).catch(console.error);
-      setTab(s.default_tab || "Home"); tabRef.current = s.default_tab || "Home";
-      if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
-    }).catch(() => {
-      invoke("get_settings").then(s => {
-        const merged = { ...settingsRef.current, ...s };
-        if (merged.surface_style === "pixel") merged.surface_style = "win9x";
-        setSettings(merged); settingsRef.current = merged;
-        if (s.surface_style === "pixel") invoke("save_settings", { settings: merged }).catch(console.error);
-        setTab(s.default_tab || "Home"); tabRef.current = s.default_tab || "Home";
-        if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
-      });
-    });
     loadCustomArt();
   }, []);
   const handleClearCache = async () => {
@@ -790,46 +793,6 @@ export default function App() {
     } finally {
       setCacheClearLoading(false);
     }
-  };
-
-  const updateSetting = (key, value) => {
-    setSettings(prev => {
-      const updated = { ...prev, [key]: value };
-      if (key === "transparent_bars") { updated.transparent_topbar = value; updated.transparent_bottombar = value; }
-      if (key === "theme") {
-        const nextTheme = normalizeThemeKey(value);
-        updated.theme = nextTheme;
-        updated.surface_style = THEME_SURFACE_DEFAULTS[nextTheme] || updated.surface_style;
-      }
-      settingsRef.current = updated;
-      invoke("save_settings", { settings: updated }).catch(console.error);
-      return updated;
-    });
-    if (SCAN_KEYS.includes(key)) setTimeout(refreshLibrary, 50);
-    if (key === "language") {
-      if (value === "auto") {
-        const detected = navigator.language?.split("-")[0] || "en";
-        i18n.changeLanguage(detected);
-      } else {
-        i18n.changeLanguage(value);
-      }
-    }
-  };
-
-  const updateSettingsBatch = (updates) => {
-    setSettings(prev => {
-      const updated = { ...prev, ...updates };
-      if (Object.prototype.hasOwnProperty.call(updates, "theme")) {
-        const nextTheme = normalizeThemeKey(updates.theme);
-        updated.theme = nextTheme;
-        if (!Object.prototype.hasOwnProperty.call(updates, "surface_style")) {
-          updated.surface_style = THEME_SURFACE_DEFAULTS[nextTheme] || updated.surface_style;
-        }
-      }
-      settingsRef.current = updated;
-      invoke("save_settings", { settings: updated }).catch(console.error);
-      return updated;
-    });
   };
 
   const filteredApps = apps.filter((a) => {
@@ -866,8 +829,9 @@ export default function App() {
 
   useEffect(() => {
     const isHome = tab === "Home";
+    const isLaunching = !!launchingApp;
 
-    if (!isHome) {
+    if (!isHome || isLaunching) {
       // Leaving Home — pause all videos immediately but keep them loaded so
       // they're warm (decoded frame 0 in memory) when we return.
       Object.entries(heroVideoRefs.current).forEach(([id, vid]) => {
@@ -895,16 +859,37 @@ export default function App() {
     });
 
     return () => cancelAnimationFrame(rafId);
-  }, [heroIndex, recentGames, tab]);
+  }, [heroIndex, launchingApp, recentGames, tab]);
 
   useEffect(() => {
     const onBlur = () => {
+      setWindowFocused(false);
       Object.values(heroVideoRefs.current).forEach(vid => {
         if (vid) vid.pause();
       });
     };
 
     const onFocus = () => {
+      setWindowFocused(true);
+      if (launchedAppSessionRef.current) {
+        launchedAppSessionRef.current = false;
+        launchReturnCooldownUntil.current = Date.now() + LAUNCH_RETURN_COOLDOWN_MS;
+        const gp = getBestGamepad();
+        if (gp) {
+          const s = readGpState(gp);
+          suppressUntilRelease.current = {
+            Enter: s.Enter,
+            Escape: s.Escape,
+            Select: s.Select,
+            ButtonX: s.ButtonX,
+            ButtonY: s.ButtonY,
+            BumperLeft: s.BumperLeft,
+            BumperRight: s.BumperRight,
+            Start: s.Start,
+          };
+        }
+      }
+      if (launchingAppRef.current) return;
       if (tab !== "Home") return;
       const activeGame = recentGames[heroIndex];
       if (!activeGame) return;
@@ -1999,9 +1984,9 @@ export default function App() {
     <ThemeProvider value={themeValue}>
     <SettingsProvider value={settingsValue}>
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
-    <div style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
+    <div className={appPaused ? "app-launch-paused" : undefined} style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
 
-      <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} />
+      <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} />
       <AppOverlays>
       {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={closeLaunchOverlay} />}
       {artPickerApp && (

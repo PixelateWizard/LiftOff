@@ -19,7 +19,7 @@ A Windows game and app launcher built for gamepad-first navigation. Designed for
 - **Custom cover art** — right-click or press Menu on any game or app to open the context menu, then choose **Change Art** (or **Change Hero Art** for games); games use a 2:3 portrait crop, apps use a square crop; reset to default anytime
 - **Context menu** — right-click or press Menu on any card to Open, Pin/Unpin, Change Art, or (for games) Change Hero Art
 - **Pinned apps** — pin your most-used games and apps to the top of any tab; Home pinned shelves support controller-friendly horizontal scrolling
-- **Launch focus feedback** — after a launch succeeds, LiftOff checks whether Windows focused the app, keeps the overlay open if the app appears to be running behind LiftOff, and offers a controller-friendly **Try to focus again** action
+- **Launch focus feedback** — after a launch succeeds, LiftOff checks whether Windows focused the app, pauses launcher animations and media during the handoff, and uses a short return cooldown to prevent accidental relaunches from stale input
 - **Manage visibility** — hide apps from view and restore them anytime from the same menu
 - **Search** — on-screen virtual keyboard for controller-only searching
 - **Animated themes** — Space, Sky, Plasma, Cinder, Wash, Aurora, Synthwave, Lofi, Forest, and Webcore are animated environments; Webcore pairs with the Win9X surface for a retro desktop-shell look
@@ -63,7 +63,7 @@ When a card is focused on the Games or Apps tab, press **Menu** to open the cont
 
 ### Launch Overlay (controller)
 
-After launching an app or game, LiftOff keeps the launch overlay visible long enough to check whether Windows moved focus to the launched window. If the app is running but still behind LiftOff, use **D-pad / left stick** to choose between **Try to focus again** and **Got it**, press **A** to activate the focused button, or press **B** / **Escape** to dismiss. LiftOff only shows **Failed to launch** when the launch command itself fails.
+After launching an app or game, LiftOff keeps the launch overlay visible long enough to check whether Windows moved focus to the launched window. If the app is running but still behind LiftOff, use **D-pad / left stick** to choose between **Try to focus again** and **Got it**, press **A** to activate the focused button, or press **B** / **Escape** to dismiss. During launch and focus handoff, LiftOff pauses background animations, animated hero videos, and Lofi media. When returning from a launched app or game, LiftOff waits briefly before accepting another launch input so stale controller or keyboard presses cannot immediately open something else. LiftOff only shows **Failed to launch** when the launch command itself fails.
 
 ---
 
@@ -102,7 +102,7 @@ After launching an app or game, LiftOff keeps the launch overlay visible long en
 | Stick Repeat Speed | How fast held directions repeat (Slow / Normal / Fast) |
 | Launch at Startup | Start LiftOff with Windows |
 | Theme Effects | Toggle the active theme's background effects, including stars, clouds, plasma, cinder, wash, aurora, synthwave, lofi, forest, and Webcore effects |
-| Lo-fi Music | When the Lofi theme is active, toggle the theme's looping background music |
+| Lo-fi Music | When the Lofi theme is active, toggle the theme's looping background music; it pauses while a launched app/game is active or LiftOff is out of focus |
 | Hero Art Mode | Static / Animated / Custom — Static forces static banners everywhere; Animated uses animated art everywhere; Custom lets you choose per game via Change Hero Art |
 | UI Scale | Override the automatic UI scale (useful for non-standard display sizes) |
 | Controller Test | Live display of button states and axes for your active gamepad |
