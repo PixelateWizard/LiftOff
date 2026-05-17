@@ -63,7 +63,7 @@ export function AppHeader({
   headerTabItems, headerActiveIndex, headerOnSelect, headerRightActions,
 }: Props) {
   const { t } = useTranslation();
-  const { glassBar, accent, theme, isDark, glassEnabled, surfaceStyle } = useTheme();
+  const { glassBar, accent, theme, isDark, glassEnabled, surfaceStyle, surface } = useTheme();
   const { settings } = useSettings();
   const activePillText = "rgba(20, 14, 10, 0.90)";
   const activeTextColor = isDark
@@ -76,7 +76,33 @@ export function AppHeader({
   const isHome         = tab === "Home";
   const uiScale        = settings.ui_scale ?? 1;
   const subtabGap      = Math.round(16 / uiScale);
-  const navRadius      = surfaceStyle === "material" ? 8 : 16;
+  const isPixel        = surfaceStyle === "win9x";
+  const navRadius      = isPixel ? 0 : surfaceStyle === "material" ? 8 : 16;
+  const pixelFullBleedNav: CSSProperties = isPixel ? {
+    width: "100%",
+    maxWidth: "none",
+    margin: 0,
+    boxSizing: "border-box",
+  } : {};
+  const pixelTitleBar = isPixel ? (
+    <div style={{
+      height: 22,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "0 5px 0 7px",
+      boxSizing: "border-box",
+      background: surface.titleBarBg,
+      borderBottom: surface.titleBarBorder,
+    }}>
+      <span style={{ color: "white", fontSize: 11, fontFamily: "Tahoma, Arial, sans-serif", fontWeight: 700 }}>
+        LiftOff
+      </span>
+      <span style={{ width: 14, height: 14, background: surface.buttonBg, border: "1px solid", borderColor: surface.buttonBorder, boxShadow: surface.buttonShadow, color: surface.buttonText, fontSize: 10, lineHeight: "12px", textAlign: "center", fontFamily: "monospace", fontWeight: 700 }}>
+        x
+      </span>
+    </div>
+  ) : null;
 
   const navContent = (
     <>
@@ -98,7 +124,7 @@ export function AppHeader({
             return (
               <div key={tabName} onClick={() => switchTab(tabName)} style={{
                 fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
-                padding: "6px 16px", borderRadius: 8, cursor: "pointer",
+                padding: "6px 16px", borderRadius: isPixel ? 0 : 8, cursor: "pointer",
                 transition: "background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease",
                 ...(isActive
                   ? {
@@ -170,12 +196,14 @@ export function AppHeader({
   // ── Case: nav + subtab share a single glass container ──────────
   if (!transparentNav && tabbarBg && !isHome) {
     return (
-      <div style={{ position: "sticky", top: 0, zIndex: 100 }}>
+      <div data-liftoff-nav-boundary style={{ position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{
           ...widthConstraints(wideLayout, false, true, uiScale),
+          ...pixelFullBleedNav,
           ...glassBar, borderRadius: navRadius,
           display: "flex", flexDirection: "column",
         }}>
+          {pixelTitleBar}
           <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "10px 20px" }}>
             {navContent}
           </div>
@@ -187,15 +215,19 @@ export function AppHeader({
 
   // ── Cases: independent nav / subtab backgrounds ────────────────
   return (
-    <div style={{ position: "sticky", top: 0, zIndex: 100 }}>
+    <div data-liftoff-nav-boundary style={{ position: "sticky", top: 0, zIndex: 100 }}>
 
       {/* Nav row */}
       <div style={{
-        display: "flex", alignItems: "center", gap: 16, padding: "10px 20px",
+        display: "flex", flexDirection: isPixel ? "column" : "row", alignItems: isPixel ? "stretch" : "center", gap: isPixel ? 0 : 16, padding: isPixel ? 0 : "10px 20px",
         ...widthConstraints(wideLayout, transparentNav, true, uiScale),
+        ...pixelFullBleedNav,
         ...(transparentNav ? {} : { ...glassBar, borderRadius: navRadius }),
       }}>
-        {navContent}
+        {!transparentNav && pixelTitleBar}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, padding: isPixel ? "10px 20px" : 0, width: "100%", flex: 1, boxSizing: "border-box" }}>
+          {navContent}
+        </div>
       </div>
 
       {/* Subtab row */}

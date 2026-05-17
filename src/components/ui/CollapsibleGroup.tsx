@@ -41,8 +41,9 @@ export function CollapsibleGroup({
   focusedRef,
   items,
 }: CollapsibleGroupProps) {
-  const { glass, accent, isDark, theme, surfaceStyle } = useTheme();
+  const { glass, accent, isDark, theme, surfaceStyle, surface } = useTheme();
   const isMaterial = surfaceStyle === "material";
+  const isPixel = surfaceStyle === "win9x";
   const materialFocusStyle: CSSProperties = isMaterial ? {
     border: `2px solid ${accent.primary}`,
     background: isDark
@@ -57,9 +58,19 @@ export function CollapsibleGroup({
       : `color-mix(in srgb, var(--material-inset-row-active) 88%, ${accent.primary} 12%)`,
     boxShadow: "var(--material-shadow-medium)",
   } : {};
+  const pixelFocusStyle: CSSProperties = isPixel ? {
+    border: "2px solid",
+    borderColor: surface.borderRaised,
+    background: surface.activeBg,
+    boxShadow: `${surface.bevelRaisedSoft}, 0 0 0 2px ${accent.primary}`,
+  } : {};
+  const pixelSubFocusStyle: CSSProperties = isPixel ? {
+    background: surface.activeBg,
+    boxShadow: `${surface.bevelSunken}, 0 0 0 1px ${accent.primary}`,
+  } : {};
   const parentStyle: CSSProperties = {
     ...glass,
-    borderRadius: value ? (isMaterial ? "8px 8px 0 0" : "16px 16px 0 0") : isMaterial ? 8 : 16,
+    borderRadius: isPixel ? 0 : value ? (isMaterial ? "8px 8px 0 0" : "16px 16px 0 0") : isMaterial ? 8 : 16,
     padding: "14px 20px",
     marginBottom: value ? 0 : 8,
     display: "flex",
@@ -73,6 +84,7 @@ export function CollapsibleGroup({
           boxShadow: isMaterial ? "var(--material-shadow-medium)" : `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`,
           background: isMaterial ? "var(--material-elevation-3)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`,
           ...(isMaterial ? materialFocusStyle : {}),
+          ...(isPixel ? pixelFocusStyle : {}),
         }
       : { border: isMaterial ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)" }),
   };
@@ -80,10 +92,11 @@ export function CollapsibleGroup({
   const subContainerStyle: CSSProperties = {
     marginBottom: 8,
     padding: isMaterial ? "5px 6px 6px" : undefined,
-    background: isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
-    borderRadius: isMaterial ? "0 0 8px 8px" : "0 0 16px 16px",
-    border: `1px solid ${isMaterial ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
-    borderTop: isMaterial ? "1px solid var(--material-inset-top-edge)" : "none",
+    background: isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+    borderRadius: isPixel ? 0 : isMaterial ? "0 0 8px 8px" : "0 0 16px 16px",
+    border: isPixel ? "2px solid" : "none",
+    borderColor: isPixel ? surface.borderSunken : undefined,
+    borderTop: isPixel ? undefined : isMaterial ? "1px solid var(--material-inset-top-edge)" : `1px solid ${isDark ? "rgba(255,255,255,0.045)" : "rgba(0,0,0,0.05)"}`,
     boxShadow: isMaterial
       ? isDark
         ? "inset 0 9px 18px rgba(0,0,0,0.18), inset 0 1px 0 var(--material-inset-top-edge), inset 0 -1px 0 var(--material-inset-bottom-edge)"
@@ -109,23 +122,28 @@ export function CollapsibleGroup({
               padding: isMaterial ? "13px 16px" : "14px 20px",
               cursor: "pointer",
               transition: "background 0.15s ease, box-shadow 0.15s ease",
-              borderRadius: isMaterial ? 8 : undefined,
+              borderRadius: isPixel ? 0 : isMaterial ? 8 : undefined,
               marginBottom: isMaterial && idx < items.length - 1 ? 3 : undefined,
               background: item.focused
-                ? isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`
-                : isMaterial ? "var(--material-inset-row)" : "transparent",
-              boxShadow: item.focused && isMaterial
+                ? isPixel ? surface.activeBg : isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`
+                : isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-row)" : "transparent",
+              boxShadow: item.focused && isPixel
+                ? pixelSubFocusStyle.boxShadow
+                : item.focused && isMaterial
                 ? "var(--material-shadow-pressed)"
+                : isPixel
+                ? surface.bevelRaisedSoft
                 : isMaterial
                 ? isDark
                   ? "inset 0 1px 0 rgba(255,255,255,0.018)"
                   : "inset 0 1px 0 rgba(255,255,255,0.45)"
                 : undefined,
               borderBottom:
-                idx < items.length - 1 && !isMaterial
+                idx < items.length - 1 && !isMaterial && !isPixel
                   ? `1px solid ${isMaterial ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`
                   : "none",
               ...(item.focused && isMaterial ? materialSubFocusStyle : {}),
+              ...(item.focused && isPixel ? pixelSubFocusStyle : {}),
             };
 
             if (item.type === "cycle") {

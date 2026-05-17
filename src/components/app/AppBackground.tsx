@@ -1,7 +1,7 @@
 import type { AccentColors, Settings } from "../../types";
-
-const PAPER_GRAIN_LIGHT = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72 0.54' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23p)' opacity='0.038'/%3E%3C/svg%3E";
-const PAPER_GRAIN_DARK  = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72 0.54' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23p)' opacity='0.075'/%3E%3C/svg%3E";
+import { AuroraBg, SynthwaveBg, CyberpunkBg, ForestBg, WebcoreBg } from "../backgrounds";
+import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../../theme/surfaces";
+import lofiBg from "../../assets/themes/lofi/cozy_moonlit_study_night_scene.png";
 
 interface AppBackgroundProps {
   settings: Settings;
@@ -15,11 +15,81 @@ interface AppBackgroundProps {
   surfaceStyle: string;
 }
 
+const LOFI_LIGHTS = [
+  { left: "8.3%", top: "1.2%", size: 18, duration: "7.5s", delay: "-1.2s" },
+  { left: "13.4%", top: "4.8%", size: 18, duration: "8.2s", delay: "-4.1s" },
+  { left: "18.6%", top: "6.5%", size: 17, duration: "9.4s", delay: "-2.7s" },
+  { left: "35.0%", top: "3.8%", size: 18, duration: "8.8s", delay: "-5.8s" },
+  { left: "40.0%", top: "4.0%", size: 18, duration: "10.2s", delay: "-3.2s" },
+  { left: "46.8%", top: "9.8%", size: 17, duration: "7.9s", delay: "-6.4s" },
+  { left: "50.4%", top: "10.3%", size: 17, duration: "8.6s", delay: "-2.9s" },
+  { left: "53.5%", top: "9.8%", size: 17, duration: "9.5s", delay: "-5.2s" },
+  { left: "56.3%", top: "9.2%", size: 17, duration: "8.1s", delay: "-3.1s" },
+  { left: "63.3%", top: "1.8%", size: 18, duration: "11.2s", delay: "-1.6s" },
+  { left: "70.6%", top: "9.6%", size: 18, duration: "8.5s", delay: "-5.2s" },
+  { left: "75.6%", top: "7.8%", size: 17, duration: "9.8s", delay: "-2.3s" },
+  { left: "79.8%", top: "12.8%", size: 18, duration: "7.2s", delay: "-4.8s" },
+  { left: "86.5%", top: "9.5%", size: 17, duration: "8.1s", delay: "-3.6s" },
+  { left: "97.6%", top: "2.8%", size: 18, duration: "9.1s", delay: "-5.6s" },
+] as const;
+
+const LOFI_STARS = [
+  { left: "48.8%", top: "20.9%", size: 2.2, duration: "5.5s", delay: "-1.1s" },
+  { left: "52.7%", top: "29.5%", size: 2.6, duration: "7.2s", delay: "-3.7s" },
+  { left: "58.0%", top: "23.9%", size: 2.0, duration: "6.4s", delay: "-2.8s" },
+  { left: "61.9%", top: "32.6%", size: 3.0, duration: "8.5s", delay: "-4.9s" },
+  { left: "67.0%", top: "22.8%", size: 2.3, duration: "4.8s", delay: "-1.9s" },
+  { left: "70.8%", top: "31.4%", size: 2.1, duration: "7.9s", delay: "-6.1s" },
+  { left: "73.8%", top: "22.4%", size: 2.6, duration: "5.9s", delay: "-2.2s" },
+  { left: "44.8%", top: "31.6%", size: 2.0, duration: "8.8s", delay: "-3.4s" },
+] as const;
+
+const LOFI_STEAM = [
+  { left: "53.6%", top: "48.8%", width: 18, height: 46, duration: "7.5s", delay: "-1.4s" },
+  { left: "54.5%", top: "47.6%", width: 24, height: 56, duration: "9.2s", delay: "-4.8s" },
+  { left: "55.6%", top: "48.6%", width: 16, height: 44, duration: "8.3s", delay: "-6.2s" },
+] as const;
+
+const LOFI_LAMPS = [
+  { left: "2.0%", top: "64.6%", width: "8.5%", height: "14.0%", duration: "8.8s", delay: "-2.1s", opacity: 0.58 },
+  { left: "15.4%", top: "30.5%", width: "7.2%", height: "11.0%", duration: "10.4s", delay: "-5.6s", opacity: 0.42 },
+  { left: "36.8%", top: "39.2%", width: "14.0%", height: "12.2%", duration: "9.6s", delay: "-3.4s", opacity: 0.50 },
+  { left: "92.4%", top: "48.0%", width: "8.2%", height: "12.5%", duration: "11.2s", delay: "-4.7s", opacity: 0.44 },
+  { left: "88.2%", top: "65.2%", width: "7.8%", height: "11.8%", duration: "9.2s", delay: "-6.8s", opacity: 0.48 },
+] as const;
+
+const LOFI_HAIR_WISPS = [
+  { d: "M 10 34 C 38 58, 62 92, 100 116 C 134 138, 166 134, 206 144", color: "rgba(205,96,224,0.34)", width: 1.4, duration: "9.5s", delay: "-1.8s" },
+  { d: "M 2 40 C 28 58, 54 100, 98 126 C 132 148, 174 146, 220 154", color: "rgba(238,92,176,0.30)", width: 1.1, duration: "11.2s", delay: "-5.4s" },
+  { d: "M 30 26 C 54 48, 74 82, 116 104 C 146 122, 174 118, 202 124", color: "rgba(255,118,190,0.22)", width: 0.9, duration: "8.8s", delay: "-6.4s" },
+  { d: "M 18 70 C 46 92, 78 132, 122 150 C 154 166, 180 164, 210 156", color: "rgba(154,94,224,0.22)", width: 1.0, duration: "13.4s", delay: "-8.2s" },
+  { d: "M 12 92 C 42 118, 70 154, 112 166 C 144 176, 174 174, 204 164", color: "rgba(196,86,214,0.24)", width: 1.0, duration: "12.0s", delay: "-2.8s" },
+  { d: "M 34 112 C 62 138, 90 166, 130 174 C 158 180, 184 174, 214 166", color: "rgba(118,84,210,0.22)", width: 0.9, duration: "14.2s", delay: "-9.5s" },
+  { d: "M 8 128 C 34 158, 70 194, 118 210 C 150 218, 176 210, 206 198", color: "rgba(176,78,210,0.24)", width: 0.9, duration: "12.8s", delay: "-4.7s" },
+  { d: "M 42 146 C 70 176, 104 212, 148 222 C 178 228, 196 218, 222 206", color: "rgba(224,92,184,0.20)", width: 0.8, duration: "15.0s", delay: "-10.6s" },
+  { d: "M 22 166 C 52 194, 86 226, 126 238 C 152 244, 174 238, 196 226", color: "rgba(116,88,218,0.20)", width: 0.85, duration: "13.8s", delay: "-6.9s" },
+] as const;
+
+const LOFI_COVER_WIDTH = "max(100vw, 177.68vh)";
+const LOFI_COVER_HEIGHT = "max(100vh, 56.28vw)";
+
 export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1, bgGlow2, isDark, isMaterial, surfaceStyle }: AppBackgroundProps) {
   const washPink = accent.glow;
+  const isLofi = resolvedTheme === "lofi";
   return (
     <>
-      <div style={{ position: "fixed", inset: 0, zIndex: -2, background: isMaterial ? `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, ${appBg}` : appBg }} />
+      <div style={isLofi
+        ? { position: "fixed", inset: 0, zIndex: -2, backgroundImage: `url(${lofiBg})`, backgroundSize: "cover", backgroundPosition: "center center", backgroundRepeat: "no-repeat", pointerEvents: "none" }
+        : { position: "fixed", inset: 0, zIndex: -2, background: isMaterial ? `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, ${appBg}` : appBg }
+      } />
+      {isLofi && (
+        <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none",
+          background: `
+            linear-gradient(90deg, rgba(8,10,24,0.58), rgba(8,10,24,0.22) 45%, rgba(8,10,24,0.48)),
+            linear-gradient(180deg, transparent 45%, rgba(5,6,16,0.48) 100%)
+          `,
+        }} />
+      )}
       {settings.stars_enabled && resolvedTheme === "plasma" && (
         <>
           <div className="theme-plasma-layer" style={{ position: "fixed", inset: "-18%", zIndex: -1, pointerEvents: "none",
@@ -236,6 +306,38 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
           </svg>
         </>
       )}
+      {settings.stars_enabled && resolvedTheme === "aurora" && <AuroraBg accent={accent} />}
+      {settings.stars_enabled && resolvedTheme === "synthwave" && <SynthwaveBg accent={accent} />}
+      {settings.stars_enabled && resolvedTheme === "cyberpunk" && <CyberpunkBg accent={accent} />}
+      {isLofi && (
+        <div className="lofi-effects" style={{ position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none", overflow: "hidden" }}>
+          <div style={{ position: "absolute", left: "50%", top: "50%", width: LOFI_COVER_WIDTH, height: LOFI_COVER_HEIGHT, transform: "translate(-50%, -50%)", pointerEvents: "none" }}>
+            <div className="lofi-moon-halo" style={{ position: "absolute", left: "53.9%", top: "23.1%", width: "21.5%", height: "38.2%", transform: "translate(-50%, -50%)", borderRadius: "50%", pointerEvents: "none", background: "radial-gradient(ellipse, rgba(255,242,206,0.42) 0%, rgba(255,218,170,0.34) 30%, rgba(255,190,132,0.17) 52%, transparent 76%)", filter: "blur(18px)", mixBlendMode: "screen", opacity: 0.42 }} />
+            <div className="lofi-moon-rim" style={{ position: "absolute", left: "53.9%", top: "23.1%", width: "9.2%", height: "16.4%", transform: "translate(-50%, -50%)", borderRadius: "50%", pointerEvents: "none", background: "radial-gradient(ellipse, rgba(255,246,218,0.18) 0%, rgba(255,226,182,0.12) 58%, transparent 74%)", boxShadow: "0 0 14px 4px rgba(255,218,170,0.12)", mixBlendMode: "screen", opacity: 0.44 }} />
+            <div className="lofi-window-shimmer" style={{ position: "absolute", left: "39.0%", top: "10.0%", width: "33.4%", height: "38.0%", borderRadius: 6, pointerEvents: "none", background: "linear-gradient(115deg, transparent 0%, rgba(255,230,190,0.00) 33%, rgba(255,230,190,0.22) 48%, rgba(180,205,255,0.12) 56%, transparent 72%)", mixBlendMode: "screen", opacity: 0.48 }} />
+            {LOFI_LIGHTS.map((light, index) => (
+              <div key={`lofi-light-${index}`} className="lofi-light-glow" style={{ position: "absolute", left: light.left, top: light.top, width: light.size, height: light.size, borderRadius: "999px", pointerEvents: "none", background: "radial-gradient(circle, rgba(255,216,128,0.36) 0%, rgba(255,146,80,0.24) 38%, transparent 72%)", boxShadow: "0 0 18px 5px rgba(255,135,70,0.22)", mixBlendMode: "screen", animationDuration: light.duration, animationDelay: light.delay }} />
+            ))}
+            {LOFI_LAMPS.map((lamp, index) => (
+              <div key={`lofi-lamp-${index}`} className="lofi-lamp-glow" style={{ position: "absolute", left: lamp.left, top: lamp.top, width: lamp.width, height: lamp.height, transform: "translate(-50%, -50%)", borderRadius: "50%", pointerEvents: "none", background: "radial-gradient(ellipse, rgba(255,196,112,0.42) 0%, rgba(255,132,70,0.20) 42%, transparent 74%)", filter: "blur(10px)", mixBlendMode: "screen", opacity: lamp.opacity, animationDuration: lamp.duration, animationDelay: lamp.delay }} />
+            ))}
+            {LOFI_STARS.map((star, index) => (
+              <div key={`lofi-star-${index}`} className="lofi-star" style={{ position: "absolute", left: star.left, top: star.top, width: star.size + 0.8, height: star.size + 0.8, borderRadius: "999px", pointerEvents: "none", background: "rgba(255,246,218,0.98)", boxShadow: "0 0 9px rgba(255,236,190,0.76)", animationDuration: star.duration, animationDelay: star.delay }} />
+            ))}
+            {LOFI_STEAM.map((steam, index) => (
+              <div key={`lofi-steam-${index}`} className="lofi-steam" style={{ position: "absolute", left: steam.left, top: steam.top, width: steam.width, height: steam.height, borderRadius: "50%", pointerEvents: "none", borderLeft: "2px solid rgba(255,231,204,0.46)", background: "radial-gradient(ellipse at 35% 55%, rgba(255,231,204,0.24), transparent 62%)", filter: "blur(1.4px)", animationDuration: steam.duration, animationDelay: steam.delay }} />
+            ))}
+            <svg className="lofi-hair-layer" style={{ position: "absolute", left: "67.0%", top: "39.6%", width: "18.2%", height: "30.0%", overflow: "visible", pointerEvents: "none", mixBlendMode: "screen" }} viewBox="0 0 240 260" preserveAspectRatio="none" aria-hidden="true">
+              {LOFI_HAIR_WISPS.map((wisp, index) => (
+                <path key={`lofi-hair-${index}`} className="lofi-hair-wisp" d={wisp.d} fill="none" stroke={wisp.color} strokeWidth={wisp.width} strokeLinecap="round" style={{ animationDuration: wisp.duration, animationDelay: wisp.delay }} />
+              ))}
+            </svg>
+          </div>
+          <div className="lofi-grain" style={{ position: "fixed", inset: 0, pointerEvents: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.86 0.72' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.16'/%3E%3C/svg%3E\")", backgroundRepeat: "repeat", mixBlendMode: "overlay", opacity: 0.16 }} />
+        </div>
+      )}
+      {settings.stars_enabled && resolvedTheme === "forest" && <ForestBg accent={accent} />}
+      {settings.stars_enabled && resolvedTheme === "webcore" && <WebcoreBg accent={accent} />}
       {surfaceStyle === "aero" && (
         <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none",
           background: isDark

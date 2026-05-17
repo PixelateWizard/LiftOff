@@ -62,6 +62,7 @@ export function SectionTabBar({
     labelCase === "uppercase" ? "uppercase" :
     labelCase === "ucfirst"   ? "capitalize" :
     "none";
+  const isPixel = surfaceStyle === "win9x";
 
   const PILL_W = { thin: 300, medium: 600, bold: 700 } as const;
   const TEXT_W = {
@@ -78,7 +79,7 @@ export function SectionTabBar({
     lineHeight: 1,
     display: "flex",
     alignItems: "center",
-    borderRadius: 20,
+    borderRadius: isPixel ? 0 : 20,
     cursor: "pointer",
     transition: "background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease",
     userSelect: "none",
@@ -135,7 +136,7 @@ export function SectionTabBar({
     fontWeight: active ? TEXT_W[fontWeight].active : TEXT_W[fontWeight].base,
     letterSpacing: "0.04em",
     padding: "4px 10px",
-    borderRadius: 20,
+    borderRadius: isPixel ? 0 : 20,
     cursor: "pointer",
     transition: "color 0.15s ease",
     userSelect: "none",

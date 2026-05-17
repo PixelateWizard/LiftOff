@@ -26,8 +26,41 @@ export default function ModalShell({
   zIndex = 2000,
   onOverlayClick,
 }: ModalShellProps) {
-  const { glass, accent, theme, isDark, surfaceStyle } = useTheme();
+  const { glass, accent, theme, isDark, surfaceStyle, surface } = useTheme();
   const hasBody = children != null && children !== false;
+  const isPixel = surfaceStyle === "win9x";
+  const pixelShell = isPixel ? {
+    background: surface.panelBg,
+    border: "2px solid",
+    borderColor: surface.borderRaised,
+    boxShadow: surface.panelShadow,
+  } : {};
+  const pixelTitleBar = isPixel ? {
+    margin: 3,
+    height: 22,
+    padding: "0 5px 0 7px",
+    boxSizing: "border-box" as const,
+    background: surface.titleBarBg,
+    color: surface.titleBarText,
+    borderBottom: surface.titleBarBorder,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  } : {};
+  const pixelTitleButton = isPixel ? {
+    width: 14,
+    height: 14,
+    background: surface.buttonBg,
+    border: "1px solid",
+    borderColor: surface.buttonBorder,
+    boxShadow: surface.buttonShadow,
+    color: surface.buttonText,
+    fontSize: 10,
+    fontWeight: 700,
+    lineHeight: "12px",
+    textAlign: "center" as const,
+    fontFamily: "monospace",
+  } : {};
 
   return (
     <div
@@ -45,19 +78,26 @@ export default function ModalShell({
           ...glass,
           width: `min(${width}px, 90vw)`,
           ...(maxHeight ? { maxHeight } : {}),
-          borderRadius: surfaceStyle === "material" ? 16 : 24,
+          borderRadius: isPixel ? 0 : surfaceStyle === "material" ? 16 : 24,
           display: "flex", flexDirection: "column",
           overflow: "hidden",
           border: `1px solid ${accent.glow}0.3)`,
           boxShadow: "0 8px 48px rgba(0,0,0,0.6)",
+          ...pixelShell,
         }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{
-          padding: "20px 24px 14px", flexShrink: 0,
-          ...(hasBody ? { borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}` } : {}),
+          padding: isPixel ? undefined : "20px 24px 14px", flexShrink: 0,
+          ...(isPixel ? pixelTitleBar : hasBody ? { borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}` } : {}),
         }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>{title}</div>
+          <div style={{ fontSize: isPixel ? 11 : 15, fontWeight: 700, color: isPixel ? "#ffffff" : theme.text, fontFamily: isPixel ? "Tahoma, Arial, sans-serif" : undefined }}>{title}</div>
+          {isPixel && (
+            <div style={{ display: "flex", gap: 3 }}>
+              <span style={pixelTitleButton}>_</span>
+              <span style={pixelTitleButton}>x</span>
+            </div>
+          )}
         </div>
 
         {hasBody && (

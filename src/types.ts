@@ -30,13 +30,17 @@ export interface AccentColors {
   glow: string;
   lightBg: string;
   lightPrimary?: string;
+  lightGlow?: string;
   darkText?: boolean;
   lightDarkText?: boolean;
 }
 
 // ── Settings value union types ─────────────────────────────────
 
-export type ThemeMode        = "space" | "sky" | "plasma" | "cinder" | "wash" | "ember" | "dark" | "light" | "system";
+export type ThemeMode        =
+  | "space" | "sky" | "plasma" | "cinder" | "wash"
+  | "aurora" | "synthwave" | "cyberpunk" | "lofi" | "forest" | "webcore"
+  | "ember" | "dark" | "light" | "system";
 export type DefaultTab       = "Home" | "Games" | "Apps";
 export type RepeatSpeed      = "slow" | "normal" | "fast";
 export type AnimatedHeroes   = "static" | "animated" | "custom";
@@ -77,6 +81,7 @@ export interface Settings {
   show_battery: boolean;
   show_clock: boolean;
   cinematic_home: boolean;
+  show_immersive_hero_art: boolean;
   nav_bumpers_pos: NavBumpersPos;
   tabbar_show_buttons: TabbarButtons;
   tabbar_text_tabs: boolean;

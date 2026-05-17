@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { CSSProperties } from "react";
 import type { AccentColors, App, ThemeColors } from "../../types";
 import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
+import { useTheme } from "../../contexts/ThemeContext";
 
 type CropMode = "portrait" | "square";
 
@@ -21,8 +22,16 @@ interface ArtPickerModalProps {
   onReset: (id: string) => void;
 }
 
-export function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "portrait", accent, theme, isDark: _isDark, glass, onClose, onSet, onReset }: ArtPickerModalProps) {
+export function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "portrait", accent, theme, isDark, glass, onClose, onSet, onReset }: ArtPickerModalProps) {
   const { t } = useTranslation();
+  const { surfaceStyle, surface } = useTheme();
+  const isPixel = surfaceStyle === "win9x";
+  const pixelShell = isPixel ? {
+    background: surface.panelBg,
+    border: "2px solid",
+    borderColor: surface.borderRaised,
+    boxShadow: surface.panelShadow,
+  } : {};
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [preview, setPreview] = useState<string | null>(currentArt || null);
   const [pendingData, setPendingData] = useState<string | null>(null);
@@ -140,8 +149,15 @@ export function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "port
 
   return (
     <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
-      <div style={{ ...glass, borderRadius: 20, padding: 24, width: 380 }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: theme.text, marginBottom: 4 }}>{app.name}</div>
+      <div style={{ ...glass, borderRadius: isPixel ? 0 : 20, padding: isPixel ? 0 : 24, width: 380, ...pixelShell }}>
+        {isPixel && (
+          <div style={{ margin: 3, height: 22, padding: "0 5px 0 7px", boxSizing: "border-box", background: surface.titleBarBg, borderBottom: surface.titleBarBorder, color: surface.titleBarText, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, fontFamily: "Tahoma, Arial, sans-serif" }}>{app.name}</div>
+            <span style={{ width: 14, height: 14, background: surface.buttonBg, border: "1px solid", borderColor: surface.buttonBorder, boxShadow: surface.buttonShadow, color: surface.buttonText, fontSize: 10, fontWeight: 700, lineHeight: "12px", textAlign: "center", fontFamily: "monospace" }}>x</span>
+          </div>
+        )}
+        <div style={{ padding: isPixel ? 24 : undefined }}>
+        {!isPixel && <div style={{ fontSize: 16, fontWeight: 700, color: theme.text, marginBottom: 4 }}>{app.name}</div>}
         <div style={{ fontSize: 12, color: theme.textDim, marginBottom: 16 }}>{t("artPicker.replaceCoverArt")}</div>
         <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
           <div style={{ flexShrink: 0, width: 110 }}>
@@ -157,6 +173,7 @@ export function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "port
             {hasCustomArt && !pendingData && <button onClick={handleReset} style={btnStyle("reset", "rgba(255,255,255,0.08)", theme.text)}>{t("artPicker.resetToDefault")}</button>}
             <button onClick={onClose} style={btnStyle("cancel", "rgba(255,255,255,0.05)", theme.textDim)}>{t("common.cancel")}</button>
           </div>
+        </div>
         </div>
       </div>
     </div>

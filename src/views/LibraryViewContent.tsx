@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import { useTheme } from "../contexts/ThemeContext";
 
 export interface LibraryViewContentProps {
   tab: "Games" | "Apps";
@@ -55,6 +56,8 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
     isFocused,
     pins,
   } = props;
+  const { surface } = useTheme();
+  const isPixel = surfaceStyle === "win9x";
 
               const SOURCES = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSources, ...gameCollections.map(c => c.name)];
               const APP_COLS = ["All", ...appCollections.map(c => c.name)];
@@ -143,6 +146,14 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                       const art = customArt[app.id];
                       const tintBg = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : glass.background;
                       const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : "rgba(255,255,255,0.08)";
+                      const pixelCard = isPixel ? {
+                        background: surface.panelBg,
+                        backdropFilter: undefined,
+                        WebkitBackdropFilter: undefined,
+                        border: focused ? `2px solid ${accent.primary}` : "2px solid",
+                        borderColor: focused ? accent.primary : surface.borderRaisedSoft,
+                        boxShadow: focused ? `0 0 0 1px ${surface.cardFocusRing}, 0 0 0 3px ${accent.primary}` : surface.bevelRaised,
+                      } : {};
                       return (
                         <div key={app.id} ref={focused ? focusedCardRef : null}
                           onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
@@ -150,8 +161,9 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                           onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
                           style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
                             border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
-                            borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
-                            ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
+                            borderRadius: isPixel ? 0 : 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
+                            ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}),
+                            ...pixelCard }}>
                           {art ? (
                             <>
                               <img src={art} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
@@ -206,6 +218,14 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                   const art = customArt[app.id];
                   const tintBg = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : glass.background;
                   const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : "rgba(255,255,255,0.08)";
+                  const pixelCard = isPixel ? {
+                    background: surface.panelBg,
+                    backdropFilter: undefined,
+                    WebkitBackdropFilter: undefined,
+                    border: focused ? `2px solid ${accent.primary}` : "2px solid",
+                    borderColor: focused ? accent.primary : surface.borderRaisedSoft,
+                    boxShadow: focused ? `0 0 0 1px ${surface.cardFocusRing}, 0 0 0 3px ${accent.primary}` : surface.bevelRaised,
+                  } : {};
                   return (
                     <div key={app.id} ref={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
@@ -213,8 +233,9 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                       onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
                       style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
                         border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
-                        borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
-                        ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}) }}>
+                        borderRadius: isPixel ? 0 : 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
+                        ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}),
+                        ...pixelCard }}>
                       {art ? (
                         <>
                           <img src={art} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />

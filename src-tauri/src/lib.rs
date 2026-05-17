@@ -120,6 +120,8 @@ pub struct Settings {
     pub wide_layout: bool,
     #[serde(default)]
     pub cinematic_home: bool,
+    #[serde(default = "default_true")]
+    pub show_immersive_hero_art: bool,
     #[serde(default)]
     pub hide_bottom_bar: bool,
     #[serde(default)]
@@ -211,6 +213,7 @@ impl Default for Settings {
             show_battery: true,
             wide_layout: false,
             cinematic_home: false,
+            show_immersive_hero_art: true,
             hide_bottom_bar: false,
             transparent_bars: false,
             transparent_topbar: false,

@@ -43,7 +43,14 @@ interface Props {
 }
 
 export default function FileBrowser({ mode = "file", repeatSpeed = "normal", onSelect, onClose }: Props) {
-  const { glass, accent, theme, isDark } = useTheme();
+  const { glass, accent, theme, isDark, surfaceStyle, surface } = useTheme();
+  const isPixel = surfaceStyle === "win9x";
+  const pixelShell = isPixel ? {
+    background: surface.panelBg,
+    border: "2px solid",
+    borderColor: surface.borderRaised,
+    boxShadow: surface.panelShadow,
+  } : {};
   const { t } = useTranslation();
   const [entries, setEntries]   = useState<FileEntry[]>([]);
   const [path, setPath]         = useState<string | null>(null);
@@ -228,15 +235,22 @@ export default function FileBrowser({ mode = "file", repeatSpeed = "normal", onS
       fontFamily: "'Segoe UI', sans-serif",
     }}>
       <div style={{
-        ...glass, width: 560, maxHeight: "75vh", borderRadius: 20,
+        ...glass, width: 560, maxHeight: "75vh", borderRadius: isPixel ? 0 : 20,
         display: "flex", flexDirection: "column", overflow: "hidden",
         border: `1px solid ${accent.glow}0.3)`,
         boxShadow: `0 8px 48px rgba(0,0,0,0.6)`,
+        ...pixelShell,
       }}>
-        <div style={{ padding: "16px 20px 12px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 6 }}>
-            {mode === "folder" ? t("fileBrowser.selectFolder") : t("fileBrowser.selectFile")}
+        {isPixel && (
+          <div style={{ margin: 3, height: 22, padding: "0 5px 0 7px", boxSizing: "border-box", background: surface.titleBarBg, borderBottom: surface.titleBarBorder, color: surface.titleBarText, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, fontFamily: "Tahoma, Arial, sans-serif" }}>{mode === "folder" ? t("fileBrowser.selectFolder") : t("fileBrowser.selectFile")}</div>
+            <span style={{ width: 14, height: 14, background: surface.buttonBg, border: "1px solid", borderColor: surface.buttonBorder, boxShadow: surface.buttonShadow, color: surface.buttonText, fontSize: 10, fontWeight: 700, lineHeight: "12px", textAlign: "center", fontFamily: "monospace" }}>x</span>
           </div>
+        )}
+        <div style={{ padding: isPixel ? "10px 20px 12px" : "16px 20px 12px", borderBottom: `1px solid ${isPixel ? surface.shadow : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
+          {!isPixel && <div style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 6 }}>
+            {mode === "folder" ? t("fileBrowser.selectFolder") : t("fileBrowser.selectFile")}
+          </div>}
           <div style={{ fontSize: 11, color: theme.textDim, display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
             <span style={{ cursor: "pointer", color: path === null ? accent.primary : theme.textDim }}
               onClick={() => { setHistory([]); setPath(null); load(null); }}>

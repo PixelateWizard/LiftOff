@@ -1,4 +1,6 @@
 import type { RefObject } from "react";
+import { useTheme } from "../contexts/ThemeContext";
+import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../theme/surfaces";
 
 interface HomeViewProps {
   active: boolean;
@@ -43,8 +45,6 @@ export function HomeView(props: HomeViewProps) {
     recentRef,
     t,
     AppIcon,
-    PAPER_GRAIN_DARK,
-    PAPER_GRAIN_LIGHT,
     materialFocusShadow,
     allAppsRef,
     PinBadge,
@@ -70,6 +70,7 @@ export function HomeView(props: HomeViewProps) {
     heroIndexRef,
     iconColors,
   } = props;
+  const { surface } = useTheme();
 
   const homeFilteredRecent = recent.filter((a: any) => true).slice(0, 8);
   const homePinnedApps = pins.map((id: string) => apps.find((a: any) => a.id === id)).filter(Boolean);
@@ -91,14 +92,17 @@ export function HomeView(props: HomeViewProps) {
           ? (heroAnimated[heroGame.id] || heroStatic[heroGame.id])
           : heroStatic[heroGame.id])
       : null;
+    const showHeroArtwork = !settings.cinematic_home || settings.show_immersive_hero_art !== false;
+    const visibleHeroBanner = showHeroArtwork ? heroBanner : null;
     const heroFocused = focusSec === "hero";
-    const materialHero = surfaceStyle === "material";
+    const webcoreHero = surfaceStyle === "win9x";
+    const materialHero = surfaceStyle === "material" || webcoreHero;
     const materialHeroText = isDark ? "#fffefd" : "#18110b";
     const materialHeroDimText = isDark ? "rgba(255,250,245,0.72)" : "rgba(24,17,11,0.66)";
     const materialCinematicHero = materialHero && settings.cinematic_home;
-    const surfaceCardRadius = surfaceStyle === "material" ? 8 : 16;
-    const modalSurfaceRadius = surfaceStyle === "material" ? 16 : 24;
-    const launchRadius = surfaceStyle === "material" ? 8 : 999;
+    const surfaceCardRadius = webcoreHero ? 0 : surfaceStyle === "material" ? 8 : 16;
+    const modalSurfaceRadius = webcoreHero ? 0 : surfaceStyle === "material" ? 16 : 24;
+    const launchRadius = webcoreHero ? 0 : surfaceStyle === "material" ? 8 : 999;
     const heroTextColor = isDark ? theme.text : "rgba(34,24,18,0.96)";
     const heroSubtextColor = isDark ? theme.textDim : "rgba(48,34,25,0.68)";
     const heroLabelColor = isDark ? accent.primary : (accent.lightPrimary || accent.primary);
@@ -205,31 +209,39 @@ export function HomeView(props: HomeViewProps) {
     const cinematicHeroAtBottom = cinematicBottomLaneFree && !cinematicPinnedVisible;
     const cinematicHeroNearChevron = settings.cinematic_home && settings.hide_bottom_bar && settings.show_home_collections && !cinematicPinnedVisible;
     const cinematicHeroBottom = cinematicHeroAtBottom ? 24 : cinematicPinnedAtBottom ? 88 : cinematicHeroNearChevron ? 72 : 122;
-    const heroSideOverlay = materialCinematicHero
+    const heroSideOverlay = !showHeroArtwork
+      ? "transparent"
+      : materialCinematicHero
       ? "transparent"
       : materialHero
       ? (isDark
-          ? (heroBanner
+          ? (visibleHeroBanner
               ? "linear-gradient(to right, rgba(8,6,5,0.78) 0%, rgba(8,6,5,0.44) 34%, rgba(8,6,5,0.07) 70%, transparent 100%)"
               : "linear-gradient(to right, rgba(8,6,5,0.84) 0%, rgba(8,6,5,0.48) 38%, rgba(8,6,5,0.10) 76%, transparent 100%)")
-          : (heroBanner
+          : (visibleHeroBanner
               ? `linear-gradient(to right, color-mix(in srgb, ${accent.lightBg} 52%, transparent 48%) 0%, color-mix(in srgb, ${accent.lightBg} 24%, transparent 76%) 42%, transparent 100%)`
               : `linear-gradient(to right, color-mix(in srgb, ${accent.lightBg} 58%, transparent 42%) 0%, color-mix(in srgb, ${accent.lightBg} 30%, transparent 70%) 46%, transparent 100%)`))
-      : heroBanner
+      : visibleHeroBanner
         ? (isDark
             ? "linear-gradient(to right, rgba(6,3,1,0.82) 0%, rgba(6,3,1,0.55) 45%, rgba(6,3,1,0.18) 100%)"
             : `linear-gradient(to right, ${appBg}cc 0%, ${appBg}55 40%, transparent 100%)`)
         : (isDark
             ? "linear-gradient(to right, rgba(8,4,2,0.88) 0%, rgba(8,4,2,0.5) 50%, rgba(8,4,2,0.2) 100%)"
             : `linear-gradient(to right, ${appBg}dd 0%, ${appBg}66 45%, transparent 100%)`);
-    const heroBottomOverlay = materialHero
+    const heroBottomOverlay = !showHeroArtwork
+      ? "transparent"
+      : materialCinematicHero
+      ? "transparent"
+      : materialHero
       ? (isDark
           ? "linear-gradient(to bottom, transparent 0%, rgba(10,8,7,0.48) 100%)"
           : `linear-gradient(to bottom, transparent 0%, color-mix(in srgb, ${accent.lightBg} 34%, transparent 66%) 100%)`)
       : isDark
         ? "linear-gradient(to bottom, transparent, rgba(6,3,1,0.95))"
         : `linear-gradient(to bottom, transparent, ${appBg}bb)`;
-    const heroTextAnchorOverlay = materialCinematicHero
+    const heroTextAnchorOverlay = !showHeroArtwork
+      ? "transparent"
+      : materialCinematicHero
       ? "transparent"
       : materialHero
       ? (isDark
@@ -249,7 +261,7 @@ export function HomeView(props: HomeViewProps) {
           border: settings.cinematic_home ? "none" : heroFocused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.5)"}` : `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
           boxShadow: settings.cinematic_home ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-          background: materialHero ? appBg : isDark ? "#0a0502" : appBg,
+          background: settings.cinematic_home && !showHeroArtwork ? "transparent" : materialHero ? appBg : isDark ? "#0a0502" : appBg,
         }}>
           <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: settings.cinematic_home ? 0 : surfaceCardRadius, overflow: "hidden" }}>
             {heroGames.map((game, idx) => {
@@ -266,7 +278,7 @@ export function HomeView(props: HomeViewProps) {
               return (
                 <div key={game.id} style={{ position: "absolute", inset: 0, opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
                   {/* Base layer: render images only for active ±1 to reduce GPU texture pressure */}
-                  {isNearby
+                  {isNearby && showHeroArtwork
                     ? (staticBanner
                         ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
                         : fallback
@@ -275,7 +287,7 @@ export function HomeView(props: HomeViewProps) {
                     : <div style={{ width: "100%", height: "100%" }} />
                   }
                   {/* Video layer: always in DOM; only active hero preloads */}
-                  {showVideo && (
+                  {showHeroArtwork && showVideo && (
                     <video
                       ref={el => { if (el) heroVideoRefs.current[game.id] = el; else delete heroVideoRefs.current[game.id]; }}
                       src={animatedUrl}
@@ -365,26 +377,35 @@ export function HomeView(props: HomeViewProps) {
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 20,
-                padding: "20px 24px 20px 20px",
+                padding: webcoreHero ? "44px 24px 20px 20px" : "20px 24px 20px 20px",
                 borderRadius: surfaceCardRadius,
-                background: `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, ${isDark ? "var(--material-elevation-2)" : "var(--material-elevation-3)"}`,
-                border: "1px solid var(--material-border-subtle)",
-                boxShadow: "var(--material-shadow-high)",
+                background: webcoreHero
+                  ? surface.panelBg
+                  : `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, ${isDark ? "var(--material-elevation-2)" : "var(--material-elevation-3)"}`,
+                border: webcoreHero ? "2px solid" : "1px solid var(--material-border-subtle)",
+                borderColor: webcoreHero ? surface.borderRaisedSoft : undefined,
+                boxShadow: webcoreHero ? `${surface.bevelRaised}, 0 14px 32px rgba(0,0,0,${isDark ? "0.38" : "0.24"})` : "var(--material-shadow-high)",
                 maxWidth: 480,
                 pointerEvents: "auto",
               }
             : settings.cinematic_home
             ? { position: "fixed", left: 0, right: 0, bottom: cinematicHeroAtBottom ? 0 : cinematicPinnedAtBottom ? "84px" : cinematicHeroNearChevron ? "68px" : "120px", zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
             : { position: "relative", zIndex: 1, flex: 1, display: "flex", alignItems: "flex-end", padding: "0 20px 20px" }}>
+            {webcoreHero && materialCinematicHero && (
+              <div style={{ position: "absolute", left: 2, right: 2, top: 2, height: 22, background: surface.titleBarBg, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 5px 0 7px", boxSizing: "border-box" }}>
+                <span style={{ color: "white", fontSize: 11, fontFamily: "Tahoma, Arial, sans-serif", fontWeight: 700 }}>{heroGame?.name || "LiftOff"}</span>
+                <span style={{ width: 14, height: 14, background: surface.buttonBg, border: "1px solid", borderColor: surface.buttonBorder, boxShadow: surface.buttonShadow, color: surface.buttonText, fontSize: 10, lineHeight: "12px", textAlign: "center", fontFamily: "monospace", fontWeight: 700 }}>x</span>
+              </div>
+            )}
             {settings.show_hero_cover !== false && (
               <div style={materialCinematicHero
                 ? { flexShrink: 0, width: 90, height: 135 }
                 : { flexShrink: 0, width: "clamp(80px, 10vw, 150px)", aspectRatio: "2/3", marginRight: 20 }}>
                 {heroArt
-                  ? <img key={heroGame?.id} src={heroArt} alt={heroGame?.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8, boxShadow: materialCinematicHero ? (isDark ? "var(--material-shadow-medium)" : "0 4px 14px rgba(39,27,18,0.18), 0 10px 28px rgba(39,27,18,0.10)") : "0 8px 32px rgba(0,0,0,0.7)", animation: "heroArtFade 0.3s ease forwards" }} />
+                  ? <img key={heroGame?.id} src={heroArt} alt={heroGame?.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: webcoreHero ? 0 : 8, boxShadow: materialCinematicHero ? (webcoreHero ? surface.coverShadow : isDark ? "var(--material-shadow-medium)" : "0 4px 14px rgba(39,27,18,0.18), 0 10px 28px rgba(39,27,18,0.10)") : "0 8px 32px rgba(0,0,0,0.7)", animation: "heroArtFade 0.3s ease forwards" }} />
                   : heroGame
-                    ? <img src={`/assets/liftoff_cover_${settings.accent}.svg`} alt={heroGame.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 8, boxShadow: materialCinematicHero ? (isDark ? "var(--material-shadow-medium)" : "0 4px 14px rgba(39,27,18,0.18), 0 10px 28px rgba(39,27,18,0.10)") : "0 8px 32px rgba(0,0,0,0.7)" }} />
-                    : <div style={{ width: "100%", height: "100%", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
+                    ? <img src={`/assets/liftoff_cover_${settings.accent}.svg`} alt={heroGame.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: webcoreHero ? 0 : 8, boxShadow: materialCinematicHero ? (webcoreHero ? surface.coverShadow : isDark ? "var(--material-shadow-medium)" : "0 4px 14px rgba(39,27,18,0.18), 0 10px 28px rgba(39,27,18,0.10)") : "0 8px 32px rgba(0,0,0,0.7)" }} />
+                    : <div style={{ width: "100%", height: "100%", borderRadius: webcoreHero ? 0 : 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
                 }
               </div>
             )}
@@ -664,7 +685,15 @@ export function HomeView(props: HomeViewProps) {
                 {/* Slide-up drawer panel */}
                 <div style={{
                   position: "fixed", left: 0, right: 0, bottom: 0, top: "72px", zIndex: 4,
-                  ...(surfaceStyle === "material" ? {
+                  ...(webcoreHero ? {
+                    background: surface.panelBg,
+                    backdropFilter: undefined,
+                    WebkitBackdropFilter: undefined,
+                    borderTop: `2px solid ${surface.raisedLight}`,
+                    borderLeft: `2px solid ${surface.raisedLight}`,
+                    borderRight: `2px solid ${surface.darkEdge}`,
+                    boxShadow: `${surface.bevelRaisedSoft}, 0 -10px 24px rgba(0,0,0,${isDark ? "0.42" : "0.20"})`,
+                  } : surfaceStyle === "material" ? {
                     background: "var(--material-elevation-3)",
                     borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)"}`,
                     boxShadow: isDark ? "0 -18px 48px rgba(0,0,0,0.48)" : "0 -18px 42px rgba(43,31,20,0.18)",
@@ -704,10 +733,26 @@ export function HomeView(props: HomeViewProps) {
                   display: "flex", flexDirection: "column",
                   pointerEvents: panelOpen ? "auto" : "none",
                 }}>
+                  {webcoreHero && (
+                    <div style={{
+                      height: 24,
+                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "0 6px 0 8px",
+                      boxSizing: "border-box",
+                      background: surface.titleBarBg,
+                      borderBottom: surface.titleBarBorder,
+                    }}>
+                      <span style={{ color: "white", fontSize: 11, fontFamily: "Tahoma, Arial, sans-serif", fontWeight: 700 }}>Library</span>
+                      <span style={{ width: 14, height: 14, background: surface.buttonBg, border: "1px solid", borderColor: surface.buttonBorder, boxShadow: surface.buttonShadow, color: surface.buttonText, fontSize: 10, lineHeight: "12px", textAlign: "center", fontFamily: "monospace", fontWeight: 700 }}>x</span>
+                    </div>
+                  )}
                   {/* Up chevron — sticky outside scroll, always visible */}
                   <div
                     onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }}
-                    style={{ display: "flex", justifyContent: "center", padding: "16px 0 16px", flexShrink: 0, cursor: "pointer" }}>
+                    style={{ display: "flex", justifyContent: "center", padding: webcoreHero ? "12px 0 10px" : "16px 0 16px", flexShrink: 0, cursor: "pointer" }}>
                     <svg width="18" height="10" viewBox="0 0 22 12" fill="none" style={{ opacity: 0.4 }}>
                       <path d="M20 10L11 2L2 10" stroke={isDark ? "white" : "rgba(0,0,0,0.7)"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>

@@ -28,12 +28,13 @@ export function AppBottomBar({ tab, appCollectionsCount }: Props) {
   const showBumpersInBottom = settings.nav_bumpers_pos === "bottom";
   // support old boolean value (true → was "tabbar")
   const showTriggersInBottom = settings.tabbar_show_buttons === "bottom";
+  const isPixel = surfaceStyle === "win9x";
 
   // Bottom bar casts its shadow upward onto content above it — override the downward drop shadow
   // from glassBar (which is designed for the top nav). Inset highlights stay the same.
   const barGlass: CSSProperties = isTransparent ? {} : {
     ...glassBar,
-    borderRadius: surfaceStyle === "material" ? 8 : 16,
+    borderRadius: isPixel ? 0 : surfaceStyle === "material" ? 8 : 16,
     ...(surfaceStyle === "aero" ? {
       boxShadow: isDark
         ? `inset 0 1px 0 rgba(255,255,255,0.52), inset 0 2px 7px rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.18), 0 0 0 1px ${accent.glow}0.14), 0 -4px 16px rgba(0,0,0,0.22)`

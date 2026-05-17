@@ -22,10 +22,16 @@ export const SETTINGS_SECTIONS = [
 export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsItem[] {
   const D = (key: string, section: number): SettingsDividerItem => ({ key: `div_${key}`, section, type: "divider", label: t(`settings.dividers.${key}`) as string });
   const bgLabel =
-    activeTheme === "space" ? t("settings.backgroundStars") :
-    activeTheme === "sky" ? t("settings.backgroundClouds") :
-    activeTheme === "plasma" ? t("settings.backgroundPlasma") :
-    activeTheme === "cinder" ? t("settings.backgroundCinder") :
+    activeTheme === "space"     ? t("settings.backgroundStars")     :
+    activeTheme === "sky"       ? t("settings.backgroundClouds")    :
+    activeTheme === "plasma"    ? t("settings.backgroundPlasma")    :
+    activeTheme === "cinder"    ? t("settings.backgroundCinder")    :
+    activeTheme === "aurora"    ? t("settings.backgroundAurora")    :
+    activeTheme === "synthwave" ? t("settings.backgroundSynthwave") :
+    activeTheme === "cyberpunk" ? t("settings.backgroundCyberpunk") :
+    activeTheme === "lofi"      ? t("settings.backgroundLofi")      :
+    activeTheme === "forest"    ? t("settings.backgroundForest")    :
+    activeTheme === "webcore"   ? t("settings.backgroundWebcore")   :
     t("settings.backgroundWash");
   return [
     // ── Appearance ───────────────────────────────────────────────
@@ -33,10 +39,12 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "accent",        section: 0, label: t("settings.accentColor"),  type: "accent" },
     { key: "theme",         section: 0, label: t("settings.theme"),         type: "cycle",  options: [...THEME_OPTIONS] },
     { key: "stars_enabled", section: 0, label: bgLabel, type: "toggle" },
-    { key: "surface_style", section: 0, label: t("settings.surfaceStyle"),                                                  type: "cycle",  options: ["glass", "aero", "material", "clear"] },
+    { key: "surface_style", section: 0, label: t("settings.surfaceStyle"),                                                  type: "cycle",  options: ["glass", "aero", "material", "clear", "obsidian", "neon", "win9x"] },
 
     D("home", 0),
-    { key: "cinematic_home",         section: 0, label: t("settings.immersiveHome"),       type: "toggle" },
+    { key: "cinematic_home",         section: 0, label: t("settings.immersiveHome"),       type: "toggle", subItems: [
+      { key: "show_immersive_hero_art", label: t("settings.showImmersiveHeroArt"), type: "toggle" },
+    ] },
     { key: "show_hero_cover",        section: 0, label: t("settings.showHeroCover"),        type: "toggle" },
     { key: "show_home_pinned",       section: 0, label: t("settings.showHomePinned"),       type: "toggle" },
     { key: "show_home_collections",  section: 0, label: t("settings.showHomeCollections"),  type: "toggle", subItems: [
@@ -209,7 +217,7 @@ export function SettingsScreen({
   onToggleHomeCollection,
 }: SettingsScreenProps) {
   const { t } = useTranslation();
-  const { settingsRowGlass, accent, theme, isDark, glassEnabled, surfaceStyle } = useTheme();
+  const { settingsRowGlass, accent, theme, isDark, glassEnabled, surfaceStyle, surface } = useTheme();
   const { settings, updateSetting } = useSettings();
   const wideLayout = settings.wide_layout ?? false;
 
@@ -217,6 +225,7 @@ export function SettingsScreen({
   const sectionItems = ALL_ITEMS.filter((i) => i.section === settingsSection);
   const navigableItems = getSectionNavigableItems(settingsSection, ALL_ITEMS, settings, { gameCollections, appCollections });
   const isMaterial = surfaceStyle === "material";
+  const isPixel = surfaceStyle === "win9x";
   const materialFocusStyle = isMaterial ? {
     border: `2px solid ${accent.primary}`,
     background: isDark
@@ -231,10 +240,22 @@ export function SettingsScreen({
       : `color-mix(in srgb, var(--material-inset-row-active) 88%, ${accent.primary} 12%)`,
     boxShadow: "var(--material-shadow-medium)",
   } : {};
+  const pixelFocusStyle = isPixel ? {
+    border: "2px solid",
+    borderColor: surface.borderRaised,
+    background: surface.activeBg,
+    backdropFilter: undefined,
+    WebkitBackdropFilter: undefined,
+    boxShadow: `${surface.bevelRaisedSoft}, 0 0 0 2px ${accent.primary}`,
+  } : {};
+  const pixelSubFocusStyle = isPixel ? {
+    background: surface.activeBg,
+    boxShadow: `${surface.bevelSunken}, 0 0 0 1px ${accent.primary}`,
+  } : {};
 
   const makeRowStyle = (focused: boolean, sub = false) => ({
     ...settingsRowGlass,
-    borderRadius: isMaterial ? 8 : 16,
+    borderRadius: isPixel ? 0 : isMaterial ? 8 : 16,
     padding: "12px 20px",
     marginBottom: sub ? 6 : 8,
     display: "flex",
@@ -260,6 +281,7 @@ export function SettingsScreen({
                 : "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.032))")
             : surfaceStyle === "material" ? "var(--material-elevation-3)" : `${accent.glow}0.05)`,
           ...(isMaterial ? materialFocusStyle : {}),
+          ...(isPixel ? pixelFocusStyle : {}),
         }
       : {}),
   });
@@ -301,10 +323,11 @@ export function SettingsScreen({
         const subContainerStyle = {
           marginBottom: 8,
           padding: isMaterial ? "5px 6px 6px" : undefined,
-          background: isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
-          borderRadius: isMaterial ? "0 0 8px 8px" : "0 0 16px 16px",
-          border: `1px solid ${isMaterial ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)"}`,
-          borderTop: isMaterial ? "1px solid var(--material-inset-top-edge)" : "none",
+          background: isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+          borderRadius: isPixel ? 0 : isMaterial ? "0 0 8px 8px" : "0 0 16px 16px",
+          border: isPixel ? "2px solid" : "none",
+          borderColor: isPixel ? surface.borderSunken : undefined,
+          borderTop: isPixel ? undefined : isMaterial ? "1px solid var(--material-inset-top-edge)" : `1px solid ${isDark ? "rgba(255,255,255,0.045)" : "rgba(0,0,0,0.05)"}`,
           boxShadow: isMaterial
             ? isDark
               ? "inset 0 9px 18px rgba(0,0,0,0.18), inset 0 1px 0 var(--material-inset-top-edge), inset 0 -1px 0 var(--material-inset-bottom-edge)"
@@ -314,7 +337,7 @@ export function SettingsScreen({
         };
         const parentStyle = {
           ...settingsRowGlass,
-          borderRadius: val ? (isMaterial ? "8px 8px 0 0" : "16px 16px 0 0") : isMaterial ? 8 : 16,
+          borderRadius: isPixel ? 0 : val ? (isMaterial ? "8px 8px 0 0" : "16px 16px 0 0") : isMaterial ? 8 : 16,
           padding: "12px 20px",
           marginBottom: val ? 0 : 8,
           display: "flex",
@@ -336,6 +359,7 @@ export function SettingsScreen({
                   ? (surfaceStyle === "aero" ? "linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.05) 100%)" : isMaterial ? "var(--material-elevation-3)" : "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.032))")
                   : isMaterial ? "var(--material-elevation-3)" : `${accent.glow}0.05)`,
                 ...(isMaterial ? materialFocusStyle : {}),
+                ...(isPixel ? pixelFocusStyle : {}),
               }
             : {}),
         };
@@ -346,7 +370,7 @@ export function SettingsScreen({
           padding: isMaterial ? "13px 16px" : "14px 20px",
           cursor: "pointer",
           transition: "background 0.15s ease, box-shadow 0.15s ease",
-          borderRadius: isMaterial ? 8 : undefined,
+          borderRadius: isPixel ? 0 : isMaterial ? 8 : undefined,
         } as const;
         const dividerRow = (label: string) => (
           <div style={{ padding: isMaterial ? "11px 16px 5px" : "10px 20px 4px", borderTop: `1px solid ${isMaterial ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}` }}>
@@ -364,7 +388,7 @@ export function SettingsScreen({
                 {/* Show Collection Names sub-toggle */}
                 <div
                   ref={subFocused ? settingsFocusedRef : undefined}
-                  style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: subFocused ? (isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: subFocused && isMaterial ? "var(--material-shadow-pressed)" : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`, ...(subFocused && isMaterial ? materialSubFocusStyle : {}) }}
+                  style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: subFocused ? (isPixel ? surface.activeBg : isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: subFocused && isPixel ? pixelSubFocusStyle.boxShadow : subFocused && isMaterial ? "var(--material-shadow-pressed)" : isPixel ? surface.bevelRaisedSoft : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial || isPixel ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`, ...(subFocused && isMaterial ? materialSubFocusStyle : {}), ...(subFocused && isPixel ? pixelSubFocusStyle : {}) }}
                   onClick={() => updateSetting("show_home_collection_names", !settings.show_home_collection_names)}
                 >
                   <span style={{ fontSize: 13, fontWeight: 500, color: isMaterial ? theme.text : theme.textDim }}>{t("settings.showHomeCollectionNames")}</span>
@@ -385,7 +409,7 @@ export function SettingsScreen({
                       return (
                         <div key={col.id}
                           ref={colFocused ? settingsFocusedRef : undefined}
-                          style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: colFocused ? (isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: colFocused && isMaterial ? "var(--material-shadow-pressed)" : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`, ...(colFocused && isMaterial ? materialSubFocusStyle : {}) }}
+                          style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: colFocused ? (isPixel ? surface.activeBg : isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: colFocused && isPixel ? pixelSubFocusStyle.boxShadow : colFocused && isMaterial ? "var(--material-shadow-pressed)" : isPixel ? surface.bevelRaisedSoft : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial || isPixel ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`, ...(colFocused && isMaterial ? materialSubFocusStyle : {}), ...(colFocused && isPixel ? pixelSubFocusStyle : {}) }}
                           onClick={() => onToggleHomeCollection?.(col.name)}>
                           <span style={{ fontSize: 13, fontWeight: 500, color: isMaterial ? theme.text : theme.textDim }}>{col.name}</span>
                           <ToggleKnob value={visible} />
@@ -400,7 +424,7 @@ export function SettingsScreen({
                       return (
                         <div key={col.id}
                           ref={colFocused ? settingsFocusedRef : undefined}
-                          style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: colFocused ? (isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: colFocused && isMaterial ? "var(--material-shadow-pressed)" : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`, ...(colFocused && isMaterial ? materialSubFocusStyle : {}) }}
+                          style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: colFocused ? (isPixel ? surface.activeBg : isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: colFocused && isPixel ? pixelSubFocusStyle.boxShadow : colFocused && isMaterial ? "var(--material-shadow-pressed)" : isPixel ? surface.bevelRaisedSoft : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial || isPixel ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`, ...(colFocused && isMaterial ? materialSubFocusStyle : {}), ...(colFocused && isPixel ? pixelSubFocusStyle : {}) }}
                           onClick={() => onToggleHomeCollection?.(col.name)}>
                           <span style={{ fontSize: 13, fontWeight: 500, color: isMaterial ? theme.text : theme.textDim }}>{col.name}</span>
                           <ToggleKnob value={visible} />
@@ -630,14 +654,14 @@ export function SettingsScreen({
 
     if (item.type === "icon_preview")
       return (
-        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: isMaterial ? 8 : 16, padding: "14px 20px", marginBottom: 8 }}>
+        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "14px 20px", marginBottom: 8 }}>
           <GamepadIconPreview />
         </div>
       );
 
     if (item.type === "controller_test")
       return (
-        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8 }}>
+        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8 }}>
           <ControllerTestWidget />
         </div>
       );
@@ -668,7 +692,7 @@ export function SettingsScreen({
         );
 
       return (
-        <div key={item.key} ref={rowRef} style={{ ...settingsRowGlass, borderRadius: isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8, ...(focused ? {
+        <div key={item.key} ref={rowRef} style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8, ...(focused ? {
           border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + (surfaceStyle === "aero" ? "0.50)" : "0.45)")}`,
           backdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
           WebkitBackdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
@@ -681,6 +705,7 @@ export function SettingsScreen({
             ? (surfaceStyle === "aero" ? "linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.05) 100%)" : surfaceStyle === "material" ? "var(--material-elevation-2)" : "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.032))")
             : surfaceStyle === "material" ? "var(--material-elevation-3)" : `${accent.glow}0.05)`,
           ...(isMaterial ? materialFocusStyle : {}),
+          ...(isPixel ? pixelFocusStyle : {}),
         } : {}) }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: customFolders.length > 0 ? 4 : 0 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: focused ? accent.primary : theme.textDim, textTransform: "uppercase", letterSpacing: "0.08em" }}>{item.label}</div>

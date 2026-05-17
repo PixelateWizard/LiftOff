@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import type { AccentColors, App, ThemeColors, RepeatSpeed } from "../../types";
 import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
 import { ThumbnailCard, type SgdbArtResult } from "./ThumbnailCard";
+import { useTheme } from "../../contexts/ThemeContext";
 
 type ArtType = "grid" | "hero";
 type CropMode = "portrait" | "square" | "hero";
@@ -430,6 +431,14 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
 
 export function SteamGridArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "portrait", artType = "grid", repeatSpeed = "normal", accent, theme, isDark, glass, surfaceStyle = "glass", onClose, onSet, onReset }: ArtPickerProps) {
   const { t } = useTranslation();
+  const { surface } = useTheme();
+  const isPixel = surfaceStyle === "win9x";
+  const pixelShell = isPixel ? {
+    background: surface.panelBg,
+    border: "2px solid",
+    borderColor: surface.borderRaised,
+    boxShadow: surface.panelShadow,
+  } : {};
   const showSgdb = app?.app_type === "game";
   const [activeTab, setActiveTab] = useState<ModalTab>(showSgdb ? "browse" : "upload");
   const lastBtnRef = useRef<Partial<GpState>>({});
@@ -467,10 +476,17 @@ export function SteamGridArtPickerModal({ app, currentArt, hasCustomArt, cropMod
 
   return (
     <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
-      <div style={{ ...glass, borderRadius: surfaceStyle === "material" ? 16 : 24, padding: 20, width: "min(860px, 92vw)", height: "min(600px, 85vh)", display: "flex", flexDirection: "column",
-        border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.4)`, fontFamily: "'Segoe UI', sans-serif" }}>
+      <div style={{ ...glass, borderRadius: isPixel ? 0 : surfaceStyle === "material" ? 16 : 24, padding: isPixel ? 0 : 20, width: "min(860px, 92vw)", height: "min(600px, 85vh)", display: "flex", flexDirection: "column",
+        border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.4)`, fontFamily: "'Segoe UI', sans-serif", ...pixelShell }}>
+        {isPixel && (
+          <div style={{ margin: 3, height: 22, padding: "0 5px 0 7px", boxSizing: "border-box", background: surface.titleBarBg, borderBottom: surface.titleBarBorder, color: surface.titleBarText, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, fontFamily: "Tahoma, Arial, sans-serif" }}>{app.name}</div>
+            <span style={{ width: 14, height: 14, background: surface.buttonBg, border: "1px solid", borderColor: surface.buttonBorder, boxShadow: surface.buttonShadow, color: surface.buttonText, fontSize: 10, fontWeight: 700, lineHeight: "12px", textAlign: "center", fontFamily: "monospace" }}>x</span>
+          </div>
+        )}
+        <div style={{ padding: isPixel ? 20 : undefined, display: "flex", flexDirection: "column", minHeight: 0, flex: 1 }}>
         <div style={{ marginBottom: 4 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: theme.text }}>{app.name}</div>
+          {!isPixel && <div style={{ fontSize: 16, fontWeight: 700, color: theme.text }}>{app.name}</div>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, paddingBottom: 10,
           borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}` }}>
@@ -486,6 +502,7 @@ export function SteamGridArtPickerModal({ app, currentArt, hasCustomArt, cropMod
               accent={accent} theme={theme}
               onClose={onClose} onSet={onSet} onReset={onReset} />
         }
+        </div>
       </div>
     </div>
   );

@@ -23,7 +23,14 @@ interface Props {
 }
 
 export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, title = "" }: Props) {
-  const { glass, accent, theme, isDark } = useTheme();
+  const { glass, accent, theme, isDark, surfaceStyle, surface } = useTheme();
+  const isPixel = surfaceStyle === "win9x";
+  const pixelShell = isPixel ? {
+    background: surface.panelBg,
+    border: "2px solid",
+    borderColor: surface.borderRaised,
+    boxShadow: surface.panelShadow,
+  } : {};
   const [row,     setRow]     = useState(0);
   const [col,     setCol]     = useState(0);
   const [numMode, setNumMode] = useState(false);
@@ -131,10 +138,18 @@ export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, t
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       fontFamily: "'Segoe UI', sans-serif",
     }}>
-      <div style={{ ...glass, borderRadius: 20, padding: "20px 24px", width: 520, display: "flex", flexDirection: "column", gap: 14,
-        border: `1px solid ${accent.glow}0.3)`, boxShadow: "0 12px 60px rgba(0,0,0,0.7)" }}>
+      <div style={{ ...glass, borderRadius: isPixel ? 0 : 20, padding: isPixel ? 0 : "20px 24px", width: 520, display: "flex", flexDirection: "column", gap: isPixel ? 0 : 14,
+        border: `1px solid ${accent.glow}0.3)`, boxShadow: "0 12px 60px rgba(0,0,0,0.7)", ...pixelShell }}>
 
-        {title && <div style={{ fontSize: 12, fontWeight: 600, color: theme.textDim, textTransform: "uppercase", letterSpacing: "0.08em" }}>{title}</div>}
+        {isPixel && (
+          <div style={{ margin: 3, height: 22, padding: "0 5px 0 7px", boxSizing: "border-box", background: surface.titleBarBg, borderBottom: surface.titleBarBorder, color: surface.titleBarText, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, fontFamily: "Tahoma, Arial, sans-serif" }}>{title || "Keyboard"}</div>
+            <span style={{ width: 14, height: 14, background: surface.buttonBg, border: "1px solid", borderColor: surface.buttonBorder, boxShadow: surface.buttonShadow, color: surface.buttonText, fontSize: 10, fontWeight: 700, lineHeight: "12px", textAlign: "center", fontFamily: "monospace" }}>x</span>
+          </div>
+        )}
+        <div style={{ padding: isPixel ? "16px 24px 20px" : undefined, display: "flex", flexDirection: "column", gap: 14 }}>
+
+        {title && !isPixel && <div style={{ fontSize: 12, fontWeight: 600, color: theme.textDim, textTransform: "uppercase", letterSpacing: "0.08em" }}>{title}</div>}
 
         <div style={{ background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)", borderRadius: 10, padding: "10px 14px",
           fontSize: 15, color: theme.text, minHeight: 40, letterSpacing: "0.02em",
@@ -187,6 +202,7 @@ export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, t
               <span style={{ fontSize: 10, color: theme.textDim }}>{desc}</span>
             </div>
           ))}
+        </div>
         </div>
       </div>
       <style>{`@keyframes kbCursor { 0%,100%{opacity:1} 50%{opacity:0} }`}</style>

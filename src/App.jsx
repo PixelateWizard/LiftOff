@@ -33,6 +33,7 @@ import { AppOverlays } from "./components/app/AppOverlays";
 import { SplashScreen } from "./components/launch/SplashScreen";
 import { LaunchOverlay } from "./components/launch/LaunchOverlay";
 import { SteamGridArtPickerModal } from "./components/art/SteamGridArtPickerModal";
+import { useSurfaceTheme } from "./theme/surfaces";
 import { launchApp } from "./hooks/useLaunchApp";
 import { useAudioFeedback } from "./hooks/useAudioFeedback";
 import { useCustomArt } from "./hooks/useCustomArt";
@@ -45,12 +46,6 @@ import {
   getRunAsAdmin, setRunAsAdmin,
 } from "./constants";
 
-
-// Paper grain for Material surface — SVG fractal noise, stitched and desaturated.
-// Light mode: subtle (0.038 opacity), warmer paper feel.
-// Dark mode: stronger (0.075 opacity) to read as tooth on dark paper fills.
-const PAPER_GRAIN_LIGHT = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72 0.54' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23p)' opacity='0.038'/%3E%3C/svg%3E";
-const PAPER_GRAIN_DARK  = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72 0.54' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23p)' opacity='0.075'/%3E%3C/svg%3E";
 
 async function sampleIconColor(base64) {
   return new Promise((resolve) => {
@@ -250,188 +245,30 @@ export default function App() {
   const isMaterial = surfaceStyle === "material";
   const cinematicLight = settings.cinematic_home && !isDark;
   const isWash = resolvedTheme === "wash";
-  const materialTokens = useMemo(() => ({
-    "--material-bg-primary": isDark ? "#141312" : isWash ? "#f7f4ef" : `color-mix(in srgb, ${accent.lightBg} 86%, #f7f4ef 14%)`,
-    "--material-bg-secondary": isDark ? "#1b1917" : isWash ? "#faf8f4" : `color-mix(in srgb, ${accent.lightBg} 72%, #ffffff 28%)`,
-    "--material-shadow-low": isDark
-      ? "0 6px 18px rgba(0,0,0,0.22), 0 14px 38px rgba(0,0,0,0.16)"
-      : isWash ? `0 5px 18px color-mix(in srgb, ${accent.primary} 18%, rgba(38,26,16,0.14) 82%), 0 14px 36px rgba(38,26,16,0.10)` : "0 5px 18px rgba(18,18,20,0.075), 0 14px 36px rgba(18,18,20,0.052)",
-    "--material-shadow-medium": isDark
-      ? "0 10px 28px rgba(0,0,0,0.28), 0 22px 56px rgba(0,0,0,0.20)"
-      : isWash ? `0 9px 26px color-mix(in srgb, ${accent.primary} 20%, rgba(38,26,16,0.17) 80%), 0 22px 52px rgba(38,26,16,0.12)` : "0 9px 28px rgba(18,18,20,0.105), 0 22px 54px rgba(18,18,20,0.075)",
-    "--material-shadow-high": isDark
-      ? "0 14px 36px rgba(0,0,0,0.34), 0 32px 72px rgba(0,0,0,0.24)"
-      : isWash ? `0 12px 34px color-mix(in srgb, ${accent.primary} 22%, rgba(38,26,16,0.20) 78%), 0 28px 68px rgba(38,26,16,0.14)` : "0 13px 36px rgba(18,18,20,0.13), 0 30px 72px rgba(18,18,20,0.09)",
-    "--material-shadow-pressed": isDark
-      ? "0 4px 14px rgba(0,0,0,0.22), 0 10px 28px rgba(0,0,0,0.14)"
-      : "0 4px 14px rgba(18,18,20,0.075), 0 10px 28px rgba(18,18,20,0.045)",
-    "--material-elevation-1": isDark ? "#181511" : isWash ? "#fdfaf7" : `color-mix(in srgb, ${accent.lightBg} 58%, #faf8f2 42%)`,
-    "--material-elevation-2": isDark ? "#1e1b17" : isWash ? "#ffffff" : `color-mix(in srgb, ${accent.lightBg} 36%, #faf8f2 64%)`,
-    "--material-elevation-3": isDark ? "#242019" : isWash ? "#ffffff" : "#faf8f2",
-    "--material-inset-bg": isDark ? "#221f19" : `color-mix(in srgb, ${accent.lightBg} 82%, #efe7dc 18%)`,
-    "--material-inset-row": isDark ? "#26231c" : `color-mix(in srgb, ${accent.lightBg} 68%, #fdf7ec 32%)`,
-    "--material-inset-row-active": isDark ? "#2b261f" : `color-mix(in srgb, ${accent.lightBg} 42%, #faf8f2 58%)`,
-    "--material-inset-top-edge": isDark ? "rgba(255,255,255,0.055)" : "rgba(18,18,20,0.075)",
-    "--material-inset-bottom-edge": isDark ? "rgba(255,255,255,0.025)" : "rgba(255,255,255,0.62)",
-    "--material-border-subtle": isDark ? "rgba(255,255,255,0.025)" : isWash ? "rgba(42,30,20,0.035)" : "rgba(40,28,14,0.045)",
-  }), [isDark, isWash, accent.lightBg, accent.primary]);
-  const appBg  = isMaterial
-    ? materialTokens["--material-bg-primary"]
-    : resolvedTheme === "plasma"
-      ? "#05050b"
-      : resolvedTheme === "cinder"
-        ? "#100806"
-        : resolvedTheme === "wash"
-          ? "#f8f5f0"
-        : resolvedTheme === "space"
-          ? "#070910"
-          : accent.lightBg;
-
-  const bgGlow1 = isMaterial ? "transparent" : `${accent.glow}${isDark ? "0.07)" : "0.08)"}`;
-  const bgGlow2 = isMaterial ? "transparent" : `${accent.glow}${isDark ? "0.05)" : "0.06)"}`;
+  const {
+    materialTokens,
+    surface,
+    glass,
+    glassBar,
+    settingsRowGlass,
+    appBg,
+    bgGlow1,
+    bgGlow2,
+    cardBackdropFilter,
+    materialFocusShadow,
+    materialRaisedShadow,
+  } = useSurfaceTheme({
+    resolvedTheme,
+    surfaceStyle,
+    glassEnabled,
+    isDark,
+    isWash,
+    cinematicLight,
+    accent,
+  });
   const activeTextColor = isDark
     ? (accent.darkText ? "rgba(20, 14, 10, 0.90)" : "white")
     : (accent.lightDarkText ? "rgba(20, 14, 10, 0.90)" : "white");
-
-  // Flat fallback — exactly the values used before the glass styling pass.
-  const _flatGlass = useMemo(() => ({
-    background:           isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.75)",
-    backdropFilter:       "blur(24px)",
-    WebkitBackdropFilter: "blur(24px)",
-    border:               `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.9)"}`,
-    boxShadow:            isDark ? "none" : "0 2px 16px rgba(0,0,0,0.06)",
-  }), [isDark]);
-
-  const glass = useMemo(() => {
-    if (!glassEnabled) return _flatGlass;
-    if (surfaceStyle === "material") return {
-      background:           `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-2)`,
-      backdropFilter:       undefined,
-      WebkitBackdropFilter: undefined,
-      border:               "1px solid var(--material-border-subtle)",
-      boxShadow:            "var(--material-shadow-low)",
-    };
-    if (surfaceStyle === "aero") return {
-      // Sharp-knee gradient: bright at top edge, rapid falloff — light striking from above
-      background:           isDark
-        ? "linear-gradient(180deg, rgba(255,255,255,0.36) 0%, rgba(255,255,255,0.16) 12%, rgba(255,255,255,0.08) 100%)"
-        : cinematicLight
-          ? "linear-gradient(180deg, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.52) 15%, rgba(255,255,255,0.34) 100%)"
-          : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.76) 12%, rgba(255,255,255,0.58) 100%)",
-      backdropFilter:       isDark ? "blur(14px) saturate(160%) brightness(1.06)" : "blur(16px) saturate(140%) brightness(1.02)",
-      WebkitBackdropFilter: isDark ? "blur(14px) saturate(160%) brightness(1.06)" : "blur(16px) saturate(140%) brightness(1.02)",
-      // Thin neutral rim; accent ring sits just outside via box-shadow
-      border:               `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.85)"}`,
-      // Tight sub-specular (4px) fades quickly from the top edge; light shadow adds depth in light mode
-      boxShadow:            isDark
-        ? `inset 0 1px 0 rgba(255,255,255,0.60), inset 0 2px 4px rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.24), inset 1px 0 0 rgba(255,255,255,0.08), 0 0 0 1px ${accent.glow}0.12), 0 8px 28px rgba(0,0,0,0.30)`
-        : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 2px 8px rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.08), 0 0 0 1px ${accent.glow}0.10), 0 6px 20px rgba(0,0,0,0.14)`,
-    };
-    return {
-      background:           isDark
-        ? "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.06) 100%)"
-        : cinematicLight
-          ? "linear-gradient(180deg, rgba(255,255,255,0.50) 0%, rgba(255,255,255,0.26) 100%)"
-          : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
-      backdropFilter:       isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)",
-      WebkitBackdropFilter: isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)",
-      border:               `1px solid ${isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.55)"}`,
-      boxShadow:            isDark
-        ? "inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.22), 0 10px 32px rgba(0,0,0,0.35)"
-        : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
-    };
-  }, [isDark, cinematicLight, glassEnabled, surfaceStyle, accent.glow, _flatGlass]);
-
-  // Lighter glass variant for top/bottom bars — less visual weight than cards.
-  // Dark mode layers a dark scrim over the white tint so text stays readable over
-  // bright/colorful wallpaper without the bar feeling like a solid slab.
-  const glassBar = useMemo(() => {
-    if (!glassEnabled) return _flatGlass;
-    if (surfaceStyle === "material") return {
-      background:           `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-3)`,
-      backdropFilter:       undefined,
-      WebkitBackdropFilter: undefined,
-      border:               "1px solid var(--material-border-subtle)",
-      boxShadow:            "var(--material-shadow-high)",
-    };
-    if (surfaceStyle === "aero") return {
-      // Hero Aero surface: strongest edge reflectivity, tighter knee, stronger specular than cards/rows
-      background:           isDark
-        ? "linear-gradient(180deg, rgba(0,0,0,0.14), rgba(0,0,0,0.05)), linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.14) 20%, rgba(255,255,255,0.07) 100%)"
-        : cinematicLight
-          ? "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.56) 15%, rgba(255,255,255,0.38) 100%)"
-          : "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.82) 15%, rgba(255,255,255,0.60) 100%)",
-      backdropFilter:       isDark ? "blur(12px) saturate(130%) brightness(0.91)" : "blur(16px) saturate(140%) brightness(1.02)",
-      WebkitBackdropFilter: isDark ? "blur(12px) saturate(130%) brightness(0.91)" : "blur(16px) saturate(140%) brightness(1.02)",
-      border:               `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.85)"}`,
-      boxShadow:            isDark
-        ? `inset 0 1px 0 rgba(255,255,255,0.52), inset 0 2px 7px rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.18), 0 0 0 1px ${accent.glow}0.14), 0 4px 16px rgba(0,0,0,0.22)`
-        : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 0 0 1px ${accent.glow}0.10), 0 4px 16px rgba(0,0,0,0.10)`,
-    };
-    return {
-      background:           isDark
-        ? "linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.10)), linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.045))"
-        : cinematicLight
-          ? "linear-gradient(180deg, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.28) 100%)"
-          : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
-      backdropFilter:       isDark ? "blur(28px) saturate(115%) brightness(0.88)" : "blur(28px) saturate(160%) brightness(1.02)",
-      WebkitBackdropFilter: isDark ? "blur(28px) saturate(115%) brightness(0.88)" : "blur(28px) saturate(160%) brightness(1.02)",
-      border:               `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)"}`,
-      boxShadow:            isDark
-        ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.16), 0 6px 20px rgba(0,0,0,0.25)"
-        : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
-    };
-  }, [isDark, cinematicLight, glassEnabled, surfaceStyle, accent.glow, _flatGlass]);
-
-  // Ultra-light glass for settings rows — quieter than cards, accent-tinted.
-  // Uses accent.glow (already "rgba(r,g,b,") so tint is zero-cost and theme-aware.
-  const settingsRowGlass = useMemo(() => {
-    if (!glassEnabled) return _flatGlass;
-    const tintTop = `${accent.glow}0.025)`;
-    const tintBot = `${accent.glow}0.010)`;
-    if (surfaceStyle === "material") return {
-      background:           `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-2)`,
-      backdropFilter:       undefined,
-      WebkitBackdropFilter: undefined,
-      border:               "1px solid var(--material-border-subtle)",
-      boxShadow:            "var(--material-shadow-low)",
-    };
-    if (surfaceStyle === "aero") return {
-      // Rows: tight-knee neutral gradient, lighter than header. Accent only on outer ring.
-      background:           isDark
-        ? "linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.07) 15%, rgba(255,255,255,0.04) 100%)"
-        : "linear-gradient(180deg, rgba(255,255,255,0.90) 0%, rgba(255,255,255,0.74) 12%, rgba(255,255,255,0.56) 100%)",
-      backdropFilter:       isDark ? "blur(8px) saturate(115%) brightness(0.97)" : "blur(16px) saturate(140%) brightness(1.02)",
-      WebkitBackdropFilter: isDark ? "blur(8px) saturate(115%) brightness(0.97)" : "blur(16px) saturate(140%) brightness(1.02)",
-      border:               `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`,
-      // Micro top specular + dark bottom edge + faint accent ring
-      boxShadow:            isDark
-        ? `inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.08), 0 0 0 1px ${accent.glow}0.10), 0 1px 4px rgba(0,0,0,0.08)`
-        : "inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 4px 10px rgba(0,0,0,0.10)",
-    };
-    return {
-      background:           isDark
-        ? `linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.022)), linear-gradient(180deg, ${tintTop}, ${tintBot})`
-        : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
-      backdropFilter:       isDark ? "blur(8px) saturate(105%) brightness(0.92)" : "blur(28px) saturate(160%) brightness(1.02)",
-      WebkitBackdropFilter: isDark ? "blur(8px) saturate(105%) brightness(0.92)" : "blur(28px) saturate(160%) brightness(1.02)",
-      border:               `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"}`,
-      boxShadow:            isDark
-        ? "inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 6px rgba(0,0,0,0.12)"
-        : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
-    };
-  }, [isDark, glassEnabled, surfaceStyle, accent.glow, _flatGlass]);
-
-  const cardBackdropFilter = !glassEnabled
-    ? (isDark ? "blur(16px)" : "blur(28px)")
-    : surfaceStyle === "material"
-      ? undefined
-    : surfaceStyle === "aero"
-      ? (isDark ? "blur(12px) saturate(140%) brightness(1.05)" : "blur(14px) saturate(140%) brightness(1.02)")
-      : (isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)");
-  const materialFocusShadow = "var(--material-shadow-medium)";
-  const materialRaisedShadow = "var(--material-shadow-high)";
-
   const lastLaunchTime = useRef(0);
   const _triggerLaunchImpl = (app, rec) => {
     const now = Date.now();
@@ -716,7 +553,76 @@ export default function App() {
       ".theme-wash-bleed1 { animation: washB1  26s ease-in-out infinite, washOpacity 24s ease-in-out infinite; animation-delay: -8s, -14s; }",
       ".theme-wash-bleed2 { animation: washB2  23s ease-in-out infinite, washOpacity 27s ease-in-out infinite; animation-delay: -16s, -7s; }",
       ".theme-wash-pink { animation: washPink 22s ease-in-out infinite, washOpacity 26s ease-in-out infinite; animation-delay: -9s, -3s; }",
-      "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-w1, .theme-wash-w2, .theme-wash-w3, .theme-wash-c1, .theme-wash-c2, .theme-wash-mix, .theme-wash-bleed1, .theme-wash-bleed2, .theme-wash-pink, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } }",
+      "@keyframes auroraB1 { 0%,100%{transform:translate(0,0) scaleX(1)} 40%{transform:translate(6%,-4%) scaleX(1.08)} 70%{transform:translate(-4%,3%) scaleX(0.94)} }",
+      "@keyframes auroraB2 { 0%,100%{transform:translate(0,0) scaleX(1)} 35%{transform:translate(-8%,5%) scaleX(0.92)} 68%{transform:translate(5%,-3%) scaleX(1.07)} }",
+      "@keyframes auroraB3 { 0%,100%{transform:translate(0,0) scaleX(1)} 30%{transform:translate(4%,6%) scaleX(1.1)} 65%{transform:translate(-6%,-2%) scaleX(0.96)} }",
+      "@keyframes auroraB4 { 0%,100%{transform:translate(0,0) scaleX(1)} 45%{transform:translate(7%,-5%) scaleX(0.9)} 75%{transform:translate(-3%,4%) scaleX(1.06)} }",
+      "@keyframes auroraFade { 0%,100%{opacity:0.55} 50%{opacity:0.82} }",
+      "@keyframes auroraShimmer { 0%,100%{opacity:0.07} 50%{opacity:0.16} }",
+      ".theme-aurora-band { will-change:transform,opacity; contain:paint; backface-visibility:hidden; transform:translateZ(0); }",
+      ".theme-aurora-b1 { animation:auroraB1 18s ease-in-out infinite, auroraFade 20s ease-in-out infinite; }",
+      ".theme-aurora-b2 { animation:auroraB2 22s ease-in-out infinite, auroraFade 24s ease-in-out infinite; animation-delay:-7s,-5s; }",
+      ".theme-aurora-b3 { animation:auroraB3 26s ease-in-out infinite, auroraFade 22s ease-in-out infinite; animation-delay:-13s,-9s; }",
+      ".theme-aurora-b4 { animation:auroraB4 20s ease-in-out infinite, auroraFade 26s ease-in-out infinite; animation-delay:-4s,-16s; }",
+      ".theme-aurora-shimmer { animation:auroraShimmer 8s ease-in-out infinite; animation-delay:-3s; }",
+      "@keyframes synthSunGlow { 0%,100%{opacity:0.72} 50%{opacity:1} }",
+      "@keyframes synthHorizonShim { 0%,100%{opacity:0.55} 50%{opacity:0.92} }",
+      ".theme-synthwave-sun { animation:synthSunGlow 6s ease-in-out infinite; will-change:opacity; }",
+      ".theme-synthwave-horizon { animation:synthHorizonShim 7s ease-in-out infinite; }",
+      "@keyframes cyberNeonPulse { 0%,100%{opacity:0.52} 50%{opacity:0.82} }",
+      "@keyframes cyberNeonFlicker { 0%,84%,100%{opacity:1} 85%,87%{opacity:0.2} 91%,93%{opacity:0.65} }",
+      "@keyframes cyberRainFall { 0%{transform:translateY(-60px);opacity:0} 8%{opacity:1} 92%{opacity:0.65} 100%{transform:translateY(108vh) translateX(-50px);opacity:0} }",
+      ".theme-cyberpunk-glow { animation:cyberNeonPulse 7s ease-in-out infinite; }",
+      ".theme-cyberpunk-glow-2 { animation:cyberNeonPulse 9s ease-in-out infinite; animation-delay:-4s; }",
+      ".theme-cyberpunk-horizon { animation:cyberNeonPulse 5s ease-in-out infinite; }",
+      ".theme-cyberpunk-flicker-1 { animation:cyberNeonFlicker 4s ease-in-out infinite; }",
+      ".theme-cyberpunk-flicker-2 { animation:cyberNeonFlicker 5.5s ease-in-out infinite; animation-delay:-2s; }",
+      ".theme-cyberpunk-rain { position:fixed; z-index:2; border-radius:1px; pointer-events:none; animation-name:cyberRainFall; animation-timing-function:linear; animation-iteration-count:infinite; filter:drop-shadow(0 0 5px rgba(180,240,255,0.45)); }",
+      "@keyframes lofiGlowPulse { 0%,100%{opacity:0.28;transform:translate(-50%,-50%) scale(0.82);filter:brightness(0.95)} 50%{opacity:0.82;transform:translate(-50%,-50%) scale(1.24);filter:brightness(1.2)} }",
+      "@keyframes lofiLampBloom { 0%,100%{transform:translate(-50%,-50%) scale(0.94);filter:blur(10px) brightness(0.92)} 50%{transform:translate(-50%,-50%) scale(1.12);filter:blur(12px) brightness(1.16)} }",
+      "@keyframes lofiStarTwinkle { 0%,100%{opacity:0.30;transform:translate(-50%,-50%) scale(0.72)} 42%{opacity:1;transform:translate(-50%,-50%) scale(1.58)} 72%{opacity:0.62;transform:translate(-50%,-50%) scale(1.06)} }",
+      "@keyframes lofiMoonBreath { 0%,100%{opacity:0.32;filter:brightness(0.95)} 50%{opacity:0.74;filter:brightness(1.24)} }",
+      "@keyframes lofiMoonRimPulse { 0%,100%{opacity:0.28;transform:translate(-50%,-50%) scale(0.99)} 50%{opacity:0.62;transform:translate(-50%,-50%) scale(1.025)} }",
+      "@keyframes lofiWindowShimmer { 0%,100%{opacity:0.18;transform:translateX(-2%)} 50%{opacity:0.60;transform:translateX(2%)} }",
+      "@keyframes lofiSteamRise { 0%{transform:translateY(10px) translateX(0) scaleX(0.85);opacity:0} 34%{opacity:0.56} 68%{opacity:0.34} 100%{transform:translateY(-34px) translateX(10px) scaleX(1.2);opacity:0} }",
+      "@keyframes lofiHairBreeze { 0%,100%{opacity:0.24;transform:translateX(0) translateY(0) rotate(0deg)} 38%{opacity:0.68;transform:translateX(10px) translateY(-4px) rotate(-0.7deg)} 66%{opacity:0.44;transform:translateX(16px) translateY(1px) rotate(0.5deg)} }",
+      "@keyframes lofiGrainShift { 0%,100%{opacity:0.16} 50%{opacity:0.23} }",
+      ".theme-lofi-lamp { animation:lofiGlowPulse 8s ease-in-out infinite; }",
+      ".theme-lofi-window { animation:lofiGlowPulse 10s ease-in-out infinite; }",
+      ".theme-lofi-dust { position:fixed; border-radius:50%; pointer-events:none; animation-name:lofiSteamRise; animation-timing-function:ease-in-out; animation-iteration-count:infinite; will-change:transform,opacity; }",
+      ".lofi-effects { pointer-events:none; }",
+      ".lofi-light-glow { animation:lofiGlowPulse ease-in-out infinite; will-change:transform,opacity,filter; transform:translate(-50%,-50%); }",
+      ".lofi-lamp-glow { animation:lofiLampBloom ease-in-out infinite; will-change:transform,filter; }",
+      ".lofi-star { animation:lofiStarTwinkle ease-in-out infinite; will-change:transform,opacity; transform-origin:center; }",
+      ".lofi-moon-halo { animation:lofiMoonBreath 10s ease-in-out infinite; will-change:opacity,filter; }",
+      ".lofi-moon-rim { animation:lofiMoonRimPulse 10s ease-in-out infinite; will-change:transform,opacity; }",
+      ".lofi-window-shimmer { animation:lofiWindowShimmer 9s ease-in-out infinite; will-change:transform,opacity; }",
+      ".lofi-steam { animation:lofiSteamRise ease-in-out infinite; will-change:transform,opacity; transform-origin:bottom center; }",
+      ".lofi-hair-wisp { animation:lofiHairBreeze ease-in-out infinite; will-change:transform,opacity; vector-effect:non-scaling-stroke; }",
+      ".lofi-grain { animation:lofiGrainShift 12s steps(2,end) infinite; will-change:opacity; }",
+      "@keyframes forestMoonBeam { 0%,100%{opacity:0.55} 50%{opacity:0.72} }",
+      "@keyframes forestFogDrift { 0%,100%{transform:translateX(0)} 50%{transform:translateX(2%)} }",
+      "@keyframes forestFireflyDrift { 0%{transform:translate(0,0)} 25%{transform:translate(14px,-10px)} 50%{transform:translate(6px,-22px)} 75%{transform:translate(-8px,-14px)} 100%{transform:translate(0,0)} }",
+      "@keyframes forestFireflyGlow { 0%,100%{opacity:0.12;transform:scale(1)} 50%{opacity:1;transform:scale(1.7)} }",
+      ".theme-forest-moonbeam { animation:forestMoonBeam 12s ease-in-out infinite; }",
+      ".theme-forest-fog { animation:forestFogDrift 20s ease-in-out infinite; }",
+      ".theme-forest-fog-2 { animation:forestFogDrift 28s ease-in-out infinite; animation-delay:-10s; }",
+      ".theme-forest-firefly { position:fixed; border-radius:50%; pointer-events:none; animation-name:forestFireflyDrift,forestFireflyGlow; animation-timing-function:ease-in-out,ease-in-out; animation-iteration-count:infinite,infinite; will-change:transform,opacity; }",
+      "@keyframes webGhostFloat0 { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-6px)} }",
+      "@keyframes webGhostFloat1 { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-5px)} }",
+      "@keyframes webGhostFloat2 { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-7px)} }",
+      "@keyframes webGhostFloat3 { 0%,100%{transform:translateY(0px)} 50%{transform:translateY(-4px)} }",
+      "@keyframes webWinFlicker0 { 0%,88%,100%{opacity:0.55} 89%,91%{opacity:0.16} }",
+      "@keyframes webWinFlicker1 { 0%,93%,100%{opacity:0.42} 94%,96%{opacity:0.11} }",
+      "@keyframes webWinFlicker2 { 0%,95%,100%{opacity:0.48} 96%,98%{opacity:0.14} }",
+      "@keyframes webWinFlicker3 { 0%,82%,100%{opacity:0.38} 83%,85%{opacity:0.09} }",
+      "@keyframes webCursorBlink { 0%,49%{opacity:1} 50%,100%{opacity:0} }",
+      ".theme-webcore-ghost-0 { animation:webGhostFloat0 16s ease-in-out infinite, webWinFlicker0 22s ease-in-out infinite; }",
+      ".theme-webcore-ghost-1 { animation:webGhostFloat1 19s ease-in-out infinite, webWinFlicker1 28s ease-in-out infinite; animation-delay:-4s; }",
+      ".theme-webcore-ghost-2 { animation:webGhostFloat2 22s ease-in-out infinite, webWinFlicker2 24s ease-in-out infinite; animation-delay:-8s; }",
+      ".theme-webcore-ghost-3 { animation:webGhostFloat3 25s ease-in-out infinite, webWinFlicker3 30s ease-in-out infinite; animation-delay:-12s; }",
+      ".theme-webcore-cursor { animation:webCursorBlink 1.1s step-end infinite; }",
+      "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-w1, .theme-wash-w2, .theme-wash-w3, .theme-wash-c1, .theme-wash-c2, .theme-wash-mix, .theme-wash-bleed1, .theme-wash-bleed2, .theme-wash-pink, .theme-aurora-b1, .theme-aurora-b2, .theme-aurora-b3, .theme-aurora-b4, .theme-aurora-shimmer, .theme-synthwave-sun, .theme-synthwave-horizon, .theme-cyberpunk-glow, .theme-cyberpunk-glow-2, .theme-cyberpunk-horizon, .theme-cyberpunk-flicker-1, .theme-cyberpunk-flicker-2, .theme-cyberpunk-rain, .theme-lofi-lamp, .theme-lofi-window, .theme-lofi-dust, .theme-lofi-light, .theme-lofi-glow, .theme-lofi-star, .theme-lofi-steam, .theme-lofi-grain, .lofi-light-glow, .lofi-lamp-glow, .lofi-star, .lofi-steam, .lofi-moon-halo, .lofi-moon-rim, .lofi-window-shimmer, .lofi-hair-wisp, .lofi-grain, .theme-forest-moonbeam, .theme-forest-fog, .theme-forest-fog-2, .theme-forest-firefly, .theme-webcore-ghost-0, .theme-webcore-ghost-1, .theme-webcore-ghost-2, .theme-webcore-ghost-3, .theme-webcore-cursor, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } .lofi-light-glow, .lofi-lamp-glow, .lofi-star, .lofi-steam, .lofi-moon-halo, .lofi-moon-rim, .lofi-window-shimmer, .lofi-hair-wisp, .lofi-grain { opacity:0.12 !important; } }",
       "html, body { overflow-x: hidden; }",
       "* { scrollbar-width: none !important; -ms-overflow-style: none !important; }",
       "*::-webkit-scrollbar { display: none !important; }",
@@ -754,7 +660,8 @@ export default function App() {
 
   useEffect(() => {
     const activeTheme = normalizeThemeKey(settings.theme);
-    document.querySelectorAll(".bg-star, .bg-cloud, .theme-plasma-spark, .theme-cinder-particle").forEach(s => s.remove());
+    const particleSelector = ".bg-star, .bg-cloud, .theme-plasma-spark, .theme-cinder-particle, .theme-cyberpunk-rain, .theme-forest-firefly, .theme-forest-firefly-wrapper";
+    document.querySelectorAll(particleSelector).forEach(s => s.remove());
     if (!settings.stars_enabled) return;
     if (activeTheme === "space") {
       for (let i = 0; i < 60; i++) {
@@ -823,8 +730,92 @@ export default function App() {
         cinder.style.animationDelay = `-${Math.random() * duration}s, -${Math.random() * flickerDuration}s`;
         const cc = document.getElementById("cinder-particle-container"); if (cc) cc.appendChild(cinder);
       }
+    } else if (activeTheme === "aurora") {
+      const container = document.getElementById("aurora-star-container");
+      if (container) {
+        for (let i = 0; i < 25; i++) {
+          const star = document.createElement("div");
+          star.className = "bg-star";
+          const size = (Math.random() * 1.4 + 0.5) + "px";
+          star.style.width = star.style.height = size;
+          star.style.left = Math.random() * 100 + "vw";
+          star.style.top = Math.random() * 62 + "vh";
+          star.style.background = `rgba(${200 + Math.floor(Math.random() * 55)},${220 + Math.floor(Math.random() * 35)},255,${(0.5 + Math.random() * 0.45).toFixed(2)})`;
+          star.style.animationDuration = (Math.random() * 4 + 3) + "s";
+          star.style.animationDelay = -(Math.random() * 5) + "s";
+          container.appendChild(star);
+        }
+      }
+    } else if (activeTheme === "synthwave") {
+      const container = document.getElementById("synthwave-star-container");
+      if (container) {
+        for (let i = 0; i < 30; i++) {
+          const star = document.createElement("div");
+          star.className = "bg-star";
+          const pink = Math.random() > 0.5;
+          const size = (Math.random() * 1.6 + 0.4) + "px";
+          star.style.width = star.style.height = size;
+          star.style.left = Math.random() * 100 + "vw";
+          star.style.top = Math.random() * 48 + "vh";
+          star.style.background = pink
+            ? `rgba(255,${100 + Math.floor(Math.random() * 80)},${180 + Math.floor(Math.random() * 75)},${(0.55 + Math.random() * 0.38).toFixed(2)})`
+            : `rgba(${80 + Math.floor(Math.random() * 60)},${200 + Math.floor(Math.random() * 55)},255,${(0.50 + Math.random() * 0.40).toFixed(2)})`;
+          star.style.animationDuration = (Math.random() * 3 + 2) + "s";
+          star.style.animationDelay = -(Math.random() * 5) + "s";
+          container.appendChild(star);
+        }
+      }
+    } else if (activeTheme === "cyberpunk") {
+      const container = document.getElementById("cyberpunk-rain-container");
+      if (container) {
+        for (let i = 0; i < 55; i++) {
+          const drop = document.createElement("div");
+          drop.className = "theme-cyberpunk-rain";
+          drop.style.width = Math.random() > 0.82 ? "1.5px" : "0.8px";
+          drop.style.height = (30 + Math.random() * 60) + "px";
+          drop.style.left = (Math.random() * 110 - 5) + "vw";
+          drop.style.top = (-Math.random() * 30) + "vh";
+          drop.style.background = "linear-gradient(180deg,transparent 0%,rgba(205,248,255,0.82) 58%,rgba(150,220,255,0.24) 100%)";
+          drop.style.animationDuration = (1.8 + Math.random() * 2.4) + "s";
+          drop.style.animationDelay = -(Math.random() * 4) + "s";
+          container.appendChild(drop);
+        }
+      }
+    } else if (activeTheme === "forest") {
+      const container = document.getElementById("forest-particle-container");
+      if (container) {
+        const ffColor = `color-mix(in srgb, ${accent.primary} 55%, #d4ff80 45%)`;
+        for (let i = 0; i < 14; i++) {
+          const wrapper = document.createElement("div");
+          wrapper.className = "theme-forest-firefly-wrapper";
+          wrapper.style.cssText = `position:fixed;pointer-events:none;left:${(8 + Math.random() * 82).toFixed(1)}vw;top:${(30 + Math.random() * 50).toFixed(1)}vh;animation:forestFireflyDrift ${(6 + Math.random() * 8).toFixed(1)}s ease-in-out infinite;animation-delay:-${(Math.random() * 10).toFixed(1)}s;`;
+          const glow = document.createElement("div");
+          const size = (2 + Math.random() * 2).toFixed(1);
+          glow.className = "theme-forest-firefly";
+          glow.style.width = size + "px";
+          glow.style.height = size + "px";
+          glow.style.background = ffColor;
+          glow.style.boxShadow = `0 0 ${(4 + Math.random() * 8).toFixed(0)}px 2px ${ffColor}`;
+          glow.style.animationDuration = `${(1.5 + Math.random() * 2.4).toFixed(1)}s, ${(1.5 + Math.random() * 2.4).toFixed(1)}s`;
+          glow.style.animationDelay = `-${(Math.random() * 3).toFixed(1)}s, -${(Math.random() * 3).toFixed(1)}s`;
+          wrapper.appendChild(glow);
+          container.appendChild(wrapper);
+        }
+        for (let i = 0; i < 18; i++) {
+          const star = document.createElement("div");
+          star.className = "bg-star";
+          const size = (0.6 + Math.random() * 1.0) + "px";
+          star.style.width = star.style.height = size;
+          star.style.left = Math.random() * 100 + "vw";
+          star.style.top = Math.random() * 45 + "vh";
+          star.style.background = `rgba(200,240,215,${(0.4 + Math.random() * 0.5).toFixed(2)})`;
+          star.style.animationDuration = (3 + Math.random() * 4) + "s";
+          star.style.animationDelay = -(Math.random() * 5) + "s";
+          container.appendChild(star);
+        }
+      }
     }
-    return () => document.querySelectorAll(".bg-star, .bg-cloud, .theme-plasma-spark, .theme-cinder-particle").forEach(s => s.remove());
+    return () => document.querySelectorAll(particleSelector).forEach(s => s.remove());
   }, [settings.stars_enabled, settings.theme, settings.accent, loading, accent.primary, accent.light]);
 
   useEffect(() => {
@@ -865,13 +856,17 @@ export default function App() {
       autoScaleRef.current = auto;
       // ui_scale is null when never saved; substitute the auto-detected value.
       const updated = { ...settingsRef.current, ...s, ui_scale: s.ui_scale ?? auto };
+      if (updated.surface_style === "pixel") updated.surface_style = "win9x";
       setSettings(updated); settingsRef.current = updated;
+      if (s.surface_style === "pixel") invoke("save_settings", { settings: updated }).catch(console.error);
       setTab(s.default_tab || "Home"); tabRef.current = s.default_tab || "Home";
       if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
     }).catch(() => {
       invoke("get_settings").then(s => {
         const merged = { ...settingsRef.current, ...s };
+        if (merged.surface_style === "pixel") merged.surface_style = "win9x";
         setSettings(merged); settingsRef.current = merged;
+        if (s.surface_style === "pixel") invoke("save_settings", { settings: merged }).catch(console.error);
         setTab(s.default_tab || "Home"); tabRef.current = s.default_tab || "Home";
         if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
       });
@@ -1942,7 +1937,7 @@ export default function App() {
   const AppIcon = ({ app, size = 36 }) => {
     if (app.icon_base64) {
       return (
-        <div style={{ width: size, height: size, borderRadius: 8, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <div style={{ width: size, height: size, borderRadius: surfaceStyle === "win9x" ? 0 : 8, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <img
             src={`data:image/png;base64,${app.icon_base64}`}
             alt={app.name}
@@ -1951,7 +1946,7 @@ export default function App() {
         </div>
       );
     }
-    return <div style={{ width: size, height: size, borderRadius: 10, background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.25)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45, fontWeight: 700, color: accent.primary }}>{app.name.charAt(0).toUpperCase()}</div>;
+    return <div style={{ width: size, height: size, borderRadius: surfaceStyle === "win9x" ? 0 : 10, background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.25)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45, fontWeight: 700, color: accent.primary }}>{app.name.charAt(0).toUpperCase()}</div>;
   };
 
   // Pin badge shown on cards
@@ -1973,7 +1968,7 @@ export default function App() {
 
   const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, onRightClick }) => {
     const art = customArt[app.id] || gameArt[app.id];
-    const cardRadius = surfaceStyle === "material" ? 8 : 16;
+    const cardRadius = surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 8 : 16;
     return (
       <div ref={cardRef} onClick={onClick} onDoubleClick={onDoubleClick}
         onContextMenu={onRightClick ? (e) => { e.preventDefault(); onRightClick(e, app); } : undefined}
@@ -2155,7 +2150,7 @@ export default function App() {
   ) : undefined;
 
   // ── Render ────────────────────────────────────────────────────
-  const themeValue = { isDark, theme, accent, glass, glassBar, settingsRowGlass, glassEnabled, surfaceStyle, appBg, bgGlow1, bgGlow2 };
+  const themeValue = { isDark, theme, accent, glass, glassBar, settingsRowGlass, glassEnabled, surfaceStyle, appBg, bgGlow1, bgGlow2, surface };
   const settingsValue = { settings, settingsRef, updateSetting, updateSettingsBatch };
   const libraryViewProps = {
     scrollRef: tabScrollRef,
@@ -2485,7 +2480,7 @@ export default function App() {
       {libraryRefreshStatus === "scanning" && (
         <div style={{ position: "fixed", inset: 0, zIndex: 5000, display: "flex", alignItems: "center", justifyContent: "center",
           background: surfaceStyle === "material" ? (isDark ? "rgba(23,21,19,0.96)" : "rgba(244,240,235,0.96)") : isDark ? "rgba(10,5,2,0.75)" : "rgba(240,230,220,0.75)", backdropFilter: surfaceStyle === "material" ? undefined : "blur(12px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : "blur(12px)" }}>
-          <div style={{ ...glass, borderRadius: surfaceStyle === "material" ? 16 : 24, padding: "32px 48px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
+          <div style={{ ...glass, borderRadius: surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 16 : 24, padding: "32px 48px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
             border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.3)` }}>
             <div className="splash-dots" style={{ opacity: 1 }}>
               <div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" />
@@ -2507,7 +2502,7 @@ export default function App() {
         }}>
           {/* Search bar */}
           <div style={{ padding: "18px 24px 10px", flexShrink: 0 }}>
-            <div style={{ ...glass, borderRadius: 16, padding: "12px 20px", display: "flex", alignItems: "center", gap: 14,
+            <div style={{ ...glass, borderRadius: surfaceStyle === "win9x" ? 0 : 16, padding: "12px 20px", display: "flex", alignItems: "center", gap: 14,
               ...(searchMode === "keyboard" ? { borderColor: surfaceStyle === "material" ? accent.primary : `${accent.glow}0.45)`, boxShadow: surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.2)` } : {}) }}>
               <svg width="18" height="18" viewBox="0 0 20 20" fill="none" style={{ flexShrink: 0, opacity: 0.4 }}>
                 <circle cx="8.5" cy="8.5" r="5.5" stroke={theme.text} strokeWidth="1.8"/>
@@ -2618,7 +2613,7 @@ export default function App() {
 
             {searchMode === "results" && (
               <div style={{ position: "sticky", bottom: 0, paddingTop: 8 }}>
-                <div style={{ ...glass, borderRadius: 12, padding: "9px 20px", display: "flex", gap: 16, alignItems: "center" }}>
+                <div style={{ ...glass, borderRadius: surfaceStyle === "win9x" ? 0 : 12, padding: "9px 20px", display: "flex", gap: 16, alignItems: "center" }}>
                   <Btn label={t('gamepad.aLaunch')} />
                   <Btn label={t('gamepad.yKeyboard')} />
                   <Btn label={t('gamepad.bClose')} />
@@ -2629,7 +2624,7 @@ export default function App() {
 
             {searchMode === "idle" && (
               <div style={{ position: "sticky", bottom: 0, paddingTop: 8 }}>
-                <div style={{ ...glass, borderRadius: 12, padding: "9px 20px", display: "flex", gap: 16, alignItems: "center" }}>
+                <div style={{ ...glass, borderRadius: surfaceStyle === "win9x" ? 0 : 12, padding: "9px 20px", display: "flex", gap: 16, alignItems: "center" }}>
                   <Btn label={t('gamepad.yKeyboard')} />
                   <Btn label={t('gamepad.bClose')} />
                   {searchResults.length > 0 && <span style={{ fontSize: 11, color: theme.textFaint }}>{t('search.startBrowse')}</span>}
@@ -2649,7 +2644,7 @@ export default function App() {
       {cacheClearLoading && (
         <div style={{ position: "fixed", inset: 0, zIndex: 2147483000, display: "flex", alignItems: "center", justifyContent: "center", isolation: "isolate", fontFamily: "'Segoe UI', sans-serif" }}>
           <div style={{ position: "absolute", inset: 0, zIndex: 0, background: "rgba(0,0,0,0.65)" }} />
-          <div style={{ position: "relative", zIndex: 1, background: surfaceStyle === "material" ? "var(--material-elevation-3)" : isDark ? "rgba(18,16,14,0.96)" : "rgba(252,248,244,0.96)", borderRadius: 18, padding: "36px 52px", textAlign: "center", display: "flex", flexDirection: "column", gap: 14, alignItems: "center",
+          <div style={{ position: "relative", zIndex: 1, background: surfaceStyle === "material" ? "var(--material-elevation-3)" : isDark ? "rgba(18,16,14,0.96)" : "rgba(252,248,244,0.96)", borderRadius: surfaceStyle === "win9x" ? 0 : 18, padding: "36px 52px", textAlign: "center", display: "flex", flexDirection: "column", gap: 14, alignItems: "center",
             backdropFilter: surfaceStyle === "material" ? undefined : "blur(18px) saturate(140%)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : "blur(18px) saturate(140%)",
             boxShadow: "0 20px 80px rgba(0,0,0,0.55)", border: `1px solid ${isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.14)"}` }}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", border: `3px solid ${accent.primary}`, borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
@@ -2727,8 +2722,6 @@ export default function App() {
             recentRef={recentRef}
             t={t}
             AppIcon={AppIcon}
-            PAPER_GRAIN_DARK={PAPER_GRAIN_DARK}
-            PAPER_GRAIN_LIGHT={PAPER_GRAIN_LIGHT}
             materialFocusShadow={materialFocusShadow}
             allAppsRef={allAppsRef}
             PinBadge={PinBadge}

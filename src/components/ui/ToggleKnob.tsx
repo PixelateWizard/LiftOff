@@ -6,13 +6,14 @@ interface ToggleKnobProps {
 }
 
 export function ToggleKnob({ value }: ToggleKnobProps) {
-  const { accent, isDark } = useTheme();
+  const { accent, isDark, surfaceStyle } = useTheme();
+  const isPixel = surfaceStyle === "win9x";
   const lightAccentOnDark = value && isDark && accent.darkText;
 
   const trackStyle: CSSProperties = {
     width: 44,
     height: 24,
-    borderRadius: 12,
+    borderRadius: isPixel ? 0 : 12,
     flexShrink: 0,
     position: "relative",
     transition: "background 0.2s ease, box-shadow 0.2s ease",
@@ -31,7 +32,7 @@ export function ToggleKnob({ value }: ToggleKnobProps) {
   const knobStyle: CSSProperties = {
     width: 18,
     height: 18,
-    borderRadius: "50%",
+    borderRadius: isPixel ? 0 : "50%",
     background: lightAccentOnDark ? "rgba(18,18,20,0.92)" : "white",
     position: "absolute",
     top: 3,

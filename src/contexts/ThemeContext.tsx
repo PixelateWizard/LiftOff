@@ -1,8 +1,10 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { CSSProperties } from "react";
 import type { ThemeColors, AccentColors } from "../types";
+import type { SurfaceTokens } from "../theme/surfaces";
 
 export type { ThemeColors, AccentColors };
+export type { SurfaceTokens };
 
 export interface ThemeValue {
   isDark: boolean;
@@ -16,6 +18,7 @@ export interface ThemeValue {
   appBg: string;
   bgGlow1: string;
   bgGlow2: string;
+  surface: SurfaceTokens;
 }
 
 const ThemeContext = createContext<ThemeValue | null>(null);

@@ -11,9 +11,11 @@ export const getRunAsAdmin = (id: string): boolean =>
 export const setRunAsAdmin = (id: string, val: boolean): void =>
   localStorage.setItem(`admin_pref_${id}`, JSON.stringify(val));
 
-export const ACCENTS: Record<string, {
+export type AccentConfig = {
   primary: string; light: string; dark: string; glow: string; lightBg: string; lightPrimary?: string; lightGlow?: string; darkText?: boolean; lightDarkText?: boolean;
-}> = {
+};
+
+export const ACCENTS: Record<string, AccentConfig> = {
   ember:    { primary: "#e8714a", lightPrimary: "#e75a2b", light: "#ff9a6c", dark: "#c94f28", glow: "rgba(232,113,74,",  lightBg: "#f5e8e0", darkText: true, lightDarkText: false, },
   ocean:    { primary: "#4a9ee8", lightPrimary: "#438fd1", light: "#9dd0ff", dark: "#2878c9", glow: "rgba(74,158,232,",  lightBg: "#ddeeff", darkText: true, lightDarkText: false,
    },
@@ -31,16 +33,31 @@ export const THEMES: Record<string, { text: string; textDim: string; textFaint: 
   plasma: { text: "#f7f1ff", textDim: "rgba(247,241,255,0.44)", textFaint: "rgba(247,241,255,0.30)" },
   cinder: { text: "#fff0e6", textDim: "rgba(255,240,230,0.44)", textFaint: "rgba(255,240,230,0.30)" },
   wash:   { text: "#241b16", textDim: "rgba(36,27,22,0.54)",    textFaint: "rgba(36,27,22,0.36)" },
+  aurora:    { text: "#dff4ff", textDim: "rgba(223,244,255,0.42)", textFaint: "rgba(223,244,255,0.28)" },
+  synthwave: { text: "#ffe8f8", textDim: "rgba(255,232,248,0.40)", textFaint: "rgba(255,232,248,0.28)" },
+  cyberpunk: { text: "#e4f8ff", textDim: "rgba(228,248,255,0.40)", textFaint: "rgba(228,248,255,0.24)" },
+  lofi:      { text: "#fff0e8", textDim: "rgba(255,240,232,0.52)", textFaint: "rgba(255,240,232,0.34)" },
+  forest:    { text: "#d4edd8", textDim: "rgba(212,237,216,0.40)", textFaint: "rgba(212,237,216,0.26)" },
+  webcore:   { text: "#1a1a1a", textDim: "rgba(0,0,0,0.55)",       textFaint: "rgba(0,0,0,0.35)"       },
 };
 
-export const THEME_OPTIONS = ["space", "sky", "plasma", "cinder", "wash"] as const;
+export const THEME_OPTIONS = [
+  "space", "sky", "plasma", "cinder", "wash",
+  "aurora", "synthwave", "cyberpunk", "lofi", "forest", "webcore",
+] as const;
 
 export const THEME_SURFACE_DEFAULTS: Record<string, string> = {
   space: "clear",
   sky: "aero",
-  plasma: "glass",
+  plasma: "neon",
   cinder: "glass",
   wash: "material",
+  aurora: "glass",
+  synthwave: "aero",
+  cyberpunk: "neon",
+  lofi: "material",
+  forest: "glass",
+  webcore: "win9x",
 };
 
 export const normalizeThemeKey = (theme: string | undefined) => {
@@ -51,7 +68,7 @@ export const normalizeThemeKey = (theme: string | undefined) => {
   return THEME_OPTIONS.includes(theme as any) ? theme as typeof THEME_OPTIONS[number] : "space";
 };
 
-export const isDarkThemeKey = (theme: string | undefined) => !["sky", "wash"].includes(normalizeThemeKey(theme));
+export const isDarkThemeKey = (theme: string | undefined) => !["sky", "wash", "webcore"].includes(normalizeThemeKey(theme));
 
 export const CLOUD_SHAPES = [
   `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg"><ellipse cx="100" cy="55" rx="95" ry="28"/><ellipse cx="70" cy="45" rx="45" ry="35"/><ellipse cx="110" cy="38" rx="52" ry="40"/><ellipse cx="150" cy="48" rx="38" ry="30"/></svg>`,
@@ -98,7 +115,7 @@ export const DEFAULT_SETTINGS = {
   default_tab: "Home", scan_steam: true, scan_xbox: true,
   scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
   launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
-  language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false,
+  language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false, show_immersive_hero_art: true,
   nav_bumpers_pos: "bottom",
   tabbar_show_buttons: "tabbar", tabbar_text_tabs: false, tabbar_with_background: false, tabbar_font_weight: "medium",
   bottombar_alignment: "left", tabbar_label_case: "default",
