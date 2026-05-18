@@ -17,7 +17,7 @@ interface ScreenResolution {
 interface UseAppSettingsOptions {
   onScanKeyChange: () => void;
   autoScaleRef: React.MutableRefObject<number>;
-  onDefaultTabLoaded: (tab: string) => void;
+  onDefaultTabLoaded?: (tab: string) => void;
 }
 
 type SettingsAction = React.SetStateAction<Settings>;
@@ -28,6 +28,7 @@ export function useAppSettings({
   onDefaultTabLoaded,
 }: UseAppSettingsOptions) {
   const [settingsState, setSettingsState] = useState<Settings>({ ...DEFAULT_SETTINGS });
+  const [defaultTab, setDefaultTab] = useState<string | null>(null);
   const settingsRef = useRef<Settings>({ ...DEFAULT_SETTINGS });
 
   const setSettings = (action: SettingsAction) => {
@@ -41,6 +42,12 @@ export function useAppSettings({
   };
 
   useEffect(() => {
+    const applyDefaultTab = (tab?: string) => {
+      const loadedDefaultTab = tab || "Home";
+      setDefaultTab(loadedDefaultTab);
+      onDefaultTabLoaded?.(loadedDefaultTab);
+    };
+
     Promise.all([invoke<ScreenResolution>("get_screen_resolution"), invoke<Partial<Settings>>("get_settings")]).then(([res, s]) => {
       const auto = Math.min(2.0, Math.max(0.75, Math.min(res.width / 1920, res.height / 1080)));
       autoScaleRef.current = auto;
@@ -49,7 +56,7 @@ export function useAppSettings({
       if (updated.surface_style === "pixel") updated.surface_style = "win9x";
       setSettings(updated);
       if (s.surface_style === "pixel") invoke("save_settings", { settings: updated }).catch(console.error);
-      onDefaultTabLoaded(s.default_tab || "Home");
+      applyDefaultTab(s.default_tab);
       if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
     }).catch(() => {
       invoke<Partial<Settings>>("get_settings").then(s => {
@@ -57,7 +64,7 @@ export function useAppSettings({
         if (merged.surface_style === "pixel") merged.surface_style = "win9x";
         setSettings(merged);
         if (s.surface_style === "pixel") invoke("save_settings", { settings: merged }).catch(console.error);
-        onDefaultTabLoaded(s.default_tab || "Home");
+        applyDefaultTab(s.default_tab);
         if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
       });
     });
@@ -109,5 +116,6 @@ export function useAppSettings({
     settingsRef,
     updateSetting,
     updateSettingsBatch,
+    defaultTab,
   };
 }

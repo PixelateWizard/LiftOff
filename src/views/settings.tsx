@@ -280,6 +280,7 @@ export function SettingsScreen({
             ? (surfaceStyle === "aero"
                 ? "linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.05) 100%)"
                 : surfaceStyle === "material" ? "var(--material-elevation-2)"
+                : surfaceStyle === "obsidian" ? "linear-gradient(180deg, rgba(6,4,14,0.92), rgba(6,4,14,0.86))"
                 : "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.032))")
             : surfaceStyle === "material" ? "var(--material-elevation-3)" : `${accent.glow}0.05)`,
           ...(isMaterial ? materialFocusStyle : {}),

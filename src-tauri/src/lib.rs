@@ -847,7 +847,11 @@ fn download_sgdb_art(game_name: String, url: String, art_type: String) -> Option
         .timeout(std::time::Duration::from_secs(15))
         .build().ok()?;
 
-    let is_animated = url.ends_with(".mp4") || url.ends_with(".webm") || url.ends_with(".gif");
+    let url_base_for_type = url.split('?').next().unwrap_or(&url).to_lowercase();
+    let is_animated = url_base_for_type.ends_with(".mp4")
+        || url_base_for_type.ends_with(".webm")
+        || url_base_for_type.ends_with(".gif")
+        || url_base_for_type.ends_with(".webp");
 
     let dir = if art_type == "grid" {
         grid_art_dir()

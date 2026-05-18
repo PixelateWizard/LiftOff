@@ -1,4 +1,5 @@
-import type { RefObject } from "react";
+import { useEffect, useMemo, useState, type RefObject } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTheme } from "../contexts/ThemeContext";
 import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../theme/surfaces";
 
@@ -8,6 +9,11 @@ interface HomeViewProps {
   scrollRef: RefObject<HTMLDivElement>;
   [key: string]: any;
 }
+
+const mediaBase = (url?: string | null) => (url || "").split("?")[0].toLowerCase();
+const isHeroVideoUrl = (url?: string | null) => /\.(webm|mp4)$/i.test(mediaBase(url));
+const isAnimatedImageUrl = (url?: string | null) => /\.(gif|webp)$/i.test(mediaBase(url));
+const isAnimatedMediaUrl = (url?: string | null) => isHeroVideoUrl(url) || isAnimatedImageUrl(url);
 
 export function HomeView(props: HomeViewProps) {
   const {
@@ -66,21 +72,119 @@ export function HomeView(props: HomeViewProps) {
     drawerScrollRef,
     recentShelfRef,
     heroVideoRefs,
+    appPaused,
     setHeroIndex,
     heroIndexRef,
     iconColors,
   } = props;
   const { surface } = useTheme();
+  const [heroMediaPaused, setHeroMediaPaused] = useState(false);
+  const heroGames = useMemo(() => {
+    const filteredRecentGames = recentGames.filter(g => apps.some(a => a.id === g.id));
+    return filteredRecentGames.length > 0 ? filteredRecentGames : apps.filter(a => a.app_type === "game").slice(0, 6);
+  }, [apps, recentGames]);
+  const heroIdx = Math.min(heroIndex, Math.max(0, heroGames.length - 1));
+  const activeHeroGame = heroGames[heroIdx];
+  const activeHeroType = activeHeroGame
+    ? settings.animated_heroes === "static"
+      ? "static"
+      : settings.animated_heroes === "animated"
+        ? "animated"
+        : heroCustomType[activeHeroGame.id] || "static"
+    : "none";
+  const activeHeroAnimatedUrl = activeHeroGame && activeHeroType === "animated"
+    ? heroAnimated[activeHeroGame.id] || null
+    : null;
+  const activeHeroStaticUrl = activeHeroGame
+    ? customHeroArt[activeHeroGame.id] || heroStatic[activeHeroGame.id] || null
+    : null;
+
+  useEffect(() => {
+    if (!appPaused && !heroMediaPaused) return;
+    Object.values(heroVideoRefs.current).forEach((video: HTMLVideoElement | null) => {
+      if (video) video.pause();
+    });
+  }, [appPaused, heroMediaPaused, heroVideoRefs]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let unlistenFocus: (() => void) | undefined;
+    const pauseHeroMedia = () => {
+      Object.values(heroVideoRefs.current).forEach((video: HTMLVideoElement | null) => {
+        if (video) video.pause();
+      });
+      setHeroMediaPaused(true);
+    };
+    const resumeHeroMedia = () => setHeroMediaPaused(false);
+    const onVisibilityChange = () => {
+      if (document.hidden) pauseHeroMedia();
+      else resumeHeroMedia();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Alt" || event.altKey) pauseHeroMedia();
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "Alt" && document.hasFocus()) resumeHeroMedia();
+    };
+
+    window.addEventListener("blur", pauseHeroMedia);
+    window.addEventListener("focus", resumeHeroMedia);
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("keyup", onKeyUp, true);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+      if (focused) resumeHeroMedia();
+      else pauseHeroMedia();
+    }).then((unlisten) => {
+      if (cancelled) unlisten();
+      else unlistenFocus = unlisten;
+    }).catch(() => {});
+
+    return () => {
+      cancelled = true;
+      unlistenFocus?.();
+      window.removeEventListener("blur", pauseHeroMedia);
+      window.removeEventListener("focus", resumeHeroMedia);
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("keyup", onKeyUp, true);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [heroVideoRefs]);
+
+  useEffect(() => {
+    const shouldPlayHero = active && !appPaused && !heroMediaPaused;
+    if (!shouldPlayHero) {
+      Object.values(heroVideoRefs.current).forEach((video: HTMLVideoElement | null) => {
+        if (video) video.pause();
+      });
+      return;
+    }
+
+    const rafId = requestAnimationFrame(() => {
+      const activeGame = heroGames[heroIdx];
+      Object.entries(heroVideoRefs.current as Record<string, HTMLVideoElement | null>).forEach(([id, video]) => {
+        if (!video) return;
+        if (activeGame && activeGame.id === id) video.play().catch(() => {});
+        else video.pause();
+      });
+      [heroIdx + 1, heroIdx + 2, heroIdx - 1, heroIdx - 2].forEach(i => {
+        const game = heroGames[i];
+        if (!game) return;
+        const video = heroVideoRefs.current[game.id];
+        if (video && video.readyState < 3) video.load();
+      });
+    });
+
+    return () => cancelAnimationFrame(rafId);
+  }, [active, appPaused, heroGames, heroIdx, heroMediaPaused, heroVideoRefs]);
 
   const homeFilteredRecent = recent.filter((a: any) => true).slice(0, 8);
   const homePinnedApps = pins.map((id: string) => apps.find((a: any) => a.id === id)).filter(Boolean);
 
   const content = (() => {
-    const heroGames  = (() => { const fg = recentGames.filter(g => apps.some(a => a.id === g.id)); return fg.length > 0 ? fg : apps.filter(a => a.app_type === "game").slice(0, 6); })();
-    const heroIdx    = Math.min(heroIndex, Math.max(0, heroGames.length - 1));
     const focusSec = focusSection;
     const focusIdx = focusIndex;
-    const heroGame   = heroGames[heroIdx];
+    const heroGame   = activeHeroGame;
     const heroArt    = heroGame ? (customArt[heroGame.id] || gameArt[heroGame.id]) : null;
     const resolveHeroType = (id) => {
       if (settings.animated_heroes === "static")   return "static";
@@ -257,7 +361,7 @@ export function HomeView(props: HomeViewProps) {
           ...(settings.cinematic_home
             ? { position: "fixed", inset: 0, zIndex: 0 }
             : { position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: surfaceCardRadius, flexShrink: 0 }),
-          overflow: settings.cinematic_home ? "hidden" : "visible", display: "flex", flexDirection: "column",
+          overflow: "hidden", display: "flex", flexDirection: "column",
           border: settings.cinematic_home ? "none" : heroFocused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.5)"}` : `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
           boxShadow: settings.cinematic_home ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
@@ -268,11 +372,15 @@ export function HomeView(props: HomeViewProps) {
               const isActive = idx === heroIdx;
               const isNearby = Math.abs(idx - heroIdx) <= 1;
 
-              const staticBanner = customHeroArt[game.id] || heroStatic[game.id];
+              const rawStaticBanner = customHeroArt[game.id] || heroStatic[game.id];
               const fallback = customArt[game.id] || gameArt[game.id];
               const animatedUrl = resolveHeroType(game.id) === "animated"
                 ? heroAnimated[game.id] : null;
-              const showVideo = animatedUrl && animatedUrl.endsWith(".webm");
+              const primaryHeroMedia = animatedUrl || rawStaticBanner;
+              const showVideo = isHeroVideoUrl(primaryHeroMedia);
+              const showAnimatedImage = isAnimatedImageUrl(primaryHeroMedia);
+              const staticBanner = showVideo || showAnimatedImage ? null : rawStaticBanner;
+              const mediaPaused = appPaused || heroMediaPaused;
 
               const coverStyle: any = { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" };
               return (
@@ -286,12 +394,26 @@ export function HomeView(props: HomeViewProps) {
                           : <img src={`/assets/liftoff_hero_${settings.accent}.svg`} alt="" style={{ ...coverStyle }} />)
                     : <div style={{ width: "100%", height: "100%" }} />
                   }
-                  {/* Video layer: always in DOM; only active hero preloads */}
+                  {showHeroArtwork && showAnimatedImage && !mediaPaused && (
+                    <img
+                      src={primaryHeroMedia}
+                      alt=""
+                      decoding="async"
+                      loading="eager"
+                      style={{ ...coverStyle, position: "absolute", top: 0, left: 0, transform: "translateZ(0)", willChange: "opacity" }}
+                    />
+                  )}
                   {showHeroArtwork && showVideo && (
                     <video
-                      ref={el => { if (el) heroVideoRefs.current[game.id] = el; else delete heroVideoRefs.current[game.id]; }}
-                      src={animatedUrl}
-                      loop muted playsInline preload={idx === heroIdx ? "auto" : "none"}
+                      ref={el => {
+                        if (el) {
+                          heroVideoRefs.current[game.id] = el;
+                        } else {
+                          delete heroVideoRefs.current[game.id];
+                        }
+                      }}
+                      src={primaryHeroMedia}
+                      loop muted playsInline preload="auto"
                       style={{
                         position: "absolute",
                         top: 0, left: 0,
@@ -301,6 +423,7 @@ export function HomeView(props: HomeViewProps) {
                         objectPosition: "center top",
                         transform: "translateZ(0)",
                         willChange: "opacity",
+                        visibility: mediaPaused ? "hidden" : "visible",
                       }}
                     />
                   )}

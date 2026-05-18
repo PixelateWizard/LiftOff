@@ -34,7 +34,6 @@ import { SplashScreen } from "./components/launch/SplashScreen";
 import { LaunchOverlay } from "./components/launch/LaunchOverlay";
 import { SteamGridArtPickerModal } from "./components/art/SteamGridArtPickerModal";
 import { useSurfaceTheme } from "./theme/surfaces";
-import { launchApp } from "./hooks/useLaunchApp";
 import { useAppSettings } from "./hooks/useAppSettings";
 import { useAudioFeedback } from "./hooks/useAudioFeedback";
 import { useCollections } from "./hooks/useCollections";
@@ -44,10 +43,11 @@ import { useLibraryData } from "./hooks/useLibraryData";
 import { useModalState } from "./hooks/useModalState";
 import { usePersistentJson } from "./hooks/usePersistentJson";
 import { useSearchState } from "./hooks/useSearchState";
+import { useGamepadNavigation } from "./hooks/useGamepadNavigation";
 import { useStartupBootstrap } from "./hooks/useStartupBootstrap";
 import { useSystemStatus } from "./hooks/useSystemStatus";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
-import { detectPlatform, getBestGamepad, readGpState } from "./utils/gamepad";
+import { detectPlatform } from "./utils/gamepad";
 import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO,
   ACCENTS, THEMES, CLOUD_SHAPES, CLOUD_CONFIGS, KB_ALPHA, KB_NUMS,
@@ -57,27 +57,13 @@ import {
 
 export default function App() {
   const { t } = useTranslation();
-  const [tab, setTab]                               = useState("Home");
-  const [gameSourceTab, setGameSourceTab]           = useState("All"); // "All" | "Steam" | "Xbox" | "Other"
-  const [subtabFocusIndex, setSubtabFocusIndex]     = useState(0);    // index within subtab row
   const [addAppType, setAddAppType]                 = useState("game"); // "game" | "app"
-  const [windowFocused, setWindowFocused]           = useState(true);
-  const [focusSection, setFocusSection]             = useState("hero");
-  const [focusIndex, setFocusIndex]                 = useState(0);
   const [adminPrefsVersion, setAdminPrefsVersion]   = useState(0);
   const [heroCustomType, setHeroCustomType]         = usePersistentJson("liftoff_heroCustomType", {});
   const [cacheClearLoading, setCacheClearLoading]   = useState(false);
   const [cacheClearStatus, setCacheClearStatus]     = useState({ line1: "", line2: "" });
-  const [launchingApp, setLaunchingApp]             = useState(null);
-  const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
-  const [settingsSection, setSettingsSection]       = useState(0);
-  const [heroIndex, setHeroIndex]                   = useState(0);
   const [sliderDraft, setSliderDraft] = useState({ key: null, value: null });
   const sliderDraftRef = useRef({ key: null, value: null });
-  const [homeColFocusRow, setHomeColFocusRow] = useState(0);
-  const [homeColFocusCol, setHomeColFocusCol] = useState(0);
-  const homeColFocusRowRef = useRef(0);
-  const homeColFocusColRef = useRef(0);
   const [homeHiddenCollections, setHomeHiddenCollections] = useState(() => {
     try { return JSON.parse(localStorage.getItem("homeHiddenCollections") || "[]"); } catch { return []; }
   });
@@ -90,7 +76,6 @@ export default function App() {
   const searchFocusedCardRef  = useRef(null);   // FIX 3: focused search result card ref
   const settingsFocusedRef    = useRef(null);
   const settingsBottomRef     = useRef(null);
-  const settingsSectionRef    = useRef(0);
   const outerRef              = useRef(null);
   const homeScrollRef         = useRef(null);
   const tabScrollRef          = useRef(null);
@@ -98,21 +83,10 @@ export default function App() {
   const recentShelfRef        = useRef(null);
   const drawerScrollRef       = useRef(null);
   const handleNavRef          = useRef(null);
-  const tabRef                = useRef("Home");
-  const focusSectionRef       = useRef("hero");
-  const focusIndexRef         = useRef(0);
-  const gameSourceTabRef      = useRef("All");
-  const subtabFocusIndexRef   = useRef(0);
-  const suppressUntilRelease  = useRef({}); // buttons held when modal closed — suppress until released
-  const heroVideoRefs         = useRef({});
   const autoScaleRef          = useRef(1.0);
-  const settingsFocusIndexRef = useRef(0);
-  const heroIndexRef          = useRef(0);
-  const launchingAppRef       = useRef(null);
-  const lastBtn               = useRef({});
-  // FIX 2: per-button press timestamp and repeating flag for hold-repeat in RAF
-  const btnPressTime          = useRef({});
-  const btnRepeating          = useRef({});
+  const handleClearCacheRef   = useRef(null);
+  const handleClearRecentsRef = useRef(null);
+  const toggleHomeCollectionRef = useRef(null);
 
   const {
     searchOpen, searchQuery, searchMode, searchFocusIndex,
@@ -196,13 +170,10 @@ export default function App() {
     settingsRef,
     updateSetting,
     updateSettingsBatch,
+    defaultTab,
   } = useAppSettings({
     onScanKeyChange: refreshLibrary,
     autoScaleRef,
-    onDefaultTabLoaded: (defaultTab) => {
-      setTab(defaultTab);
-      tabRef.current = defaultTab;
-    },
   });
   const { time, date, battery, charging, hasBattery } = useSystemStatus({
     timeFormat: settings.time_format,
@@ -225,6 +196,127 @@ export default function App() {
     const glow = (!isDark && base.lightGlow) ? base.lightGlow : resolved.glow;
     return { ...resolved, darkText, glow };
   }, [settings.accent, isDark]);
+  const {
+    tab,
+    tabRef,
+    focusSection,
+    focusSectionRef,
+    focusIndex,
+    focusIndexRef,
+    heroIndex,
+    heroIndexRef,
+    settingsFocusIndex,
+    settingsFocusIndexRef,
+    settingsSection,
+    settingsSectionRef,
+    gameSourceTab,
+    gameSourceTabRef,
+    subtabFocusIndex,
+    subtabFocusIndexRef,
+    homeColFocusRow,
+    homeColFocusRowRef,
+    homeColFocusCol,
+    homeColFocusColRef,
+    launchingApp,
+    launchingAppRef,
+    windowFocused,
+    heroVideoRefs,
+    setTab,
+    setFocusSection,
+    setFocusIndex,
+    setHeroIndex,
+    setSettingsFocusIndex,
+    setSettingsSection,
+    setGameSourceTab,
+    setSubtabFocusIndex,
+    setHomeColFocusRow,
+    setHomeColFocusCol,
+    switchTab,
+    triggerLaunch,
+    closeLaunchOverlay,
+    closeHideModal,
+    closeLibraryActionsModal,
+    closeArtPicker,
+    openHideModal,
+    openLibraryActionsModal,
+    handleNav,
+  } = useGamepadNavigation({
+    isReadyRef,
+    initialTab: defaultTab,
+    settingsRef,
+    updateSetting,
+    resolvedTheme,
+    appsRef,
+    allAppsRef,
+    recentRef,
+    recentGames,
+    recentGamesRef,
+    pinsRef,
+    setRecent,
+    setRecentGames,
+    togglePin,
+    customSourcesRef,
+    gameCollectionsRef,
+    appCollectionsRef,
+    gameMembershipsRef,
+    appMembershipsRef,
+    appCollectionTabRef,
+    setAppCollectionTab,
+    showHideModalRef,
+    showLibraryActionsRef,
+    showFileBrowserRef,
+    pendingFileRef,
+    showFolderManagerRef,
+    confirmDeleteRef,
+    showColModalRef,
+    colPickerAppRef,
+    editNameAppRef,
+    artPickerAppRef,
+    artPickerModeRef,
+    contextMenuRef,
+    setShowHideModal,
+    setShowLibraryActions,
+    setArtPickerApp,
+    playSoundGameStart,
+    playSound,
+    playSoundAlt,
+    outerRef,
+    homeScrollRef,
+    tabScrollRef,
+    searchOpenRef,
+    searchModeRef,
+    searchQueryRef,
+    searchFocusIndexRef,
+    kbNumModeRef,
+    kbRowRef,
+    kbColRef,
+    setSearchFocusIndex,
+    setKbRow,
+    setKbCol,
+    openSearch,
+    closeSearch,
+    switchSearchMode,
+    kbDelete,
+    kbSpace,
+    kbToggleNum,
+    fireKey,
+    setContextMenu,
+    setShowFolderManager,
+    refreshLibrary,
+    updateStatus,
+    checkForUpdates,
+    handleClearRecents: () => handleClearRecentsRef.current?.(),
+    handleClearCache: () => handleClearCacheRef.current?.(),
+    toggleHomeCollection: (colName) => toggleHomeCollectionRef.current?.(colName),
+    autoScaleRef,
+    handleNavRef,
+    t,
+    COLS,
+    GAME_COLS,
+    TABS,
+    ACCENTS,
+    GITHUB_REPO,
+  });
   const surfaceStyle = settings.surface_style ?? "glass";
   const glassEnabled = surfaceStyle !== "clear";
   const isMaterial = surfaceStyle === "material";
@@ -255,111 +347,6 @@ export default function App() {
   const activeTextColor = isDark
     ? (accent.darkText ? "rgba(20, 14, 10, 0.90)" : "white")
     : (accent.lightDarkText ? "rgba(20, 14, 10, 0.90)" : "white");
-  const LAUNCH_RETURN_COOLDOWN_MS = 1800;
-  const launchedAppSessionRef = useRef(false);
-  const launchReturnCooldownUntil = useRef(0);
-  const lastLaunchTime = useRef(0);
-  const _triggerLaunchImpl = (app, rec) => {
-    const now = Date.now();
-    console.warn(`triggerLaunch @ ${new Date().toISOString()}`, app?.name, `(${now - lastLaunchTime.current}ms since last)`);
-    if (now < launchReturnCooldownUntil.current) {
-      console.warn("triggerLaunch BLOCKED - waiting for return-to-LiftOff input cooldown");
-      return;
-    }
-    if (now - lastLaunchTime.current < 5000) {
-      console.warn("triggerLaunch BLOCKED — too soon after last launch");
-      return;
-    }
-    lastLaunchTime.current = now;
-    launchedAppSessionRef.current = true;
-    playSoundGameStart();
-    setLaunchingApp(app); launchingAppRef.current = app;
-    launchApp(app).catch((err) => console.warn("launch_app failed", err));
-    const updated = [app, ...rec.filter(r => r.id !== app.id)].slice(0, 10);
-    setRecent(updated); recentRef.current = updated;
-    if (app.app_type === "game") {
-      const updatedGames = [app, ...recentGamesRef.current.filter(r => r.id !== app.id)].slice(0, 20);
-      setRecentGames(updatedGames); recentGamesRef.current = updatedGames;
-    }
-  };
-  const _triggerLaunchRef = useRef(_triggerLaunchImpl);
-  _triggerLaunchRef.current = _triggerLaunchImpl;
-  const triggerLaunch = useRef((app, rec) => _triggerLaunchRef.current(app, rec)).current;
-
-  const closeLaunchOverlay = () => {
-    const gp = getBestGamepad();
-    if (gp) {
-      const s = readGpState(gp);
-      suppressUntilRelease.current = {
-        Enter: s.Enter,
-        Escape: s.Escape,
-        Select: s.Select,
-        ButtonX: s.ButtonX,
-        ButtonY: s.ButtonY,
-        BumperLeft: s.BumperLeft,
-        BumperRight: s.BumperRight,
-        Start: s.Start,
-      };
-    }
-    setLaunchingApp(null);
-    launchingAppRef.current = null;
-  };
-
-  // ── Pin helpers ───────────────────────────────────────────────
-  // ── Library Actions modal ─────────────────────────────────────
-  const openLibraryActionsModal = () => {
-    if (document.activeElement) document.activeElement.blur();
-    setShowLibraryActions(true); showLibraryActionsRef.current = true;
-  };
-  const closeLibraryActionsModal = () => {
-    const gp = getBestGamepad();
-    if (gp) {
-      const s = readGpState(gp);
-      suppressUntilRelease.current = {
-        Enter: s.Enter, Escape: s.Escape, Select: s.Select,
-        ButtonX: s.ButtonX, ButtonY: s.ButtonY,
-      };
-    }
-    setShowLibraryActions(false); showLibraryActionsRef.current = false;
-  };
-
-  // ── Hide helpers ──────────────────────────────────────────────
-  const openHideModal  = () => {
-    // Blur whatever DOM element has focus so the browser doesn't send synthetic
-    // keypresses to it while the modal is open
-    if (document.activeElement) document.activeElement.blur();
-    setShowHideModal(true); showHideModalRef.current = true;
-  };
-  const closeHideModal = ()     => {
-    // Snapshot whichever buttons are currently held so main poll won't fire them on release
-    const gps = navigator.getGamepads();
-    const gp  = gps[0] || gps[1] || gps[2] || gps[3];
-    if (gp) {
-      const s = readGpState(gp);
-      suppressUntilRelease.current = {
-        Enter:       s.Enter,
-        Escape:      s.Escape,
-        ButtonX:     s.ButtonX,
-        ButtonY:     s.ButtonY,
-        BumperLeft:  s.BumperLeft,
-        BumperRight: s.BumperRight,
-        Start:       s.Start,
-      };
-    }
-    setShowHideModal(false); showHideModalRef.current = false;
-  };
-
-  const closeArtPicker = () => {
-    const gp = getBestGamepad();
-    if (gp) {
-      const s = readGpState(gp);
-      suppressUntilRelease.current = {
-        Enter: s.Enter, Escape: s.Escape, Select: s.Select, ButtonX: s.ButtonX, ButtonY: s.ButtonY,
-      };
-    }
-    setArtPickerApp(null); artPickerAppRef.current = null;
-  };
-
   const toggleHomeCollection = (colName) => {
     setHomeHiddenCollections(prev => {
       const next = prev.includes(colName) ? prev.filter(n => n !== colName) : [...prev, colName];
@@ -367,6 +354,7 @@ export default function App() {
       return next;
     });
   };
+  toggleHomeCollectionRef.current = toggleHomeCollection;
 
   // ── Search helpers ────────────────────────────────────────────
   const searchResults = searchQuery.trim().length === 0
@@ -383,63 +371,6 @@ export default function App() {
   }, [searchFocusIndex, searchMode]);
   // ─────────────────────────────────────────────────────────────
 
-  // ── Gamepad polling with hold-repeat (FIX 2) ─────────────────
-  useEffect(() => {
-    invoke("set_frontend_active", { active: true });
-    let rAF;
-    const REPEATABLE = new Set(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"]);
-
-    const poll = (now) => {
-      const gps = navigator.getGamepads();
-      const gp = getBestGamepad();
-      if (gp && isReadyRef.current) {
-        const speed = settingsRef.current.repeat_speed;
-        const initialDelay = speed === "slow" ? 500 : speed === "fast" ? 250 : 400;
-        const repeatDelay  = speed === "slow" ? 150 : speed === "fast" ? 60  : 100;
-
-        const state = readGpState(gp);
-
-        Object.keys(state).forEach(key => {
-          const pressed    = state[key];
-          const wasPressed = lastBtn.current[key];
-
-          // If this button was held when the modal closed, suppress it until released
-          if (suppressUntilRelease.current[key]) {
-            if (!pressed) suppressUntilRelease.current[key] = false;
-            lastBtn.current[key] = pressed;
-            return;
-          }
-
-          if (pressed && !wasPressed) {
-            if (!launchingAppRef.current && !showHideModalRef.current && !showLibraryActionsRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
-            btnPressTime.current[key]  = now;
-            btnRepeating.current[key]  = false;
-          } else if (pressed && wasPressed && REPEATABLE.has(key)) {
-            const heldMs = now - (btnPressTime.current[key] || now);
-            if (!btnRepeating.current[key] && heldMs >= initialDelay) {
-              btnRepeating.current[key] = true;
-              btnPressTime.current[key] = now;
-              if (!launchingAppRef.current && !showHideModalRef.current && !showLibraryActionsRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
-            } else if (btnRepeating.current[key] && heldMs >= repeatDelay) {
-              btnPressTime.current[key] = now;
-              if (!launchingAppRef.current && !showHideModalRef.current && !showLibraryActionsRef.current && !showFileBrowserRef.current && !pendingFileRef.current) handleNavRef.current?.(key);
-            }
-          } else if (!pressed && wasPressed) {
-            btnPressTime.current[key]  = 0;
-            btnRepeating.current[key]  = false;
-          }
-
-          lastBtn.current[key] = pressed;
-        });
-      }
-      rAF = requestAnimationFrame(poll);
-    };
-    rAF = requestAnimationFrame(poll);
-    return () => { cancelAnimationFrame(rAF); invoke("set_frontend_active", { active: false }); };
-  }, []);
-  // ─────────────────────────────────────────────────────────────
-
-  useEffect(() => { settingsFocusIndexRef.current = settingsFocusIndex; heroIndexRef.current = heroIndex; });
 
   useEffect(() => {
     if (tab !== "Settings") return;
@@ -553,7 +484,7 @@ export default function App() {
       ".theme-webcore-ghost-2 { animation:webGhostFloat2 22s ease-in-out infinite, webWinFlicker2 24s ease-in-out infinite; animation-delay:-8s; }",
       ".theme-webcore-ghost-3 { animation:webGhostFloat3 25s ease-in-out infinite, webWinFlicker3 30s ease-in-out infinite; animation-delay:-12s; }",
       ".theme-webcore-cursor { animation:webCursorBlink 1.1s step-end infinite; }",
-      ".app-launch-paused, .app-launch-paused *:not(.launch-overlay):not(.launch-overlay *) { animation-play-state: paused !important; transition-property: none !important; }",
+      ".app-launch-paused *:not(.launch-overlay):not(.launch-overlay *) { animation-play-state: paused !important; transition-property: none !important; }",
       "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-w1, .theme-wash-w2, .theme-wash-w3, .theme-wash-c1, .theme-wash-c2, .theme-wash-mix, .theme-wash-bleed1, .theme-wash-bleed2, .theme-wash-pink, .theme-aurora-b1, .theme-aurora-b2, .theme-aurora-b3, .theme-aurora-b4, .theme-aurora-shimmer, .theme-synthwave-sun, .theme-synthwave-horizon, .theme-cyberpunk-glow, .theme-cyberpunk-glow-2, .theme-cyberpunk-horizon, .theme-cyberpunk-flicker-1, .theme-cyberpunk-flicker-2, .theme-cyberpunk-scan, .theme-cyberpunk-rain, .theme-forest-moonbeam, .theme-forest-fog, .theme-forest-fog-2, .theme-forest-firefly, .theme-webcore-ghost-0, .theme-webcore-ghost-1, .theme-webcore-ghost-2, .theme-webcore-ghost-3, .theme-webcore-cursor, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } }",
       "html, body { overflow-x: hidden; }",
       "* { scrollbar-width: none !important; -ms-overflow-style: none !important; }",
@@ -768,6 +699,7 @@ export default function App() {
     });
     setCacheClearLoading(false);
   };
+  handleClearCacheRef.current = handleClearCache;
 
   const handleClearRecents = async () => {
     setCacheClearLoading(true);
@@ -787,6 +719,7 @@ export default function App() {
       setCacheClearLoading(false);
     }
   };
+  handleClearRecentsRef.current = handleClearRecents;
 
   const filteredApps = apps.filter((a) => {
     if (tab === "Games") {
@@ -812,91 +745,6 @@ export default function App() {
   const filteredRecent = recent.filter(a =>
     tab === "Home" ? true : tab === "Games" ? a.app_type === "game" : a.app_type === "app"
   ).slice(0, 8);
-
-  // Manage hero video playback: pause all when off Home; on Home keep active + adjacent
-  // videos playing so heroIndex transitions feel instant (no play() decode stutter).
-  //
-  // IMPORTANT: when navigating TO Home, defer play() by one frame so the browser
-  // paints the tab switch first — calling play() synchronously blocks the main thread
-  // and causes the visible lag when animated heroes are enabled.
-
-  useEffect(() => {
-    const isHome = tab === "Home";
-    const isLaunching = !!launchingApp;
-
-    if (!isHome || isLaunching) {
-      // Leaving Home — pause all videos immediately but keep them loaded so
-      // they're warm (decoded frame 0 in memory) when we return.
-      Object.entries(heroVideoRefs.current).forEach(([id, vid]) => {
-        if (vid) vid.pause();
-      });
-      return;
-    }
-
-    // Arriving on Home — let the browser paint first, THEN start playback.
-    // requestAnimationFrame fires after paint, eliminating the decode-on-render stall.
-    let rafId = requestAnimationFrame(() => {
-      Object.entries(heroVideoRefs.current).forEach(([id, vid]) => {
-        if (!vid) return;
-        // eslint-disable-next-line eqeqeq
-        const isActive = recentGames[heroIndex]?.id == id;
-        if (isActive) { vid.play().catch(() => {}); } else { vid.pause(); }
-      });
-      // Kick off buffering for adjacent heroes
-      [heroIndex + 1, heroIndex + 2, heroIndex - 1, heroIndex - 2].forEach(i => {
-        const game = recentGames[i];
-        if (!game) return;
-        const vid = heroVideoRefs.current[game.id];
-        if (vid && vid.readyState < 3) vid.load();
-      });
-    });
-
-    return () => cancelAnimationFrame(rafId);
-  }, [heroIndex, launchingApp, recentGames, tab]);
-
-  useEffect(() => {
-    const onBlur = () => {
-      setWindowFocused(false);
-      Object.values(heroVideoRefs.current).forEach(vid => {
-        if (vid) vid.pause();
-      });
-    };
-
-    const onFocus = () => {
-      setWindowFocused(true);
-      if (launchedAppSessionRef.current) {
-        launchedAppSessionRef.current = false;
-        launchReturnCooldownUntil.current = Date.now() + LAUNCH_RETURN_COOLDOWN_MS;
-        const gp = getBestGamepad();
-        if (gp) {
-          const s = readGpState(gp);
-          suppressUntilRelease.current = {
-            Enter: s.Enter,
-            Escape: s.Escape,
-            Select: s.Select,
-            ButtonX: s.ButtonX,
-            ButtonY: s.ButtonY,
-            BumperLeft: s.BumperLeft,
-            BumperRight: s.BumperRight,
-            Start: s.Start,
-          };
-        }
-      }
-      if (launchingAppRef.current) return;
-      if (tab !== "Home") return;
-      const activeGame = recentGames[heroIndex];
-      if (!activeGame) return;
-      const vid = heroVideoRefs.current[activeGame.id];
-      if (vid) vid.play().catch(() => {});
-    };
-
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("focus", onFocus);
-    return () => {
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [tab, heroIndex, recentGames]);
 
   // Pinned apps reactive (for render)
   const pinnedAppsReactive = (tab === "Apps" && appCollectionTab !== "All") ? [] : pins
@@ -1028,589 +876,6 @@ export default function App() {
     }
   }, [focusSection, focusIndex, homeColFocusRow, tab, gameSourceTab, appCollectionTab, pins, apps, settings.ui_scale]);
 
-  const switchTab = (newTab) => {
-    setTab(newTab); tabRef.current = newTab;
-    let defaultSection;
-    if (newTab === "Home") defaultSection = "hero";
-    else if (newTab === "Settings") defaultSection = "grid";
-    else {
-      const hasPinned = pinsRef.current.length > 0 && pinsRef.current.some(id => appsRef.current.find(a => a.id === id));
-      defaultSection = hasPinned ? "pinned" : "grid";
-    }
-    setFocusSection(defaultSection); focusSectionRef.current = defaultSection;
-    setFocusIndex(0); focusIndexRef.current = 0;
-    setHeroIndex(0); heroIndexRef.current = 0;
-    setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
-    setSettingsSection(0); settingsSectionRef.current = 0;
-    setGameSourceTab("All"); gameSourceTabRef.current = "All";
-    setSubtabFocusIndex(0); subtabFocusIndexRef.current = 0;
-    if (outerRef.current) outerRef.current.scrollTop = 0;
-    setTimeout(() => {
-      const scroller = newTab === "Home" ? homeScrollRef.current : tabScrollRef.current;
-      if (scroller) scroller.scrollTo({ top: 0, behavior: "instant" });
-    }, 50);
-  };
-
-  const ALL_SETTINGS_ITEMS = buildSettingsItems(t, resolvedTheme);
-  const navigableSettings = getSectionNavigableItems(settingsSection, ALL_SETTINGS_ITEMS, settings, { gameCollections, appCollections });
-
-  // ── handleNav ─────────────────────────────────────────────────
-  const handleNav = (key) => {
-    // Modal intercepts all input via its own poll — main nav must not run
-    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current) return;
-
-    // Art picker open — only Escape closes it (user interacts via touch/mouse)
-    if (artPickerAppRef.current) {
-      if (key === "Escape") closeArtPicker();
-      return;
-    }
-
-    // Context menu open — ContextMenuModal owns navigation; main loop just blocks other inputs
-    if (contextMenuRef.current) {
-      return;
-    }
-
-    const section         = focusSectionRef.current;
-    const index           = focusIndexRef.current;
-    const currentTab      = tabRef.current;
-    const allApps         = appsRef.current;
-    const rec             = recentRef.current;
-    const currentPins     = pinsRef.current;
-    const cols            = currentTab === "Games" ? Math.max(2, Math.round(GAME_COLS / (settingsRef.current.game_cover_scale ?? 1.0))) : COLS;
-    const currentSettings = settingsRef.current;
-
-    const fApps = allApps.filter(a => {
-      if (currentTab === "Home" || currentTab === "All") return true;
-      if (currentTab === "Games") {
-        if (a.app_type !== "game") return false;
-        const src = gameSourceTabRef.current;
-        if (src === "Steam") return a.source === "steam";
-        if (src === "Xbox")  return a.source === "xbox";
-        if (src === "Battle.net")  return a.source === "battlenet";
-        if (src === "Other") return a.source !== "steam" && a.source !== "xbox" && a.source !== "battlenet" && !customSourcesRef.current.includes(a.source);
-        if (customSourcesRef.current.includes(src)) return a.source === src;
-        const gameCol = gameCollectionsRef.current.find(c => c.name === src);
-        if (gameCol) return (gameMembershipsRef.current[a.id] || []).includes(gameCol.id);
-        return true; // "All"
-      }
-      if (a.app_type !== "app") return false;
-      const colTab = appCollectionTabRef.current;
-      if (colTab === "All") return true;
-      const col = appCollectionsRef.current.find(c => c.name === colTab);
-      if (!col) return true;
-      return (appMembershipsRef.current[a.id] || []).includes(col.id);
-    });
-    const fRecent = rec.filter(a =>
-      currentTab === "Home" || currentTab === "All" ? true
-        : currentTab === "Games" ? a.app_type === "game" : a.app_type === "app"
-    ).slice(0, 8);
-    const fPinned = (currentTab === "Apps" && appCollectionTabRef.current !== "All") ? [] : currentPins
-      .map(id => allApps.find(a => a.id === id))
-      .filter(Boolean)
-      .filter(a => currentTab === "Home" || currentTab === "All" ? true
-        : currentTab === "Games" ? a.app_type === "game" : a.app_type === "app");
-    const homePinnedVisible = currentTab === "Home" && currentSettings.show_home_pinned !== false && fPinned.length > 0;
-
-    // ══ SEARCH OVERLAY ════════════════════════════════════════════
-    if (searchOpenRef.current) {
-      const mode    = searchModeRef.current;
-      const results = allApps.filter(a =>
-        searchQueryRef.current.trim().length > 0 &&
-        a.name.toLowerCase().includes(searchQueryRef.current.trim().toLowerCase())
-      );
-      const SCOLS = COLS;
-
-      if (mode === "keyboard") {
-        const layout  = kbNumModeRef.current ? KB_NUMS : KB_ALPHA;
-        const rowKeys = layout[kbRowRef.current] || [];
-
-        if      (key === "ArrowRight") { const ni = Math.min(kbColRef.current + 1, rowKeys.length - 1); setKbCol(ni); kbColRef.current = ni; playSound(); }
-        else if (key === "ArrowLeft")  { const ni = Math.max(kbColRef.current - 1, 0);                  setKbCol(ni); kbColRef.current = ni; playSound(); }
-        else if (key === "ArrowDown") {
-          if (kbRowRef.current < layout.length - 1) {
-            const nr = kbRowRef.current + 1;
-            const nc = Math.min(kbColRef.current, layout[nr].length - 1);
-            setKbRow(nr); kbRowRef.current = nr; setKbCol(nc); kbColRef.current = nc; playSound();
-          }
-        }
-        else if (key === "ArrowUp") {
-          if (kbRowRef.current > 0) {
-            const nr = kbRowRef.current - 1;
-            const nc = Math.min(kbColRef.current, layout[nr].length - 1);
-            setKbRow(nr); kbRowRef.current = nr; setKbCol(nc); kbColRef.current = nc; playSound();
-          }
-        }
-        else if (key === "Enter")        { const k = rowKeys[kbColRef.current]; if (k) { fireKey(k); playSound(); } }
-        else if (key === "ButtonX")      { kbDelete(); playSound(); }
-        else if (key === "ButtonY")      { kbSpace(); playSound(); }
-        else if (key === "TriggerRight") { kbToggleNum(); playSound(); }
-        else if (key === "Start")        { if (results.length > 0) { playSoundAlt(); switchSearchMode("results"); } }
-        // FIX 1: B in keyboard mode — jump to results if any, else go idle
-        else if (key === "Escape") {
-          playSound();
-          if (results.length > 0) { switchSearchMode("results"); }
-          else { switchSearchMode("idle"); }
-        }
-        return;
-      }
-
-      if (mode === "results") {
-        if      (key === "ArrowRight") { const ni = Math.min(searchFocusIndexRef.current + 1, results.length - 1); setSearchFocusIndex(ni); searchFocusIndexRef.current = ni; playSound(); }
-        else if (key === "ArrowLeft")  { const ni = Math.max(searchFocusIndexRef.current - 1, 0);                   setSearchFocusIndex(ni); searchFocusIndexRef.current = ni; playSound(); }
-        else if (key === "ArrowDown")  { const ni = Math.min(searchFocusIndexRef.current + SCOLS, results.length - 1); setSearchFocusIndex(ni); searchFocusIndexRef.current = ni; playSound(); }
-        else if (key === "ArrowUp") {
-          const ni = searchFocusIndexRef.current - SCOLS;
-          if (ni >= 0) { setSearchFocusIndex(ni); searchFocusIndexRef.current = ni; playSound(); }
-          else { playSound(); switchSearchMode("keyboard"); }
-        }
-        else if (key === "Enter" || key === "Start") {
-          const app = results[searchFocusIndexRef.current];
-          if (app) { closeSearch(); triggerLaunch(app, recentRef.current); }
-        }
-        else if (key === "Escape")  { playSound(); closeSearch(); }
-        else if (key === "ButtonY") { playSound(); switchSearchMode("keyboard"); }
-        else if (key === "ButtonX") { kbDelete(); playSound(); }
-        return;
-      }
-
-      if (mode === "idle") {
-        if      (key === "ButtonY") { playSound(); switchSearchMode("keyboard"); }
-        else if (key === "Escape")  { playSound(); closeSearch(); }
-        else if (key === "Start") {
-          if (results.length > 0) { playSoundAlt(); switchSearchMode("results"); }
-          else { playSound(); closeSearch(); }
-        }
-        else if (key === "ButtonX") { kbDelete(); playSound(); }
-        return;
-      }
-
-      return;
-    }
-    // ══ END SEARCH OVERLAY ════════════════════════════════════════
-
-    // Y opens search from main UI
-    if (key === "ButtonY") { playSound(); openSearch(); return; }
-
-    // ── Main nav sections ──────────────────────────────────────
-    // Compute filtered data using refs (same as render-time but from refs)
-    const fRecentGames = (() => { const fg = recentGamesRef.current.filter(g => appsRef.current.some(a => a.id === g.id)); return fg.length > 0 ? fg : appsRef.current.filter(a => a.app_type === "game").slice(0, 6); })();
-
-    // X pins/unpins focused app
-    if (key === "ButtonX") {
-      let focusedApp = null;
-      if (section === "hero")   focusedApp = fRecentGames[heroIndexRef.current] ? allApps.find(a => a.id === fRecentGames[heroIndexRef.current].id) : null;
-      if (section === "pinned" && fPinned[index]) focusedApp = fPinned[index];
-      else if (section === "recent" && fRecent[index]) focusedApp = fRecent[index];
-      else if (section === "grid"   && fApps[index])   focusedApp = fApps[index];
-      if (focusedApp) { playSound(); togglePin(focusedApp); }
-      return;
-    }
-
-    if (key === "BumperLeft" || key === "BumperRight") playSoundAlt(); else playSound();
-    if (key === "BumperLeft")  { const i = TABS.indexOf(currentTab); switchTab(TABS[(i - 1 + TABS.length) % TABS.length]); return; }
-    if (key === "BumperRight") { const i = TABS.indexOf(currentTab); switchTab(TABS[(i + 1) % TABS.length]); return; }
-
-    // BACK (Select) opens library actions menu; MENU (Start) opens context menu for focused card
-    if (key === "Select" && (currentTab === "Games" || currentTab === "Apps")) {
-      openLibraryActionsModal(); return;
-    }
-    if (key === "Start" && (currentTab === "Games" || currentTab === "Apps")) {
-      const focusedApp = section === "pinned" ? fPinned[index] : section === "grid" ? fApps[index] : null;
-      if (focusedApp) {
-        const cx = Math.min(Math.floor(window.innerWidth / 2) - 90, window.innerWidth - 200);
-        const cy = Math.min(Math.floor(window.innerHeight / 2) - 80, window.innerHeight - 180);
-        const menu = { x: cx, y: cy, app: focusedApp, focusedIdx: 0 };
-        setContextMenu(menu); contextMenuRef.current = menu;
-      }
-      return;
-    }
-
-    if (currentTab === "Settings") {
-      if (key === "TriggerLeft") {
-        const ni = Math.max(0, settingsSectionRef.current - 1);
-        if (ni !== settingsSectionRef.current) {
-          setSettingsSection(ni); settingsSectionRef.current = ni;
-          setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
-          if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
-          playSound();
-        }
-        return;
-      }
-      if (key === "TriggerRight") {
-        const ni = Math.min(SETTINGS_SECTIONS.length - 1, settingsSectionRef.current + 1);
-        if (ni !== settingsSectionRef.current) {
-          setSettingsSection(ni); settingsSectionRef.current = ni;
-          setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
-          if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
-          playSound();
-        }
-        return;
-      }
-      const sfIndex = settingsFocusIndexRef.current;
-      const item    = navigableSettings[sfIndex];
-      if (key === "ArrowDown") {
-        const ni = Math.min(sfIndex + 1, navigableSettings.length - 1);
-        setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni;
-        if (sfIndex === navigableSettings.length - 1 && tabScrollRef.current) {
-          tabScrollRef.current.scrollTo({ top: tabScrollRef.current.scrollHeight, behavior: "smooth" });
-        }
-      }
-      if (key === "ArrowUp") {
-        const ni = Math.max(sfIndex - 1, 0); setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni;
-        if (sfIndex === 0 && tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
-      }
-      if (key === "ArrowRight" || key === "Enter") {
-        if (!item) return;
-        if (item.type === "toggle")  updateSetting(item.key, !currentSettings[item.key]);
-        else if (item.type === "cycle")  { const opts = item.options; const curVal = item.key === "theme" ? normalizeThemeKey(currentSettings[item.key]) : currentSettings[item.key]; const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur + 1) % opts.length]); }
-        else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur + 1) % keys.length]); }
-        else if (item.type === "slider") {
-          const cur = currentSettings[item.key] ?? 1.0;
-          updateSetting(item.key, Math.min(item.max, Math.round((cur + item.step) * 100) / 100));
-        }
-        else if (item.type === "action") {
-          if (item.key === "clear_recents") handleClearRecents();
-          if (item.key === "clear_cache")   handleClearCache();
-          if (item.key === "reset_scale")   updateSetting("ui_scale", autoScaleRef.current);
-        }
-        else if (item.type === "refresh") { refreshLibrary(); }
-        else if (item.type === "update") {
-          if (updateStatus === "available") invoke("launch_app", { path: `https://github.com/${GITHUB_REPO}/releases/latest`, id: "releases", name: "LiftOff Releases", appType: "app", runAsAdmin: false }).catch(() => {});
-          else checkForUpdates();
-        }
-        else if (item.type === "link") {
-          if (item.key === "coffee")  invoke("launch_app", { path: "https://buymeacoffee.com/liftoff_handheld_launcher", id: "coffee", name: "Buy Me a Coffee", appType: "app", runAsAdmin: false }).catch(() => {});
-          if (item.key === "github")  invoke("launch_app", { path: "https://github.com/PixelateWizard/LiftOff", id: "github", name: "GitHub", appType: "app", runAsAdmin: false }).catch(() => {});
-          if (item.key === "discord") invoke("launch_app", { path: "https://discord.gg/F5ncP75WtD", id: "discord", name: "Discord", appType: "app", runAsAdmin: false }).catch(() => {});
-        }
-        else if (item.type === "attribution") {
-          if (item.url) invoke("launch_app", { path: item.url, id: item.key, name: item.label, appType: "app", runAsAdmin: false }).catch(() => {});
-        }
-        else if (item.type === "custom_folders") {
-          setShowFolderManager(true); showFolderManagerRef.current = true;
-        }
-        else if (item.type === "home_collection_toggle") {
-          toggleHomeCollection(item.colName);
-        }
-      }
-      if (key === "ArrowLeft") {
-        if (!item) return;
-        if (item.type === "toggle")  updateSetting(item.key, !currentSettings[item.key]);
-        else if (item.type === "cycle")  { const opts = item.options; const curVal = item.key === "theme" ? normalizeThemeKey(currentSettings[item.key]) : currentSettings[item.key]; const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length]); }
-        else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur - 1 + keys.length) % keys.length]); }
-        else if (item.type === "slider") {
-          const cur = currentSettings[item.key] ?? 1.0;
-          updateSetting(item.key, Math.max(item.min, Math.round((cur - item.step) * 100) / 100));
-        }
-        else if (item.type === "home_collection_toggle") {
-          toggleHomeCollection(item.colName);
-        }
-      }
-      return;
-    }
-
-    if (currentTab === "Home") {
-      const focusFirstHomeDrawerItem = () => {
-        if (!settingsRef.current.show_home_collections) return false;
-        if (fRecent.length > 0) {
-          setFocusSection("recent"); focusSectionRef.current = "recent";
-          setFocusIndex(0); focusIndexRef.current = 0;
-          return true;
-        }
-        const allCols = [
-          ...gameCollectionsRef.current.map(col => ({
-            id: col.id,
-            items: appsRef.current.filter(a => a.app_type === "game" && (gameMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-          })),
-          ...appCollectionsRef.current.map(col => ({
-            id: col.id,
-            items: appsRef.current.filter(a => a.app_type === "app" && (appMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-          })),
-        ].filter(c => c.items.length > 0);
-        if (allCols.length === 0) return false;
-        setFocusSection("home_collections"); focusSectionRef.current = "home_collections";
-        setHomeColFocusRow(0); homeColFocusRowRef.current = 0;
-        setHomeColFocusCol(0); homeColFocusColRef.current = 0;
-        return true;
-      };
-
-      if (section === "pinned" && !homePinnedVisible) {
-        setFocusSection("hero"); focusSectionRef.current = "hero";
-        setFocusIndex(0); focusIndexRef.current = 0;
-        return;
-      }
-
-      if (section === "hero") {
-        if (key === "ArrowLeft")  { const ni = Math.max(heroIndexRef.current - 1, 0); setHeroIndex(ni); heroIndexRef.current = ni; }
-        if (key === "ArrowRight") { const ni = Math.min(heroIndexRef.current + 1, Math.min(fRecentGames.length, 6) - 1); setHeroIndex(ni); heroIndexRef.current = ni; }
-        if (key === "ArrowUp") {
-          if (!settingsRef.current.cinematic_home && homePinnedVisible) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
-        }
-        if (key === "ArrowDown") {
-          if (settingsRef.current.cinematic_home) {
-            if (homePinnedVisible) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
-            else { focusFirstHomeDrawerItem(); }
-          } else {
-            if (fRecent.length > 0) { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(0); focusIndexRef.current = 0; }
-          }
-        }
-        if (key === "Enter" && fRecentGames[heroIndexRef.current]) triggerLaunch(fRecentGames[heroIndexRef.current], rec);
-        return;
-      }
-      if (section === "pinned") {
-        if (key === "ArrowRight") { const ni = Math.min(index + 1, fPinned.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
-        if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                  setFocusIndex(ni); focusIndexRef.current = ni; }
-        if (key === "ArrowUp")    { setFocusSection("hero"); focusSectionRef.current = "hero"; }
-        if (key === "ArrowDown") {
-          if (!settingsRef.current.cinematic_home && fRecent.length > 0) { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(Math.min(focusIndexRef.current, fRecent.length - 1)); }
-          else if (settingsRef.current.cinematic_home && settingsRef.current.show_home_collections) {
-            // In cinematic mode: down from pinned goes to recent first (if recents exist), else collections
-            if (fRecent.length > 0) {
-              setFocusSection("recent"); focusSectionRef.current = "recent";
-              setFocusIndex(0); focusIndexRef.current = 0;
-            } else {
-              const allCols = [
-                ...gameCollectionsRef.current.map(col => ({
-                  id: col.id,
-                  items: appsRef.current.filter(a => a.app_type === "game" && (gameMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-                })),
-                ...appCollectionsRef.current.map(col => ({
-                  id: col.id,
-                  items: appsRef.current.filter(a => a.app_type === "app" && (appMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-                })),
-              ].filter(c => c.items.length > 0);
-              if (allCols.length > 0) {
-                setFocusSection("home_collections"); focusSectionRef.current = "home_collections";
-                setHomeColFocusRow(0); homeColFocusRowRef.current = 0;
-                setHomeColFocusCol(0); homeColFocusColRef.current = 0;
-              }
-            }
-          }
-        }
-        if (key === "Enter" && fPinned[index]) triggerLaunch(fPinned[index], rec);
-        return;
-      }
-      if (section === "recent") {
-        const maxIdx = Math.min(fRecent.length, 10) - 1;
-        if (key === "ArrowRight") { const ni = Math.min(index + 1, maxIdx); setFocusIndex(ni); focusIndexRef.current = ni; }
-        if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);      setFocusIndex(ni); focusIndexRef.current = ni; }
-        if (key === "ArrowUp") {
-          if (settingsRef.current.cinematic_home) {
-            // In cinematic mode, recent is inside the slide panel — up goes back to pinned
-            if (homePinnedVisible) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
-            else { setFocusSection("hero"); focusSectionRef.current = "hero"; }
-          } else {
-            setFocusSection("hero"); focusSectionRef.current = "hero";
-          }
-        }
-        if (key === "ArrowDown") {
-          if (settingsRef.current.show_home_collections) {
-            const allCols = [
-              ...gameCollectionsRef.current.map(col => ({
-                id: col.id,
-                items: appsRef.current.filter(a => a.app_type === "game" && (gameMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-              })),
-              ...appCollectionsRef.current.map(col => ({
-                id: col.id,
-                items: appsRef.current.filter(a => a.app_type === "app" && (appMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-              })),
-            ].filter(c => c.items.length > 0);
-            if (allCols.length > 0) {
-              setFocusSection("home_collections"); focusSectionRef.current = "home_collections";
-              setHomeColFocusRow(0); homeColFocusRowRef.current = 0;
-              setHomeColFocusCol(0); homeColFocusColRef.current = 0;
-            }
-          }
-        }
-        if (key === "Enter" && fRecent[index]) triggerLaunch(fRecent[index], rec);
-        return;
-      }
-      if (section === "home_collections") {
-        const allCols = [
-          ...gameCollectionsRef.current.map(col => ({
-            id: col.id,
-            items: appsRef.current.filter(a => a.app_type === "game" && (gameMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-          })),
-          ...appCollectionsRef.current.map(col => ({
-            id: col.id,
-            items: appsRef.current.filter(a => a.app_type === "app" && (appMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-          })),
-        ].filter(c => c.items.length > 0);
-        const row = homeColFocusRowRef.current;
-        const col = homeColFocusColRef.current;
-        const currentRow = allCols[row];
-        if (key === "ArrowRight") {
-          if (currentRow && col < currentRow.items.length - 1) { const ni = col + 1; setHomeColFocusCol(ni); homeColFocusColRef.current = ni; }
-        }
-        if (key === "ArrowLeft") {
-          if (col > 0) { const ni = col - 1; setHomeColFocusCol(ni); homeColFocusColRef.current = ni; }
-        }
-        if (key === "ArrowDown") {
-          if (row < allCols.length - 1) {
-            const nr = row + 1;
-            const nc = Math.min(col, allCols[nr].items.length - 1);
-            setHomeColFocusRow(nr); homeColFocusRowRef.current = nr;
-            setHomeColFocusCol(nc); homeColFocusColRef.current = nc;
-          }
-        }
-        if (key === "ArrowUp") {
-          if (row > 0) {
-            const nr = row - 1;
-            const nc = Math.min(col, allCols[nr].items.length - 1);
-            setHomeColFocusRow(nr); homeColFocusRowRef.current = nr;
-            setHomeColFocusCol(nc); homeColFocusColRef.current = nc;
-          } else {
-            // Back up to recents (both normal and cinematic)
-            if (fRecent.length > 0) {
-              setFocusSection("recent"); focusSectionRef.current = "recent";
-              setFocusIndex(0); focusIndexRef.current = 0;
-            } else if (settingsRef.current.cinematic_home) {
-              if (homePinnedVisible) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
-              else { setFocusSection("hero"); focusSectionRef.current = "hero"; }
-            } else {
-              setFocusSection("hero"); focusSectionRef.current = "hero";
-            }
-          }
-        }
-        if (key === "Enter" && currentRow) {
-          const app = currentRow.items[col];
-          if (app) triggerLaunch(app, rec);
-        }
-        return;
-      }
-      return;
-    }
-
-    // Games / Apps tabs
-    // LT/RT cycle source sub-tabs on Games tab (from anywhere)
-    if (currentTab === "Games") {
-      const SOURCES = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSourcesRef.current, ...gameCollectionsRef.current.map(c => c.name)];
-      if (key === "TriggerLeft") {
-        const cur = SOURCES.indexOf(gameSourceTabRef.current);
-        const next = SOURCES[(cur - 1 + SOURCES.length) % SOURCES.length];
-        setGameSourceTab(next); gameSourceTabRef.current = next;
-        const hasPinned = next === "All" && pinsRef.current.length > 0 && pinsRef.current.some(id => appsRef.current.find(a => a.id === id));
-        setFocusSection(hasPinned ? "pinned" : "grid"); focusSectionRef.current = hasPinned ? "pinned" : "grid";
-        setFocusIndex(0); focusIndexRef.current = 0;
-        playSound(); return;
-      }
-      if (key === "TriggerRight") {
-        const cur = SOURCES.indexOf(gameSourceTabRef.current);
-        const next = SOURCES[(cur + 1) % SOURCES.length];
-        setGameSourceTab(next); gameSourceTabRef.current = next;
-        const hasPinned = next === "All" && pinsRef.current.length > 0 && pinsRef.current.some(id => appsRef.current.find(a => a.id === id));
-        setFocusSection(hasPinned ? "pinned" : "grid"); focusSectionRef.current = hasPinned ? "pinned" : "grid";
-        setFocusIndex(0); focusIndexRef.current = 0;
-        playSound(); return;
-      }
-    }
-    if (currentTab === "Apps") {
-      const APP_COLS = ["All", ...appCollectionsRef.current.map(c => c.name)];
-      if (key === "TriggerLeft") {
-        const cur = APP_COLS.indexOf(appCollectionTabRef.current);
-        const next = APP_COLS[(cur - 1 + APP_COLS.length) % APP_COLS.length];
-        setAppCollectionTab(next); appCollectionTabRef.current = next;
-        setFocusSection("grid"); focusSectionRef.current = "grid";
-        setFocusIndex(0); focusIndexRef.current = 0;
-        playSound(); return;
-      }
-      if (key === "TriggerRight") {
-        const cur = APP_COLS.indexOf(appCollectionTabRef.current);
-        const next = APP_COLS[(cur + 1) % APP_COLS.length];
-        setAppCollectionTab(next); appCollectionTabRef.current = next;
-        setFocusSection("grid"); focusSectionRef.current = "grid";
-        setFocusIndex(0); focusIndexRef.current = 0;
-        playSound(); return;
-      }
-    }
-
-    // subtabs row: source pills + manage button
-    const SOURCES = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSourcesRef.current, ...gameCollectionsRef.current.map(c => c.name)];
-    const APP_COLS_NAV = ["All", ...appCollectionsRef.current.map(c => c.name)];
-    const subtabItems = currentTab === "Games"
-      ? [...SOURCES, "manage"]
-      : [...APP_COLS_NAV, "manage"];
-
-    const switchSubtabItem = (item) => {
-      if (item === "add_app" || item === "add_folder" || item === "manage" || item === "collections") return;
-      if (currentTab === "Games") { setGameSourceTab(item); gameSourceTabRef.current = item; }
-      else { setAppCollectionTab(item); appCollectionTabRef.current = item; }
-      setFocusIndex(0); focusIndexRef.current = 0;
-    };
-
-    if (section === "subtabs") {
-      if (key === "ArrowRight") {
-        const ni = Math.min(subtabFocusIndexRef.current + 1, subtabItems.length - 1);
-        setSubtabFocusIndex(ni); subtabFocusIndexRef.current = ni;
-        switchSubtabItem(subtabItems[ni]);
-        playSound();
-      }
-      else if (key === "ArrowLeft") {
-        const ni = Math.max(subtabFocusIndexRef.current - 1, 0);
-        setSubtabFocusIndex(ni); subtabFocusIndexRef.current = ni;
-        switchSubtabItem(subtabItems[ni]);
-        playSound();
-      }
-      else if (key === "ArrowDown") {
-        if (fPinned.length > 0) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
-        else { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; }
-        playSound();
-      }
-      else if (key === "Enter") {
-        const item = subtabItems[subtabFocusIndexRef.current];
-        if (item === "manage") { openLibraryActionsModal(); }
-        // Pills already auto-switched on focus movement — Enter is a no-op for them
-      }
-      return; // always return — never fall through to grid/pinned launch
-    }
-
-    if (section === "pinned") {
-      const pinnedCols = currentTab === "Games" ? Math.max(2, Math.round(GAME_COLS / (settingsRef.current.game_cover_scale ?? 1.0))) : COLS;
-      if (fPinned.length === 0) { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; return; }
-      if (key === "ArrowRight") { const ni = Math.min(index + 1, fPinned.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
-      if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                  setFocusIndex(ni); focusIndexRef.current = ni; }
-      if (key === "ArrowUp") {
-        if (index >= pinnedCols) {
-          const ni = index - pinnedCols;
-          setFocusIndex(ni); focusIndexRef.current = ni;
-        } else {
-          setFocusSection("subtabs"); focusSectionRef.current = "subtabs";
-          setSubtabFocusIndex(0); subtabFocusIndexRef.current = 0;
-          playSound();
-        }
-      }
-      if (key === "ArrowDown") {
-        const ni = index + pinnedCols;
-        if (ni < fPinned.length) { setFocusIndex(ni); focusIndexRef.current = ni; }
-        else { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; }
-      }
-      if (key === "Enter" && fPinned[index]) triggerLaunch(fPinned[index], rec);
-      return;
-    }
-    if (section === "grid") {
-      const pinnedCols = currentTab === "Games" ? Math.max(2, Math.round(GAME_COLS / (settingsRef.current.game_cover_scale ?? 1.0))) : COLS;
-      if (fApps.length === 0) return;
-      if (key === "ArrowRight") { const ni = Math.min(index + 1, fApps.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
-      if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                setFocusIndex(ni); focusIndexRef.current = ni; }
-      if (key === "ArrowDown")  { const ni = Math.min(index + cols, fApps.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
-      if (key === "ArrowUp") {
-        if (index < cols) {
-          if (fPinned.length > 0) {
-            const lastPinnedRowStart = Math.floor((fPinned.length - 1) / pinnedCols) * pinnedCols;
-            const pinnedTarget = Math.min(lastPinnedRowStart + (index % pinnedCols), fPinned.length - 1);
-            setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(pinnedTarget); focusIndexRef.current = pinnedTarget;
-          } else {
-            setFocusSection("subtabs"); focusSectionRef.current = "subtabs";
-            setSubtabFocusIndex(0); subtabFocusIndexRef.current = 0;
-          }
-        } else { const ni = index - cols; setFocusIndex(ni); focusIndexRef.current = ni; }
-      }
-      if (key === "Enter" && fApps[index]) triggerLaunch(fApps[index], rec);
-      return;
-    }
-  };
-
-  useEffect(() => { handleNavRef.current = handleNav; });
 
   // Block ALL click/mousedown events while modal is open — gamepad A button fires
   // synthetic browser clicks on focused elements, which bypasses our gamepad guards
@@ -1977,7 +1242,7 @@ export default function App() {
     <ThemeProvider value={themeValue}>
     <SettingsProvider value={settingsValue}>
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
-    <div className={appPaused ? "app-launch-paused" : undefined} style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
+    <div className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
 
       <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} />
       <AppOverlays>
@@ -2011,7 +1276,7 @@ export default function App() {
               const url = convertFileSrc(result);
               if (artPickerModeRef.current === "hero") {
                 const lower = result.toLowerCase();
-                const isAnim = lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".gif");
+                const isAnim = lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".gif") || lower.endsWith(".webp");
                 if (isAnim) setHeroAnimated(prev => ({ ...prev, [id]: url }));
                 else        setHeroStatic(prev => ({ ...prev, [id]: url }));
                 const heroType = isAnim ? "animated" : "static";
@@ -2517,6 +1782,7 @@ export default function App() {
             drawerScrollRef={drawerScrollRef}
             recentShelfRef={recentShelfRef}
             heroVideoRefs={heroVideoRefs}
+            appPaused={appPaused}
             setHeroIndex={setHeroIndex}
             heroIndexRef={heroIndexRef}
             iconColors={iconColors}
@@ -2580,6 +1846,8 @@ export default function App() {
     </ThemeProvider>
   );
 }
+
+
 
 
 

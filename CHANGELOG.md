@@ -10,11 +10,12 @@
 - **Shared surface token layer** - moved theme/surface styling decisions into `src/theme/surfaces.ts` via `useSurfaceTheme`, centralizing card, bar, settings-row, background, and surface tokens outside `App.jsx`.
 - **Cyberpunk HUD prototype** - replaced the in-progress cyberpunk skyline/rain experiment with a holographic HUD background prototype including grid lines, scan sweep, corner brackets, HUD readouts, hex outlines, and horizontal glitch sparks. Cyberpunk is kept in code but temporarily removed from the public theme selector.
 - **Lofi background music** - added theme-scoped Lofi background music that loops only while the Lofi theme is active, pauses when switching away, and can be disabled from Settings.
-- **Launch handoff pause and return cooldown** - added an `appPaused` path that pauses launcher animations, hero videos, and Lofi media while an app/game is being launched or LiftOff is out of focus, plus a short post-return cooldown before another launch can start.
+- **Launch handoff pause and return cooldown** - added an `appPaused` path that pauses launcher animations, animated hero media, and Lofi media while an app/game is being launched or LiftOff is out of focus, plus a short post-return cooldown before another launch can start.
 - **App settings hook** - moved settings bootstrap, refs, saving, update helpers, auto UI-scale setup, language sync, default-tab loading, and scan-toggle refresh tracking into `useAppSettings`.
 - **Startup bootstrap hook** - moved splash loading state, splash exit timing, gamepad-ready signaling, and load-error fallback handling into `useStartupBootstrap`.
 
 ### Changed
+- **Gamepad navigation hook extracted** - the entire input layer (RAF poll, hold-repeat, button suppression, tab/focus state machine, launch session tracking, window focus handling, and all suppression-wrapped close helpers) moved into `src/hooks/useGamepadNavigation.ts`. `App.jsx` now calls the hook and wires its returned state and actions into JSX; it no longer owns any navigation logic directly.
 - **Theme surface defaults updated** - Plasma now defaults to Neon, Forest defaults to Glass, Webcore defaults to Win9X, and Lofi defaults to Obsidian while manual Surface Style selection remains independent after theme selection.
 - **Synthwave background layering** - adjusted the synthwave ground/mountain layer so it no longer blocks app content.
 - **Webcore/Win9X UI polish** - removed rounded corners from Webcore app cards, nav, pills, and modals; aligned modal title bars with the Win9X-style nav title bar; and removed translucent focused settings/card states from the surface.
@@ -25,10 +26,13 @@
 - **Lofi video background cleanup** - removed the old Lofi CSS-driven overlay animations now that the theme uses an animated MP4 background.
 - **Theme selector cleanup** - Cyberpunk is temporarily hidden from the theme cycle until the HUD prototype is ready for release.
 - **App.jsx hook extraction** - moved system status, search state, modal state/refs, collections, custom sources, library data, update checks, settings, and startup bootstrap into dedicated hooks while keeping gamepad-sensitive close helpers in `App.jsx`.
+- **Home hero media handling** - Home now owns hero media playback against the actual rendered hero list, treats animated WebP/GIF hero art as pausable media, keeps video heroes preloaded, and clips the non-Webcore hero surface to a fully rounded border.
 
 ### Bug Fixes
+- **Obsidian focused settings row contrast** - the focused settings row in Obsidian surface style (Lo-fi theme default) now uses a near-opaque dark background (`rgba(6,4,14,0.92)`) instead of the previous near-transparent white overlay. This prevents the warm hero background from bleeding through and washing out the orange accent text on the focused row.
 - **Accidental relaunch after closing apps/games** - returning to LiftOff after a launched app/game now snapshots held gamepad buttons and blocks launch attempts briefly, preventing stale confirm input from opening another item.
 - **Lofi playback during launches** - Lofi music and the Lofi video background now pause while a launched app/game is active or LiftOff loses focus.
+- **Animated hero media on focus loss** - animated WebP/GIF hero banners now pause correctly when LiftOff is launched, blurred, or alt-tabbed away instead of continuing through the static image path.
 
 ## [2.0.0] - Alpha 1 & 2
 
