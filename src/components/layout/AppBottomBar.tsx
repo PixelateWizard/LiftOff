@@ -20,7 +20,15 @@ export function AppBottomBar({ tab, appCollectionsCount }: Props) {
     <GamepadBtn btn={label[0]} label={label.slice(2)} />
   );
 
-  const isTransparent = settings.transparent_bottombar || (settings.cinematic_home && tab === "Home");
+  const hasBackground = settings.bottombar_background ?? true;
+  const compact = settings.bottombar_compact ?? "off";
+  const isCompact = hasBackground && (
+    compact === "always" ||
+    (compact === "home" && tab === "Home") ||
+    (compact === "except_home" && tab !== "Home")
+  );
+  // cinematic home rend la barre transparente uniquement quand pas en mode compact
+  const isTransparent = !hasBackground || (!isCompact && settings.cinematic_home && tab === "Home");
   const justify =
     settings.bottombar_alignment === "center" ? "center" :
     settings.bottombar_alignment === "right"  ? "flex-end" : "flex-start";
@@ -70,8 +78,18 @@ export function AppBottomBar({ tab, appCollectionsCount }: Props) {
         display: "flex", gap: 20, alignItems: "center", padding: "10px 20px",
         justifyContent: justify,
         ...barGlass,
-        ...(settings.wide_bottombar
-          ? (settings.transparent_bottombar
+        ...(isCompact
+          ? {
+              width: "fit-content",
+              padding: "10px 24px",
+              ...(settings.bottombar_alignment === "right"
+                ? { margin: "0 16px 14px auto" }
+                : settings.bottombar_alignment === "center"
+                ? { margin: "0 auto 14px" }
+                : { margin: "0 auto 14px 16px" }),
+            }
+          : settings.wide_bottombar
+          ? (isTransparent
             ? { width: "100%", margin: "0 0 14px", boxSizing: "border-box" }
             : { width: "calc(100% - 16px)", margin: "0 8px 14px", boxSizing: "border-box" })
           : { maxWidth: 1400, margin: "0 auto 14px", width: "calc(100% - 48px)" }),

@@ -65,22 +65,28 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "home_cover_scale",  section: 0, label: t("settings.homeCoverScale"),  type: "slider", min: 0.5, max: 2.0, step: 0.05 },
     { key: "game_cover_scale",  section: 0, label: t("settings.gameCoverScale"),  type: "slider", min: 0.5, max: 2.0, step: 0.05 },
     { key: "app_cover_scale",   section: 0, label: t("settings.appCoverScale"),   type: "slider", min: 0.5, max: 2.0, step: 0.05 },
+    { key: "app_list_view",     section: 0, label: t("settings.appListView"),     type: "toggle", subItems: [
+      { key: "app_list_cols", label: t("settings.appListCols"), type: "slider", min: 1, max: 6, step: 1, integer: true },
+    ]},
 
     D("navbar", 0),
-    { key: "hide_bottom_bar",        section: 0, label: t("settings.hideBottomBar"),       type: "toggle" },
-    { key: "transparent_bars",       section: 0, label: t("settings.transparentBars"),      type: "toggle", subItems: [
-      { key: "transparent_topbar",    label: t("settings.transparentTopbar"),    type: "toggle" },
-      { key: "transparent_bottombar", label: t("settings.transparentBottombar"), type: "toggle" },
+    { key: "hide_bottom_bar",     section: 0, label: t("settings.hideBottomBar"),      type: "toggle" },
+    { key: "topbar_background",   section: 0, label: t("settings.topbarBackground"),   type: "toggle" },
+    { key: "tabbar_with_background", section: 0, label: t("settings.tabbarBackground"), type: "toggle", subItems: [
+      { key: "tabbar_background_compact", label: t("settings.tabbarBackgroundCompact"), type: "toggle" },
     ]},
-    { key: "nav_bumpers_pos",         section: 0, label: t("settings.navBumpersPos"),        type: "cycle",  options: ["header", "bottom", "hidden"] },
+    { key: "bottombar_background", section: 0, label: t("settings.bottombarBackground"), type: "toggle", subItems: [
+      { key: "bottombar_compact",   label: t("settings.bottombarCompact"),   type: "cycle", options: ["off", "home", "always", "except_home"] },
+      { key: "bottombar_alignment", label: t("settings.bottombarAlignment"), type: "cycle", options: ["left", "center", "right"] },
+    ]},
+    { key: "nav_bumpers_pos",     section: 0, label: t("settings.navBumpersPos"),      type: "cycle",  options: ["header", "bottom", "hidden"] },
     D("tabbar", 0),
-    { key: "tabbar_show_buttons",    section: 0, label: t("settings.tabbarBadges"),          type: "cycle",  options: ["tabbar", "bottom", "hidden"] },
-    { key: "tabbar_label_case",      section: 0, label: t("settings.tabbarLabelCase"),        type: "cycle",  options: ["default", "ucfirst", "uppercase"] },
-    { key: "tabbar_text_tabs",       section: 0, label: t("settings.tabbarTextTabs"),         type: "toggle", subItems: [
+    { key: "tabbar_show_buttons", section: 0, label: t("settings.tabbarBadges"),       type: "cycle",  options: ["tabbar", "bottom", "hidden"] },
+    { key: "tabbar_label_case",   section: 0, label: t("settings.tabbarLabelCase"),    type: "cycle",  options: ["default", "ucfirst", "uppercase"] },
+    { key: "tabbar_text_tabs",    section: 0, label: t("settings.tabbarTextTabs"),     type: "toggle", subItems: [
       { key: "tabbar_font_weight", label: t("settings.tabbarFontWeight"), type: "cycle", options: ["thin", "medium", "bold"] },
     ]},
-    { key: "tabbar_with_background", section: 0, label: t("settings.tabbarWithBackground"),   type: "toggle" },
-    { key: "bottombar_alignment",     section: 0, label: t("settings.bottombarAlignment"),     type: "cycle",  options: ["left", "center", "right"] },
+    { key: "tabbar_icon_mode",    section: 0, label: t("settings.tabbarIconMode"),     type: "cycle",  options: ["text", "icons", "both"] },
 
     // ── Library ──────────────────────────────────────────────────
     D("sources", 1),
@@ -472,6 +478,21 @@ export function SettingsScreen({
                   focusedRef: settingsFocusedRef,
                 };
               }
+              if (sub.type === "slider") {
+                const isDraggingSub = sliderDraft.key === sub.key;
+                return {
+                  type: "slider" as const,
+                  label: sub.label,
+                  sliderValue: isDraggingSub ? (sliderDraft.value ?? (settings[sub.key] as number)) : (settings[sub.key] as number),
+                  sliderMin: sub.min,
+                  sliderMax: sub.max,
+                  sliderStep: sub.step,
+                  integer: sub.integer,
+                  onSliderChange: (newVal: number) => updateSetting(sub.key, newVal),
+                  focused: subFocused,
+                  focusedRef: settingsFocusedRef,
+                };
+              }
               return {
                 label: sub.label,
                 value: settings[sub.key] as boolean,
@@ -550,7 +571,7 @@ export function SettingsScreen({
       const val = (settings[item.key] as number) ?? 1.0;
       const isDragging = sliderDraft.key === item.key;
       const displayVal = isDragging ? sliderDraft.value! : val;
-      const pct = `${Math.round(displayVal * 100)}%`;
+      const pct = item.integer ? `${Math.round(displayVal)}` : `${Math.round(displayVal * 100)}%`;
       const trackPct = ((displayVal - item.min) / (item.max - item.min)) * 100;
 
       const handleTrackMouseDown = (e: React.MouseEvent) => {

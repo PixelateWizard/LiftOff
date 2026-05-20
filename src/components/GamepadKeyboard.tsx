@@ -33,24 +33,24 @@ export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, t
   } : {};
   const [row,     setRow]     = useState(0);
   const [col,     setCol]     = useState(0);
-  const [numMode, setNumMode] = useState(false);
+  // 0 = lowercase, 1 = CAPS, 2 = numbers
+  const [kbMode,  setKbMode]  = useState<0|1|2>(0);
 
-  const rowRef     = useRef(0);
-  const colRef     = useRef(0);
-  const numModeRef = useRef(false);
-  const valueRef   = useRef(value);
+  const rowRef    = useRef(0);
+  const colRef    = useRef(0);
+  const kbModeRef = useRef<0|1|2>(0);
+  const valueRef  = useRef(value);
   useEffect(() => { valueRef.current = value; }, [value]);
 
-  const layout = numMode ? KB_NUMS : KB_ALPHA;
+  const layout = kbMode === 2 ? KB_NUMS : KB_ALPHA;
 
-  const fireKey    = (k: string) => onChange(valueRef.current + k);
+  const fireKey    = (k: string) => onChange(valueRef.current + (kbModeRef.current === 1 ? k.toUpperCase() : k));
   const deleteChar = ()          => onChange(valueRef.current.slice(0, -1));
   const addSpace   = ()          => onChange(valueRef.current + " ");
-  const toggleNum  = () => {
-    const next = !numModeRef.current;
-    setNumMode(next); numModeRef.current = next;
-    setRow(0); rowRef.current = 0;
-    setCol(0); colRef.current = 0;
+  const cycleMode  = () => {
+    const next = ((kbModeRef.current + 1) % 3) as 0|1|2;
+    setKbMode(next); kbModeRef.current = next;
+    if (next === 2) { setRow(0); rowRef.current = 0; setCol(0); colRef.current = 0; }
   };
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, t
     const rDelay = 80;
 
     const handle = (key: string) => {
-      const lay = numModeRef.current ? KB_NUMS : KB_ALPHA;
+      const lay = kbModeRef.current === 2 ? KB_NUMS : KB_ALPHA;
       const curRow = rowRef.current;
       const curCol = colRef.current;
       const rowLen = lay[curRow]?.length ?? 0;
@@ -95,7 +95,7 @@ export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, t
       } else if (key === "ButtonY") {
         addSpace();
       } else if (key === "TriggerRight") {
-        toggleNum();
+        cycleMode();
       } else if (key === "Escape") {
         onClose();
       }
@@ -177,7 +177,7 @@ export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, t
                       transform: active ? "scale(1.14)" : "scale(1)",
                       transition: "transform 0.07s, box-shadow 0.07s",
                     }}>
-                    {k}
+                    {kbMode === 1 ? k.toUpperCase() : k}
                   </div>
                 );
               })}
@@ -191,7 +191,7 @@ export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, t
             { bg: "#3a5a8a", label: "X", desc: "Delete" },
             { bg: "#9a7020", label: "Y", desc: "Space" },
             { bg: "#b03030", label: "B", desc: "Done" },
-            { bg: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)", label: "RT", desc: numMode ? "ABC" : "123", circle: false },
+            { bg: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.18)", label: "RT", desc: kbMode === 0 ? "CAPS" : kbMode === 1 ? "123" : "abc", circle: false },
           ].map(({ bg, label, desc, circle = true }) => (
             <div key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <div style={{ width: circle ? 18 : "auto", height: 18, minWidth: 18, borderRadius: circle ? "50%" : 4,

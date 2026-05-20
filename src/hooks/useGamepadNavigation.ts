@@ -460,7 +460,11 @@ export function useGamepadNavigation(
     const allApps         = appsRef.current;
     const rec             = recentRef.current;
     const currentPins     = pinsRef.current;
-    const cols            = currentTab === "Games" ? Math.max(2, Math.round(GAME_COLS / (settingsRef.current.game_cover_scale ?? 1.0))) : COLS;
+    const cols            = currentTab === "Games"
+      ? Math.max(2, Math.round(GAME_COLS / (settingsRef.current.game_cover_scale ?? 1.0)))
+      : settingsRef.current.app_list_view
+        ? Math.max(1, settingsRef.current.app_list_cols ?? 1)
+        : Math.max(2, Math.round(COLS / (settingsRef.current.app_cover_scale ?? 1.0)));
     const currentSettings = settingsRef.current;
 
     const fApps = allApps.filter(a => {
@@ -949,7 +953,11 @@ export function useGamepadNavigation(
     }
 
     if (section === "pinned") {
-      const pinnedCols = currentTab === "Games" ? Math.max(2, Math.round(GAME_COLS / (settingsRef.current.game_cover_scale ?? 1.0))) : COLS;
+      const pinnedCols = currentTab === "Games"
+        ? Math.max(2, Math.round(GAME_COLS / (settingsRef.current.game_cover_scale ?? 1.0)))
+        : settingsRef.current.app_list_view
+          ? Math.max(1, settingsRef.current.app_list_cols ?? 1)
+          : Math.max(2, Math.round(COLS / (settingsRef.current.app_cover_scale ?? 1.0)));
       if (fPinned.length === 0) { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; return; }
       if (key === "ArrowRight") { const ni = Math.min(index + 1, fPinned.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
       if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                  setFocusIndex(ni); focusIndexRef.current = ni; }
@@ -972,7 +980,11 @@ export function useGamepadNavigation(
       return;
     }
     if (section === "grid") {
-      const pinnedCols = currentTab === "Games" ? Math.max(2, Math.round(GAME_COLS / (settingsRef.current.game_cover_scale ?? 1.0))) : COLS;
+      const pinnedCols = currentTab === "Games"
+        ? Math.max(2, Math.round(GAME_COLS / (settingsRef.current.game_cover_scale ?? 1.0)))
+        : settingsRef.current.app_list_view
+          ? Math.max(1, settingsRef.current.app_list_cols ?? 1)
+          : Math.max(2, Math.round(COLS / (settingsRef.current.app_cover_scale ?? 1.0)));
       if (fApps.length === 0) return;
       if (key === "ArrowRight") { const ni = Math.min(index + 1, fApps.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
       if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                setFocusIndex(ni); focusIndexRef.current = ni; }

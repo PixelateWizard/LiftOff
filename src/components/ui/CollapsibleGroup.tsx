@@ -22,7 +22,20 @@ interface CycleSubItem {
   focusedRef?: RefObject<HTMLDivElement>;
 }
 
-type SubItem = ToggleSubItem | CycleSubItem;
+interface SliderSubItem {
+  type: "slider";
+  label: string;
+  sliderValue: number;
+  sliderMin: number;
+  sliderMax: number;
+  sliderStep: number;
+  integer?: boolean;
+  onSliderChange: (next: number) => void;
+  focused?: boolean;
+  focusedRef?: RefObject<HTMLDivElement>;
+}
+
+type SubItem = ToggleSubItem | CycleSubItem | SliderSubItem;
 
 interface CollapsibleGroupProps {
   label: string;
@@ -160,6 +173,28 @@ export function CollapsibleGroup({
                     <span style={{ fontSize: 12, color: accent.primary, fontWeight: 600 }}>{displayLabel}</span>
                     <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
                       onClick={(e) => { e.stopPropagation(); item.onCycleChange(next); }}>▶</span>
+                  </div>
+                </div>
+              );
+            }
+
+            if (item.type === "slider") {
+              const pct = (item.sliderValue - item.sliderMin) / (item.sliderMax - item.sliderMin);
+              const displayVal = item.integer ? `${Math.round(item.sliderValue)}` : `${Math.round(item.sliderValue * 100)}%`;
+              return (
+                <div key={idx} ref={item.focused ? item.focusedRef : undefined} style={rowStyle}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: isMaterial ? theme.text : theme.textDim }}>{item.label}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
+                      onClick={(e) => { e.stopPropagation(); item.onSliderChange(Math.max(item.sliderMin, Math.round((item.sliderValue - item.sliderStep) / item.sliderStep) * item.sliderStep)); }}>◀</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ width: 60, height: 4, borderRadius: 2, background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", position: "relative", overflow: "hidden" }}>
+                        <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${pct * 100}%`, background: accent.primary, borderRadius: 2 }} />
+                      </div>
+                      <span style={{ fontSize: 12, color: accent.primary, fontWeight: 600, minWidth: 28, textAlign: "right" }}>{displayVal}</span>
+                    </div>
+                    <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
+                      onClick={(e) => { e.stopPropagation(); item.onSliderChange(Math.min(item.sliderMax, Math.round((item.sliderValue + item.sliderStep) / item.sliderStep) * item.sliderStep)); }}>▶</span>
                   </div>
                 </div>
               );

@@ -79,10 +79,6 @@ export function useAppSettings({
   const updateSetting = (key: keyof Settings, value: Settings[keyof Settings]) => {
     setSettings(prev => {
       const updated = { ...prev, [key]: value };
-      if (key === "transparent_bars") {
-        updated.transparent_topbar = value as boolean;
-        updated.transparent_bottombar = value as boolean;
-      }
       if (key === "wide_layout") {
         updated.wide_topbar = value as boolean;
         updated.wide_body = value as boolean;

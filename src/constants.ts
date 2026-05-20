@@ -111,14 +111,14 @@ export const KB_NUMS = [
 export const SCAN_KEYS = ["scan_steam", "scan_xbox", "scan_uwp", "scan_desktop", "scan_battlenet"] as const;
 
 export const DEFAULT_SETTINGS = {
-  accent: "ember", theme: "space", stars_enabled: true, lofi_music_enabled: true, wide_layout: false, wide_topbar: false, wide_body: false, wide_bottombar: false, transparent_bars: false, transparent_topbar: false, transparent_bottombar: false, hide_bottom_bar: false,
+  accent: "ember", theme: "space", stars_enabled: true, lofi_music_enabled: true, wide_layout: false, wide_topbar: false, wide_body: false, wide_bottombar: false, topbar_background: true, bottombar_background: true, hide_bottom_bar: false,
   default_tab: "Home", scan_steam: true, scan_xbox: true,
   scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
   launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
-  language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, app_cover_scale: 1.0, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false, show_immersive_hero_art: true,
+  language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, app_cover_scale: 1.0, app_list_view: false, app_list_cols: 1, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false, show_immersive_hero_art: true,
   nav_bumpers_pos: "bottom",
-  tabbar_show_buttons: "tabbar", tabbar_text_tabs: false, tabbar_with_background: false, tabbar_font_weight: "medium",
-  bottombar_alignment: "left", tabbar_label_case: "default",
+  tabbar_show_buttons: "tabbar", tabbar_text_tabs: false, tabbar_with_background: false, tabbar_background_compact: false, tabbar_font_weight: "medium", tabbar_icon_mode: "text",
+  bottombar_alignment: "left", bottombar_compact: "off", tabbar_label_case: "default",
   show_recent_games_only: false, show_home_collections: false, show_home_collection_names: true, show_hero_cover: true, show_home_pinned: true,
   gamepad_platform: "xbox", gamepad_icons_colored: false, gamepad_icons_filled: true, gamepad_icons_theme_color: false,
   gamepad_btn_size: "small", gamepad_auto_detect: true,

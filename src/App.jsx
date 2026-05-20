@@ -754,7 +754,7 @@ export default function App() {
 
   const effectiveGameCols = Math.max(2, Math.round(GAME_COLS / (settings.game_cover_scale ?? 1.0)));
   const effectiveAppCols  = Math.max(2, Math.round(COLS / (settings.app_cover_scale ?? 1.0)));
-  const currentCols = tab === "Games" ? effectiveGameCols : effectiveAppCols;
+  const currentCols = tab === "Games" ? effectiveGameCols : (settings.app_list_view ? Math.max(1, settings.app_list_cols ?? 1) : effectiveAppCols);
 
   useEffect(() => {
     if (tab === "Settings") return;
@@ -1226,6 +1226,8 @@ export default function App() {
     recent,
     setContextMenu,
     COLS: effectiveAppCols,
+    appListView: settings.app_list_view ?? false,
+    appListCols: Math.max(1, settings.app_list_cols ?? 1),
     iconColors,
     customArt,
     glass,
@@ -1511,7 +1513,11 @@ export default function App() {
         <EditNameModal
           app={editNameApp}
           onConfirm={(name) => {
-            invoke("rename_app", { id: editNameApp.id, name }).then(() => refreshLibrary());
+            const renamedId = editNameApp.id;
+            setGameArt(prev => { const n = {...prev}; delete n[renamedId]; return n; });
+            setHeroStatic(prev => { const n = {...prev}; delete n[renamedId]; return n; });
+            setHeroAnimated(prev => { const n = {...prev}; delete n[renamedId]; return n; });
+            invoke("rename_app", { id: renamedId, name }).then(() => refreshLibrary());
             setEditNameApp(null);
           }}
           onClose={() => setEditNameApp(null)}
@@ -1720,7 +1726,7 @@ export default function App() {
         {/* Tab content area — Home always mounted; cover layer hides it when elsewhere;
              clouds sit above cover, below all tab UI. */}
         <AppMainContent>
-        <div style={{ position: "relative", flex: 1, overflow: (settings.transparent_topbar && tab === "Home") || (settings.cinematic_home && tab === "Home") ? "auto" : "hidden" }}>
+        <div style={{ position: "relative", flex: 1, overflow: (!(settings.topbar_background ?? true) && tab === "Home") || (settings.cinematic_home && tab === "Home") ? "auto" : "hidden" }}>
 
           {tab === "Settings" && (
             <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>

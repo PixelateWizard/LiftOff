@@ -1,5 +1,6 @@
 import type { RefObject } from "react";
 import { useTheme } from "../contexts/ThemeContext";
+import { AppListItem } from "../components/ui";
 
 export interface LibraryViewContentProps {
   tab: "Games" | "Apps";
@@ -55,6 +56,8 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
     effectiveGameCols,
     isFocused,
     pins,
+    appListView,
+    appListCols,
   } = props;
   const { surface } = useTheme();
   const isPixel = surfaceStyle === "win9x";
@@ -138,6 +141,30 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                         onRightClick={(e, a) => { setContextMenu({ x: e.clientX, y: e.clientY, app: a }); }} />;
                     })}
                   </div>
+                ) : appListView ? (
+                  <div style={{ display: "grid", gridTemplateColumns: `repeat(${appListCols}, minmax(0, 1fr))`, gap: 6, paddingTop: 6, marginTop: -6, paddingBottom: 14 }}>
+                    {pinnedAppsReactive.map((app, i) => {
+                      const focused = focusSection === "pinned" && focusIndex === i;
+                      const art = customArt[app.id];
+                      return (
+                        <AppListItem
+                          key={app.id}
+                          ref={focused ? focusedCardRef : null}
+                          variant="row"
+                          name={app.name}
+                          icon={art
+                            ? <img src={art} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover" }} />
+                            : <AppIcon app={app} size={40} />}
+                          focused={focused}
+                          onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
+                          onDoubleClick={() => triggerLaunch(app, recent)}
+                          onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
+                        >
+                          <PinBadge isPinned={true} small />
+                        </AppListItem>
+                      );
+                    })}
+                  </div>
                 ) : (
                   <div style={{ display: "grid", gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`, gap: 10, paddingTop: 6, marginTop: -6, paddingBottom: 14 }}>
                     {pinnedAppsReactive.map((app, i) => {
@@ -207,6 +234,31 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                     onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
                     onDoubleClick={() => triggerLaunch(app, recent)}
                     onRightClick={(e, a) => { setContextMenu({ x: e.clientX, y: e.clientY, app: a }); }} />;
+                })}
+              </div>
+            ) : appListView ? (
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${appListCols}, minmax(0, 1fr))`, gap: 6, paddingBottom: 100 }}>
+                {filteredApps.map((app, i) => {
+                  const focused = isFocused("grid", i);
+                  const isPinned = pins.includes(app.id);
+                  const art = customArt[app.id];
+                  return (
+                    <AppListItem
+                      key={app.id}
+                      ref={focused ? focusedCardRef : null}
+                      variant="row"
+                      name={app.name}
+                      icon={art
+                        ? <img src={art} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover" }} />
+                        : <AppIcon app={app} size={40} />}
+                      focused={focused}
+                      onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
+                      onDoubleClick={() => triggerLaunch(app, recent)}
+                      onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
+                    >
+                      {isPinned && <PinBadge isPinned={true} small />}
+                    </AppListItem>
+                  );
                 })}
               </div>
             ) : (

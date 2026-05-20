@@ -63,9 +63,8 @@ export interface Settings {
   wide_topbar: boolean;
   wide_body: boolean;
   wide_bottombar: boolean;
-  transparent_bars: boolean;
-  transparent_topbar: boolean;
-  transparent_bottombar: boolean;
+  topbar_background: boolean;
+  bottombar_background: boolean;
   hide_bottom_bar: boolean;
   default_tab: DefaultTab;
   scan_steam: boolean;
@@ -81,6 +80,8 @@ export interface Settings {
   home_cover_scale: number;
   game_cover_scale: number;
   app_cover_scale: number;
+  app_list_view: boolean;
+  app_list_cols: number;
   time_format: TimeFormat;
   show_date: boolean;
   show_battery: boolean;
@@ -91,8 +92,11 @@ export interface Settings {
   tabbar_show_buttons: TabbarButtons;
   tabbar_text_tabs: boolean;
   tabbar_with_background: boolean;
+  tabbar_background_compact: boolean;
   tabbar_font_weight: TabbarFontWeight;
+  tabbar_icon_mode: "text" | "icons" | "both";
   bottombar_alignment: BottombarAlign;
+  bottombar_compact: string;
   tabbar_label_case: TabbarLabelCase;
   show_recent_games_only: boolean;
   show_home_collections: boolean;
@@ -142,7 +146,17 @@ export interface SettingsCycleSubItem {
   options: readonly string[];
 }
 
-export type SettingsSubItem = SettingsToggleSubItem | SettingsCycleSubItem;
+export interface SettingsSliderSubItem {
+  key: keyof Settings;
+  label: string;
+  type: "slider";
+  min: number;
+  max: number;
+  step: number;
+  integer?: boolean;
+}
+
+export type SettingsSubItem = SettingsToggleSubItem | SettingsCycleSubItem | SettingsSliderSubItem;
 
 export interface SettingsToggleItem extends SettingsItemBase {
   key: keyof Settings;
@@ -162,6 +176,7 @@ export interface SettingsSliderItem extends SettingsItemBase {
   min: number;
   max: number;
   step: number;
+  integer?: boolean;
 }
 
 export interface SettingsAccentItem extends SettingsItemBase {

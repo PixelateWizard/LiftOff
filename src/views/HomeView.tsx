@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type RefObject } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTheme } from "../contexts/ThemeContext";
 import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../theme/surfaces";
+import { AppListItem } from "../components/ui";
 
 interface HomeViewProps {
   active: boolean;
@@ -462,25 +463,23 @@ export function HomeView(props: HomeViewProps) {
                   const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
                   const idlePinned = getHeroPinnedIdleStyle();
                   return (
-                    <div key={app.id} ref={focused ? focusedCardRef : null}
-                      onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
-                      onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
-                        flexShrink: 0, cursor: "pointer", borderRadius: surfaceCardRadius, transition: "all 0.15s ease",
-                        background: focused ? accent.primary : idlePinned.background,
-                        backdropFilter: undefined,
-                        WebkitBackdropFilter: undefined,
-                        border: `1px solid ${focused ? accent.primary : idlePinned.border}`,
-                        boxShadow: focused
-                          ? `0 3px 10px ${accent.glow}0.38)`
-                          : idlePinned.boxShadow,
-                      }}>
-                      {art
+                    <AppListItem
+                      key={app.id}
+                      ref={focused ? focusedCardRef : null}
+                      variant="pill"
+                      name={app.name}
+                      icon={art
                         ? <img src={art} alt={app.name} style={{ width: 24, height: 24, borderRadius: 4, objectFit: "cover" }} />
                         : <AppIcon app={app} size={24} />}
-                      <div style={{ fontSize: 12, fontWeight: 500, color: focused ? activeTextColor : idlePinned.color, whiteSpace: "nowrap", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
-                    </div>
+                      focused={focused}
+                      idleBackground={idlePinned.background}
+                      idleBorder={idlePinned.border}
+                      idleBoxShadow={idlePinned.boxShadow}
+                      idleColor={idlePinned.color}
+                      activeTextColor={activeTextColor}
+                      onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
+                      onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                    />
                   );
                 })}
               </div>
@@ -656,7 +655,7 @@ export function HomeView(props: HomeViewProps) {
                         : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
                       }
                       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
-                        <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
                       </div>
                       <PinBadge isPinned={isPinned} small />
                       {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
@@ -675,9 +674,9 @@ export function HomeView(props: HomeViewProps) {
                         border: `1px solid ${focused ? (surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)") : (surfaceStyle === "material" ? "var(--material-border-subtle)" : "rgba(255,255,255,0.08)")}`,
                         boxShadow: focused ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
                         transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" }}>
-                      <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={art} alt={fullApp.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
-                        <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                        <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
                       </div>
                       <PinBadge isPinned={isPinned} small />
                       {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
@@ -695,7 +694,7 @@ export function HomeView(props: HomeViewProps) {
                       ...(focused ? { background: surfaceStyle === "material" ? "var(--material-elevation-3)" : isDark ? `${accent.glow}0.1)` : `${accent.glow}0.07)`, boxShadow: surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, transform: "scale(1.05) translateY(-3px)" } : {}) }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", position: "relative", zIndex: 1 }}>
                       <AppIcon app={fullApp} size={40} />
-                      <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
+                      <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{fullApp.name}</div>
                     </div>
                     <PinBadge isPinned={isPinned} small />
                   </div>
@@ -774,7 +773,7 @@ export function HomeView(props: HomeViewProps) {
                         scrollMarginTop: "120px",
                       }}>
                       <AppIcon app={fullApp} size={40} />
-                      <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
+                      <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{fullApp.name}</div>
                     </div>
                   );
                 })}
@@ -911,7 +910,7 @@ export function HomeView(props: HomeViewProps) {
                                 : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
                               }
                               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
-                                <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                                <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
                               </div>
                             </div>
                           );

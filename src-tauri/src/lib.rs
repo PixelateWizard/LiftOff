@@ -132,18 +132,20 @@ pub struct Settings {
     pub show_immersive_hero_art: bool,
     #[serde(default)]
     pub hide_bottom_bar: bool,
-    #[serde(default)]
-    pub transparent_bars: bool,
-    #[serde(default)]
-    pub transparent_topbar: bool,
-    #[serde(default)]
-    pub transparent_bottombar: bool,
+    #[serde(default = "default_true")]
+    pub topbar_background: bool,
+    #[serde(default = "default_true")]
+    pub bottombar_background: bool,
     #[serde(default = "default_cover_scale")]
     pub home_cover_scale: f32,
     #[serde(default = "default_cover_scale")]
     pub game_cover_scale: f32,
     #[serde(default = "default_cover_scale")]
     pub app_cover_scale: f32,
+    #[serde(default)]
+    pub app_list_view: bool,
+    #[serde(default = "default_app_list_cols")]
+    pub app_list_cols: i32,
     // Navigation bar settings (moi952 PRs)
     #[serde(default = "default_nav_bumpers_pos")]
     pub nav_bumpers_pos: String,
@@ -153,12 +155,18 @@ pub struct Settings {
     pub tabbar_text_tabs: bool,
     #[serde(default)]
     pub tabbar_with_background: bool,
+    #[serde(default)]
+    pub tabbar_background_compact: bool,
     #[serde(default = "default_tabbar_font_weight")]
     pub tabbar_font_weight: String,
+    #[serde(default = "default_tabbar_icon_mode")]
+    pub tabbar_icon_mode: String,
     #[serde(default = "default_tabbar_label_case")]
     pub tabbar_label_case: String,
     #[serde(default = "default_bottombar_alignment")]
     pub bottombar_alignment: String,
+    #[serde(default = "default_bottombar_compact")]
+    pub bottombar_compact: String,
     // Home collections
     #[serde(default)]
     pub show_recent_games_only: bool,
@@ -192,11 +200,14 @@ pub struct Settings {
 fn default_language()             -> String { "auto".to_string() }
 fn default_time_format()          -> String { "auto".to_string() }
 fn default_cover_scale()          -> f32    { 1.0 }
+fn default_app_list_cols()        -> i32    { 1 }
 fn default_nav_bumpers_pos()      -> String { "bottom".to_string() }
 fn default_tabbar_show_buttons()  -> String { "tabbar".to_string() }
 fn default_tabbar_font_weight()   -> String { "medium".to_string() }
 fn default_tabbar_label_case()    -> String { "default".to_string() }
+fn default_tabbar_icon_mode()     -> String { "text".to_string() }
 fn default_bottombar_alignment()  -> String { "left".to_string() }
+fn default_bottombar_compact()    -> String { "off".to_string() }
 fn default_gamepad_platform()     -> String { "xbox".to_string() }
 fn default_gamepad_btn_size()     -> String { "small".to_string() }
 fn default_topbar_show_bumpers()  -> bool   { false }
@@ -231,19 +242,23 @@ impl Default for Settings {
             cinematic_home: false,
             show_immersive_hero_art: true,
             hide_bottom_bar: false,
-            transparent_bars: false,
-            transparent_topbar: false,
-            transparent_bottombar: false,
+            topbar_background: true,
+            bottombar_background: true,
             home_cover_scale: 1.0,
             game_cover_scale: 1.0,
             app_cover_scale: 1.0,
+            app_list_view: false,
+            app_list_cols: 1,
             nav_bumpers_pos: "bottom".to_string(),
             tabbar_show_buttons: "tabbar".to_string(),
             tabbar_text_tabs: false,
             tabbar_with_background: false,
+            tabbar_background_compact: false,
             tabbar_font_weight: "medium".to_string(),
+            tabbar_icon_mode: "text".to_string(),
             tabbar_label_case: "default".to_string(),
             bottombar_alignment: "left".to_string(),
+            bottombar_compact: "off".to_string(),
             show_recent_games_only: false,
             show_home_collections: false,
             show_home_collection_names: true,
