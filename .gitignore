@@ -1,9 +1,6 @@
 # Secrets
 src-tauri/.env
 
-# Dev notes
-CLAUDE.md
-
 # Logs
 logs
 *.log
