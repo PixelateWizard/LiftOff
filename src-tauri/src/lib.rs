@@ -173,6 +173,8 @@ pub struct Settings {
     pub gamepad_btn_size: String,
     #[serde(default = "default_true")]
     pub gamepad_auto_detect: bool,
+    #[serde(default)]
+    pub gamepad_focus_only: bool,
     #[serde(default = "default_topbar_show_bumpers")]
     pub topbar_show_bumpers: bool,
     #[serde(default = "default_surface_style")]
@@ -240,6 +242,7 @@ impl Default for Settings {
             gamepad_icons_theme_color: false,
             gamepad_btn_size: "small".to_string(),
             gamepad_auto_detect: true,
+            gamepad_focus_only: false,
             topbar_show_bumpers: false,
             surface_style: "clear".to_string(),
         }

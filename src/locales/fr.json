@@ -127,6 +127,7 @@
     "version": "LiftOff v{{version}}",
     "gamepadPlatform": "Icônes manette",
     "gamepadAutoDetect": "Détection auto manette",
+    "gamepadFocusOnly": "Contrôle uniquement au premier plan",
     "gamepadIconsColored": "Icônes colorées",
     "gamepadBtnSize": "Taille des boutons",
     "checkUpdates": "Vérifier les mises à jour",

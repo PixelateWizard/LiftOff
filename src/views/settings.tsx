@@ -107,6 +107,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     // ── Controller ───────────────────────────────────────────────
     { key: "gamepad_platform",       section: 3, label: t("settings.gamepadPlatform"),     type: "cycle",  options: ["xbox","ps","switch"] },
     { key: "gamepad_auto_detect",    section: 3, label: t("settings.gamepadAutoDetect"),    type: "toggle" },
+    { key: "gamepad_focus_only",     section: 3, label: t("settings.gamepadFocusOnly"),     type: "toggle" },
     { key: "gamepad_icons_colored",     section: 3, label: t("settings.gamepadIconsColored"),    type: "toggle" },
     { key: "gamepad_icons_filled",      section: 3, label: t("settings.gamepadIconsFilled"),     type: "toggle" },
     { key: "gamepad_icons_theme_color", section: 3, label: t("settings.gamepadIconsThemeColor"), type: "toggle" },

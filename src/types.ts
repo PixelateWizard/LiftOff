@@ -100,6 +100,7 @@ export interface Settings {
   gamepad_icons_theme_color: boolean;
   gamepad_btn_size: GamepadBtnSize;
   gamepad_auto_detect: boolean;
+  gamepad_focus_only: boolean;
   surface_style: string;
 }
 

@@ -196,6 +196,7 @@ export function useGamepadNavigation(
   const [homeColFocusCol, setHomeColFocusCol] = useState(0);
   const [launchingApp, setLaunchingApp] = useState<App | null>(null);
   const [windowFocused, setWindowFocused] = useState(true);
+  const windowFocusedRef = useRef(true);
 
   const tabRef = useRef(options.initialTab ?? "Home");
   const focusSectionRef = useRef("hero");
@@ -1011,6 +1012,9 @@ export function useGamepadNavigation(
     const poll = (now: number) => {
       const gp = getBestGamepad();
       if (gp && options.isReadyRef.current) {
+        if (settingsRef?.current?.gamepad_focus_only && !windowFocusedRef.current) {
+          rAF = requestAnimationFrame(poll); return;
+        }
         const speed = settingsRef?.current?.repeat_speed;
         const initialDelay = speed === "slow" ? 500 : speed === "fast" ? 250 : 400;
         const repeatDelay = speed === "slow" ? 150 : speed === "fast" ? 60 : 100;
@@ -1069,6 +1073,7 @@ export function useGamepadNavigation(
 
     const pauseForBackground = () => {
       lastKnownFocused = false;
+      windowFocusedRef.current = false;
       setWindowFocused(false);
       Object.values(heroVideoRefs.current).forEach(vid => {
         if (vid) vid.pause();
@@ -1077,6 +1082,7 @@ export function useGamepadNavigation(
 
     const resumeFromBackground = () => {
       lastKnownFocused = true;
+      windowFocusedRef.current = true;
       setWindowFocused(true);
       if (launchedAppSessionRef.current) {
         launchedAppSessionRef.current = false;

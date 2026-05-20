@@ -121,7 +121,7 @@ export const DEFAULT_SETTINGS = {
   bottombar_alignment: "left", tabbar_label_case: "default",
   show_home_collections: false, show_home_collection_names: true, show_hero_cover: true, show_home_pinned: true,
   gamepad_platform: "xbox", gamepad_icons_colored: false, gamepad_icons_filled: true, gamepad_icons_theme_color: false,
-  gamepad_btn_size: "small", gamepad_auto_detect: true,
+  gamepad_btn_size: "small", gamepad_auto_detect: true, gamepad_focus_only: false,
   surface_style: "clear",
 } as const;
 
