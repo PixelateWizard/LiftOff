@@ -49,16 +49,22 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     ] },
     { key: "show_hero_cover",        section: 0, label: t("settings.showHeroCover"),        type: "toggle" },
     { key: "show_home_pinned",       section: 0, label: t("settings.showHomePinned"),       type: "toggle" },
+    { key: "show_recent_games_only", section: 0, label: t("settings.showRecentGamesOnly"),  type: "toggle" },
     { key: "show_home_collections",  section: 0, label: t("settings.showHomeCollections"),  type: "toggle", subItems: [
       { key: "show_home_collection_names", label: t("settings.showHomeCollectionNames"), type: "toggle" },
     ]},
 
     D("layout", 0),
-    { key: "wide_layout",       section: 0, label: t("settings.wideLayout"),     type: "toggle" },
+    { key: "wide_layout",       section: 0, label: t("settings.wideLayout"),     type: "toggle", subItems: [
+      { key: "wide_topbar",    label: t("settings.wideTopbar"),    type: "toggle" },
+      { key: "wide_body",      label: t("settings.wideBody"),      type: "toggle" },
+      { key: "wide_bottombar", label: t("settings.wideBottombar"), type: "toggle" },
+    ]},
     { key: "ui_scale",          section: 0, label: t("settings.uiScale"),         type: "slider", min: 0.75, max: 2.0, step: 0.05 },
     { key: "reset_scale",       section: 0, label: t("settings.resetScale"),      type: "action" },
     { key: "home_cover_scale",  section: 0, label: t("settings.homeCoverScale"),  type: "slider", min: 0.5, max: 2.0, step: 0.05 },
     { key: "game_cover_scale",  section: 0, label: t("settings.gameCoverScale"),  type: "slider", min: 0.5, max: 2.0, step: 0.05 },
+    { key: "app_cover_scale",   section: 0, label: t("settings.appCoverScale"),   type: "slider", min: 0.5, max: 2.0, step: 0.05 },
 
     D("navbar", 0),
     { key: "hide_bottom_bar",        section: 0, label: t("settings.hideBottomBar"),       type: "toggle" },
@@ -221,7 +227,7 @@ export function SettingsScreen({
   const { t } = useTranslation();
   const { settingsRowGlass, accent, theme, isDark, glassEnabled, surfaceStyle, surface } = useTheme();
   const { settings, updateSetting } = useSettings();
-  const wideLayout = settings.wide_layout ?? false;
+  const wideLayout = settings.wide_body ?? false;
 
   const ALL_ITEMS = buildSettingsItems(t, normalizeThemeKey(String(settings.theme)));
   const sectionItems = ALL_ITEMS.filter((i) => i.section === settingsSection);

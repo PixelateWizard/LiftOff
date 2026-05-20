@@ -72,7 +72,7 @@ export function AppHeader({
 
   const transparentNav = settings.transparent_topbar ?? false;
   const tabbarBg       = settings.tabbar_with_background ?? false;
-  const wideLayout     = settings.wide_layout ?? false;
+  const wideLayout     = settings.wide_topbar ?? false;
   const isHome         = tab === "Home";
   const uiScale        = settings.ui_scale ?? 1;
   const subtabGap      = Math.round(16 / uiScale);

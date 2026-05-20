@@ -60,6 +60,9 @@ export interface Settings {
   stars_enabled: boolean;
   lofi_music_enabled: boolean;
   wide_layout: boolean;
+  wide_topbar: boolean;
+  wide_body: boolean;
+  wide_bottombar: boolean;
   transparent_bars: boolean;
   transparent_topbar: boolean;
   transparent_bottombar: boolean;
@@ -77,6 +80,7 @@ export interface Settings {
   language: string;
   home_cover_scale: number;
   game_cover_scale: number;
+  app_cover_scale: number;
   time_format: TimeFormat;
   show_date: boolean;
   show_battery: boolean;
@@ -90,6 +94,7 @@ export interface Settings {
   tabbar_font_weight: TabbarFontWeight;
   bottombar_alignment: BottombarAlign;
   tabbar_label_case: TabbarLabelCase;
+  show_recent_games_only: boolean;
   show_home_collections: boolean;
   show_home_collection_names: boolean;
   show_hero_cover: boolean;

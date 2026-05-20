@@ -70,7 +70,7 @@ export function AppBottomBar({ tab, appCollectionsCount }: Props) {
         display: "flex", gap: 20, alignItems: "center", padding: "10px 20px",
         justifyContent: justify,
         ...barGlass,
-        ...(settings.wide_layout
+        ...(settings.wide_bottombar
           ? (settings.transparent_bottombar
             ? { width: "100%", margin: "0 0 14px", boxSizing: "border-box" }
             : { width: "calc(100% - 16px)", margin: "0 8px 14px", boxSizing: "border-box" })
@@ -81,10 +81,7 @@ export function AppBottomBar({ tab, appCollectionsCount }: Props) {
             <Btn label={t('gamepad.aSelect')} />
             <Btn label={t('gamepad.bBack')} />
             {bumpersHint}
-            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
-              <GamepadBtn btn="LT" label="" style={{ gap: 3 }} />
-              <GamepadBtn btn="RT" label={t('gamepad.sections')} />
-            </span>
+            {triggersHint('gamepad.sections')}
           </>
         ) : (
           <>

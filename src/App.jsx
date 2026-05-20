@@ -753,7 +753,8 @@ export default function App() {
     .filter(a => tab === "Home" ? true : tab === "Games" ? a.app_type === "game" : a.app_type === "app");
 
   const effectiveGameCols = Math.max(2, Math.round(GAME_COLS / (settings.game_cover_scale ?? 1.0)));
-  const currentCols = tab === "Games" ? effectiveGameCols : COLS;
+  const effectiveAppCols  = Math.max(2, Math.round(COLS / (settings.app_cover_scale ?? 1.0)));
+  const currentCols = tab === "Games" ? effectiveGameCols : effectiveAppCols;
 
   useEffect(() => {
     if (tab === "Settings") return;
@@ -1193,7 +1194,7 @@ export default function App() {
   const settingsValue = { settings, settingsRef, updateSetting, updateSettingsBatch };
   const libraryViewProps = {
     scrollRef: tabScrollRef,
-    wideLayout: settings.wide_layout,
+    wideLayout: settings.wide_body,
     customSources,
     gameCollections,
     appCollections,
@@ -1224,7 +1225,7 @@ export default function App() {
     triggerLaunch,
     recent,
     setContextMenu,
-    COLS,
+    COLS: effectiveAppCols,
     iconColors,
     customArt,
     glass,
@@ -1510,7 +1511,7 @@ export default function App() {
         <EditNameModal
           app={editNameApp}
           onConfirm={(name) => {
-            invoke("rename_custom_app", { id: editNameApp.id, name }).then(() => refreshLibrary());
+            invoke("rename_app", { id: editNameApp.id, name }).then(() => refreshLibrary());
             setEditNameApp(null);
           }}
           onClose={() => setEditNameApp(null)}
@@ -1822,9 +1823,7 @@ export default function App() {
             ? [{ label: t('contextMenu.changeHeroArt'), action: () => { setArtPickerMode("hero"); artPickerModeRef.current = "hero"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
             : []),
           { label: t('contextMenu.collections'), action: () => { setColPickerApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
-          ...(contextMenu.app.id.startsWith("custom_")
-            ? [{ label: t('contextMenu.rename'), action: () => { setEditNameApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } }]
-            : []),
+          { label: t('contextMenu.rename'), action: () => { setEditNameApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
           ...(contextMenu.app.id.startsWith("custom_")
             ? [{ label: t('contextMenu.delete'), danger: true, action: () => { setConfirmDelete(contextMenu.app); confirmDeleteRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
             : []),

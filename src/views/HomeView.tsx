@@ -178,7 +178,7 @@ export function HomeView(props: HomeViewProps) {
     return () => cancelAnimationFrame(rafId);
   }, [active, appPaused, heroGames, heroIdx, heroMediaPaused, heroVideoRefs]);
 
-  const homeFilteredRecent = recent.filter((a: any) => true).slice(0, 8);
+  const homeFilteredRecent = recent.filter((a: any) => !settings.show_recent_games_only || a.app_type === "game").slice(0, 8);
   const homePinnedApps = pins.map((id: string) => apps.find((a: any) => a.id === id)).filter(Boolean);
 
   const content = (() => {
@@ -354,7 +354,7 @@ export function HomeView(props: HomeViewProps) {
       : "transparent";
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", padding: settings.cinematic_home ? "0" : "16px 24px 0", ...(settings.wide_layout || settings.cinematic_home ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box",
+      <div style={{ display: "flex", flexDirection: "column", padding: settings.cinematic_home ? "0" : "16px 24px 0", ...(settings.wide_body || settings.cinematic_home ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box",
         ...(settings.cinematic_home ? { position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none" } : { minHeight: "100%" }) }}>
         {/* ── HERO ── */}
         <div style={{

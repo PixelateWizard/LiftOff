@@ -54,6 +54,12 @@ export function useAppSettings({
       // ui_scale is null when never saved; substitute the auto-detected value.
       const updated = { ...settingsRef.current, ...s, ui_scale: s.ui_scale ?? auto };
       if (updated.surface_style === "pixel") updated.surface_style = "win9x";
+      // Migrate: if wide_layout was true but sub-settings were never saved, enable all three.
+      if (updated.wide_layout && !updated.wide_topbar && !updated.wide_body && !updated.wide_bottombar) {
+        updated.wide_topbar = true;
+        updated.wide_body = true;
+        updated.wide_bottombar = true;
+      }
       setSettings(updated);
       if (s.surface_style === "pixel") invoke("save_settings", { settings: updated }).catch(console.error);
       applyDefaultTab(s.default_tab);
@@ -76,6 +82,11 @@ export function useAppSettings({
       if (key === "transparent_bars") {
         updated.transparent_topbar = value as boolean;
         updated.transparent_bottombar = value as boolean;
+      }
+      if (key === "wide_layout") {
+        updated.wide_topbar = value as boolean;
+        updated.wide_body = value as boolean;
+        updated.wide_bottombar = value as boolean;
       }
       if (key === "theme") {
         const nextTheme = normalizeThemeKey(value as string);

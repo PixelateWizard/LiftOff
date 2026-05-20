@@ -121,6 +121,12 @@ pub struct Settings {
     #[serde(default)]
     pub wide_layout: bool,
     #[serde(default)]
+    pub wide_topbar: bool,
+    #[serde(default)]
+    pub wide_body: bool,
+    #[serde(default)]
+    pub wide_bottombar: bool,
+    #[serde(default)]
     pub cinematic_home: bool,
     #[serde(default = "default_true")]
     pub show_immersive_hero_art: bool,
@@ -136,6 +142,8 @@ pub struct Settings {
     pub home_cover_scale: f32,
     #[serde(default = "default_cover_scale")]
     pub game_cover_scale: f32,
+    #[serde(default = "default_cover_scale")]
+    pub app_cover_scale: f32,
     // Navigation bar settings (moi952 PRs)
     #[serde(default = "default_nav_bumpers_pos")]
     pub nav_bumpers_pos: String,
@@ -152,6 +160,8 @@ pub struct Settings {
     #[serde(default = "default_bottombar_alignment")]
     pub bottombar_alignment: String,
     // Home collections
+    #[serde(default)]
+    pub show_recent_games_only: bool,
     #[serde(default)]
     pub show_home_collections: bool,
     #[serde(default = "default_true")]
@@ -215,6 +225,9 @@ impl Default for Settings {
             show_date: true,
             show_battery: true,
             wide_layout: false,
+            wide_topbar: false,
+            wide_body: false,
+            wide_bottombar: false,
             cinematic_home: false,
             show_immersive_hero_art: true,
             hide_bottom_bar: false,
@@ -223,6 +236,7 @@ impl Default for Settings {
             transparent_bottombar: false,
             home_cover_scale: 1.0,
             game_cover_scale: 1.0,
+            app_cover_scale: 1.0,
             nav_bumpers_pos: "bottom".to_string(),
             tabbar_show_buttons: "tabbar".to_string(),
             tabbar_text_tabs: false,
@@ -230,6 +244,7 @@ impl Default for Settings {
             tabbar_font_weight: "medium".to_string(),
             tabbar_label_case: "default".to_string(),
             bottombar_alignment: "left".to_string(),
+            show_recent_games_only: false,
             show_home_collections: false,
             show_home_collection_names: true,
             show_hero_cover: true,
@@ -289,6 +304,22 @@ fn settings_path() -> std::path::PathBuf { liftoff_dir().join("settings.json") }
 fn pins_path() -> std::path::PathBuf { liftoff_dir().join("pins.json") }
 fn hidden_path() -> std::path::PathBuf { liftoff_dir().join("hidden.json") }
 fn recent_games_path() -> std::path::PathBuf { liftoff_dir().join("recent_games.json") }
+fn custom_names_path() -> std::path::PathBuf { liftoff_dir().join("custom_names.json") }
+
+fn load_custom_names() -> std::collections::HashMap<String, String> {
+    let path = custom_names_path();
+    std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+fn save_custom_names(names: &std::collections::HashMap<String, String>) {
+    let path = custom_names_path();
+    if let Ok(json) = serde_json::to_string_pretty(names) {
+        let _ = std::fs::write(path, json);
+    }
+}
 
 fn art_dir() -> std::path::PathBuf { liftoff_dir().join("art") }
 fn grid_art_dir() -> std::path::PathBuf { art_dir().join("grid") }
@@ -569,6 +600,23 @@ fn rename_custom_app(id: String, name: String) -> Result<(), String> {
         app.name = name;
     }
     save_custom_data(&data);
+    Ok(())
+}
+
+#[tauri::command]
+fn rename_app(id: String, name: String) -> Result<(), String> {
+    // For custom apps, also update the name in custom_data.json
+    if id.starts_with("custom_") {
+        let mut data = load_custom_data();
+        if let Some(app) = data.apps.iter_mut().find(|a| a.id == id) {
+            app.name = name.clone();
+        }
+        save_custom_data(&data);
+    }
+    // Store override in custom_names.json for all app types
+    let mut names = load_custom_names();
+    names.insert(id, name);
+    save_custom_names(&names);
     Ok(())
 }
 
@@ -1712,6 +1760,16 @@ fn get_all_apps() -> Vec<AppEntry> {
         }
     }
 
+    // Apply user-defined name overrides
+    let custom_names = load_custom_names();
+    if !custom_names.is_empty() {
+        for app in &mut apps {
+            if let Some(name) = custom_names.get(&app.id) {
+                app.name = name.clone();
+            }
+        }
+    }
+
     apps
 }
 
@@ -2276,7 +2334,7 @@ pub fn run() {
             get_screen_resolution,
             search_sgdb_art, download_sgdb_art,
             list_dir, get_drives,
-            get_custom_data, add_custom_app, remove_custom_app, rename_custom_app, remove_custom_source,
+            get_custom_data, add_custom_app, remove_custom_app, rename_custom_app, rename_app, remove_custom_source,
             add_custom_folder, remove_custom_folder, toggle_custom_folder,
             get_app_collections, create_app_collection, delete_app_collection, rename_app_collection,
             get_app_memberships, set_app_memberships,
