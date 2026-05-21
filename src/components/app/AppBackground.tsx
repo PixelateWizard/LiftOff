@@ -311,6 +311,47 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
           </svg>
         </>
       )}
+      {resolvedTheme === "onyx" && (
+        <>
+          <style>{`
+            @keyframes onyx-ambient {
+              0%, 100% { opacity: 0.55; transform: translateX(0%) translateY(0%) scale(1); }
+              33%       { opacity: 0.72; transform: translateX(1.5%) translateY(-0.5%) scale(1.02); }
+              66%       { opacity: 0.62; transform: translateX(-1%) translateY(0.8%) scale(0.98); }
+            }
+            @keyframes onyx-card-shimmer {
+              0%, 100% { box-shadow: inset 0 1px 0 rgba(100,160,255,0.18), 0 0 0 1px rgba(80,130,255,0.14), 0 10px 32px rgba(0,0,0,0.45); }
+              50%       { box-shadow: inset 0 1px 0 rgba(150,210,255,0.30), 0 0 0 1px rgba(110,175,255,0.28), 0 10px 40px rgba(10,30,80,0.55), 0 0 18px rgba(80,150,255,0.10); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+              @keyframes onyx-ambient { 0%, 100% { opacity: 0.60; } }
+              @keyframes onyx-card-shimmer { 0%, 100% { box-shadow: inset 0 1px 0 rgba(100,160,255,0.22), 0 0 0 1px rgba(80,130,255,0.18), 0 10px 32px rgba(0,0,0,0.45); } }
+            }
+          `}</style>
+          {/* Bande lumineuse ambiante principale — bande horizontale centrée, style PS5 */}
+          <div style={{
+            position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none",
+            background: `
+              radial-gradient(ellipse 100% 50% at 50% 38%, rgba(20,60,180,0.32) 0%, rgba(10,30,100,0.20) 42%, transparent 68%),
+              radial-gradient(ellipse 60% 40% at 18% 58%, rgba(10,40,130,0.20) 0%, transparent 55%),
+              radial-gradient(ellipse 55% 35% at 82% 32%, rgba(30,70,200,0.18) 0%, transparent 52%)
+            `,
+            animation: "onyx-ambient 18s ease-in-out infinite",
+          }} />
+          {/* Lueur basse de scène */}
+          <div style={{
+            position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none",
+            background: "radial-gradient(ellipse 80% 28% at 50% 102%, rgba(20,55,160,0.22) 0%, transparent 55%)",
+            animation: "onyx-ambient 24s ease-in-out infinite",
+            animationDelay: "-9s",
+          }} />
+          {/* Vignette de profondeur */}
+          <div style={{
+            position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none",
+            background: "radial-gradient(ellipse 70% 70% at 50% 50%, transparent 40%, rgba(2,5,20,0.55) 100%)",
+          }} />
+        </>
+      )}
       {settings.stars_enabled && resolvedTheme === "aurora" && <AuroraBg accent={accent} />}
       {settings.stars_enabled && resolvedTheme === "synthwave" && <SynthwaveBg accent={accent} />}
       {settings.stars_enabled && resolvedTheme === "cyberpunk" && <CyberpunkBg accent={accent} />}

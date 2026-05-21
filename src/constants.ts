@@ -39,11 +39,12 @@ export const THEMES: Record<string, { text: string; textDim: string; textFaint: 
   lofi:      { text: "#fff0e8", textDim: "rgba(255,240,232,0.52)", textFaint: "rgba(255,240,232,0.34)" },
   forest:    { text: "#d4edd8", textDim: "rgba(212,237,216,0.40)", textFaint: "rgba(212,237,216,0.26)" },
   webcore:   { text: "#1a1a1a", textDim: "rgba(0,0,0,0.55)",       textFaint: "rgba(0,0,0,0.35)"       },
+  onyx:      { text: "#d0dcff", textDim: "rgba(208,220,255,0.40)", textFaint: "rgba(208,220,255,0.26)" },
 };
 
 export const THEME_OPTIONS = [
   "space", "sky", "plasma", "cinder", "wash",
-  "aurora", "synthwave", "lofi", "forest", "webcore",
+  "aurora", "synthwave", "lofi", "forest", "webcore", "onyx",
 ] as const;
 
 export const THEME_SURFACE_DEFAULTS: Record<string, string> = {
@@ -58,6 +59,7 @@ export const THEME_SURFACE_DEFAULTS: Record<string, string> = {
   lofi: "obsidian",
   forest: "glass",
   webcore: "win9x",
+  onyx: "glass",
 };
 
 export const normalizeThemeKey = (theme: string | undefined) => {

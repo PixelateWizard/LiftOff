@@ -39,7 +39,7 @@ export interface AccentColors {
 
 export type ThemeMode        =
   | "space" | "sky" | "plasma" | "cinder" | "wash"
-  | "aurora" | "synthwave" | "cyberpunk" | "lofi" | "forest" | "webcore"
+  | "aurora" | "synthwave" | "cyberpunk" | "lofi" | "forest" | "webcore" | "onyx"
   | "ember" | "dark" | "light" | "system";
 export type DefaultTab       = "Home" | "Games" | "Apps";
 export type RepeatSpeed      = "slow" | "normal" | "fast";
