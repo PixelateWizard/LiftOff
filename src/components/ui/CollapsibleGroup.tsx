@@ -109,6 +109,8 @@ export function CollapsibleGroup({
     justifyContent: "space-between",
     cursor: "pointer",
     transition: "all 0.15s ease",
+    position: "relative" as const,
+    zIndex: focused ? 2 : undefined,
     ...(focused
       ? {
           border: `1px solid ${isMaterial ? accent.primary : accent.glow + "0.6)"}`,

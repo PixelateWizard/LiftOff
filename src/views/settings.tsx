@@ -420,6 +420,8 @@ export function SettingsScreen({
           justifyContent: "space-between",
           cursor: "pointer",
           transition: "all 0.15s ease",
+          position: "relative" as const,
+          zIndex: focused ? 2 : undefined,
           ...(focused
             ? {
                 border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + (surfaceStyle === "aero" ? "0.50)" : "0.45)")}`,

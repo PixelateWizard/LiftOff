@@ -857,7 +857,7 @@ export default function App() {
           }
         } else {
           const scroller = homeScrollRef.current;
-          if (scroller) {
+          if (scroller && focusedRowRef.current) {
             const scale = settings.ui_scale ?? 1;
             const sr = scroller.getBoundingClientRect();
             const rr = focusedRowRef.current.getBoundingClientRect();
@@ -871,8 +871,10 @@ export default function App() {
             }
             scroller.scrollTo({ top: Math.max(0, newTop), behavior: "smooth" });
           }
-          if (focusedCardRef.current) {
-            focusedCardRef.current.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+          // Scroll the focused card horizontally within its row container only,
+          // without touching the outer vertical scroller.
+          if (focusedCardRef.current?.parentElement) {
+            scrollFocusedCardHorizontally(focusedCardRef.current.parentElement);
           }
         }
       }
