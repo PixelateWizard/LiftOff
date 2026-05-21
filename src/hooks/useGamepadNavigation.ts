@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { App, Settings } from "../types";
 import { launchApp } from "./useLaunchApp";
-import { getBestGamepad, readGpState } from "../utils/gamepad";
+import { getBestGamepad, getActiveGamepad, readGpState, detectPlatform } from "../utils/gamepad";
 import { buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "../views/settings";
 import {
   ACCENTS as DEFAULT_ACCENTS,
@@ -216,6 +216,7 @@ export function useGamepadNavigation(
   const launchedAppSessionRef = useRef(false);
   const launchReturnCooldownUntil = useRef(0);
   const lastLaunchTime = useRef(0);
+  const lastPolledGpIndex = useRef<number | null>(null);
   const initialTabAppliedRef = useRef(!!options.initialTab);
 
   const {
@@ -488,10 +489,16 @@ export function useGamepadNavigation(
       if (!col) return true;
       return (appMembershipsRef.current[a.id] || []).includes(col.id);
     });
-    const fRecent = rec.filter(a =>
-      currentTab === "Home" || currentTab === "All" ? true
-        : currentTab === "Games" ? a.app_type === "game" : a.app_type === "app"
-    ).slice(0, 8);
+    const fRecent = rec.filter(a => {
+      if (currentTab === "Home") {
+        // Treat recents as absent when the section is hidden — prevents navigating into invisible UI
+        if (currentSettings.show_home_recents === false) return false;
+        // Match the same filter HomeView applies for this section
+        return !currentSettings.show_recent_games_only || a.app_type === "game";
+      }
+      if (currentTab === "All") return true;
+      return currentTab === "Games" ? a.app_type === "game" : a.app_type === "app";
+    }).slice(0, 8);
     const fPinned = (currentTab === "Apps" && appCollectionTabRef.current !== "All") ? [] : currentPins
       .map(id => allApps.find(a => a.id === id))
       .filter(Boolean)
@@ -698,187 +705,106 @@ export function useGamepadNavigation(
     }
 
     if (currentTab === "Home") {
-      const focusFirstHomeDrawerItem = () => {
-        if (!settingsRef.current.show_home_collections) return false;
-        if (fRecent.length > 0) {
-          setFocusSection("recent"); focusSectionRef.current = "recent";
-          setFocusIndex(0); focusIndexRef.current = 0;
-          return true;
-        }
-        const allCols = [
-          ...gameCollectionsRef.current.map(col => ({
-            id: col.id,
-            items: appsRef.current.filter(a => a.app_type === "game" && (gameMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-          })),
-          ...appCollectionsRef.current.map(col => ({
-            id: col.id,
-            items: appsRef.current.filter(a => a.app_type === "app" && (appMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-          })),
-        ].filter(c => c.items.length > 0);
-        if (allCols.length === 0) return false;
-        setFocusSection("home_collections"); focusSectionRef.current = "home_collections";
-        setHomeColFocusRow(0); homeColFocusRowRef.current = 0;
-        setHomeColFocusCol(0); homeColFocusColRef.current = 0;
-        return true;
-      };
-
+      // Defensive: pinned section became invisible (e.g. all pins removed) — reset to hero
       if (section === "pinned" && !homePinnedVisible) {
         setFocusSection("hero"); focusSectionRef.current = "hero";
         setFocusIndex(0); focusIndexRef.current = 0;
         return;
       }
 
+      // Collections available for navigation (computed once, reused by all sections)
+      const homeCols = currentSettings.show_home_collections ? [
+        ...gameCollectionsRef.current.map(col => ({
+          id: col.id,
+          items: appsRef.current.filter(a => a.app_type === "game" && (gameMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
+        })),
+        ...appCollectionsRef.current.map(col => ({
+          id: col.id,
+          items: appsRef.current.filter(a => a.app_type === "app" && (appMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
+        })),
+      ].filter(c => c.items.length > 0) : [];
+
+      const pinnedAtTop = (currentSettings.home_pinned_pos ?? "bottom") === "top";
+
+      // Ordered chain of sections from top to bottom — same logic for all home modes
+      const chain: string[] = [
+        ...(homePinnedVisible && pinnedAtTop  ? ["pinned"] : []),
+        "hero",
+        ...(homePinnedVisible && !pinnedAtTop ? ["pinned"] : []),
+        ...(fRecent.length > 0               ? ["recent"] : []),
+        ...(homeCols.length > 0              ? ["home_collections"] : []),
+      ];
+      const chainIdx  = chain.indexOf(section);
+      const chainPrev = chain[chainIdx - 1] as string | undefined;
+      const chainNext = chain[chainIdx + 1] as string | undefined;
+
+      const goTo = (sec: string) => {
+        setFocusSection(sec); focusSectionRef.current = sec;
+        setFocusIndex(0); focusIndexRef.current = 0;
+        if (sec === "home_collections") {
+          setHomeColFocusRow(0); homeColFocusRowRef.current = 0;
+          setHomeColFocusCol(0); homeColFocusColRef.current = 0;
+        }
+      };
+
+      // ─── HERO ───────────────────────────────────────────────────────────────
       if (section === "hero") {
-        const pinnedAtTop = (currentSettings.home_pinned_pos ?? "bottom") === "top";
         if (key === "ArrowLeft")  { const ni = Math.max(heroIndexRef.current - 1, 0); setHeroIndex(ni); heroIndexRef.current = ni; }
         if (key === "ArrowRight") { const ni = Math.min(heroIndexRef.current + 1, Math.min(fRecentGames.length, 6) - 1); setHeroIndex(ni); heroIndexRef.current = ni; }
-        if (key === "ArrowUp") {
-          // Go to pinned only when pinned shelf is physically above the hero
-          if (!settingsRef.current.cinematic_home && homePinnedVisible && pinnedAtTop) {
-            setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0;
-          }
-        }
-        if (key === "ArrowDown") {
-          if (settingsRef.current.cinematic_home) {
-            if (homePinnedVisible) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
-            else { focusFirstHomeDrawerItem(); }
-          } else {
-            if (fRecent.length > 0) { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(0); focusIndexRef.current = 0; }
-            else if (homePinnedVisible && !pinnedAtTop) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
-          }
-        }
+        if (key === "ArrowUp"   && chainPrev) goTo(chainPrev);
+        if (key === "ArrowDown" && chainNext) goTo(chainNext);
         if (key === "Enter" && fRecentGames[heroIndexRef.current]) triggerLaunch(fRecentGames[heroIndexRef.current], rec);
         return;
       }
+
+      // ─── PINNED ─────────────────────────────────────────────────────────────
       if (section === "pinned") {
-        const pinnedAtTop = (currentSettings.home_pinned_pos ?? "bottom") === "top";
         if (key === "ArrowRight") { const ni = Math.min(index + 1, fPinned.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
         if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                  setFocusIndex(ni); focusIndexRef.current = ni; }
-        if (key === "ArrowUp") {
-          // Bottom pinned: up goes to hero. Top pinned: already at top, nothing above.
-          if (!pinnedAtTop) { setFocusSection("hero"); focusSectionRef.current = "hero"; }
-        }
-        if (key === "ArrowDown") {
-          if (pinnedAtTop) {
-            // Top pinned: down goes to hero (hero is below)
-            setFocusSection("hero"); focusSectionRef.current = "hero";
-          } else if (!settingsRef.current.cinematic_home && fRecent.length > 0) {
-            setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(Math.min(focusIndexRef.current, fRecent.length - 1));
-          } else if (settingsRef.current.cinematic_home && settingsRef.current.show_home_collections) {
-            // In cinematic mode: down from pinned goes to recent first (if recents exist), else collections
-            if (fRecent.length > 0) {
-              setFocusSection("recent"); focusSectionRef.current = "recent";
-              setFocusIndex(0); focusIndexRef.current = 0;
-            } else {
-              const allCols = [
-                ...gameCollectionsRef.current.map(col => ({
-                  id: col.id,
-                  items: appsRef.current.filter(a => a.app_type === "game" && (gameMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-                })),
-                ...appCollectionsRef.current.map(col => ({
-                  id: col.id,
-                  items: appsRef.current.filter(a => a.app_type === "app" && (appMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-                })),
-              ].filter(c => c.items.length > 0);
-              if (allCols.length > 0) {
-                setFocusSection("home_collections"); focusSectionRef.current = "home_collections";
-                setHomeColFocusRow(0); homeColFocusRowRef.current = 0;
-                setHomeColFocusCol(0); homeColFocusColRef.current = 0;
-              }
-            }
-          }
-        }
+        if (key === "ArrowUp"   && chainPrev) goTo(chainPrev);
+        if (key === "ArrowDown" && chainNext) goTo(chainNext);
         if (key === "Enter" && fPinned[index]) triggerLaunch(fPinned[index], rec);
         return;
       }
+
+      // ─── RECENT ─────────────────────────────────────────────────────────────
       if (section === "recent") {
         const maxIdx = Math.min(fRecent.length, 10) - 1;
         if (key === "ArrowRight") { const ni = Math.min(index + 1, maxIdx); setFocusIndex(ni); focusIndexRef.current = ni; }
         if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);      setFocusIndex(ni); focusIndexRef.current = ni; }
-        if (key === "ArrowUp") {
-          if (settingsRef.current.cinematic_home) {
-            // In cinematic mode, recent is inside the slide panel — up goes back to pinned
-            if (homePinnedVisible) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
-            else { setFocusSection("hero"); focusSectionRef.current = "hero"; }
-          } else {
-            setFocusSection("hero"); focusSectionRef.current = "hero";
-          }
-        }
-        if (key === "ArrowDown") {
-          if (settingsRef.current.show_home_collections) {
-            const allCols = [
-              ...gameCollectionsRef.current.map(col => ({
-                id: col.id,
-                items: appsRef.current.filter(a => a.app_type === "game" && (gameMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-              })),
-              ...appCollectionsRef.current.map(col => ({
-                id: col.id,
-                items: appsRef.current.filter(a => a.app_type === "app" && (appMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-              })),
-            ].filter(c => c.items.length > 0);
-            if (allCols.length > 0) {
-              setFocusSection("home_collections"); focusSectionRef.current = "home_collections";
-              setHomeColFocusRow(0); homeColFocusRowRef.current = 0;
-              setHomeColFocusCol(0); homeColFocusColRef.current = 0;
-            }
-          }
-        }
+        if (key === "ArrowUp"   && chainPrev) goTo(chainPrev);
+        if (key === "ArrowDown" && chainNext) goTo(chainNext);
         if (key === "Enter" && fRecent[index]) triggerLaunch(fRecent[index], rec);
         return;
       }
+
+      // ─── COLLECTIONS ────────────────────────────────────────────────────────
       if (section === "home_collections") {
-        const allCols = [
-          ...gameCollectionsRef.current.map(col => ({
-            id: col.id,
-            items: appsRef.current.filter(a => a.app_type === "game" && (gameMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-          })),
-          ...appCollectionsRef.current.map(col => ({
-            id: col.id,
-            items: appsRef.current.filter(a => a.app_type === "app" && (appMembershipsRef.current[a.id] || []).includes(col.id)).slice(0, 20),
-          })),
-        ].filter(c => c.items.length > 0);
         const row = homeColFocusRowRef.current;
         const col = homeColFocusColRef.current;
-        const currentRow = allCols[row];
-        if (key === "ArrowRight") {
-          if (currentRow && col < currentRow.items.length - 1) { const ni = col + 1; setHomeColFocusCol(ni); homeColFocusColRef.current = ni; }
-        }
-        if (key === "ArrowLeft") {
-          if (col > 0) { const ni = col - 1; setHomeColFocusCol(ni); homeColFocusColRef.current = ni; }
-        }
+        const currentRow = homeCols[row];
+        if (key === "ArrowRight") { if (currentRow && col < currentRow.items.length - 1) { const ni = col + 1; setHomeColFocusCol(ni); homeColFocusColRef.current = ni; } }
+        if (key === "ArrowLeft")  { if (col > 0) { const ni = col - 1; setHomeColFocusCol(ni); homeColFocusColRef.current = ni; } }
         if (key === "ArrowDown") {
-          if (row < allCols.length - 1) {
-            const nr = row + 1;
-            const nc = Math.min(col, allCols[nr].items.length - 1);
+          if (row < homeCols.length - 1) {
+            const nr = row + 1; const nc = Math.min(col, homeCols[nr].items.length - 1);
             setHomeColFocusRow(nr); homeColFocusRowRef.current = nr;
             setHomeColFocusCol(nc); homeColFocusColRef.current = nc;
           }
         }
         if (key === "ArrowUp") {
           if (row > 0) {
-            const nr = row - 1;
-            const nc = Math.min(col, allCols[nr].items.length - 1);
+            const nr = row - 1; const nc = Math.min(col, homeCols[nr].items.length - 1);
             setHomeColFocusRow(nr); homeColFocusRowRef.current = nr;
             setHomeColFocusCol(nc); homeColFocusColRef.current = nc;
-          } else {
-            // Back up to recents (both normal and cinematic)
-            if (fRecent.length > 0) {
-              setFocusSection("recent"); focusSectionRef.current = "recent";
-              setFocusIndex(0); focusIndexRef.current = 0;
-            } else if (settingsRef.current.cinematic_home) {
-              if (homePinnedVisible) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
-              else { setFocusSection("hero"); focusSectionRef.current = "hero"; }
-            } else {
-              setFocusSection("hero"); focusSectionRef.current = "hero";
-            }
+          } else if (chainPrev) {
+            goTo(chainPrev);
           }
         }
-        if (key === "Enter" && currentRow) {
-          const app = currentRow.items[col];
-          if (app) triggerLaunch(app, rec);
-        }
+        if (key === "Enter" && currentRow) { const app = currentRow.items[col]; if (app) triggerLaunch(app, rec); }
         return;
       }
+
       return;
     }
 
@@ -1034,8 +960,23 @@ export function useGamepadNavigation(
     const REPEATABLE = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
 
     const poll = (now: number) => {
-      const gp = getBestGamepad();
+      // Skip all input processing when the window doesn't have focus.
+      // navigator.getGamepads() is not focus-aware and would fire through games/overlays.
+      if (!document.hasFocus()) {
+        rAF = requestAnimationFrame(poll);
+        return;
+      }
+
+      const gp = getActiveGamepad();
       if (gp && options.isReadyRef.current) {
+        // When the active controller changes, re-run platform auto-detection
+        if (gp.index !== lastPolledGpIndex.current) {
+          lastPolledGpIndex.current = gp.index;
+          if (settingsRef?.current?.gamepad_auto_detect) {
+            const platform = detectPlatform(gp.id);
+            if (platform) updateSetting("gamepad_platform", platform);
+          }
+        }
         const speed = settingsRef?.current?.repeat_speed;
         const initialDelay = speed === "slow" ? 500 : speed === "fast" ? 250 : 400;
         const repeatDelay = speed === "slow" ? 150 : speed === "fast" ? 60 : 100;
@@ -1106,7 +1047,7 @@ export function useGamepadNavigation(
       if (launchedAppSessionRef.current) {
         launchedAppSessionRef.current = false;
         launchReturnCooldownUntil.current = Date.now() + LAUNCH_RETURN_COOLDOWN_MS;
-        const gp = getBestGamepad();
+        const gp = getActiveGamepad();
         if (gp) {
           const s = readGpState(gp);
           suppressUntilRelease.current = {

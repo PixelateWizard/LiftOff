@@ -856,9 +856,24 @@ export default function App() {
             focusedCardRef.current.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
           }
         } else {
-          focusedRowRef.current.style.scrollMarginTop    = "120px";
-          focusedRowRef.current.style.scrollMarginBottom = "80px";
-          focusedRowRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          const scroller = homeScrollRef.current;
+          if (scroller) {
+            const scale = settings.ui_scale ?? 1;
+            const sr = scroller.getBoundingClientRect();
+            const rr = focusedRowRef.current.getBoundingClientRect();
+            const rowTop = (rr.top - sr.top) / scale;
+            const rowBottom = (rr.bottom - sr.top) / scale;
+            let newTop = scroller.scrollTop;
+            if (rowTop < 100) {
+              newTop = scroller.scrollTop + rowTop - 100;
+            } else if (rowBottom > scroller.clientHeight - 80) {
+              newTop = scroller.scrollTop + rowBottom - (scroller.clientHeight - 80);
+            }
+            scroller.scrollTo({ top: Math.max(0, newTop), behavior: "smooth" });
+          }
+          if (focusedCardRef.current) {
+            focusedCardRef.current.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+          }
         }
       }
     } else if (focusSection === "pinned") {

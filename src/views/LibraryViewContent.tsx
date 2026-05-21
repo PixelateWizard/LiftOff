@@ -126,12 +126,12 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
             {/* ── PINNED — same card size/style as main grid ── */}
             {pinnedAppsReactive.length > 0 && !(tab === "Games" && gameSourceTab !== "All") && (
               <>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 0 10px" }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint }}>{t('grid.pinned')}</div>
-                  <div style={{ fontSize: 10, color: theme.textFaint, opacity: 0.6 }}>{t('grid.unpinHint')}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, padding: "18px 0 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span>{t('grid.pinned')}</span>
+                  <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", opacity: 0.6 }}>{t('grid.unpinHint')}</span>
                 </div>
                 {tab === "Games" ? (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 12, paddingTop: 6, marginTop: -6, paddingBottom: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: `repeat(${effectiveGameCols}, minmax(0, 1fr))`, gap: 12, paddingTop: 6, marginTop: -6, paddingBottom: 14 }}>
                     {pinnedAppsReactive.map((app, i) => {
                       const focused = focusSection === "pinned" && focusIndex === i;
                       const isPinned = true;

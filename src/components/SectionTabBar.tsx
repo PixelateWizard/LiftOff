@@ -157,8 +157,9 @@ export function SectionTabBar({
         const active = activeIndex === i;
         if (textTabs) {
           return (
-            <div key={i} onClick={() => onSelect?.(i)} style={makeTextTabStyle(active)}>
+            <div key={i} onClick={() => onSelect?.(i)} style={{ ...makeTextTabStyle(active), position: "relative" }}>
               {item.label}
+              <FocusRing focused={active} variant="spin" elementRadius={isPixel ? 0 : 10} />
             </div>
           );
         }
@@ -171,7 +172,7 @@ export function SectionTabBar({
             onMouseLeave={() => setHoveredIndex(null)}
             style={{ ...baseStyle, position: "relative" }}>
             {item.label}
-            <FocusRing focused={active} variant="spin" elementRadius={isPixel ? 0 : 20} />
+            <FocusRing focused={active} variant="spin" elementRadius={isPixel ? 0 : 10} />
           </div>
         );
       })}

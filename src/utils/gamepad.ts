@@ -24,6 +24,50 @@ export function getBestGamepad(): Gamepad | null {
   );
 }
 
+let _lastActiveIdx: number | null = null;
+
+/**
+ * Returns the last actively used gamepad.
+ * When multiple controllers are connected, switches to whichever one has any input.
+ * This ensures the controller being physically used always drives the UI.
+ */
+export function getActiveGamepad(): Gamepad | null {
+  const all = Array.from(navigator.getGamepads());
+  const valid = all
+    .map((g, i) => ({ g, i }))
+    .filter((x): x is { g: Gamepad; i: number } =>
+      x.g !== null && x.g.buttons.length >= 4 && x.g.axes.length >= 4
+    );
+
+  if (valid.length === 0) return null;
+
+  // Single controller — no switching needed
+  if (valid.length === 1) {
+    _lastActiveIdx = valid[0].i;
+    return valid[0].g;
+  }
+
+  // Multiple controllers — switch to whichever has current input
+  for (const { g, i } of valid) {
+    if (i === _lastActiveIdx) continue;
+    if (g.buttons.some(b => b.pressed) || g.axes.some(a => Math.abs(a) > 0.5)) {
+      _lastActiveIdx = i;
+      return g;
+    }
+  }
+
+  // Stay on the last active controller if it's still connected
+  if (_lastActiveIdx !== null) {
+    const current = all[_lastActiveIdx];
+    if (current) return current;
+  }
+
+  // Fallback: prefer standard mapping, then first valid
+  const best = valid.find(x => x.g.mapping === "standard") ?? valid[0];
+  _lastActiveIdx = best.i;
+  return best.g;
+}
+
 export function readGpState(gp: Gamepad): GpState {
   const btn = (i: number) => !!gp.buttons[i]?.pressed;
   const hatLeft  = (gp.axes[6] ?? 0) < -0.5;

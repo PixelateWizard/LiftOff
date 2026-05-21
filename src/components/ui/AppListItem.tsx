@@ -89,7 +89,7 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
           </div>
           {/* Ring — outside inner overflow:hidden, with gap */}
           {focused && isOnyx && (
-            <div className="onyx-focus-ring" style={{ top: -8, right: -8, bottom: -8, left: -8, borderRadius: cardRadius + 8 }}>
+            <div className="onyx-focus-ring" style={{ top: -3, right: -3, bottom: -3, left: -3, borderRadius: cardRadius + 3 }}>
               <div className="onyx-ring-spin" />
             </div>
           )}
@@ -162,7 +162,7 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
         </div>
         {/* Ring — horizontal variant (left spotlight), outside overflow:hidden, with gap */}
         {focused && isOnyx && (
-          <div className="onyx-focus-ring" style={{ top: -8, right: -8, bottom: -8, left: -8, borderRadius: cardRadius + 8 }}>
+          <div className="onyx-focus-ring" style={{ top: -3, right: -3, bottom: -3, left: -3, borderRadius: cardRadius + 3 }}>
             <div className="onyx-ring-h" />
           </div>
         )}

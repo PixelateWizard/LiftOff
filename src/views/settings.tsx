@@ -376,7 +376,7 @@ export function SettingsScreen({
     const focused = settingsFocusIndex === navIdx && navIdx !== -1;
     const rowRef = focused ? settingsFocusedRef : null;
     const rowStyle = makeRowStyle(focused, false, !!item.indent);
-    const onyxRing = <FocusRing focused={focused} variant="h" elementRadius={flatSettings ? 0 : isPixel ? 0 : isMaterial ? 8 : 16} />;
+    const onyxRing = <FocusRing focused={focused} variant="spin" wide elementRadius={flatSettings ? 0 : isPixel ? 0 : isMaterial ? 8 : 16} />;
 
     if (item.type === "info")
       return (
@@ -457,6 +457,7 @@ export function SettingsScreen({
             <div ref={rowRef} style={parentStyle} onClick={() => updateSetting(item.key, !val)}>
               <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
               <ToggleKnob value={val} />
+              {onyxRing}
             </div>
             {val && (
               <div style={subContainerStyle}>

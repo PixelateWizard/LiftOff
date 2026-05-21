@@ -367,11 +367,11 @@ export function HomeView(props: HomeViewProps) {
           ...(settings.cinematic_home
             ? { position: "fixed", inset: 0, zIndex: 0 }
             : semiHome
-            ? { position: "relative", height: "clamp(260px, 50vh, 580px)", borderRadius: surfaceCardRadius, flexShrink: 0 }
+            ? { position: "fixed", top: 0, left: 0, right: 0, height: "55vh", zIndex: 1, flexShrink: 0 }
             : { position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: surfaceCardRadius, flexShrink: 0 }),
           overflow: "hidden", display: "flex", flexDirection: "column",
-          border: settings.cinematic_home ? "none" : heroFocused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.5)"}` : `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-          boxShadow: settings.cinematic_home ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
+          border: (settings.cinematic_home || semiHome) ? "none" : heroFocused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.5)"}` : `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+          boxShadow: (settings.cinematic_home || semiHome) ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
           background: settings.cinematic_home && !showHeroArtwork ? "transparent" : materialHero ? appBg : isDark ? "#0a0502" : appBg,
         }}>
@@ -421,7 +421,7 @@ export function HomeView(props: HomeViewProps) {
                         }
                       }}
                       src={primaryHeroMedia}
-                      loop muted playsInline preload="auto"
+                      loop muted playsInline preload={isNearby ? "auto" : "none"}
                       style={{
                         position: "absolute",
                         top: 0, left: 0,
@@ -461,10 +461,10 @@ export function HomeView(props: HomeViewProps) {
             />
           )}
 
-          {/* Pinned bar — hidden in cinematic mode, shown separately below hero */}
-          {!settings.cinematic_home && (settings.home_pinned_pos ?? "bottom") !== "none" && <div style={pinnedAtTop
+          {/* Pinned bar — hidden in cinematic/semi+top modes, shown separately as fixed overlay */}
+          {!settings.cinematic_home && !(semiHome && pinnedAtTop) && (settings.home_pinned_pos ?? "bottom") !== "none" && <div style={pinnedAtTop
             ? { position: "relative", zIndex: 2, padding: "16px 20px 0", flexShrink: 0, order: 0 }
-            : { position: "relative", zIndex: 2, padding: "0 20px 20px", flexShrink: 0, order: 2 }}>
+            : { position: "relative", zIndex: 2, padding: semiHome ? "0 20px 80px" : "0 20px 20px", flexShrink: 0, order: 2 }}>
             {homePinnedApps.length > 0 ? (
               <div ref={pinnedShelfRef} style={{ display: "flex", gap: 8, overflowX: "auto", padding: "10px 14px 14px", margin: "-6px -14px -10px" }}>
                 {homePinnedApps.map((app, i) => {
@@ -598,8 +598,8 @@ export function HomeView(props: HomeViewProps) {
         </div>
 
 
-        {/* ── CINEMATIC PINNED SHELF — fixed overlay, position driven by home_pinned_pos ── */}
-        {settings.cinematic_home && cinematicPinnedVisible && (
+        {/* ── CINEMATIC / SEMI+TOP PINNED SHELF — fixed overlay, position driven by home_pinned_pos ── */}
+        {(settings.cinematic_home || (semiHome && pinnedAtTop)) && cinematicPinnedVisible && (
           <div ref={pinnedShelfRef} style={{
             position: "fixed", left: 0, right: 0, zIndex: 2, display: "flex", gap: 8, overflowX: "auto", pointerEvents: "auto",
             ...(pinnedAtTop
@@ -629,6 +629,19 @@ export function HomeView(props: HomeViewProps) {
                 );
               })}
           </div>
+        )}
+
+        {/* Spacer to push content below the fixed semi-home hero */}
+        {semiHome && <div style={{ height: "55vh", flexShrink: 0 }} />}
+
+        {/* Gradient fade at the hero/content boundary */}
+        {semiHome && (
+          <div style={{
+            position: "fixed", left: 0, right: 0,
+            top: "calc(55vh - 56px)", height: 56,
+            background: `linear-gradient(to bottom, transparent, ${appBg})`,
+            zIndex: 2, pointerEvents: "none",
+          }} />
         )}
 
         {/* ── RECENTS ── */}

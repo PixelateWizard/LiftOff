@@ -345,10 +345,13 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
               );
               animation: onyx-ring-spin 3s linear infinite;
             }
-            /* Left-pulse variant — wide horizontal elements, spotlight stays on the left */
-            @keyframes onyx-ring-left-pulse {
-              0%, 100% { opacity: 0.55; }
-              50% { opacity: 1; }
+            /* Left-anchor sweep — narrow arc traces left→top-right→left→bottom-right */
+            @keyframes onyx-ring-h-sweep {
+              0%   { transform: rotate(0deg); }
+              25%  { transform: rotate(135deg); }
+              50%  { transform: rotate(0deg); }
+              75%  { transform: rotate(-135deg); }
+              100% { transform: rotate(0deg); }
             }
             .onyx-ring-h {
               position: absolute;
@@ -356,16 +359,47 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
               background: conic-gradient(
                 from 218deg,
                 transparent 0%,
-                ${accent.glow}0.55) 7%,
+                ${accent.glow}0.45) 11%,
                 ${accent.primary} 15%,
-                ${accent.glow}0.55) 23%,
-                transparent 35%,
+                ${accent.glow}0.45) 19%,
+                transparent 26%,
                 transparent 100%
               );
-              animation: onyx-ring-left-pulse 3s ease-in-out infinite;
+              animation: onyx-ring-h-sweep 5s ease-in-out infinite;
+            }
+            /* Flat/wide variant — glowing border + top-edge scan for settings rows */
+            @keyframes onyx-scan {
+              0%   { background-position: -150% 0; }
+              100% { background-position: 250% 0; }
+            }
+            @keyframes onyx-border-breathe {
+              0%, 100% { opacity: 0.55; }
+              50%       { opacity: 1; }
+            }
+            .onyx-ring-flat {
+              position: absolute;
+              border: 1.5px solid ${accent.primary};
+              pointer-events: none;
+              animation: onyx-border-breathe 2.5s ease-in-out infinite;
+            }
+            .onyx-ring-flat::after {
+              content: '';
+              position: absolute;
+              top: -1px; left: 0; right: 0; height: 3px;
+              background: linear-gradient(
+                90deg,
+                ${accent.glow}0.0) 0%,
+                ${accent.primary} 50%,
+                ${accent.glow}0.0) 100%
+              );
+              background-size: 35% 100%;
+              background-repeat: no-repeat;
+              animation: onyx-scan 2.5s ease-in-out infinite;
+              filter: blur(1px);
             }
             @media (prefers-reduced-motion: reduce) {
-              .onyx-ring-spin, .onyx-ring-h { animation: none; }
+              .onyx-ring-spin, .onyx-ring-h, .onyx-ring-flat { animation: none; }
+              .onyx-ring-flat::after { display: none; }
             }
           `}</style>
           {/* Subtle depth vignette */}
