@@ -2,6 +2,7 @@ import type { CSSProperties, RefObject } from "react";
 import { ToggleKnob } from "./ToggleKnob";
 import { FocusRing } from "./FocusRing";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useSettings } from "../../contexts/SettingsContext";
 
 interface ToggleSubItem {
   type?: "toggle";
@@ -56,9 +57,11 @@ export function CollapsibleGroup({
   items,
 }: CollapsibleGroupProps) {
   const { glass, accent, isDark, theme, surfaceStyle, surface, resolvedTheme } = useTheme();
+  const { settings } = useSettings();
   const isMaterial = surfaceStyle === "material";
   const isPixel = surfaceStyle === "win9x";
   const isOnyx = resolvedTheme === "onyx";
+  const flatSettings = isOnyx && (settings.onyx_flat_settings ?? true);
   const materialFocusStyle: CSSProperties = isMaterial ? {
     border: `2px solid ${accent.primary}`,
     background: isDark
@@ -83,8 +86,8 @@ export function CollapsibleGroup({
     background: surface.activeBg,
     boxShadow: `${surface.bevelSunken}, 0 0 0 1px ${accent.primary}`,
   } : {};
-  const parentStyle: CSSProperties = isOnyx ? {
-    background: focused ? "rgba(255,255,255,0.05)" : "transparent",
+  const parentStyle: CSSProperties = flatSettings ? {
+    background: "transparent",
     borderRadius: 0,
     padding: "14px 20px",
     marginBottom: 0,
@@ -95,6 +98,7 @@ export function CollapsibleGroup({
     cursor: "pointer",
     transition: "background 0.15s ease",
     position: "relative" as const,
+    zIndex: focused ? 2 : undefined,
   } : {
     ...glass,
     borderRadius: isPixel ? 0 : value ? (isMaterial ? "8px 8px 0 0" : "16px 16px 0 0") : isMaterial ? 8 : 16,
@@ -116,7 +120,7 @@ export function CollapsibleGroup({
       : { border: isMaterial ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)" }),
   };
 
-  const subContainerStyle: CSSProperties = isOnyx ? {
+  const subContainerStyle: CSSProperties = flatSettings ? {
     marginBottom: 0,
     overflow: "hidden",
   } : {
@@ -146,15 +150,17 @@ export function CollapsibleGroup({
       {value && (
         <div style={subContainerStyle}>
           {items.map((item, idx) => {
-            const rowStyle: CSSProperties = isOnyx ? {
+            const rowStyle: CSSProperties = flatSettings ? {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               padding: "12px 20px 12px 36px",
               cursor: "pointer",
               transition: "background 0.15s ease",
-              background: item.focused ? "rgba(255,255,255,0.04)" : "transparent",
+              background: "transparent",
               borderBottom: "1px solid rgba(255,255,255,0.05)",
+              position: "relative" as const,
+              zIndex: item.focused ? 2 : undefined,
             } : {
               display: "flex",
               alignItems: "center",
@@ -201,6 +207,7 @@ export function CollapsibleGroup({
                     <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
                       onClick={(e) => { e.stopPropagation(); item.onCycleChange(next); }}>▶</span>
                   </div>
+                  {flatSettings && <FocusRing focused={!!item.focused} variant="h" elementRadius={0} />}
                 </div>
               );
             }
@@ -223,6 +230,7 @@ export function CollapsibleGroup({
                     <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
                       onClick={(e) => { e.stopPropagation(); item.onSliderChange(Math.min(item.sliderMax, Math.round((item.sliderValue + item.sliderStep) / item.sliderStep) * item.sliderStep)); }}>▶</span>
                   </div>
+                  {flatSettings && <FocusRing focused={!!item.focused} variant="h" elementRadius={0} />}
                 </div>
               );
             }
@@ -238,6 +246,7 @@ export function CollapsibleGroup({
                   {item.label}
                 </span>
                 <ToggleKnob value={item.value} />
+                {flatSettings && <FocusRing focused={!!item.focused} variant="h" elementRadius={0} />}
               </div>
             );
           })}

@@ -132,7 +132,7 @@ export function AppHeader({
           {tabs.map((tabName) => {
             const isActive = tab === tabName;
             const iconMode = settings.tabbar_icon_mode ?? "text";
-            const color = isActive ? activeTextColor : theme.textDim;
+            const color = isActive ? (resolvedTheme === "onyx" ? accent.primary : activeTextColor) : theme.textDim;
             const iconNode = TAB_ICONS[tabName]?.(16, color);
             const showIcon = iconMode === "icons" || iconMode === "both";
             const showText = iconMode === "text"  || iconMode === "both";

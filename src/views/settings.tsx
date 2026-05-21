@@ -154,7 +154,10 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
   // Insert theme-specific items after stars_enabled (only visible for that theme)
   if (activeTheme === "onyx") {
     const starsIdx = items.findIndex(i => i.key === "stars_enabled");
-    if (starsIdx !== -1) items.splice(starsIdx + 1, 0, { key: "onyx_top_light", section: 0, label: t("settings.onyxTopLight"), type: "toggle", indent: true });
+    if (starsIdx !== -1) items.splice(starsIdx + 1, 0,
+      { key: "onyx_top_light", section: 0, label: t("settings.onyxTopLight"), type: "toggle", indent: true },
+      { key: "onyx_flat_settings", section: 0, label: t("settings.onyxFlatSettings"), type: "toggle", indent: true },
+    );
   }
 
   // Mark items whose value is forced by the active theme
@@ -288,16 +291,19 @@ export function SettingsScreen({
     boxShadow: `${surface.bevelSunken}, 0 0 0 1px ${accent.primary}`,
   } : {};
 
+  const flatSettings = isOnyx && (settings.onyx_flat_settings ?? true);
+
   const makeRowStyle = (focused: boolean, sub = false, indent = false) => {
-    if (isOnyx) {
+    if (flatSettings) {
       return {
-        background: focused ? "rgba(255,255,255,0.05)" : "transparent",
+        background: "transparent",
         borderRadius: 0,
         padding: "12px 20px",
         marginBottom: 0,
         borderBottom: "1px solid rgba(255,255,255,0.07)",
         marginLeft: indent ? 24 : 0,
         position: "relative" as const,
+        zIndex: focused ? 2 : undefined,
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
@@ -370,7 +376,7 @@ export function SettingsScreen({
     const focused = settingsFocusIndex === navIdx && navIdx !== -1;
     const rowRef = focused ? settingsFocusedRef : null;
     const rowStyle = makeRowStyle(focused, false, !!item.indent);
-    const onyxRing = <FocusRing focused={focused} variant="h" elementRadius={isPixel ? 0 : isMaterial ? 8 : 16} />;
+    const onyxRing = <FocusRing focused={focused} variant="h" elementRadius={flatSettings ? 0 : isPixel ? 0 : isMaterial ? 8 : 16} />;
 
     if (item.type === "info")
       return (

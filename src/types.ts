@@ -111,6 +111,7 @@ export interface Settings {
   show_hero_cover: boolean;
   show_home_pinned: boolean;
   home_pinned_pos: string;
+  onyx_flat_settings: boolean;
   gamepad_platform: GamepadPlatform;
   gamepad_icons_colored: boolean;
   gamepad_icons_filled: boolean;

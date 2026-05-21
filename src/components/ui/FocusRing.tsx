@@ -4,7 +4,7 @@ interface FocusRingProps {
   focused: boolean;
   /** "spin" = rotating arc (square/vertical elements); "h" = left-side pulse (wide/horizontal) */
   variant?: "spin" | "h";
-  /** Border radius of the element being focused — ring radius = elementRadius + 4 */
+  /** Border radius of the element being focused — ring radius = elementRadius + 2 */
   elementRadius?: number;
 }
 
@@ -15,7 +15,7 @@ export function FocusRing({ focused, variant = "spin", elementRadius = 12 }: Foc
   return (
     <div
       className="onyx-focus-ring"
-      style={{ top: -4, right: -4, bottom: -4, left: -4, borderRadius: elementRadius + 4 }}
+      style={{ top: -2, right: -2, bottom: -2, left: -2, borderRadius: elementRadius + 2 }}
     >
       <div className={variant === "h" ? "onyx-ring-h" : "onyx-ring-spin"} />
     </div>

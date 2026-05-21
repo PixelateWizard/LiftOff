@@ -729,10 +729,14 @@ export function useGamepadNavigation(
       }
 
       if (section === "hero") {
+        const pinnedAtTop = (currentSettings.home_pinned_pos ?? "bottom") === "top";
         if (key === "ArrowLeft")  { const ni = Math.max(heroIndexRef.current - 1, 0); setHeroIndex(ni); heroIndexRef.current = ni; }
         if (key === "ArrowRight") { const ni = Math.min(heroIndexRef.current + 1, Math.min(fRecentGames.length, 6) - 1); setHeroIndex(ni); heroIndexRef.current = ni; }
         if (key === "ArrowUp") {
-          if (!settingsRef.current.cinematic_home && homePinnedVisible) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
+          // Go to pinned only when pinned shelf is physically above the hero
+          if (!settingsRef.current.cinematic_home && homePinnedVisible && pinnedAtTop) {
+            setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0;
+          }
         }
         if (key === "ArrowDown") {
           if (settingsRef.current.cinematic_home) {
@@ -740,18 +744,27 @@ export function useGamepadNavigation(
             else { focusFirstHomeDrawerItem(); }
           } else {
             if (fRecent.length > 0) { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(0); focusIndexRef.current = 0; }
+            else if (homePinnedVisible && !pinnedAtTop) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
           }
         }
         if (key === "Enter" && fRecentGames[heroIndexRef.current]) triggerLaunch(fRecentGames[heroIndexRef.current], rec);
         return;
       }
       if (section === "pinned") {
+        const pinnedAtTop = (currentSettings.home_pinned_pos ?? "bottom") === "top";
         if (key === "ArrowRight") { const ni = Math.min(index + 1, fPinned.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
         if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                  setFocusIndex(ni); focusIndexRef.current = ni; }
-        if (key === "ArrowUp")    { setFocusSection("hero"); focusSectionRef.current = "hero"; }
+        if (key === "ArrowUp") {
+          // Bottom pinned: up goes to hero. Top pinned: already at top, nothing above.
+          if (!pinnedAtTop) { setFocusSection("hero"); focusSectionRef.current = "hero"; }
+        }
         if (key === "ArrowDown") {
-          if (!settingsRef.current.cinematic_home && fRecent.length > 0) { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(Math.min(focusIndexRef.current, fRecent.length - 1)); }
-          else if (settingsRef.current.cinematic_home && settingsRef.current.show_home_collections) {
+          if (pinnedAtTop) {
+            // Top pinned: down goes to hero (hero is below)
+            setFocusSection("hero"); focusSectionRef.current = "hero";
+          } else if (!settingsRef.current.cinematic_home && fRecent.length > 0) {
+            setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(Math.min(focusIndexRef.current, fRecent.length - 1));
+          } else if (settingsRef.current.cinematic_home && settingsRef.current.show_home_collections) {
             // In cinematic mode: down from pinned goes to recent first (if recents exist), else collections
             if (fRecent.length > 0) {
               setFocusSection("recent"); focusSectionRef.current = "recent";

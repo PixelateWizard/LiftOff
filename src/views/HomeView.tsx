@@ -935,20 +935,25 @@ export function HomeView(props: HomeViewProps) {
                               ref={recFocused ? focusedCardRef : null}
                               onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                               onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                              style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, overflow: "hidden", cursor: "pointer", position: "relative",
+                              style={{ position: "relative", flexShrink: 0, width: CARD_W, height: CARD_H }}>
+                              <div style={{
+                                position: "absolute", inset: 0, overflow: "hidden", cursor: "pointer",
+                                borderRadius: surfaceCardRadius,
                                 border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.08)",
-                                outline: recFocused ? `2px solid ${accent.primary}` : "2px solid transparent",
+                                outline: recFocused && !isOnyx ? `2px solid ${accent.primary}` : "none",
                                 outlineOffset: "2px",
                                 boxShadow: recFocused ? (surfaceStyle === "material" ? materialFocusShadow : `0 4px 20px ${accent.glow}0.3)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
                                 transition: "outline-color 0.15s ease, box-shadow 0.15s ease",
                               }}>
-                              {art
-                                ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                                : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
-                              }
-                              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
-                                <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
+                                {art
+                                  ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                  : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
+                                }
+                                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
+                                  <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
+                                </div>
                               </div>
+                              <FocusRing focused={recFocused} variant="spin" elementRadius={surfaceCardRadius} />
                             </div>
                           );
                         })}

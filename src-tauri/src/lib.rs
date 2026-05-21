@@ -193,6 +193,8 @@ pub struct Settings {
     pub show_home_pinned: bool,
     #[serde(default = "default_home_pinned_pos")]
     pub home_pinned_pos: String,
+    #[serde(default = "default_true")]
+    pub onyx_flat_settings: bool,
     // Gamepad icon settings (moi952 PRs)
     #[serde(default = "default_gamepad_platform")]
     pub gamepad_platform: String,
@@ -291,6 +293,7 @@ impl Default for Settings {
             show_hero_cover: true,
             show_home_pinned: true,
             home_pinned_pos: "bottom".to_string(),
+            onyx_flat_settings: true,
             gamepad_platform: "xbox".to_string(),
             gamepad_icons_colored: false,
             gamepad_icons_filled: true,
