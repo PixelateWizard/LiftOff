@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type RefObject } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTheme } from "../contexts/ThemeContext";
 import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../theme/surfaces";
-import { AppListItem } from "../components/ui";
+import { AppListItem, FocusRing } from "../components/ui";
 
 interface HomeViewProps {
   active: boolean;
@@ -200,7 +200,8 @@ export function HomeView(props: HomeViewProps) {
           : heroStatic[heroGame.id])
       : null;
     const sectionTitleFontSize = settings.home_section_title_size === "large" ? 15 : settings.home_section_title_size === "medium" ? 12 : 10;
-    const heroContentTop = settings.hero_content_pos === "top";
+    const pinnedAtTop = settings.home_pinned_pos === "top";
+    const isOnyx = resolvedTheme === "onyx";
     const showHeroArtwork = !settings.cinematic_home || settings.show_immersive_hero_art !== false;
     const visibleHeroBanner = showHeroArtwork ? heroBanner : null;
     const heroFocused = focusSec === "hero";
@@ -313,8 +314,8 @@ export function HomeView(props: HomeViewProps) {
       };
     };
     const cinematicBottomLaneFree = settings.cinematic_home && settings.hide_bottom_bar && !settings.show_home_collections;
-    const cinematicPinnedVisible = settings.show_home_pinned !== false && homePinnedApps.length > 0;
-    const cinematicPinnedAtBottom = cinematicBottomLaneFree && cinematicPinnedVisible;
+    const cinematicPinnedVisible = (settings.home_pinned_pos ?? "bottom") !== "none" && homePinnedApps.length > 0;
+    const cinematicPinnedAtBottom = cinematicBottomLaneFree && cinematicPinnedVisible && !pinnedAtTop;
     const cinematicHeroAtBottom = cinematicBottomLaneFree && !cinematicPinnedVisible;
     const cinematicHeroNearChevron = settings.cinematic_home && settings.hide_bottom_bar && settings.show_home_collections && !cinematicPinnedVisible;
     const cinematicHeroBottom = cinematicHeroAtBottom ? 24 : cinematicPinnedAtBottom ? 88 : cinematicHeroNearChevron ? 72 : 122;
@@ -366,15 +367,11 @@ export function HomeView(props: HomeViewProps) {
           ...(settings.cinematic_home
             ? { position: "fixed", inset: 0, zIndex: 0 }
             : semiHome
-            ? { position: "fixed", top: 0, left: 0, right: 0, height: "clamp(260px, 50vh, 580px)", zIndex: 0,
-                transform: focusSec !== "hero" ? "translateY(-100%)" : "translateY(0)",
-                opacity: focusSec !== "hero" ? 0 : 1,
-                transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.28s ease",
-              }
+            ? { position: "relative", height: "clamp(260px, 50vh, 580px)", borderRadius: surfaceCardRadius, flexShrink: 0 }
             : { position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: surfaceCardRadius, flexShrink: 0 }),
           overflow: "hidden", display: "flex", flexDirection: "column",
-          border: (settings.cinematic_home || semiHome) ? "none" : heroFocused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.5)"}` : `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-          boxShadow: (settings.cinematic_home || semiHome) ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
+          border: settings.cinematic_home ? "none" : heroFocused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.5)"}` : `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+          boxShadow: settings.cinematic_home ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
           background: settings.cinematic_home && !showHeroArtwork ? "transparent" : materialHero ? appBg : isDark ? "#0a0502" : appBg,
         }}>
@@ -453,7 +450,7 @@ export function HomeView(props: HomeViewProps) {
                 inset: 0,
                 pointerEvents: "none",
                 zIndex: 1,
-                ...(homePinnedApps.length > 0 && settings.show_home_pinned !== false
+                ...(homePinnedApps.length > 0 && (settings.home_pinned_pos ?? "bottom") !== "none"
                   ? {
                       WebkitMaskImage: "linear-gradient(to bottom, transparent 0px, transparent 86px, black 132px)",
                       maskImage: "linear-gradient(to bottom, transparent 0px, transparent 86px, black 132px)",
@@ -465,7 +462,9 @@ export function HomeView(props: HomeViewProps) {
           )}
 
           {/* Pinned bar — hidden in cinematic mode, shown separately below hero */}
-          {!settings.cinematic_home && settings.show_home_pinned !== false && <div style={{ position: "relative", zIndex: 2, padding: "16px 20px 0", flexShrink: 0 }}>
+          {!settings.cinematic_home && (settings.home_pinned_pos ?? "bottom") !== "none" && <div style={pinnedAtTop
+            ? { position: "relative", zIndex: 2, padding: "16px 20px 0", flexShrink: 0, order: 0 }
+            : { position: "relative", zIndex: 2, padding: "0 20px 20px", flexShrink: 0, order: 2 }}>
             {homePinnedApps.length > 0 ? (
               <div ref={pinnedShelfRef} style={{ display: "flex", gap: 8, overflowX: "auto", padding: "10px 14px 14px", margin: "-6px -14px -10px" }}>
                 {homePinnedApps.map((app, i) => {
@@ -502,7 +501,7 @@ export function HomeView(props: HomeViewProps) {
           <div style={materialCinematicHero
             ? {
                 position: "absolute",
-                ...(heroContentTop ? { top: 80 } : { bottom: cinematicHeroBottom }),
+                bottom: cinematicHeroBottom,
                 left: 24,
                 zIndex: 4,
                 display: "flex",
@@ -521,12 +520,11 @@ export function HomeView(props: HomeViewProps) {
                 pointerEvents: "auto",
               }
             : settings.cinematic_home
-            ? heroContentTop
-              ? { position: "fixed", left: 0, right: 0, top: 80, zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-start", padding: "20px 32px 0" }
-              : { position: "fixed", left: 0, right: 0, bottom: cinematicHeroAtBottom ? 0 : cinematicPinnedAtBottom ? "84px" : cinematicHeroNearChevron ? "68px" : "120px", zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
+            ? { position: "fixed", left: 0, right: 0, bottom: cinematicHeroAtBottom ? 0 : cinematicPinnedAtBottom ? "84px" : cinematicHeroNearChevron ? "68px" : "120px", zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
             : { position: "relative", zIndex: 1, flex: 1, display: "flex",
-                alignItems: heroContentTop ? "flex-start" : "flex-end",
-                padding: heroContentTop ? `${semiHome ? "76px" : "20px"} 20px 0` : "0 20px 20px" }}>
+                alignItems: "flex-end",
+                padding: "0 20px 20px",
+                order: 1 }}>
             {webcoreHero && materialCinematicHero && (
               <div style={{ position: "absolute", left: 2, right: 2, top: 2, height: 22, background: surface.titleBarBg, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 5px 0 7px", boxSizing: "border-box" }}>
                 <span style={{ color: "white", fontSize: 11, fontFamily: "Tahoma, Arial, sans-serif", fontWeight: 700 }}>{heroGame?.name || "LiftOff"}</span>
@@ -599,12 +597,15 @@ export function HomeView(props: HomeViewProps) {
           {heroFocused && !settings.cinematic_home && !semiHome && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: surfaceStyle === "material" ? accent.primary : `linear-gradient(to right, ${accent.primary}, ${accent.glow}0))`, pointerEvents: "none", zIndex: 3 }} />}
         </div>
 
-        {/* Spacer to offset the fixed hero in semi mode */}
-        {semiHome && <div style={{ height: "clamp(260px, 50vh, 580px)", flexShrink: 0, pointerEvents: "none" }} />}
 
-        {/* ── CINEMATIC PINNED SHELF — fixed overlay above bottom bar ── */}
+        {/* ── CINEMATIC PINNED SHELF — fixed overlay, position driven by home_pinned_pos ── */}
         {settings.cinematic_home && cinematicPinnedVisible && (
-          <div ref={pinnedShelfRef} style={{ position: "fixed", left: 0, right: 0, bottom: cinematicPinnedAtBottom ? 0 : "60px", zIndex: 2, padding: cinematicPinnedAtBottom ? "0 24px 14px" : "0 24px 12px", display: "flex", gap: 8, overflowX: "auto", pointerEvents: "auto" }}>
+          <div ref={pinnedShelfRef} style={{
+            position: "fixed", left: 0, right: 0, zIndex: 2, display: "flex", gap: 8, overflowX: "auto", pointerEvents: "auto",
+            ...(pinnedAtTop
+              ? { top: 72, padding: "12px 24px 0" }
+              : { bottom: cinematicPinnedAtBottom ? 0 : "60px", padding: cinematicPinnedAtBottom ? "0 24px 14px" : "0 24px 12px" }),
+          }}>
               {homePinnedApps.map((app, i) => {
                 const focused = focusSec === "pinned" && focusIdx === i;
                 const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
@@ -663,23 +664,28 @@ export function HomeView(props: HomeViewProps) {
                 const CARD_H = `${Math.round(homeBase * 1.5)}px`;
                 if (app.app_type === "game") {
                   return (
+                    // Outer wrapper — no overflow:hidden so ring can extend with gap
                     <div key={app.id} ref={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                      style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, overflow: "hidden", cursor: "pointer", position: "relative", transition: "all 0.15s ease",
-                        border: `1px solid ${focused ? (surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)") : (surfaceStyle === "material" ? "var(--material-border-subtle)" : "rgba(255,255,255,0.08)")}`,
-                        boxShadow: focused ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
+                      style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative", transition: "transform 0.15s ease",
                         transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" }}>
-                      {art
-                        ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
-                      }
-                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
-                        <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
+                      {/* Inner content — overflow:hidden clips the art */}
+                      <div style={{ position: "absolute", inset: 0, borderRadius: surfaceCardRadius, overflow: "hidden", transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+                        border: `1px solid ${focused && !isOnyx ? (surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)") : (surfaceStyle === "material" ? "var(--material-border-subtle)" : "rgba(255,255,255,0.08)")}`,
+                        boxShadow: focused && !isOnyx ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
+                      }}>
+                        {art
+                          ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
+                        }
+                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
+                          <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
+                        </div>
+                        <PinBadge isPinned={isPinned} small />
+                        {focused && !isOnyx && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
                       </div>
-                      <PinBadge isPinned={isPinned} small />
-                      {focused && resolvedTheme !== "onyx" && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
-                      {focused && resolvedTheme === "onyx" && <div className="onyx-focus-ring" style={{ borderRadius: surfaceCardRadius }}><div className="onyx-ring-spin"/></div>}
+                      <FocusRing focused={focused} variant="spin" elementRadius={surfaceCardRadius} />
                     </div>
                   );
                 }
@@ -691,17 +697,20 @@ export function HomeView(props: HomeViewProps) {
                     <div key={app.id} ref={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                      style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, overflow: "hidden", cursor: "pointer", position: "relative", transition: "all 0.15s ease",
-                        border: `1px solid ${focused ? (surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)") : (surfaceStyle === "material" ? "var(--material-border-subtle)" : "rgba(255,255,255,0.08)")}`,
-                        boxShadow: focused ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
+                      style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative", transition: "transform 0.15s ease",
                         transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" }}>
-                      <img src={art} alt={fullApp.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
-                        <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
+                      <div style={{ position: "absolute", inset: 0, borderRadius: surfaceCardRadius, overflow: "hidden", transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+                        border: `1px solid ${focused && !isOnyx ? (surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)") : (surfaceStyle === "material" ? "var(--material-border-subtle)" : "rgba(255,255,255,0.08)")}`,
+                        boxShadow: focused && !isOnyx ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
+                      }}>
+                        <img src={art} alt={fullApp.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
+                          <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
+                        </div>
+                        <PinBadge isPinned={isPinned} small />
+                        {focused && !isOnyx && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
                       </div>
-                      <PinBadge isPinned={isPinned} small />
-                      {focused && resolvedTheme !== "onyx" && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
-                      {focused && resolvedTheme === "onyx" && <div className="onyx-focus-ring" style={{ borderRadius: surfaceCardRadius }}><div className="onyx-ring-spin"/></div>}
+                      <FocusRing focused={focused} variant="spin" elementRadius={surfaceCardRadius} />
                     </div>
                   );
                 }
@@ -710,15 +719,16 @@ export function HomeView(props: HomeViewProps) {
                     onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                     onDoubleClick={() => triggerLaunch(app, recentRef.current)}
                     style={{ ...glass, background: surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)", backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
-                      border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : tintBorder}`,
+                      border: focused && !isOnyx ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : tintBorder}`,
                       flexShrink: 0, borderRadius: surfaceCardRadius, cursor: "pointer", transition: "all 0.15s ease",
                       width: CARD_W, height: CARD_H, boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px", position: "relative",
-                      ...(focused ? { background: surfaceStyle === "material" ? "var(--material-elevation-3)" : isDark ? `${accent.glow}0.1)` : `${accent.glow}0.07)`, boxShadow: surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`, transform: "scale(1.05) translateY(-3px)" } : {}) }}>
+                      ...(focused ? { background: surfaceStyle === "material" ? "var(--material-elevation-3)" : isDark ? `${accent.glow}0.1)` : `${accent.glow}0.07)`, boxShadow: !isOnyx ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 20px ${accent.glow}0.1)`) : undefined, transform: "scale(1.05) translateY(-3px)" } : {}) }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", position: "relative", zIndex: 1 }}>
                       <AppIcon app={fullApp} size={40} />
                       <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{fullApp.name}</div>
                     </div>
                     <PinBadge isPinned={isPinned} small />
+                    <FocusRing focused={focused} variant="spin" elementRadius={surfaceCardRadius} />
                   </div>
                 );
               })}
@@ -764,21 +774,24 @@ export function HomeView(props: HomeViewProps) {
                         ref={focused ? focusedCardRef : null}
                         onClick={() => { setFocusSection("home_collections"); focusSectionRef.current = "home_collections"; setHomeColFocusRow(rowIdx); homeColFocusRowRef.current = rowIdx; setHomeColFocusCol(colIdx); homeColFocusColRef.current = colIdx; }}
                         onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                        style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, overflow: "hidden", cursor: "pointer", position: "relative", transition: "box-shadow 0.15s ease, outline 0.15s ease",
-                          outline: (focused && resolvedTheme !== "onyx") ? `2px solid ${accent.primary}` : "2px solid transparent",
-                          outlineOffset: "2px",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          boxShadow: focused ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
+                        style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative",
                           scrollMarginTop: "120px",
                         }}>
-                        {art
-                        ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                        : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
-                        }
-                        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
-                          <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                        <div style={{ position: "absolute", inset: 0, borderRadius: surfaceCardRadius, overflow: "hidden", transition: "box-shadow 0.15s ease",
+                          outline: (focused && !isOnyx) ? `2px solid ${accent.primary}` : "2px solid transparent",
+                          outlineOffset: "2px",
+                          border: "1px solid rgba(255,255,255,0.08)",
+                          boxShadow: focused && !isOnyx ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
+                        }}>
+                          {art
+                          ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
+                          }
+                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
+                            <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                          </div>
                         </div>
-                        {focused && resolvedTheme === "onyx" && <div className="onyx-focus-ring" style={{ borderRadius: surfaceCardRadius }}><div className="onyx-ring-spin"/></div>}
+                        <FocusRing focused={focused} variant="spin" elementRadius={surfaceCardRadius} />
                       </div>
                     );
                   }
@@ -787,16 +800,17 @@ export function HomeView(props: HomeViewProps) {
                       ref={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("home_collections"); focusSectionRef.current = "home_collections"; setHomeColFocusRow(rowIdx); homeColFocusRowRef.current = rowIdx; setHomeColFocusCol(colIdx); homeColFocusColRef.current = colIdx; }}
                       onDoubleClick={() => triggerLaunch(app, recentRef.current)}
-                      style={{ ...glass, flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, overflow: "hidden", cursor: "pointer",
-                        outline: focused ? `2px solid ${accent.primary}` : "2px solid transparent",
+                      style={{ ...glass, flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative",
+                        outline: focused && !isOnyx ? `2px solid ${accent.primary}` : "2px solid transparent",
                         outlineOffset: "2px",
-                        ...(focused ? { border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.4)"}`, boxShadow: surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)` } : {}),
+                        ...(focused && !isOnyx ? { border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.4)"}`, boxShadow: surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)` } : {}),
                         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 6px",
                         transition: "box-shadow 0.15s ease, outline 0.15s ease",
                         scrollMarginTop: "120px",
                       }}>
                       <AppIcon app={fullApp} size={40} />
                       <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{fullApp.name}</div>
+                      <FocusRing focused={focused} variant="spin" elementRadius={surfaceCardRadius} />
                     </div>
                   );
                 })}

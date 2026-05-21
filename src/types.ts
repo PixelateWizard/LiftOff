@@ -110,6 +110,7 @@ export interface Settings {
   show_home_collection_names: boolean;
   show_hero_cover: boolean;
   show_home_pinned: boolean;
+  home_pinned_pos: string;
   gamepad_platform: GamepadPlatform;
   gamepad_icons_colored: boolean;
   gamepad_icons_filled: boolean;

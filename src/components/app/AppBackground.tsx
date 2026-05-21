@@ -324,34 +324,48 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
               border-radius: inherit;
               padding: 2px;
               pointer-events: none;
-              overflow: hidden;
               -webkit-mask:
                 linear-gradient(#fff 0 0) content-box,
                 linear-gradient(#fff 0 0);
               -webkit-mask-composite: xor;
               mask-composite: exclude;
             }
+            /* Rotating variant — square / vertical elements, goes all the way around */
             .onyx-ring-spin {
               position: absolute;
               inset: -150%;
               background: conic-gradient(
                 from 0deg,
                 transparent 0%,
-                ${accent.glow}0.50) 7%,
-                ${accent.primary} 12%,
-                ${accent.glow}0.50) 17%,
-                transparent 27%,
+                ${accent.glow}0.45) 6%,
+                ${accent.primary} 25%,
+                ${accent.glow}0.45) 44%,
                 transparent 50%,
-                ${accent.glow}0.50) 57%,
-                ${accent.primary} 62%,
-                ${accent.glow}0.50) 67%,
-                transparent 77%,
                 transparent 100%
               );
               animation: onyx-ring-spin 3s linear infinite;
             }
+            /* Left-pulse variant — wide horizontal elements, spotlight stays on the left */
+            @keyframes onyx-ring-left-pulse {
+              0%, 100% { opacity: 0.55; }
+              50% { opacity: 1; }
+            }
+            .onyx-ring-h {
+              position: absolute;
+              inset: -150%;
+              background: conic-gradient(
+                from 218deg,
+                transparent 0%,
+                ${accent.glow}0.55) 7%,
+                ${accent.primary} 15%,
+                ${accent.glow}0.55) 23%,
+                transparent 35%,
+                transparent 100%
+              );
+              animation: onyx-ring-left-pulse 3s ease-in-out infinite;
+            }
             @media (prefers-reduced-motion: reduce) {
-              .onyx-ring-spin { animation: none; }
+              .onyx-ring-spin, .onyx-ring-h { animation: none; }
             }
           `}</style>
           {/* Subtle depth vignette */}
@@ -359,12 +373,15 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
             position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none",
             background: "radial-gradient(ellipse 75% 75% at 50% 50%, transparent 35%, rgba(0,0,0,0.45) 100%)",
           }} />
-          {/* Top-light beam — accent-tinted glow from the top edge */}
+          {/* Top-light beam — narrow shaft descending from above */}
           {settings.onyx_top_light && (
             <div style={{
               position: "fixed", top: 0, left: 0, right: 0,
-              height: "50vh", zIndex: 0, pointerEvents: "none",
-              background: `radial-gradient(ellipse 80% 80% at 50% 0%, ${accent.glow}0.22) 0%, ${accent.glow}0.08) 40%, transparent 68%)`,
+              height: "90vh", zIndex: 0, pointerEvents: "none",
+              background: `
+                radial-gradient(ellipse 38% 28% at 50% -8%, ${accent.glow}0.50) 0%, transparent 70%),
+                radial-gradient(ellipse 20% 95% at 50% -5%, ${accent.glow}0.55) 0%, ${accent.glow}0.22) 25%, ${accent.glow}0.06) 55%, transparent 70%)
+              `,
             }} />
           )}
         </>

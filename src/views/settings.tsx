@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { CollapsibleGroup, ToggleKnob, GamepadIconPreview } from "../components/ui";
+import { CollapsibleGroup, ToggleKnob, GamepadIconPreview, FocusRing } from "../components/ui";
 import { ControllerTestWidget } from "../components/ControllerTestWidget";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
@@ -48,10 +48,9 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "home_mode",              section: 0, label: t("settings.homeMode"),            type: "cycle", options: ["normal", "semi", "immersive"] },
     { key: "show_immersive_hero_art",section: 0, label: t("settings.showImmersiveHeroArt"),type: "toggle" },
     { key: "show_hero_cover",        section: 0, label: t("settings.showHeroCover"),        type: "toggle" },
-    { key: "show_home_pinned",       section: 0, label: t("settings.showHomePinned"),       type: "toggle" },
+    { key: "home_pinned_pos",        section: 0, label: t("settings.homePinnedPos"),         type: "cycle", options: ["none", "top", "bottom"] },
     { key: "show_home_recents",      section: 0, label: t("settings.showHomeRecents"),      type: "toggle" },
     { key: "show_recent_games_only", section: 0, label: t("settings.showRecentGamesOnly"),  type: "toggle" },
-    { key: "hero_content_pos",       section: 0, label: t("settings.heroContentPos"),        type: "cycle", options: ["top", "bottom"] },
     { key: "home_section_title_size",section: 0, label: t("settings.homeSectionTitleSize"), type: "cycle", options: ["small", "medium", "large"] },
     { key: "show_home_collections",  section: 0, label: t("settings.showHomeCollections"),  type: "toggle", subItems: [
       { key: "show_home_collection_names", label: t("settings.showHomeCollectionNames"), type: "toggle" },
@@ -261,6 +260,7 @@ export function SettingsScreen({
   const navigableItems = getSectionNavigableItems(settingsSection, ALL_ITEMS, settings, { gameCollections, appCollections });
   const isMaterial = surfaceStyle === "material";
   const isPixel = surfaceStyle === "win9x";
+  const isOnyx = resolvedTheme === "onyx";
   const materialFocusStyle = isMaterial ? {
     border: `2px solid ${accent.primary}`,
     background: isDark
@@ -288,23 +288,37 @@ export function SettingsScreen({
     boxShadow: `${surface.bevelSunken}, 0 0 0 1px ${accent.primary}`,
   } : {};
 
-  const makeRowStyle = (focused: boolean, sub = false, indent = false) => ({
-    ...settingsRowGlass,
-    borderRadius: isPixel ? 0 : isMaterial ? 8 : 16,
-    padding: "12px 20px",
-    marginBottom: sub ? 6 : 8,
-    marginLeft: indent ? 24 : 0,
-    position: "relative" as const,
-    overflow: "hidden" as const,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    cursor: "pointer",
-    transition: "all 0.15s ease",
-    ...(focused && !sub
-      ? resolvedTheme === "onyx"
-        ? { background: "rgba(255,255,255,0.05)" }
-        : {
+  const makeRowStyle = (focused: boolean, sub = false, indent = false) => {
+    if (isOnyx) {
+      return {
+        background: focused ? "rgba(255,255,255,0.05)" : "transparent",
+        borderRadius: 0,
+        padding: "12px 20px",
+        marginBottom: 0,
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
+        marginLeft: indent ? 24 : 0,
+        position: "relative" as const,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        cursor: "pointer",
+        transition: "background 0.15s ease",
+      };
+    }
+    return {
+      ...settingsRowGlass,
+      borderRadius: isPixel ? 0 : isMaterial ? 8 : 16,
+      padding: "12px 20px",
+      marginBottom: sub ? 6 : 8,
+      marginLeft: indent ? 24 : 0,
+      position: "relative" as const,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      cursor: "pointer",
+      transition: "all 0.15s ease",
+      ...(focused && !sub
+        ? {
             border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + (surfaceStyle === "aero" ? "0.50)" : "0.45)")}`,
             backdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
             WebkitBackdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
@@ -323,8 +337,9 @@ export function SettingsScreen({
             ...(isMaterial ? materialFocusStyle : {}),
             ...(isPixel ? pixelFocusStyle : {}),
           }
-      : {}),
-  });
+        : {}),
+    };
+  };
 
   const renderItem = (item: SettingsItem) => {
     if (item.type === "divider") {
@@ -355,9 +370,7 @@ export function SettingsScreen({
     const focused = settingsFocusIndex === navIdx && navIdx !== -1;
     const rowRef = focused ? settingsFocusedRef : null;
     const rowStyle = makeRowStyle(focused, false, !!item.indent);
-    const onyxRing = focused && resolvedTheme === "onyx"
-      ? <div className="onyx-focus-ring"><div className="onyx-ring-spin"/></div>
-      : null;
+    const onyxRing = <FocusRing focused={focused} variant="h" elementRadius={isPixel ? 0 : isMaterial ? 8 : 16} />;
 
     if (item.type === "info")
       return (

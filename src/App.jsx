@@ -55,6 +55,7 @@ import {
   THEME_LOCKED_SETTINGS, THEME_BG_COLORS,
   getRunAsAdmin, setRunAsAdmin,
 } from "./constants";
+import { FocusRing } from "./components/ui/FocusRing";
 
 export default function App() {
   const { t } = useTranslation();
@@ -1018,26 +1019,36 @@ export default function App() {
   const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, onRightClick }) => {
     const art = customArt[app.id] || gameArt[app.id];
     const cardRadius = surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 8 : 16;
+    const isOnyx = resolvedTheme === "onyx";
     return (
+      // Outer wrapper — no overflow:hidden so the ring can extend outside with a gap
       <div ref={cardRef} onClick={onClick} onDoubleClick={onDoubleClick}
         onContextMenu={onRightClick ? (e) => { e.preventDefault(); onRightClick(e, app); } : undefined}
-        style={focused
-          ? { ...glass, border: resolvedTheme === "onyx" ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease", boxShadow: resolvedTheme === "onyx" ? "none" : surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 40px ${accent.glow}0.2)`, transform: "scale(1.04) translateY(-1px)" }
-          : { ...glass, border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)", borderRadius: cardRadius, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease" }
-        }
+        style={{
+          position: "relative", borderRadius: cardRadius, aspectRatio: "2/3",
+          cursor: "pointer", transition: "box-shadow 0.15s ease, transform 0.15s ease",
+          ...(focused ? { transform: "scale(1.04) translateY(-1px)" } : {}),
+        }}
       >
-        {art
-          ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-          : <img src={`/assets/liftoff_cover_${settings.accent}.svg`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-        }
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 12px 12px", background: "linear-gradient(transparent, rgba(0,0,0,0.8))" }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "white", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</span>
+        {/* Inner content — overflow:hidden clips the art to the card */}
+        <div style={focused
+          ? { ...glass, border: isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, overflow: "hidden", position: "absolute", inset: 0, boxShadow: isOnyx ? "none" : surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 40px ${accent.glow}0.2)` }
+          : { ...glass, border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)", borderRadius: cardRadius, overflow: "hidden", position: "absolute", inset: 0 }
+        }>
+          {art
+            ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            : <img src={`/assets/liftoff_cover_${settings.accent}.svg`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          }
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 12px 12px", background: "linear-gradient(transparent, rgba(0,0,0,0.8))" }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "white", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</span>
+          </div>
+          <PinBadge isPinned={isPinned} />
+          {focused && !isOnyx && (
+            <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, pointerEvents: "none" }} />
+          )}
         </div>
-        <PinBadge isPinned={isPinned} />
-        {focused && (resolvedTheme === "onyx"
-          ? <div className="onyx-focus-ring" style={{ borderRadius: cardRadius }}><div className="onyx-ring-spin" /></div>
-          : <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, pointerEvents: "none" }} />
-        )}
+        {/* Ring — outside overflow:hidden, spaced 4px away from the card edge */}
+        <FocusRing focused={focused} variant="spin" elementRadius={cardRadius} />
       </div>
     );
   };

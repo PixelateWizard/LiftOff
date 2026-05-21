@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from "react";
 import { useGamepadIcons } from "../contexts/GamepadContext";
 import { useTheme } from "../contexts/ThemeContext";
+import { FocusRing } from "./ui/FocusRing";
 import type { GamepadPlatform } from "./ui/Gamepad";
 import { XboxLT, XboxRT, PsL2, PsR2, SwZL, SwZR } from "./ui/Gamepad";
 import type { GamepadIconProps } from "./ui/Gamepad";
@@ -98,7 +99,7 @@ export function SectionTabBar({
     color: active ? (resolvedTheme === "onyx" ? accent.primary : activeTextColor) : theme.textDim,
     border: `1px ${isDashed && !active ? "dashed" : "solid"} ${
       active
-        ? accent.primary
+        ? (resolvedTheme === "onyx" ? "transparent" : accent.primary)
         : surfaceStyle === "material"
         ? "var(--material-border-subtle)"
         : surfaceStyle === "aero"
@@ -164,12 +165,13 @@ export function SectionTabBar({
         const hovered = (surfaceStyle === "aero" || surfaceStyle === "material") && !active && hoveredIndex === i;
         const baseStyle = makePillTabStyle(active, item.isDashed, hovered);
         return (
-          <div key={i} onClick={() => onSelect?.(i)}
+          <div key={i}
+            onClick={() => onSelect?.(i)}
             onMouseEnter={() => setHoveredIndex(i)}
             onMouseLeave={() => setHoveredIndex(null)}
-            style={{ ...baseStyle, position: "relative", overflow: "hidden" }}>
+            style={{ ...baseStyle, position: "relative" }}>
             {item.label}
-            {active && resolvedTheme === "onyx" && <div className="onyx-focus-ring"><div className="onyx-ring-spin"/></div>}
+            <FocusRing focused={active} variant="spin" elementRadius={isPixel ? 0 : 20} />
           </div>
         );
       })}

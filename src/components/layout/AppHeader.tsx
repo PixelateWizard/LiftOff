@@ -6,6 +6,7 @@ import { SectionTabHeader } from "../SectionTabHeader";
 import type { TabItem } from "../SectionTabBar";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useSettings } from "../../contexts/SettingsContext";
+import { FocusRing } from "../ui/FocusRing";
 
 const TAB_ICONS: Record<string, (size: number, color: string) => ReactNode> = {
   Home:     (s, c) => <IoHomeSharp     size={s} color={c} />,
@@ -142,12 +143,12 @@ export function AppHeader({
                 borderRadius: isPixel ? 0 : 8, cursor: "pointer",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 gap: showIcon && showText ? 2 : 0,
-                position: "relative", overflow: "hidden",
+                position: "relative",
                 transition: "background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease",
                 ...(isActive
                   ? {
                       background: resolvedTheme === "onyx" ? "transparent" : accent.primary,
-                      border: `1px solid ${accent.primary}`,
+                      border: `1px solid ${resolvedTheme === "onyx" ? "transparent" : accent.primary}`,
                       boxShadow: resolvedTheme === "onyx"
                         ? "none"
                         : surfaceStyle === "aero"
@@ -165,7 +166,7 @@ export function AppHeader({
               }}>
                 {showIcon && iconNode}
                 {showText && <span style={{ lineHeight: 1 }}>{t(`tabs.${tabName.toLowerCase()}`)}</span>}
-                {isActive && resolvedTheme === "onyx" && <div className="onyx-focus-ring" style={{ borderRadius: isPixel ? 0 : 8 }}><div className="onyx-ring-spin" /></div>}
+                <FocusRing focused={isActive} variant="spin" elementRadius={isPixel ? 0 : 8} />
               </div>
             );
           })}

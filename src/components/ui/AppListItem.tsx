@@ -50,41 +50,49 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
     if (variant === "pill") {
       const isOnyx = resolvedTheme === "onyx";
       return (
+        // Outer wrapper — no overflow:hidden, holds ring + inner content as siblings
         <div
           ref={ref}
           onClick={onClick}
           onDoubleClick={onDoubleClick}
           onContextMenu={onContextMenu}
-          style={{
+          style={{ position: "relative", flexShrink: 0, borderRadius: cardRadius, cursor: "pointer", ...style }}
+        >
+          {/* Inner content — overflow:hidden */}
+          <div style={{
             display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
-            flexShrink: 0, cursor: "pointer", borderRadius: cardRadius,
-            position: "relative", overflow: "hidden",
+            borderRadius: cardRadius,
+            overflow: "hidden",
             transition: "all 0.15s ease",
             background: focused && !isOnyx
               ? accent.primary
               : (idleBackground ?? "rgba(255,255,255,0.08)"),
             border: `1px solid ${focused
-              ? accent.primary
+              ? (isOnyx ? "transparent" : accent.primary)
               : (idleBorder ?? "rgba(255,255,255,0.15)")}`,
             boxShadow: focused && !isOnyx
               ? `0 3px 10px ${accent.glow}0.38)`
               : (idleBoxShadow ?? "none"),
-            ...style,
-          }}
-        >
-          {icon}
-          <div style={{
-            fontSize: 12, fontWeight: 500,
-            color: focused
-              ? (isOnyx ? accent.primary : (activeTextColor ?? "white"))
-              : (idleColor ?? theme.textDim),
-            whiteSpace: "nowrap", maxWidth: 110,
-            overflow: "hidden", textOverflow: "ellipsis",
           }}>
-            {name}
+            {icon}
+            <div style={{
+              fontSize: 12, fontWeight: 500,
+              color: focused
+                ? (isOnyx ? accent.primary : (activeTextColor ?? "white"))
+                : (idleColor ?? theme.textDim),
+              whiteSpace: "nowrap", maxWidth: 110,
+              overflow: "hidden", textOverflow: "ellipsis",
+            }}>
+              {name}
+            </div>
+            {children}
           </div>
-          {children}
-          {focused && isOnyx && <div className="onyx-focus-ring" style={{ borderRadius: cardRadius }}><div className="onyx-ring-spin" /></div>}
+          {/* Ring — outside inner overflow:hidden, with gap */}
+          {focused && isOnyx && (
+            <div className="onyx-focus-ring" style={{ top: -8, right: -8, bottom: -8, left: -8, borderRadius: cardRadius + 8 }}>
+              <div className="onyx-ring-spin" />
+            </div>
+          )}
         </div>
       );
     }
@@ -109,45 +117,55 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
     const isOnyx = resolvedTheme === "onyx";
 
     return (
+      // Outer wrapper — no overflow:hidden, holds ring + inner content as siblings
       <div
         ref={ref}
         onClick={onClick}
         onDoubleClick={onDoubleClick}
         onContextMenu={onContextMenu}
-        style={{
-          display: "flex", alignItems: "center", gap: 12,
-          padding: "8px 14px",
-          cursor: "pointer", transition: "all 0.15s ease",
-          borderRadius: cardRadius,
-          position: "relative", overflow: "hidden",
-          ...glass,
-          background: rowBg,
-          border: `1px solid ${focused && !isOnyx ? focusBorder : idleBorderRow}`,
-          ...(focused && !isOnyx ? { boxShadow: focusShadow } : {}),
-          ...style,
-        }}
+        style={{ position: "relative", borderRadius: cardRadius, ...style }}
       >
-        {/* Icon — fixed-width container so the text column is always aligned */}
-        <div style={{ width: 40, height: 40, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {icon}
-        </div>
+        {/* Inner content — overflow:hidden */}
+        <div
+          style={{
+            display: "flex", alignItems: "center", gap: 12,
+            padding: "8px 14px",
+            cursor: "pointer", transition: "all 0.15s ease",
+            borderRadius: cardRadius,
+            overflow: "hidden",
+            ...glass,
+            background: rowBg,
+            border: `1px solid ${focused && !isOnyx ? focusBorder : idleBorderRow}`,
+            ...(focused && !isOnyx ? { boxShadow: focusShadow } : {}),
+          }}
+        >
+          {/* Icon — fixed-width container so the text column is always aligned */}
+          <div style={{ width: 40, height: 40, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {icon}
+          </div>
 
-        {/* Name — 2-line clamp with ellipsis */}
-        <div style={{
-          flex: 1, minWidth: 0,
-          fontSize: 13, fontWeight: 500,
-          color: theme.text,
-          overflow: "hidden",
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical" as CSSProperties["WebkitBoxOrient"],
-          lineHeight: 1.35,
-        }}>
-          {name}
-        </div>
+          {/* Name — 2-line clamp with ellipsis */}
+          <div style={{
+            flex: 1, minWidth: 0,
+            fontSize: 13, fontWeight: 500,
+            color: theme.text,
+            overflow: "hidden",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical" as CSSProperties["WebkitBoxOrient"],
+            lineHeight: 1.35,
+          }}>
+            {name}
+          </div>
 
-        {children}
-        {focused && isOnyx && <div className="onyx-focus-ring" style={{ borderRadius: cardRadius }}><div className="onyx-ring-spin" /></div>}
+          {children}
+        </div>
+        {/* Ring — horizontal variant (left spotlight), outside overflow:hidden, with gap */}
+        {focused && isOnyx && (
+          <div className="onyx-focus-ring" style={{ top: -8, right: -8, bottom: -8, left: -8, borderRadius: cardRadius + 8 }}>
+            <div className="onyx-ring-h" />
+          </div>
+        )}
       </div>
     );
   },

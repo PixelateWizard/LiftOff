@@ -191,6 +191,8 @@ pub struct Settings {
     pub show_hero_cover: bool,
     #[serde(default = "default_true")]
     pub show_home_pinned: bool,
+    #[serde(default = "default_home_pinned_pos")]
+    pub home_pinned_pos: String,
     // Gamepad icon settings (moi952 PRs)
     #[serde(default = "default_gamepad_platform")]
     pub gamepad_platform: String,
@@ -224,6 +226,7 @@ fn default_bottombar_compact()          -> String { "off".to_string() }
 fn default_home_mode()                  -> String { "normal".to_string() }
 fn default_home_section_title_size()    -> String { "small".to_string() }
 fn default_hero_content_pos()           -> String { "bottom".to_string() }
+fn default_home_pinned_pos()            -> String { "bottom".to_string() }
 fn default_gamepad_platform()           -> String { "xbox".to_string() }
 fn default_gamepad_btn_size()     -> String { "small".to_string() }
 fn default_topbar_show_bumpers()  -> bool   { false }
@@ -287,6 +290,7 @@ impl Default for Settings {
             show_home_collection_names: true,
             show_hero_cover: true,
             show_home_pinned: true,
+            home_pinned_pos: "bottom".to_string(),
             gamepad_platform: "xbox".to_string(),
             gamepad_icons_colored: false,
             gamepad_icons_filled: true,

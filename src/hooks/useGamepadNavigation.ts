@@ -497,7 +497,7 @@ export function useGamepadNavigation(
       .filter(Boolean)
       .filter(a => currentTab === "Home" || currentTab === "All" ? true
         : currentTab === "Games" ? a.app_type === "game" : a.app_type === "app");
-    const homePinnedVisible = currentTab === "Home" && currentSettings.show_home_pinned !== false && fPinned.length > 0;
+    const homePinnedVisible = currentTab === "Home" && (currentSettings.home_pinned_pos ?? "bottom") !== "none" && fPinned.length > 0;
 
     // ══ SEARCH OVERLAY ════════════════════════════════════════════
     if (searchOpenRef.current) {

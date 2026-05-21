@@ -1,5 +1,6 @@
 import type { CSSProperties, RefObject } from "react";
 import { ToggleKnob } from "./ToggleKnob";
+import { FocusRing } from "./FocusRing";
 import { useTheme } from "../../contexts/ThemeContext";
 
 interface ToggleSubItem {
@@ -54,9 +55,10 @@ export function CollapsibleGroup({
   focusedRef,
   items,
 }: CollapsibleGroupProps) {
-  const { glass, accent, isDark, theme, surfaceStyle, surface } = useTheme();
+  const { glass, accent, isDark, theme, surfaceStyle, surface, resolvedTheme } = useTheme();
   const isMaterial = surfaceStyle === "material";
   const isPixel = surfaceStyle === "win9x";
+  const isOnyx = resolvedTheme === "onyx";
   const materialFocusStyle: CSSProperties = isMaterial ? {
     border: `2px solid ${accent.primary}`,
     background: isDark
@@ -81,7 +83,19 @@ export function CollapsibleGroup({
     background: surface.activeBg,
     boxShadow: `${surface.bevelSunken}, 0 0 0 1px ${accent.primary}`,
   } : {};
-  const parentStyle: CSSProperties = {
+  const parentStyle: CSSProperties = isOnyx ? {
+    background: focused ? "rgba(255,255,255,0.05)" : "transparent",
+    borderRadius: 0,
+    padding: "14px 20px",
+    marginBottom: 0,
+    borderBottom: "1px solid rgba(255,255,255,0.07)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    cursor: "pointer",
+    transition: "background 0.15s ease",
+    position: "relative" as const,
+  } : {
     ...glass,
     borderRadius: isPixel ? 0 : value ? (isMaterial ? "8px 8px 0 0" : "16px 16px 0 0") : isMaterial ? 8 : 16,
     padding: "14px 20px",
@@ -102,7 +116,10 @@ export function CollapsibleGroup({
       : { border: isMaterial ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)" }),
   };
 
-  const subContainerStyle: CSSProperties = {
+  const subContainerStyle: CSSProperties = isOnyx ? {
+    marginBottom: 0,
+    overflow: "hidden",
+  } : {
     marginBottom: 8,
     padding: isMaterial ? "5px 6px 6px" : undefined,
     background: isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
@@ -123,12 +140,22 @@ export function CollapsibleGroup({
       <div ref={focusedRef} style={parentStyle} onClick={() => onChange(!value)}>
         <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{label}</span>
         <ToggleKnob value={value} />
+        <FocusRing focused={!!focused} variant="h" elementRadius={0} />
       </div>
 
       {value && (
         <div style={subContainerStyle}>
           {items.map((item, idx) => {
-            const rowStyle: CSSProperties = {
+            const rowStyle: CSSProperties = isOnyx ? {
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 20px 12px 36px",
+              cursor: "pointer",
+              transition: "background 0.15s ease",
+              background: item.focused ? "rgba(255,255,255,0.04)" : "transparent",
+              borderBottom: "1px solid rgba(255,255,255,0.05)",
+            } : {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -153,7 +180,7 @@ export function CollapsibleGroup({
                 : undefined,
               borderBottom:
                 idx < items.length - 1 && !isMaterial && !isPixel
-                  ? `1px solid ${isMaterial ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`
+                  ? `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`
                   : "none",
               ...(item.focused && isMaterial ? materialSubFocusStyle : {}),
               ...(item.focused && isPixel ? pixelSubFocusStyle : {}),
