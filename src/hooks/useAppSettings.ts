@@ -54,10 +54,12 @@ export function useAppSettings({
       // ui_scale is null when never saved; substitute the auto-detected value.
       const updated = { ...settingsRef.current, ...s, ui_scale: s.ui_scale ?? auto };
       if (updated.surface_style === "pixel") updated.surface_style = "win9x";
-      // Migrate: if wide_layout was true but sub-settings were never saved, enable all three.
-      if (updated.wide_layout && !updated.wide_topbar && !updated.wide_body && !updated.wide_bottombar) {
+      // Migrate: if wide_layout was true but sub-settings were never saved, enable all.
+      if (updated.wide_layout && !updated.wide_topbar && !updated.wide_games && !updated.wide_apps && !updated.wide_settings && !updated.wide_bottombar) {
         updated.wide_topbar = true;
-        updated.wide_body = true;
+        updated.wide_games = true;
+        updated.wide_apps = true;
+        updated.wide_settings = true;
         updated.wide_bottombar = true;
       }
       setSettings(updated);
@@ -81,8 +83,13 @@ export function useAppSettings({
       const updated = { ...prev, [key]: value };
       if (key === "wide_layout") {
         updated.wide_topbar = value as boolean;
-        updated.wide_body = value as boolean;
+        updated.wide_games = value as boolean;
+        updated.wide_apps = value as boolean;
+        updated.wide_settings = value as boolean;
         updated.wide_bottombar = value as boolean;
+      }
+      if (key === "home_mode") {
+        updated.cinematic_home = (value as string) === "immersive";
       }
       if (key === "theme") {
         const nextTheme = normalizeThemeKey(value as string);

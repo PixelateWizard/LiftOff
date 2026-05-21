@@ -188,12 +188,11 @@ function buildGlassSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, flat:
   const { glassEnabled, surfaceStyle, isDark, cinematicLight, accent, resolvedTheme } = args;
   if (!glassEnabled) return flat;
   if (resolvedTheme === "onyx") return {
-    background: "linear-gradient(180deg, rgba(40,80,200,0.12) 0%, rgba(10,30,90,0.08) 100%)",
-    backdropFilter: "blur(20px) saturate(140%) brightness(1.06)",
-    WebkitBackdropFilter: "blur(20px) saturate(140%) brightness(1.06)",
-    border: "1px solid rgba(80,140,255,0.20)",
-    boxShadow: "inset 0 1px 0 rgba(100,160,255,0.18), 0 0 0 1px rgba(80,130,255,0.14), 0 10px 32px rgba(0,0,0,0.45)",
-    animation: "onyx-card-shimmer 5s ease-in-out infinite",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%)",
+    backdropFilter: "blur(22px) saturate(160%) brightness(1.04)",
+    WebkitBackdropFilter: "blur(22px) saturate(160%) brightness(1.04)",
+    border: "1.5px solid rgba(255,255,255,0.14)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.24), 0 10px 32px rgba(0,0,0,0.48)",
   };
   if (surfaceStyle === "material") return {
     background: `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-2)`,
@@ -237,11 +236,11 @@ function buildGlassBarSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, fl
   const { glassEnabled, surfaceStyle, isDark, cinematicLight, accent, resolvedTheme } = args;
   if (!glassEnabled) return flat;
   if (resolvedTheme === "onyx") return {
-    background: "linear-gradient(180deg, rgba(0,0,0,0.14), rgba(0,0,0,0.06)), linear-gradient(180deg, rgba(40,80,200,0.22) 0%, rgba(20,50,130,0.12) 20%, rgba(10,20,60,0.08) 100%)",
-    backdropFilter: "blur(16px) saturate(130%) brightness(0.92)",
-    WebkitBackdropFilter: "blur(16px) saturate(130%) brightness(0.92)",
-    border: "1px solid rgba(80,140,255,0.16)",
-    boxShadow: "inset 0 1px 0 rgba(100,160,255,0.30), inset 0 -1px 0 rgba(0,0,0,0.24), 0 0 0 1px rgba(60,110,220,0.12), 0 4px 16px rgba(0,0,0,0.28)",
+    background: "linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.10)), linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04))",
+    backdropFilter: "blur(18px) saturate(130%) brightness(0.88)",
+    WebkitBackdropFilter: "blur(18px) saturate(130%) brightness(0.88)",
+    border: "1.5px solid rgba(255,255,255,0.12)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.32)",
   };
   if (surfaceStyle === "material") return {
     background: `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-3)`,
@@ -287,11 +286,11 @@ function buildSettingsRowSurface(args: SurfaceThemeArgs, surface: SurfaceTokens,
   const tintTop = `${accent.glow}0.025)`;
   const tintBot = `${accent.glow}0.010)`;
   if (resolvedTheme === "onyx") return {
-    background: "linear-gradient(180deg, rgba(40,80,200,0.07) 0%, rgba(10,30,90,0.04) 100%)",
-    backdropFilter: "blur(8px) saturate(120%) brightness(0.96)",
-    WebkitBackdropFilter: "blur(8px) saturate(120%) brightness(0.96)",
-    border: "1px solid rgba(80,140,255,0.10)",
-    boxShadow: "inset 0 1px 0 rgba(100,160,255,0.10), 0 2px 8px rgba(0,0,0,0.18)",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.042), rgba(255,255,255,0.018))",
+    backdropFilter: "blur(8px) saturate(110%) brightness(0.92)",
+    WebkitBackdropFilter: "blur(8px) saturate(110%) brightness(0.92)",
+    border: "1.5px solid rgba(255,255,255,0.09)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.20)",
   };
   if (surfaceStyle === "material") return {
     background: `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-2)`,

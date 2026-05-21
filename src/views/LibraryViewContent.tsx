@@ -59,8 +59,9 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
     appListView,
     appListCols,
   } = props;
-  const { surface } = useTheme();
+  const { surface, resolvedTheme } = useTheme();
   const isPixel = surfaceStyle === "win9x";
+  const isOnyx = resolvedTheme === "onyx";
 
               const SOURCES = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSources, ...gameCollections.map(c => c.name)];
               const APP_COLS = ["All", ...appCollections.map(c => c.name)];
@@ -187,9 +188,11 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                           onDoubleClick={() => triggerLaunch(app, recent)}
                           onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
                           style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
-                            border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
+                            border: focused
+                              ? (isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`)
+                              : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
                             borderRadius: isPixel ? 0 : 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
-                            ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}),
+                            ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : isOnyx ? undefined : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}),
                             ...pixelCard }}>
                           {art ? (
                             <>
@@ -210,6 +213,7 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                             </>
                           )}
                           <PinBadge isPinned={true} small />
+                          {focused && isOnyx && <div className="onyx-focus-ring" style={{ borderRadius: isPixel ? 0 : 16 }}><div className="onyx-ring-spin" /></div>}
                         </div>
                       );
                     })}
@@ -284,9 +288,11 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                       onDoubleClick={() => triggerLaunch(app, recent)}
                       onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
                       style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
-                        border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
+                        border: focused
+                          ? (isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`)
+                          : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
                         borderRadius: isPixel ? 0 : 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
-                        ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}),
+                        ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : isOnyx ? undefined : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}),
                         ...pixelCard }}>
                       {art ? (
                         <>
@@ -307,6 +313,7 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                         </>
                       )}
                       <PinBadge isPinned={isPinned} small />
+                      {focused && isOnyx && <div className="onyx-focus-ring" style={{ borderRadius: isPixel ? 0 : 16 }}><div className="onyx-ring-spin" /></div>}
                     </div>
                   );
                 })}

@@ -1,5 +1,12 @@
 # LiftOff — Claude Code Handoff
 
+## Code Style Rules
+
+- **All code comments must be in English.** This is a community project with contributors from different countries. Never write comments in French or any other language.
+- Respond to the user in whatever language they write in — but code comments are always English.
+
+---
+
 ## Project Overview
 
 **LiftOff** is a Windows desktop game/app launcher built with Tauri 2 (Rust backend + React frontend). It's designed primarily for gamepad/controller navigation and targets a Steam Deck / HTPC-style use case.

@@ -52,7 +52,7 @@ export function SectionTabBar({
   style,
   labelCase = "default",
 }: SectionTabBarProps) {
-  const { theme, accent, isDark, glassEnabled, surfaceStyle } = useTheme();
+  const { theme, accent, isDark, glassEnabled, surfaceStyle, resolvedTheme } = useTheme();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const activePillText = "rgba(20, 14, 10, 0.90)";
   const activeTextColor = isDark
@@ -85,7 +85,7 @@ export function SectionTabBar({
     userSelect: "none",
     textTransform,
     background: active
-      ? accent.primary
+      ? (resolvedTheme === "onyx" ? "transparent" : accent.primary)
       : surfaceStyle === "material"
       ? hovered ? "var(--material-elevation-3)" : "var(--material-elevation-2)"
       : surfaceStyle === "aero"
@@ -95,7 +95,7 @@ export function SectionTabBar({
       : isDark
       ? "rgba(255,255,255,0.06)"
       : "rgba(0,0,0,0.06)",
-    color: active ? activeTextColor : theme.textDim,
+    color: active ? (resolvedTheme === "onyx" ? accent.primary : activeTextColor) : theme.textDim,
     border: `1px ${isDashed && !active ? "dashed" : "solid"} ${
       active
         ? accent.primary
@@ -111,7 +111,9 @@ export function SectionTabBar({
     }`,
     backdropFilter: !active && glassEnabled && surfaceStyle !== "material" ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(12px) saturate(150%)") : undefined,
     boxShadow: active
-      ? surfaceStyle === "aero"
+      ? resolvedTheme === "onyx"
+        ? "none"
+        : surfaceStyle === "aero"
         ? `inset 0 1px 0 rgba(255,255,255,0.80), inset 0 2px 10px rgba(255,255,255,0.24), inset 0 -1px 0 rgba(0,0,0,0.28), 0 4px 16px ${accent.glow}0.55)`
         : surfaceStyle === "material"
         ? "var(--material-shadow-medium)"
@@ -165,8 +167,9 @@ export function SectionTabBar({
           <div key={i} onClick={() => onSelect?.(i)}
             onMouseEnter={() => setHoveredIndex(i)}
             onMouseLeave={() => setHoveredIndex(null)}
-            style={baseStyle}>
+            style={{ ...baseStyle, position: "relative", overflow: "hidden" }}>
             {item.label}
+            {active && resolvedTheme === "onyx" && <div className="onyx-focus-ring"><div className="onyx-ring-spin"/></div>}
           </div>
         );
       })}

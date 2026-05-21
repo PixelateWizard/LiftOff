@@ -58,11 +58,14 @@ export interface Settings {
   accent: string;
   theme: ThemeMode;
   stars_enabled: boolean;
+  onyx_top_light: boolean;
   lofi_music_enabled: boolean;
   wide_layout: boolean;
   wide_topbar: boolean;
-  wide_body: boolean;
   wide_bottombar: boolean;
+  wide_games: boolean;
+  wide_apps: boolean;
+  wide_settings: boolean;
   topbar_background: boolean;
   bottombar_background: boolean;
   hide_bottom_bar: boolean;
@@ -87,6 +90,10 @@ export interface Settings {
   show_battery: boolean;
   show_clock: boolean;
   cinematic_home: boolean;
+  home_mode: string;
+  home_section_title_size: string;
+  show_home_recents: boolean;
+  hero_content_pos: string;
   show_immersive_hero_art: boolean;
   nav_bumpers_pos: NavBumpersPos;
   tabbar_show_buttons: TabbarButtons;
@@ -127,6 +134,12 @@ interface SettingsItemBase {
   key: string;
   section: number;
   label: string;
+  /** Visual indentation — rendered as a child of the preceding parent row */
+  indent?: boolean;
+  /** Set by buildSettingsItems when the active theme forces this setting's value */
+  locked?: boolean;
+  /** The value the current theme forces for this setting (shown greyed on the right) */
+  lockedValue?: string | boolean | number;
 }
 
 export interface SettingsDividerItem extends SettingsItemBase {
@@ -228,6 +241,9 @@ export interface SettingsHomeCollectionItem {
   label: string;
   type: "home_collection_toggle";
   colName: string;
+  indent?: boolean;
+  locked?: boolean;
+  lockedValue?: string | boolean | number;
 }
 
 export type SettingsItem =

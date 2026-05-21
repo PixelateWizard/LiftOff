@@ -99,10 +99,18 @@
     "backgroundForest": "Forest Effects",
     "backgroundWebcore": "Webcore Effects",
     "surfaceStyle": "Surface Style",
+    "onyxTopLight": "Top Light Beam",
     "wideLayout": "Wide Layout",
     "wideTopbar": "Top Bar",
-    "wideBody": "Content Area",
+    "wideGames": "Games",
+    "wideApps": "Apps",
+    "wideSettings": "Settings",
     "wideBottombar": "Bottom Bar",
+    "homeMode": "Home mode",
+    "homeSectionTitleSize": "Section title size",
+    "showHomeRecents": "Show recently played",
+    "heroContentPos": "Hero content position",
+    "backgroundEffects": "Effects",
     "topbarShowBumpers": "Show Bumper Badges in Nav Bar",
     "uiScale": "UI Scale",
     "resetScale": "Reset Scale to Auto",
@@ -239,7 +247,9 @@
       "off": "Off",
       "always": "Always",
       "except_home": "Except Home",
-      "home": "Home Only"
+      "home": "Home Only",
+      "semi": "Semi-immersive",
+      "immersive": "Immersive"
     }
   },
   "home": {
@@ -277,6 +287,12 @@
       "browsing": "Browsing",
       "idle": "Idle"
     },
+    "startTyping": "Start typing to search",
+    "noResultsFor": "No results for \"{{query}}\"",
+    "bringKeyboard_pre": "Press ",
+    "bringKeyboard_post": " to bring the keyboard back",
+    "keepTyping_pre": "Press ",
+    "keepTyping_post": " to keep typing",
     "results_one": "{{count}} result",
     "results_other": "{{count}} results",
     "startToBrowse": "— ⊞ Start to browse",

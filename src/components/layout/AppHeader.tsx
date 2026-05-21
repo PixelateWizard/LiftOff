@@ -71,7 +71,7 @@ export function AppHeader({
   headerTabItems, headerActiveIndex, headerOnSelect, headerRightActions,
 }: Props) {
   const { t } = useTranslation();
-  const { glassBar, accent, theme, isDark, glassEnabled, surfaceStyle, surface } = useTheme();
+  const { glassBar, accent, theme, isDark, glassEnabled, surfaceStyle, surface, resolvedTheme } = useTheme();
   const { settings } = useSettings();
   const activePillText = "rgba(20, 14, 10, 0.90)";
   const activeTextColor = isDark
@@ -142,17 +142,20 @@ export function AppHeader({
                 borderRadius: isPixel ? 0 : 8, cursor: "pointer",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 gap: showIcon && showText ? 2 : 0,
+                position: "relative", overflow: "hidden",
                 transition: "background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease",
                 ...(isActive
                   ? {
-                      background: accent.primary,
+                      background: resolvedTheme === "onyx" ? "transparent" : accent.primary,
                       border: `1px solid ${accent.primary}`,
-                      boxShadow: surfaceStyle === "aero"
+                      boxShadow: resolvedTheme === "onyx"
+                        ? "none"
+                        : surfaceStyle === "aero"
                         ? `inset 0 1px 0 rgba(255,255,255,0.80), inset 0 2px 10px rgba(255,255,255,0.24), inset 0 -1px 0 rgba(0,0,0,0.28), 0 4px 16px ${accent.glow}0.55)`
                         : surfaceStyle === "material"
                         ? "var(--material-shadow-medium)"
                         : `0 4px 24px ${accent.glow}0.5)`,
-                      color: activeTextColor,
+                      color: resolvedTheme === "onyx" ? accent.primary : activeTextColor,
                     }
                   : {
                       background: "transparent",
@@ -162,6 +165,7 @@ export function AppHeader({
               }}>
                 {showIcon && iconNode}
                 {showText && <span style={{ lineHeight: 1 }}>{t(`tabs.${tabName.toLowerCase()}`)}</span>}
+                {isActive && resolvedTheme === "onyx" && <div className="onyx-focus-ring" style={{ borderRadius: isPixel ? 0 : 8 }}><div className="onyx-ring-spin" /></div>}
               </div>
             );
           })}

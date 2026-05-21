@@ -7,6 +7,7 @@ import { AppListItem } from "../components/ui";
 interface HomeViewProps {
   active: boolean;
   cinematicHome: boolean;
+  semiHome?: boolean;
   scrollRef: RefObject<HTMLDivElement>;
   [key: string]: any;
 }
@@ -20,6 +21,7 @@ export function HomeView(props: HomeViewProps) {
   const {
     active,
     cinematicHome,
+    semiHome = false,
     scrollRef,
     recent,
     pins,
@@ -78,7 +80,7 @@ export function HomeView(props: HomeViewProps) {
     heroIndexRef,
     iconColors,
   } = props;
-  const { surface } = useTheme();
+  const { surface, resolvedTheme } = useTheme();
   const [heroMediaPaused, setHeroMediaPaused] = useState(false);
   const heroGames = useMemo(() => {
     const filteredRecentGames = recentGames.filter(g => apps.some(a => a.id === g.id));
@@ -197,6 +199,8 @@ export function HomeView(props: HomeViewProps) {
           ? (heroAnimated[heroGame.id] || heroStatic[heroGame.id])
           : heroStatic[heroGame.id])
       : null;
+    const sectionTitleFontSize = settings.home_section_title_size === "large" ? 15 : settings.home_section_title_size === "medium" ? 12 : 10;
+    const heroContentTop = settings.hero_content_pos === "top";
     const showHeroArtwork = !settings.cinematic_home || settings.show_immersive_hero_art !== false;
     const visibleHeroBanner = showHeroArtwork ? heroBanner : null;
     const heroFocused = focusSec === "hero";
@@ -355,16 +359,22 @@ export function HomeView(props: HomeViewProps) {
       : "transparent";
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", padding: settings.cinematic_home ? "0" : "16px 24px 0", ...(settings.wide_body || settings.cinematic_home ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box",
+      <div style={{ display: "flex", flexDirection: "column", padding: settings.cinematic_home ? "0" : semiHome ? "0" : "16px 24px 0", ...(settings.wide_layout || settings.cinematic_home || semiHome ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box",
         ...(settings.cinematic_home ? { position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none" } : { minHeight: "100%" }) }}>
         {/* ── HERO ── */}
         <div style={{
           ...(settings.cinematic_home
             ? { position: "fixed", inset: 0, zIndex: 0 }
+            : semiHome
+            ? { position: "fixed", top: 0, left: 0, right: 0, height: "clamp(260px, 50vh, 580px)", zIndex: 0,
+                transform: focusSec !== "hero" ? "translateY(-100%)" : "translateY(0)",
+                opacity: focusSec !== "hero" ? 0 : 1,
+                transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.28s ease",
+              }
             : { position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: surfaceCardRadius, flexShrink: 0 }),
           overflow: "hidden", display: "flex", flexDirection: "column",
-          border: settings.cinematic_home ? "none" : heroFocused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.5)"}` : `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-          boxShadow: settings.cinematic_home ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
+          border: (settings.cinematic_home || semiHome) ? "none" : heroFocused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.5)"}` : `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+          boxShadow: (settings.cinematic_home || semiHome) ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
           background: settings.cinematic_home && !showHeroArtwork ? "transparent" : materialHero ? appBg : isDark ? "#0a0502" : appBg,
         }}>
@@ -492,7 +502,7 @@ export function HomeView(props: HomeViewProps) {
           <div style={materialCinematicHero
             ? {
                 position: "absolute",
-                bottom: cinematicHeroBottom,
+                ...(heroContentTop ? { top: 80 } : { bottom: cinematicHeroBottom }),
                 left: 24,
                 zIndex: 4,
                 display: "flex",
@@ -511,8 +521,12 @@ export function HomeView(props: HomeViewProps) {
                 pointerEvents: "auto",
               }
             : settings.cinematic_home
-            ? { position: "fixed", left: 0, right: 0, bottom: cinematicHeroAtBottom ? 0 : cinematicPinnedAtBottom ? "84px" : cinematicHeroNearChevron ? "68px" : "120px", zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
-            : { position: "relative", zIndex: 1, flex: 1, display: "flex", alignItems: "flex-end", padding: "0 20px 20px" }}>
+            ? heroContentTop
+              ? { position: "fixed", left: 0, right: 0, top: 80, zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-start", padding: "20px 32px 0" }
+              : { position: "fixed", left: 0, right: 0, bottom: cinematicHeroAtBottom ? 0 : cinematicPinnedAtBottom ? "84px" : cinematicHeroNearChevron ? "68px" : "120px", zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
+            : { position: "relative", zIndex: 1, flex: 1, display: "flex",
+                alignItems: heroContentTop ? "flex-start" : "flex-end",
+                padding: heroContentTop ? `${semiHome ? "76px" : "20px"} 20px 0` : "0 20px 20px" }}>
             {webcoreHero && materialCinematicHero && (
               <div style={{ position: "absolute", left: 2, right: 2, top: 2, height: 22, background: surface.titleBarBg, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 5px 0 7px", boxSizing: "border-box" }}>
                 <span style={{ color: "white", fontSize: 11, fontFamily: "Tahoma, Arial, sans-serif", fontWeight: 700 }}>{heroGame?.name || "LiftOff"}</span>
@@ -533,11 +547,14 @@ export function HomeView(props: HomeViewProps) {
             )}
             {heroGame ? (
               <div style={materialCinematicHero ? { display: "flex", flexDirection: "column", gap: 6, minWidth: 0 } : { flex: settings.cinematic_home ? 1 : "0 1 auto", minWidth: 0, maxWidth: settings.cinematic_home ? undefined : "min(780px, 100%)", alignSelf: settings.cinematic_home ? undefined : "flex-end", ...(!settings.cinematic_home ? heroCopySurfaceStyle : {}), ...(!settings.cinematic_home && settings.show_hero_cover !== false ? { minHeight: "clamp(120px, 15vw, 225px)", boxSizing: "border-box", justifyContent: "center", display: "flex", flexDirection: "column" } : {}) }}>
-                <div style={{ fontSize: materialCinematicHero ? 11 : 10, letterSpacing: materialCinematicHero ? "0.10em" : "0.2em", textTransform: "uppercase", color: materialCinematicHero ? accent.primary : settings.cinematic_home ? accent.primary : heroLabelColor, marginBottom: materialCinematicHero ? 0 : 6, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, textShadow: materialCinematicHero || settings.cinematic_home ? undefined : heroTextShadow }}>
-                  {heroIdx === 0 ? t('home.resumePlaying') : t('home.recentlyPlayed')}
-                </div>
-                <div style={{ fontSize: materialCinematicHero ? 28 : "clamp(22px, 3.2vw, 48px)", fontWeight: 700, color: materialCinematicHero ? (isDark ? "rgba(255,250,245,0.95)" : "rgba(28,20,14,0.92)") : settings.cinematic_home ? (materialHero ? materialHeroText : theme.text) : heroTextColor, marginBottom: materialCinematicHero ? 0 : 4, lineHeight: materialCinematicHero ? 1.1 : 1.05, textShadow: materialCinematicHero ? "none" : settings.cinematic_home ? (materialHero ? (isDark ? "0 2px 14px rgba(0,0,0,0.64)" : "0 1px 0 rgba(255,255,255,0.32), 0 2px 10px rgba(39,27,18,0.12)") : isDark ? "0 2px 20px rgba(0,0,0,0.8)" : "none") : heroTextShadow }}>{heroGame.name}</div>
-                <div style={{ fontSize: materialCinematicHero ? 12 : 11, color: materialCinematicHero ? (isDark ? "rgba(255,250,245,0.45)" : "rgba(28,20,14,0.42)") : settings.cinematic_home ? (materialHero ? materialHeroDimText : theme.textDim) : heroSubtextColor, marginBottom: materialCinematicHero ? 4 : 16, textShadow: materialCinematicHero || settings.cinematic_home ? undefined : heroTextShadow }}>{t('home.game')}</div>
+                {/* Title label and name */}
+                {<>
+                  <div style={{ fontSize: materialCinematicHero ? 11 : 10, letterSpacing: materialCinematicHero ? "0.10em" : "0.2em", textTransform: "uppercase", color: materialCinematicHero ? accent.primary : settings.cinematic_home ? accent.primary : heroLabelColor, marginBottom: materialCinematicHero ? 0 : 6, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, textShadow: materialCinematicHero || settings.cinematic_home ? undefined : heroTextShadow }}>
+                    {heroIdx === 0 ? t('home.resumePlaying') : t('home.recentlyPlayed')}
+                  </div>
+                  <div style={{ fontSize: materialCinematicHero ? 28 : "clamp(22px, 3.2vw, 48px)", fontWeight: 700, color: materialCinematicHero ? (isDark ? "rgba(255,250,245,0.95)" : "rgba(28,20,14,0.92)") : settings.cinematic_home ? (materialHero ? materialHeroText : theme.text) : heroTextColor, marginBottom: materialCinematicHero ? 0 : 4, lineHeight: materialCinematicHero ? 1.1 : 1.05, textShadow: materialCinematicHero ? "none" : settings.cinematic_home ? (materialHero ? (isDark ? "0 2px 14px rgba(0,0,0,0.64)" : "0 1px 0 rgba(255,255,255,0.32), 0 2px 10px rgba(39,27,18,0.12)") : isDark ? "0 2px 20px rgba(0,0,0,0.8)" : "none") : heroTextShadow }}>{heroGame.name}</div>
+                  <div style={{ fontSize: materialCinematicHero ? 12 : 11, color: materialCinematicHero ? (isDark ? "rgba(255,250,245,0.45)" : "rgba(28,20,14,0.42)") : settings.cinematic_home ? (materialHero ? materialHeroDimText : theme.textDim) : heroSubtextColor, marginBottom: materialCinematicHero ? 4 : 16, textShadow: materialCinematicHero || settings.cinematic_home ? undefined : heroTextShadow }}>{t('home.game')}</div>
+                </>}
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div onClick={() => triggerLaunch(heroGame, recentRef.current)}
                     style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, minWidth: materialCinematicHero ? 130 : undefined, padding: materialCinematicHero ? "10px 20px" : "10px 24px", borderRadius: launchRadius, cursor: "pointer", transition: "all 0.15s ease", fontWeight: 600, fontSize: 14,
@@ -579,8 +596,11 @@ export function HomeView(props: HomeViewProps) {
               <div style={{ fontSize: 14, color: theme.textFaint }}>{t('home.noGames')}</div>
             )}
           </div>
-          {heroFocused && !settings.cinematic_home && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: surfaceStyle === "material" ? accent.primary : `linear-gradient(to right, ${accent.primary}, ${accent.glow}0))`, pointerEvents: "none", zIndex: 3 }} />}
+          {heroFocused && !settings.cinematic_home && !semiHome && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: surfaceStyle === "material" ? accent.primary : `linear-gradient(to right, ${accent.primary}, ${accent.glow}0))`, pointerEvents: "none", zIndex: 3 }} />}
         </div>
+
+        {/* Spacer to offset the fixed hero in semi mode */}
+        {semiHome && <div style={{ height: "clamp(260px, 50vh, 580px)", flexShrink: 0, pointerEvents: "none" }} />}
 
         {/* ── CINEMATIC PINNED SHELF — fixed overlay above bottom bar ── */}
         {settings.cinematic_home && cinematicPinnedVisible && (
@@ -611,7 +631,7 @@ export function HomeView(props: HomeViewProps) {
         )}
 
         {/* ── RECENTS ── */}
-        {!settings.cinematic_home && <div style={{ paddingTop: 0 }}>
+        {!settings.cinematic_home && settings.show_home_recents !== false && <div style={{ paddingTop: 0, ...(semiHome ? { padding: "0 24px" } : {}) }}>
           <div style={{ paddingTop: 14 }} />
           {homeFilteredRecent.length === 0 ? (
             <div style={{ fontSize: 13, color: theme.textFaint, paddingBottom: settings.show_home_collections ? 16 : 100 }}>{t('home.noRecents')}</div>
@@ -658,7 +678,8 @@ export function HomeView(props: HomeViewProps) {
                         <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
                       </div>
                       <PinBadge isPinned={isPinned} small />
-                      {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
+                      {focused && resolvedTheme !== "onyx" && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
+                      {focused && resolvedTheme === "onyx" && <div className="onyx-focus-ring" style={{ borderRadius: surfaceCardRadius }}><div className="onyx-ring-spin"/></div>}
                     </div>
                   );
                 }
@@ -679,7 +700,8 @@ export function HomeView(props: HomeViewProps) {
                         <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
                       </div>
                       <PinBadge isPinned={isPinned} small />
-                      {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
+                      {focused && resolvedTheme !== "onyx" && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
+                      {focused && resolvedTheme === "onyx" && <div className="onyx-focus-ring" style={{ borderRadius: surfaceCardRadius }}><div className="onyx-ring-spin"/></div>}
                     </div>
                   );
                 }
@@ -727,7 +749,7 @@ export function HomeView(props: HomeViewProps) {
             return (
             <div key={col.id} ref={rowFocused ? focusedRowRef : null} style={{ marginBottom: 24 }}>
               {settings.show_home_collection_names && (
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, paddingBottom: 10, paddingLeft: 4 }}>
+                <div style={{ fontSize: sectionTitleFontSize, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, paddingBottom: 10, paddingLeft: 4 }}>
                   {col.name}
                 </div>
               )}
@@ -743,7 +765,7 @@ export function HomeView(props: HomeViewProps) {
                         onClick={() => { setFocusSection("home_collections"); focusSectionRef.current = "home_collections"; setHomeColFocusRow(rowIdx); homeColFocusRowRef.current = rowIdx; setHomeColFocusCol(colIdx); homeColFocusColRef.current = colIdx; }}
                         onDoubleClick={() => triggerLaunch(app, recentRef.current)}
                         style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, overflow: "hidden", cursor: "pointer", position: "relative", transition: "box-shadow 0.15s ease, outline 0.15s ease",
-                          outline: focused ? `2px solid ${accent.primary}` : "2px solid transparent",
+                          outline: (focused && resolvedTheme !== "onyx") ? `2px solid ${accent.primary}` : "2px solid transparent",
                           outlineOffset: "2px",
                           border: "1px solid rgba(255,255,255,0.08)",
                           boxShadow: focused ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 4px 20px ${accent.glow}0.3)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
@@ -756,6 +778,7 @@ export function HomeView(props: HomeViewProps) {
                         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
                           <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
                         </div>
+                        {focused && resolvedTheme === "onyx" && <div className="onyx-focus-ring" style={{ borderRadius: surfaceCardRadius }}><div className="onyx-ring-spin"/></div>}
                       </div>
                     );
                   }
@@ -885,7 +908,7 @@ export function HomeView(props: HomeViewProps) {
                     {/* Recents row — fully navigable */}
                     {homeFilteredRecent.length > 0 && (
                     <div style={{ marginBottom: 24, padding: "0 24px" }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, paddingBottom: 10, paddingLeft: 4, paddingTop: 8 }}>
+                      <div style={{ fontSize: sectionTitleFontSize, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, paddingBottom: 10, paddingLeft: 4, paddingTop: 8 }}>
                         {t('home.recentlyPlayed').replace('▶ ', '')}
                       </div>
                       <div ref={recentShelfRef} style={{ display: "flex", gap: 10, overflowX: "auto", padding: "16px 18px 28px", margin: "-16px -18px -20px", scrollPaddingLeft: 18, scrollPaddingRight: 18 }}>
@@ -928,9 +951,9 @@ export function HomeView(props: HomeViewProps) {
             );
           }
 
-          // ── NORMAL MODE: inline below recents ──
+          // ── NORMAL / SEMI MODE: inline below recents ──
           return (
-            <div style={{ paddingBottom: 100 }}>
+            <div style={{ paddingBottom: 100, ...(semiHome ? { padding: "0 24px 100px" } : {}) }}>
               {collectionRows}
             </div>
           );

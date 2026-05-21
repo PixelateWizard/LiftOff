@@ -41,13 +41,14 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
     },
     ref,
   ) => {
-    const { accent, theme, isDark, glass, surfaceStyle } = useTheme();
+    const { accent, theme, isDark, glass, surfaceStyle, resolvedTheme } = useTheme();
 
     const isPixel = surfaceStyle === "win9x";
     const cardRadius = isPixel ? 0 : surfaceStyle === "material" ? 8 : 12;
 
     // ── Pill variant ───────────────────────────────────────────────
     if (variant === "pill") {
+      const isOnyx = resolvedTheme === "onyx";
       return (
         <div
           ref={ref}
@@ -57,14 +58,15 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
           style={{
             display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
             flexShrink: 0, cursor: "pointer", borderRadius: cardRadius,
+            position: "relative", overflow: "hidden",
             transition: "all 0.15s ease",
-            background: focused
+            background: focused && !isOnyx
               ? accent.primary
               : (idleBackground ?? "rgba(255,255,255,0.08)"),
             border: `1px solid ${focused
               ? accent.primary
               : (idleBorder ?? "rgba(255,255,255,0.15)")}`,
-            boxShadow: focused
+            boxShadow: focused && !isOnyx
               ? `0 3px 10px ${accent.glow}0.38)`
               : (idleBoxShadow ?? "none"),
             ...style,
@@ -74,7 +76,7 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
           <div style={{
             fontSize: 12, fontWeight: 500,
             color: focused
-              ? (activeTextColor ?? "white")
+              ? (isOnyx ? accent.primary : (activeTextColor ?? "white"))
               : (idleColor ?? theme.textDim),
             whiteSpace: "nowrap", maxWidth: 110,
             overflow: "hidden", textOverflow: "ellipsis",
@@ -82,6 +84,7 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
             {name}
           </div>
           {children}
+          {focused && isOnyx && <div className="onyx-focus-ring" style={{ borderRadius: cardRadius }}><div className="onyx-ring-spin" /></div>}
         </div>
       );
     }
@@ -103,6 +106,8 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
       ? "var(--material-shadow-medium)"
       : `0 0 0 1px ${accent.glow}0.25), 0 0 18px ${accent.glow}0.10)`;
 
+    const isOnyx = resolvedTheme === "onyx";
+
     return (
       <div
         ref={ref}
@@ -114,10 +119,11 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
           padding: "8px 14px",
           cursor: "pointer", transition: "all 0.15s ease",
           borderRadius: cardRadius,
+          position: "relative", overflow: "hidden",
           ...glass,
           background: rowBg,
-          border: `1px solid ${focused ? focusBorder : idleBorderRow}`,
-          ...(focused ? { boxShadow: focusShadow } : {}),
+          border: `1px solid ${focused && !isOnyx ? focusBorder : idleBorderRow}`,
+          ...(focused && !isOnyx ? { boxShadow: focusShadow } : {}),
           ...style,
         }}
       >
@@ -141,6 +147,7 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
         </div>
 
         {children}
+        {focused && isOnyx && <div className="onyx-focus-ring" style={{ borderRadius: cardRadius }}><div className="onyx-ring-spin" /></div>}
       </div>
     );
   },

@@ -99,10 +99,19 @@
     "backgroundForest": "Effets foret",
     "backgroundWebcore": "Effets webcore",
     "surfaceStyle": "Style de surface",
+    "onyxTopLight": "Faisceau lumineux supérieur",
     "wideLayout": "Disposition large",
     "wideTopbar": "Barre supérieure",
     "wideBody": "Contenu",
+    "wideGames": "Jeux",
+    "wideApps": "Apps",
+    "wideSettings": "Paramètres",
     "wideBottombar": "Barre inférieure",
+    "homeMode": "Mode accueil",
+    "homeSectionTitleSize": "Taille des titres de section",
+    "showHomeRecents": "Afficher les jeux récents",
+    "heroContentPos": "Position du contenu hero",
+    "backgroundEffects": "Effets",
     "topbarShowBumpers": "Badges palette dans la barre principale",
     "uiScale": "Échelle UI",
     "resetScale": "Réinitialiser l'échelle",
@@ -239,7 +248,9 @@
       "off": "Désactivé",
       "always": "Partout",
       "except_home": "Sauf accueil",
-      "home": "Accueil seul"
+      "home": "Accueil seul",
+      "semi": "Semi-immersif",
+      "immersive": "Immersif"
     }
   },
   "home": {
@@ -277,6 +288,12 @@
       "browsing": "Navigation",
       "idle": "Inactif"
     },
+    "startTyping": "Commencez à taper pour rechercher",
+    "noResultsFor": "Aucun résultat pour « {{query}} »",
+    "bringKeyboard_pre": "Appuyez sur ",
+    "bringKeyboard_post": " pour afficher le clavier",
+    "keepTyping_pre": "Appuyez sur ",
+    "keepTyping_post": " pour continuer à taper",
     "results_one": "{{count}} résultat",
     "results_other": "{{count}} résultats",
     "startToBrowse": "— ⊞ Start pour naviguer",

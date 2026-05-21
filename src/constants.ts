@@ -62,6 +62,25 @@ export const THEME_SURFACE_DEFAULTS: Record<string, string> = {
   onyx: "glass",
 };
 
+/**
+ * Settings that a theme forces regardless of user preference.
+ * Add an entry here when a new theme needs to lock specific settings.
+ * The values are applied at runtime and shown as greyed-out in the settings UI.
+ */
+export const THEME_LOCKED_SETTINGS: Partial<Record<string, Partial<Record<string, string | boolean | number>>>> = {
+  onyx: {
+    surface_style: "clear",
+  },
+};
+
+/**
+ * Custom app background colors for themes that override the default computed bg.
+ * Add an entry here when a new theme requires a specific background color.
+ */
+export const THEME_BG_COLORS: Partial<Record<string, string>> = {
+  onyx: "#070c1a",
+};
+
 export const normalizeThemeKey = (theme: string | undefined) => {
   if (theme === "light") return "sky";
   if (theme === "dark" || theme === "system") return "space";
@@ -71,6 +90,7 @@ export const normalizeThemeKey = (theme: string | undefined) => {
 };
 
 export const isDarkThemeKey = (theme: string | undefined) => !["sky", "wash", "webcore"].includes(normalizeThemeKey(theme));
+
 
 export const CLOUD_SHAPES = [
   `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg"><ellipse cx="100" cy="55" rx="95" ry="28"/><ellipse cx="70" cy="45" rx="45" ry="35"/><ellipse cx="110" cy="38" rx="52" ry="40"/><ellipse cx="150" cy="48" rx="38" ry="30"/></svg>`,
@@ -113,11 +133,11 @@ export const KB_NUMS = [
 export const SCAN_KEYS = ["scan_steam", "scan_xbox", "scan_uwp", "scan_desktop", "scan_battlenet"] as const;
 
 export const DEFAULT_SETTINGS = {
-  accent: "ember", theme: "space", stars_enabled: true, lofi_music_enabled: true, wide_layout: false, wide_topbar: false, wide_body: false, wide_bottombar: false, topbar_background: true, bottombar_background: true, hide_bottom_bar: false,
+  accent: "ember", theme: "space", stars_enabled: true, lofi_music_enabled: true, wide_layout: false, wide_topbar: false, wide_bottombar: false, wide_games: false, wide_apps: false, wide_settings: false, topbar_background: true, bottombar_background: true, hide_bottom_bar: false,
   default_tab: "Home", scan_steam: true, scan_xbox: true,
   scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
   launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
-  language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, app_cover_scale: 1.0, app_list_view: false, app_list_cols: 1, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false, show_immersive_hero_art: true,
+  language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, app_cover_scale: 1.0, app_list_view: false, app_list_cols: 1, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false, home_mode: "normal", home_section_title_size: "small", show_home_recents: true, hero_content_pos: "bottom", show_immersive_hero_art: true,
   nav_bumpers_pos: "bottom",
   tabbar_show_buttons: "tabbar", tabbar_text_tabs: false, tabbar_with_background: false, tabbar_background_compact: false, tabbar_font_weight: "medium", tabbar_icon_mode: "text",
   bottombar_alignment: "left", bottombar_compact: "off", tabbar_label_case: "default",
@@ -125,6 +145,7 @@ export const DEFAULT_SETTINGS = {
   gamepad_platform: "xbox", gamepad_icons_colored: false, gamepad_icons_filled: true, gamepad_icons_theme_color: false,
   gamepad_btn_size: "small", gamepad_auto_detect: true,
   surface_style: "clear",
+  onyx_top_light: true,
 } as const;
 
 export type AccentKey = keyof typeof ACCENTS;

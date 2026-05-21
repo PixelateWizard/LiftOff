@@ -91,6 +91,7 @@ pub struct Settings {
     pub accent: String,
     pub theme: String,
     pub stars_enabled: bool,
+    pub onyx_top_light: bool,
     #[serde(default = "default_true")]
     pub lofi_music_enabled: bool,
     pub default_tab: String,
@@ -123,11 +124,23 @@ pub struct Settings {
     #[serde(default)]
     pub wide_topbar: bool,
     #[serde(default)]
-    pub wide_body: bool,
-    #[serde(default)]
     pub wide_bottombar: bool,
     #[serde(default)]
+    pub wide_games: bool,
+    #[serde(default)]
+    pub wide_apps: bool,
+    #[serde(default)]
+    pub wide_settings: bool,
+    #[serde(default)]
     pub cinematic_home: bool,
+    #[serde(default = "default_home_mode")]
+    pub home_mode: String,
+    #[serde(default = "default_home_section_title_size")]
+    pub home_section_title_size: String,
+    #[serde(default = "default_true")]
+    pub show_home_recents: bool,
+    #[serde(default = "default_hero_content_pos")]
+    pub hero_content_pos: String,
     #[serde(default = "default_true")]
     pub show_immersive_hero_art: bool,
     #[serde(default)]
@@ -207,8 +220,11 @@ fn default_tabbar_font_weight()   -> String { "medium".to_string() }
 fn default_tabbar_label_case()    -> String { "default".to_string() }
 fn default_tabbar_icon_mode()     -> String { "text".to_string() }
 fn default_bottombar_alignment()  -> String { "left".to_string() }
-fn default_bottombar_compact()    -> String { "off".to_string() }
-fn default_gamepad_platform()     -> String { "xbox".to_string() }
+fn default_bottombar_compact()          -> String { "off".to_string() }
+fn default_home_mode()                  -> String { "normal".to_string() }
+fn default_home_section_title_size()    -> String { "small".to_string() }
+fn default_hero_content_pos()           -> String { "bottom".to_string() }
+fn default_gamepad_platform()           -> String { "xbox".to_string() }
 fn default_gamepad_btn_size()     -> String { "small".to_string() }
 fn default_topbar_show_bumpers()  -> bool   { false }
 fn default_surface_style()        -> String { "clear".to_string() }
@@ -237,10 +253,17 @@ impl Default for Settings {
             show_battery: true,
             wide_layout: false,
             wide_topbar: false,
-            wide_body: false,
             wide_bottombar: false,
+            wide_games: false,
+            wide_apps: false,
+            wide_settings: false,
             cinematic_home: false,
+            home_mode: "normal".to_string(),
+            home_section_title_size: "small".to_string(),
+            show_home_recents: true,
+            hero_content_pos: "bottom".to_string(),
             show_immersive_hero_art: true,
+            onyx_top_light: true,
             hide_bottom_bar: false,
             topbar_background: true,
             bottombar_background: true,
