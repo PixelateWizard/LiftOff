@@ -39,7 +39,7 @@ export interface AccentColors {
 
 export type ThemeMode        =
   | "space" | "sky" | "plasma" | "cinder" | "wash"
-  | "aurora" | "synthwave" | "cyberpunk" | "lofi" | "forest" | "webcore"
+  | "aurora" | "synthwave" | "cyberpunk" | "lofi" | "forest" | "webcore" | "onyx"
   | "ember" | "dark" | "light" | "system";
 export type DefaultTab       = "Home" | "Games" | "Apps";
 export type RepeatSpeed      = "slow" | "normal" | "fast";
@@ -58,11 +58,16 @@ export interface Settings {
   accent: string;
   theme: ThemeMode;
   stars_enabled: boolean;
+  onyx_top_light: boolean;
   lofi_music_enabled: boolean;
   wide_layout: boolean;
-  transparent_bars: boolean;
-  transparent_topbar: boolean;
-  transparent_bottombar: boolean;
+  wide_topbar: boolean;
+  wide_bottombar: boolean;
+  wide_games: boolean;
+  wide_apps: boolean;
+  wide_settings: boolean;
+  topbar_background: boolean;
+  bottombar_background: boolean;
   hide_bottom_bar: boolean;
   default_tab: DefaultTab;
   scan_steam: boolean;
@@ -77,23 +82,36 @@ export interface Settings {
   language: string;
   home_cover_scale: number;
   game_cover_scale: number;
+  app_cover_scale: number;
+  app_list_view: boolean;
+  app_list_cols: number;
   time_format: TimeFormat;
   show_date: boolean;
   show_battery: boolean;
   show_clock: boolean;
   cinematic_home: boolean;
+  home_mode: string;
+  home_section_title_size: string;
+  show_home_recents: boolean;
+  hero_content_pos: string;
   show_immersive_hero_art: boolean;
   nav_bumpers_pos: NavBumpersPos;
   tabbar_show_buttons: TabbarButtons;
   tabbar_text_tabs: boolean;
   tabbar_with_background: boolean;
+  tabbar_background_compact: boolean;
   tabbar_font_weight: TabbarFontWeight;
+  tabbar_icon_mode: "text" | "icons" | "both";
   bottombar_alignment: BottombarAlign;
+  bottombar_compact: string;
   tabbar_label_case: TabbarLabelCase;
+  show_recent_games_only: boolean;
   show_home_collections: boolean;
   show_home_collection_names: boolean;
   show_hero_cover: boolean;
   show_home_pinned: boolean;
+  home_pinned_pos: string;
+  onyx_flat_settings: boolean;
   gamepad_platform: GamepadPlatform;
   gamepad_icons_colored: boolean;
   gamepad_icons_filled: boolean;
@@ -118,6 +136,12 @@ interface SettingsItemBase {
   key: string;
   section: number;
   label: string;
+  /** Visual indentation — rendered as a child of the preceding parent row */
+  indent?: boolean;
+  /** Set by buildSettingsItems when the active theme forces this setting's value */
+  locked?: boolean;
+  /** The value the current theme forces for this setting (shown greyed on the right) */
+  lockedValue?: string | boolean | number;
 }
 
 export interface SettingsDividerItem extends SettingsItemBase {
@@ -137,7 +161,17 @@ export interface SettingsCycleSubItem {
   options: readonly string[];
 }
 
-export type SettingsSubItem = SettingsToggleSubItem | SettingsCycleSubItem;
+export interface SettingsSliderSubItem {
+  key: keyof Settings;
+  label: string;
+  type: "slider";
+  min: number;
+  max: number;
+  step: number;
+  integer?: boolean;
+}
+
+export type SettingsSubItem = SettingsToggleSubItem | SettingsCycleSubItem | SettingsSliderSubItem;
 
 export interface SettingsToggleItem extends SettingsItemBase {
   key: keyof Settings;
@@ -157,6 +191,7 @@ export interface SettingsSliderItem extends SettingsItemBase {
   min: number;
   max: number;
   step: number;
+  integer?: boolean;
 }
 
 export interface SettingsAccentItem extends SettingsItemBase {
@@ -208,6 +243,9 @@ export interface SettingsHomeCollectionItem {
   label: string;
   type: "home_collection_toggle";
   colName: string;
+  indent?: boolean;
+  locked?: boolean;
+  lockedValue?: string | boolean | number;
 }
 
 export type SettingsItem =

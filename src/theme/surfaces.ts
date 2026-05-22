@@ -42,7 +42,7 @@ interface SurfaceThemeArgs {
   accent: AccentColors;
 }
 
-const STANDALONE_BACKGROUNDS = new Set(["aurora", "synthwave", "cyberpunk", "lofi", "forest", "webcore"]);
+const STANDALONE_BACKGROUNDS = new Set(["aurora", "synthwave", "cyberpunk", "lofi", "forest", "webcore", "onyx"]);
 
 function buildMaterialTokens(isDark: boolean, isWash: boolean, accent: AccentColors): CSSProperties {
   return {
@@ -185,8 +185,15 @@ function neonSurface(accent: AccentColors): CSSProperties {
 }
 
 function buildGlassSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, flat: CSSProperties): CSSProperties {
-  const { glassEnabled, surfaceStyle, isDark, cinematicLight, accent } = args;
+  const { glassEnabled, surfaceStyle, isDark, cinematicLight, accent, resolvedTheme } = args;
   if (!glassEnabled) return flat;
+  if (resolvedTheme === "onyx") return {
+    background: "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%)",
+    backdropFilter: "blur(22px) saturate(160%) brightness(1.04)",
+    WebkitBackdropFilter: "blur(22px) saturate(160%) brightness(1.04)",
+    border: "1.5px solid rgba(255,255,255,0.14)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.24), 0 10px 32px rgba(0,0,0,0.48)",
+  };
   if (surfaceStyle === "material") return {
     background: `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-2)`,
     backdropFilter: undefined,
@@ -226,8 +233,15 @@ function buildGlassSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, flat:
 }
 
 function buildGlassBarSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, flat: CSSProperties): CSSProperties {
-  const { glassEnabled, surfaceStyle, isDark, cinematicLight, accent } = args;
+  const { glassEnabled, surfaceStyle, isDark, cinematicLight, accent, resolvedTheme } = args;
   if (!glassEnabled) return flat;
+  if (resolvedTheme === "onyx") return {
+    background: "linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.10)), linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04))",
+    backdropFilter: "blur(18px) saturate(130%) brightness(0.88)",
+    WebkitBackdropFilter: "blur(18px) saturate(130%) brightness(0.88)",
+    border: "1.5px solid rgba(255,255,255,0.12)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.32)",
+  };
   if (surfaceStyle === "material") return {
     background: `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-3)`,
     backdropFilter: undefined,
@@ -267,10 +281,17 @@ function buildGlassBarSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, fl
 }
 
 function buildSettingsRowSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, flat: CSSProperties): CSSProperties {
-  const { glassEnabled, surfaceStyle, isDark, accent } = args;
+  const { glassEnabled, surfaceStyle, isDark, accent, resolvedTheme } = args;
   if (!glassEnabled) return flat;
   const tintTop = `${accent.glow}0.025)`;
   const tintBot = `${accent.glow}0.010)`;
+  if (resolvedTheme === "onyx") return {
+    background: "linear-gradient(180deg, rgba(255,255,255,0.042), rgba(255,255,255,0.018))",
+    backdropFilter: "blur(8px) saturate(110%) brightness(0.92)",
+    WebkitBackdropFilter: "blur(8px) saturate(110%) brightness(0.92)",
+    border: "1.5px solid rgba(255,255,255,0.09)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.20)",
+  };
   if (surfaceStyle === "material") return {
     background: `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-2)`,
     backdropFilter: undefined,
@@ -316,9 +337,9 @@ export function useSurfaceTheme(args: SurfaceThemeArgs) {
     [surfaceStyle, isDark, accent],
   );
   const flat = useMemo(() => flatGlass(isDark), [isDark]);
-  const glass = useMemo(() => buildGlassSurface(args, surface, flat), [glassEnabled, surfaceStyle, isDark, cinematicLight, accent, surface, flat]);
-  const glassBar = useMemo(() => buildGlassBarSurface(args, surface, flat), [glassEnabled, surfaceStyle, isDark, cinematicLight, accent, surface, flat]);
-  const settingsRowGlass = useMemo(() => buildSettingsRowSurface(args, surface, flat), [glassEnabled, surfaceStyle, isDark, accent, surface, flat]);
+  const glass = useMemo(() => buildGlassSurface(args, surface, flat), [resolvedTheme, glassEnabled, surfaceStyle, isDark, cinematicLight, accent, surface, flat]);
+  const glassBar = useMemo(() => buildGlassBarSurface(args, surface, flat), [resolvedTheme, glassEnabled, surfaceStyle, isDark, cinematicLight, accent, surface, flat]);
+  const settingsRowGlass = useMemo(() => buildSettingsRowSurface(args, surface, flat), [resolvedTheme, glassEnabled, surfaceStyle, isDark, accent, surface, flat]);
 
   const isMaterial = surfaceStyle === "material";
   const hasStandaloneBackground = STANDALONE_BACKGROUNDS.has(resolvedTheme);
@@ -334,6 +355,7 @@ export function useSurfaceTheme(args: SurfaceThemeArgs) {
     : resolvedTheme === "lofi"      ? "#1e1108"
     : resolvedTheme === "forest"    ? "#010a04"
     : resolvedTheme === "webcore"   ? surface.panelBg
+    : resolvedTheme === "onyx"      ? "#060b18"
     : accent.lightBg;
   const bgGlow1 = isMaterial || hasStandaloneBackground ? "transparent" : `${accent.glow}${isDark ? "0.07)" : "0.08)"}`;
   const bgGlow2 = isMaterial || hasStandaloneBackground ? "transparent" : `${accent.glow}${isDark ? "0.05)" : "0.06)"}`;

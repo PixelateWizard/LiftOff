@@ -1,5 +1,12 @@
 # LiftOff — Claude Code Handoff
 
+## Code Style Rules
+
+- **All code comments must be in English.** This is a community project with contributors from different countries. Never write comments in French or any other language.
+- Respond to the user in whatever language they write in — but code comments are always English.
+
+---
+
 ## Project Overview
 
 **LiftOff** is a Windows desktop game/app launcher built with Tauri 2 (Rust backend + React frontend). It's designed primarily for gamepad/controller navigation and targets a Steam Deck / HTPC-style use case.
@@ -115,6 +122,7 @@
 - `BatteryInfo` — `{ percent: u32, charging: bool }`
 - `Settings` — accent, theme, stars_enabled, default_tab, scan_steam, scan_xbox, scan_uwp, scan_desktop, scan_battlenet, repeat_speed, launch_at_startup, animated_heroes (String: `"static"` | `"animated"` | `"custom"`), ui_scale (Option<f32> — None = not yet set, frontend fills in auto-detected value), language, time_format, show_clock, show_date, show_battery, wide_layout, cinematic_home, hide_bottom_bar, transparent_bars, transparent_topbar, transparent_bottombar, home_cover_scale, game_cover_scale, nav_bumpers_pos, tabbar_show_buttons, tabbar_text_tabs, tabbar_with_background, tabbar_font_weight, tabbar_label_case, bottombar_alignment, show_home_collections, show_home_collection_names, show_hero_cover, show_home_pinned, gamepad_platform, gamepad_icons_colored, gamepad_icons_filled, gamepad_icons_theme_color, gamepad_btn_size, gamepad_auto_detect, topbar_show_bumpers, surface_style (String: `"glass"` | `"aero"` | `"material"` | `"clear"`)
 - **All Settings fields must be present in both the Rust `Settings` struct (`lib.rs`) and the TypeScript `Settings` interface (`types.ts`). Missing Rust fields cause serde to silently drop those values on save, resetting them to defaults on next load.**
+- **When adding a new Settings field in Rust, also add it to the `impl Default for Settings` block (around line 207 in `lib.rs`). The compiler will error with E0063 "missing fields in initializer" if omitted — always fix this before committing.**
 
 **Persistent storage** (all in `%LOCALAPPDATA%/LiftOff/`):
 - `pins.json` — Vec<String> of pinned app IDs

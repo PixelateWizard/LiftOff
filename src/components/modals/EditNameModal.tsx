@@ -27,12 +27,6 @@ export default function EditNameModal({ app, onConfirm, onClose }: Props) {
   useEffect(() => { kbValueRef.current = kbValue; }, [kbValue]);
   useEffect(() => { showKbRef.current = showKb; }, [showKb]);
 
-  // Auto-open keyboard on mount
-  useEffect(() => {
-    setShowKb(true);
-    showKbRef.current = true;
-  }, []);
-
   useEffect(() => {
     const last: Partial<GpState> = {};
     let rafId: number;
@@ -83,6 +77,7 @@ export default function EditNameModal({ app, onConfirm, onClose }: Props) {
               if (e.key === "Enter") { const n = kbValueRef.current.trim(); if (n) onConfirm(n); }
               if (e.key === "Escape") onClose();
             }}
+            autoFocus
             style={{
               width: "100%",
               boxSizing: "border-box" as const,

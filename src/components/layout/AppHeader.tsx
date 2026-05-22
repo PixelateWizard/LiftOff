@@ -1,10 +1,19 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { IoHomeSharp, IoGameController, IoApps, IoSettings } from "react-icons/io5";
 import { GamepadBtn } from "../GamepadBtn";
 import { SectionTabHeader } from "../SectionTabHeader";
 import type { TabItem } from "../SectionTabBar";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useSettings } from "../../contexts/SettingsContext";
+import { FocusRing } from "../ui/FocusRing";
+
+const TAB_ICONS: Record<string, (size: number, color: string) => ReactNode> = {
+  Home:     (s, c) => <IoHomeSharp     size={s} color={c} />,
+  Games:    (s, c) => <IoGameController size={s} color={c} />,
+  Apps:     (s, c) => <IoApps          size={s} color={c} />,
+  Settings: (s, c) => <IoSettings      size={s} color={c} />,
+};
 
 interface Props {
   tab: string;
@@ -63,16 +72,17 @@ export function AppHeader({
   headerTabItems, headerActiveIndex, headerOnSelect, headerRightActions,
 }: Props) {
   const { t } = useTranslation();
-  const { glassBar, accent, theme, isDark, glassEnabled, surfaceStyle, surface } = useTheme();
+  const { glassBar, accent, theme, isDark, glassEnabled, surfaceStyle, surface, resolvedTheme } = useTheme();
   const { settings } = useSettings();
   const activePillText = "rgba(20, 14, 10, 0.90)";
   const activeTextColor = isDark
     ? (accent.darkText ? activePillText : "white")
     : (accent.lightDarkText ? activePillText : "white");
 
-  const transparentNav = settings.transparent_topbar ?? false;
-  const tabbarBg       = settings.tabbar_with_background ?? false;
-  const wideLayout     = settings.wide_layout ?? false;
+  const transparentNav    = !(settings.topbar_background ?? true);
+  const tabbarBg          = settings.tabbar_with_background ?? false;
+  const tabbarBgCompact   = tabbarBg && (settings.tabbar_background_compact ?? false);
+  const wideLayout        = settings.wide_topbar ?? false;
   const isHome         = tab === "Home";
   const uiScale        = settings.ui_scale ?? 1;
   const subtabGap      = Math.round(16 / uiScale);
@@ -121,21 +131,32 @@ export function AppHeader({
         <div style={{ display: "flex", gap: 2 }}>
           {tabs.map((tabName) => {
             const isActive = tab === tabName;
+            const iconMode = settings.tabbar_icon_mode ?? "text";
+            const color = isActive ? (resolvedTheme === "onyx" ? accent.primary : activeTextColor) : theme.textDim;
+            const iconNode = TAB_ICONS[tabName]?.(16, color);
+            const showIcon = iconMode === "icons" || iconMode === "both";
+            const showText = iconMode === "text"  || iconMode === "both";
             return (
               <div key={tabName} onClick={() => switchTab(tabName)} style={{
                 fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
-                padding: "6px 16px", borderRadius: isPixel ? 0 : 8, cursor: "pointer",
+                padding: showIcon && !showText ? "6px 10px" : "6px 16px",
+                borderRadius: isPixel ? 0 : 8, cursor: "pointer",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: showIcon && showText ? 2 : 0,
+                position: "relative",
                 transition: "background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease",
                 ...(isActive
                   ? {
-                      background: accent.primary,
-                      border: `1px solid ${accent.primary}`,
-                      boxShadow: surfaceStyle === "aero"
+                      background: resolvedTheme === "onyx" ? "transparent" : accent.primary,
+                      border: `1px solid ${resolvedTheme === "onyx" ? "transparent" : accent.primary}`,
+                      boxShadow: resolvedTheme === "onyx"
+                        ? "none"
+                        : surfaceStyle === "aero"
                         ? `inset 0 1px 0 rgba(255,255,255,0.80), inset 0 2px 10px rgba(255,255,255,0.24), inset 0 -1px 0 rgba(0,0,0,0.28), 0 4px 16px ${accent.glow}0.55)`
                         : surfaceStyle === "material"
                         ? "var(--material-shadow-medium)"
                         : `0 4px 24px ${accent.glow}0.5)`,
-                      color: activeTextColor,
+                      color: resolvedTheme === "onyx" ? accent.primary : activeTextColor,
                     }
                   : {
                       background: "transparent",
@@ -143,7 +164,9 @@ export function AppHeader({
                       color: theme.textDim,
                     }),
               }}>
-                {t(`tabs.${tabName.toLowerCase()}`)}
+                {showIcon && iconNode}
+                {showText && <span style={{ lineHeight: 1 }}>{t(`tabs.${tabName.toLowerCase()}`)}</span>}
+                <FocusRing focused={isActive} variant="spin" elementRadius={isPixel ? 0 : 8} />
               </div>
             );
           })}
@@ -194,7 +217,7 @@ export function AppHeader({
   );
 
   // ── Case: nav + subtab share a single glass container ──────────
-  if (!transparentNav && tabbarBg && !isHome) {
+  if (!transparentNav && tabbarBg && !tabbarBgCompact && !isHome) {
     return (
       <div data-liftoff-nav-boundary style={{ position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{
@@ -233,13 +256,30 @@ export function AppHeader({
       {/* Subtab row */}
       {!isHome && (
         tabbarBg ? (
-          <div style={{
-            ...widthConstraints(wideLayout, false, false, uiScale),
-            ...glassBar, borderRadius: navRadius,
-            marginTop: subtabGap,
-          }}>
-            {subtab}
-          </div>
+          tabbarBgCompact ? (
+            <div style={{ position: "relative", marginTop: subtabGap, ...widthConstraints(wideLayout, false, false, uiScale) }}>
+              <div style={{ width: "fit-content", margin: "0 auto", padding: "0 12px", ...glassBar, borderRadius: navRadius }}>
+                <SectionTabHeader
+                  items={headerTabItems}
+                  activeIndex={headerActiveIndex}
+                  onSelect={headerOnSelect}
+                  showButtons={settings.tabbar_show_buttons === "tabbar"}
+                  textTabs={settings.tabbar_text_tabs}
+                  fontWeight={settings.tabbar_font_weight}
+                  labelCase={settings.tabbar_label_case}
+                />
+              </div>
+              {headerRightActions && (
+                <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", display: "flex", gap: 6, alignItems: "center" }}>
+                  {headerRightActions}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ ...widthConstraints(wideLayout, false, false, uiScale), marginTop: subtabGap, ...glassBar, borderRadius: navRadius }}>
+              {subtab}
+            </div>
+          )
         ) : (
           <div style={{ marginTop: subtabGap }}>{subtab}</div>
         )

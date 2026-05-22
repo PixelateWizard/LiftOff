@@ -1,3 +1,36 @@
+let _lastActiveIdx = null;
+
+export function getActiveGamepad() {
+  const all = Array.from(navigator.getGamepads());
+  const valid = all
+    .map((g, i) => ({ g, i }))
+    .filter(({ g }) => g !== null && g.buttons.length >= 4 && g.axes.length >= 4);
+
+  if (valid.length === 0) return null;
+
+  if (valid.length === 1) {
+    _lastActiveIdx = valid[0].i;
+    return valid[0].g;
+  }
+
+  for (const { g, i } of valid) {
+    if (i === _lastActiveIdx) continue;
+    if (g.buttons.some(b => b.pressed) || g.axes.some(a => Math.abs(a) > 0.5)) {
+      _lastActiveIdx = i;
+      return g;
+    }
+  }
+
+  if (_lastActiveIdx !== null) {
+    const current = all[_lastActiveIdx];
+    if (current) return current;
+  }
+
+  const best = valid.find(x => x.g.mapping === "standard") ?? valid[0];
+  _lastActiveIdx = best.i;
+  return best.g;
+}
+
 export function getBestGamepad() {
   const gps = Array.from(navigator.getGamepads()).filter(Boolean);
   return (

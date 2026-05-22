@@ -1,6 +1,8 @@
 import type { CSSProperties, RefObject } from "react";
 import { ToggleKnob } from "./ToggleKnob";
+import { FocusRing } from "./FocusRing";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useSettings } from "../../contexts/SettingsContext";
 
 interface ToggleSubItem {
   type?: "toggle";
@@ -22,7 +24,20 @@ interface CycleSubItem {
   focusedRef?: RefObject<HTMLDivElement>;
 }
 
-type SubItem = ToggleSubItem | CycleSubItem;
+interface SliderSubItem {
+  type: "slider";
+  label: string;
+  sliderValue: number;
+  sliderMin: number;
+  sliderMax: number;
+  sliderStep: number;
+  integer?: boolean;
+  onSliderChange: (next: number) => void;
+  focused?: boolean;
+  focusedRef?: RefObject<HTMLDivElement>;
+}
+
+type SubItem = ToggleSubItem | CycleSubItem | SliderSubItem;
 
 interface CollapsibleGroupProps {
   label: string;
@@ -41,9 +56,12 @@ export function CollapsibleGroup({
   focusedRef,
   items,
 }: CollapsibleGroupProps) {
-  const { glass, accent, isDark, theme, surfaceStyle, surface } = useTheme();
+  const { glass, accent, isDark, theme, surfaceStyle, surface, resolvedTheme } = useTheme();
+  const { settings } = useSettings();
   const isMaterial = surfaceStyle === "material";
   const isPixel = surfaceStyle === "win9x";
+  const isOnyx = resolvedTheme === "onyx";
+  const flatSettings = isOnyx && (settings.onyx_flat_settings ?? true);
   const materialFocusStyle: CSSProperties = isMaterial ? {
     border: `2px solid ${accent.primary}`,
     background: isDark
@@ -68,7 +86,20 @@ export function CollapsibleGroup({
     background: surface.activeBg,
     boxShadow: `${surface.bevelSunken}, 0 0 0 1px ${accent.primary}`,
   } : {};
-  const parentStyle: CSSProperties = {
+  const parentStyle: CSSProperties = flatSettings ? {
+    background: "transparent",
+    borderRadius: 0,
+    padding: "14px 20px",
+    marginBottom: 0,
+    borderBottom: "1px solid rgba(255,255,255,0.07)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    cursor: "pointer",
+    transition: "background 0.15s ease",
+    position: "relative" as const,
+    zIndex: focused ? 2 : undefined,
+  } : {
     ...glass,
     borderRadius: isPixel ? 0 : value ? (isMaterial ? "8px 8px 0 0" : "16px 16px 0 0") : isMaterial ? 8 : 16,
     padding: "14px 20px",
@@ -78,6 +109,8 @@ export function CollapsibleGroup({
     justifyContent: "space-between",
     cursor: "pointer",
     transition: "all 0.15s ease",
+    position: "relative" as const,
+    zIndex: focused ? 2 : undefined,
     ...(focused
       ? {
           border: `1px solid ${isMaterial ? accent.primary : accent.glow + "0.6)"}`,
@@ -89,7 +122,9 @@ export function CollapsibleGroup({
       : { border: isMaterial ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)" }),
   };
 
-  const subContainerStyle: CSSProperties = {
+  const subContainerStyle: CSSProperties = flatSettings ? {
+    marginBottom: 0,
+  } : {
     marginBottom: 8,
     padding: isMaterial ? "5px 6px 6px" : undefined,
     background: isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
@@ -110,12 +145,24 @@ export function CollapsibleGroup({
       <div ref={focusedRef} style={parentStyle} onClick={() => onChange(!value)}>
         <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{label}</span>
         <ToggleKnob value={value} />
+        <FocusRing focused={!!focused} variant="spin" wide elementRadius={flatSettings || isPixel ? 0 : isMaterial ? 8 : 16} />
       </div>
 
       {value && (
         <div style={subContainerStyle}>
           {items.map((item, idx) => {
-            const rowStyle: CSSProperties = {
+            const rowStyle: CSSProperties = flatSettings ? {
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 20px 12px 36px",
+              cursor: "pointer",
+              transition: "background 0.15s ease",
+              background: "transparent",
+              borderBottom: "1px solid rgba(255,255,255,0.05)",
+              position: "relative" as const,
+              zIndex: item.focused ? 2 : undefined,
+            } : {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -140,7 +187,7 @@ export function CollapsibleGroup({
                 : undefined,
               borderBottom:
                 idx < items.length - 1 && !isMaterial && !isPixel
-                  ? `1px solid ${isMaterial ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`
+                  ? `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`
                   : "none",
               ...(item.focused && isMaterial ? materialSubFocusStyle : {}),
               ...(item.focused && isPixel ? pixelSubFocusStyle : {}),
@@ -161,6 +208,30 @@ export function CollapsibleGroup({
                     <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
                       onClick={(e) => { e.stopPropagation(); item.onCycleChange(next); }}>▶</span>
                   </div>
+                  {flatSettings && <FocusRing focused={!!item.focused} variant="spin" wide elementRadius={0} />}
+                </div>
+              );
+            }
+
+            if (item.type === "slider") {
+              const pct = (item.sliderValue - item.sliderMin) / (item.sliderMax - item.sliderMin);
+              const displayVal = item.integer ? `${Math.round(item.sliderValue)}` : `${Math.round(item.sliderValue * 100)}%`;
+              return (
+                <div key={idx} ref={item.focused ? item.focusedRef : undefined} style={rowStyle}>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: isMaterial ? theme.text : theme.textDim }}>{item.label}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
+                      onClick={(e) => { e.stopPropagation(); item.onSliderChange(Math.max(item.sliderMin, Math.round((item.sliderValue - item.sliderStep) / item.sliderStep) * item.sliderStep)); }}>◀</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ width: 60, height: 4, borderRadius: 2, background: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)", position: "relative", overflow: "hidden" }}>
+                        <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${pct * 100}%`, background: accent.primary, borderRadius: 2 }} />
+                      </div>
+                      <span style={{ fontSize: 12, color: accent.primary, fontWeight: 600, minWidth: 28, textAlign: "right" }}>{displayVal}</span>
+                    </div>
+                    <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
+                      onClick={(e) => { e.stopPropagation(); item.onSliderChange(Math.min(item.sliderMax, Math.round((item.sliderValue + item.sliderStep) / item.sliderStep) * item.sliderStep)); }}>▶</span>
+                  </div>
+                  {flatSettings && <FocusRing focused={!!item.focused} variant="spin" wide elementRadius={0} />}
                 </div>
               );
             }
@@ -176,6 +247,7 @@ export function CollapsibleGroup({
                   {item.label}
                 </span>
                 <ToggleKnob value={item.value} />
+                {flatSettings && <FocusRing focused={!!item.focused} variant="spin" wide elementRadius={0} />}
               </div>
             );
           })}

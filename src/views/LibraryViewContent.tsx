@@ -1,5 +1,6 @@
 import type { RefObject } from "react";
 import { useTheme } from "../contexts/ThemeContext";
+import { AppListItem, FocusRing } from "../components/ui";
 
 export interface LibraryViewContentProps {
   tab: "Games" | "Apps";
@@ -55,9 +56,12 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
     effectiveGameCols,
     isFocused,
     pins,
+    appListView,
+    appListCols,
   } = props;
-  const { surface } = useTheme();
+  const { surface, resolvedTheme } = useTheme();
   const isPixel = surfaceStyle === "win9x";
+  const isOnyx = resolvedTheme === "onyx";
 
               const SOURCES = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSources, ...gameCollections.map(c => c.name)];
               const APP_COLS = ["All", ...appCollections.map(c => c.name)];
@@ -122,12 +126,12 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
             {/* ── PINNED — same card size/style as main grid ── */}
             {pinnedAppsReactive.length > 0 && !(tab === "Games" && gameSourceTab !== "All") && (
               <>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 0 10px" }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint }}>{t('grid.pinned')}</div>
-                  <div style={{ fontSize: 10, color: theme.textFaint, opacity: 0.6 }}>{t('grid.unpinHint')}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, padding: "18px 0 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span>{t('grid.pinned')}</span>
+                  <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", opacity: 0.6 }}>{t('grid.unpinHint')}</span>
                 </div>
                 {tab === "Games" ? (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 12, paddingTop: 6, marginTop: -6, paddingBottom: 14 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: `repeat(${effectiveGameCols}, minmax(0, 1fr))`, gap: 12, paddingTop: 6, marginTop: -6, paddingBottom: 14 }}>
                     {pinnedAppsReactive.map((app, i) => {
                       const focused = focusSection === "pinned" && focusIndex === i;
                       const isPinned = true;
@@ -136,6 +140,30 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                         onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
                         onDoubleClick={() => triggerLaunch(app, recent)}
                         onRightClick={(e, a) => { setContextMenu({ x: e.clientX, y: e.clientY, app: a }); }} />;
+                    })}
+                  </div>
+                ) : appListView ? (
+                  <div style={{ display: "grid", gridTemplateColumns: `repeat(${appListCols}, minmax(0, 1fr))`, gap: 6, paddingTop: 6, marginTop: -6, paddingBottom: 14 }}>
+                    {pinnedAppsReactive.map((app, i) => {
+                      const focused = focusSection === "pinned" && focusIndex === i;
+                      const art = customArt[app.id];
+                      return (
+                        <AppListItem
+                          key={app.id}
+                          ref={focused ? focusedCardRef : null}
+                          variant="row"
+                          name={app.name}
+                          icon={art
+                            ? <img src={art} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover" }} />
+                            : <AppIcon app={app} size={40} />}
+                          focused={focused}
+                          onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
+                          onDoubleClick={() => triggerLaunch(app, recent)}
+                          onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
+                        >
+                          <PinBadge isPinned={true} small />
+                        </AppListItem>
+                      );
                     })}
                   </div>
                 ) : (
@@ -154,35 +182,46 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                         borderColor: focused ? accent.primary : surface.borderRaisedSoft,
                         boxShadow: focused ? `0 0 0 1px ${surface.cardFocusRing}, 0 0 0 3px ${accent.primary}` : surface.bevelRaised,
                       } : {};
+                      const appCardRadius = isPixel ? 0 : 16;
                       return (
+                        // Outer wrapper — no overflow:hidden so ring can extend outside
                         <div key={app.id} ref={focused ? focusedCardRef : null}
                           onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
                           onDoubleClick={() => triggerLaunch(app, recent)}
                           onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
-                          style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
-                            border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
-                            borderRadius: isPixel ? 0 : 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
-                            ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}),
+                          style={{ position: "relative", borderRadius: appCardRadius, aspectRatio: "1", cursor: "pointer", transition: "all 0.15s ease",
+                            ...(focused ? { transform: "scale(1.06)" } : {}),
+                          }}>
+                          {/* Inner content — overflow:hidden clips art */}
+                          <div style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
+                            border: focused
+                              ? (isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`)
+                              : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
+                            borderRadius: appCardRadius, overflow: "hidden", position: "absolute", inset: 0,
+                            ...(focused && !isOnyx ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)` } : {}),
                             ...pixelCard }}>
-                          {art ? (
-                            <>
-                              <img src={art} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-                              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent, rgba(0,0,0,0.75))", zIndex: 1 }} />
-                              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "8px 10px", zIndex: 2 }}>
-                                <div style={{ fontSize: 11, fontWeight: 500, color: "white", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", position: "relative", zIndex: 1 }}>
-                                <AppIcon app={app} size={44} />
-                              </div>
-                              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 10px 10px", zIndex: 1 }}>
-                                <div style={{ fontSize: 11, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
-                              </div>
-                            </>
-                          )}
-                          <PinBadge isPinned={true} small />
+                            {art ? (
+                              <>
+                                <img src={art} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent, rgba(0,0,0,0.75))", zIndex: 1 }} />
+                                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "8px 10px", zIndex: 2 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 500, color: "white", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", position: "relative", zIndex: 1 }}>
+                                  <AppIcon app={app} size={44} />
+                                </div>
+                                <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 10px 10px", zIndex: 1 }}>
+                                  <div style={{ fontSize: 11, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                                </div>
+                              </>
+                            )}
+                            <PinBadge isPinned={true} small />
+                          </div>
+                          {/* Ring — outside overflow:hidden, with gap */}
+                          <FocusRing focused={focused} variant="spin" elementRadius={appCardRadius} />
                         </div>
                       );
                     })}
@@ -209,6 +248,31 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                     onRightClick={(e, a) => { setContextMenu({ x: e.clientX, y: e.clientY, app: a }); }} />;
                 })}
               </div>
+            ) : appListView ? (
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${appListCols}, minmax(0, 1fr))`, gap: 6, paddingBottom: 100 }}>
+                {filteredApps.map((app, i) => {
+                  const focused = isFocused("grid", i);
+                  const isPinned = pins.includes(app.id);
+                  const art = customArt[app.id];
+                  return (
+                    <AppListItem
+                      key={app.id}
+                      ref={focused ? focusedCardRef : null}
+                      variant="row"
+                      name={app.name}
+                      icon={art
+                        ? <img src={art} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover" }} />
+                        : <AppIcon app={app} size={40} />}
+                      focused={focused}
+                      onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
+                      onDoubleClick={() => triggerLaunch(app, recent)}
+                      onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
+                    >
+                      {isPinned && <PinBadge isPinned={true} small />}
+                    </AppListItem>
+                  );
+                })}
+              </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`, gap: 10, paddingBottom: 100 }}>
                 {filteredApps.map((app, i) => {
@@ -226,35 +290,46 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                     borderColor: focused ? accent.primary : surface.borderRaisedSoft,
                     boxShadow: focused ? `0 0 0 1px ${surface.cardFocusRing}, 0 0 0 3px ${accent.primary}` : surface.bevelRaised,
                   } : {};
+                  const appGridCardRadius = isPixel ? 0 : 16;
                   return (
+                    // Outer wrapper — no overflow:hidden so ring can extend outside
                     <div key={app.id} ref={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recent)}
                       onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
-                      style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
-                        border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
-                        borderRadius: isPixel ? 0 : 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "1", position: "relative", overflow: "hidden",
-                        ...(focused ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`, transform: "scale(1.06)" } : {}),
+                      style={{ position: "relative", borderRadius: appGridCardRadius, aspectRatio: "1", cursor: "pointer", transition: "all 0.15s ease",
+                        ...(focused ? { transform: "scale(1.06)" } : {}),
+                      }}>
+                      {/* Inner content — overflow:hidden clips art */}
+                      <div style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
+                        border: focused
+                          ? (isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`)
+                          : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
+                        borderRadius: appGridCardRadius, overflow: "hidden", position: "absolute", inset: 0,
+                        ...(focused && !isOnyx ? { boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)` } : {}),
                         ...pixelCard }}>
-                      {art ? (
-                        <>
-                          <img src={art} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-                          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent, rgba(0,0,0,0.75))", zIndex: 1 }} />
-                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "8px 10px", zIndex: 2 }}>
-                            <div style={{ fontSize: 11, fontWeight: 500, color: "white", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", position: "relative", zIndex: 1 }}>
-                            <AppIcon app={app} size={44} />
-                          </div>
-                          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 10px 10px", zIndex: 1 }}>
-                            <div style={{ fontSize: 11, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
-                          </div>
-                        </>
-                      )}
-                      <PinBadge isPinned={isPinned} small />
+                        {art ? (
+                          <>
+                            <img src={art} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(transparent, rgba(0,0,0,0.75))", zIndex: 1 }} />
+                            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "8px 10px", zIndex: 2 }}>
+                              <div style={{ fontSize: 11, fontWeight: 500, color: "white", textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", position: "relative", zIndex: 1 }}>
+                              <AppIcon app={app} size={44} />
+                            </div>
+                            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 10px 10px", zIndex: 1 }}>
+                              <div style={{ fontSize: 11, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                            </div>
+                          </>
+                        )}
+                        <PinBadge isPinned={isPinned} small />
+                      </div>
+                      {/* Ring — outside overflow:hidden, with gap */}
+                      <FocusRing focused={focused} variant="spin" elementRadius={appGridCardRadius} />
                     </div>
                   );
                 })}

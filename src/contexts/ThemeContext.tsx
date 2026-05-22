@@ -8,6 +8,7 @@ export type { SurfaceTokens };
 
 export interface ThemeValue {
   isDark: boolean;
+  resolvedTheme: string;
   theme: ThemeColors;
   accent: AccentColors;
   glass: CSSProperties;

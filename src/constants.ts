@@ -39,11 +39,12 @@ export const THEMES: Record<string, { text: string; textDim: string; textFaint: 
   lofi:      { text: "#fff0e8", textDim: "rgba(255,240,232,0.52)", textFaint: "rgba(255,240,232,0.34)" },
   forest:    { text: "#d4edd8", textDim: "rgba(212,237,216,0.40)", textFaint: "rgba(212,237,216,0.26)" },
   webcore:   { text: "#1a1a1a", textDim: "rgba(0,0,0,0.55)",       textFaint: "rgba(0,0,0,0.35)"       },
+  onyx:      { text: "#d0dcff", textDim: "rgba(208,220,255,0.40)", textFaint: "rgba(208,220,255,0.26)" },
 };
 
 export const THEME_OPTIONS = [
   "space", "sky", "plasma", "cinder", "wash",
-  "aurora", "synthwave", "lofi", "forest", "webcore",
+  "aurora", "synthwave", "lofi", "forest", "webcore", "onyx",
 ] as const;
 
 export const THEME_SURFACE_DEFAULTS: Record<string, string> = {
@@ -58,6 +59,26 @@ export const THEME_SURFACE_DEFAULTS: Record<string, string> = {
   lofi: "obsidian",
   forest: "glass",
   webcore: "win9x",
+  onyx: "glass",
+};
+
+/**
+ * Settings that a theme forces regardless of user preference.
+ * Add an entry here when a new theme needs to lock specific settings.
+ * The values are applied at runtime and shown as greyed-out in the settings UI.
+ */
+export const THEME_LOCKED_SETTINGS: Partial<Record<string, Partial<Record<string, string | boolean | number>>>> = {
+  onyx: {
+    surface_style: "clear",
+  },
+};
+
+/**
+ * Custom app background colors for themes that override the default computed bg.
+ * Add an entry here when a new theme requires a specific background color.
+ */
+export const THEME_BG_COLORS: Partial<Record<string, string>> = {
+  onyx: "#070c1a",
 };
 
 export const normalizeThemeKey = (theme: string | undefined) => {
@@ -69,6 +90,7 @@ export const normalizeThemeKey = (theme: string | undefined) => {
 };
 
 export const isDarkThemeKey = (theme: string | undefined) => !["sky", "wash", "webcore"].includes(normalizeThemeKey(theme));
+
 
 export const CLOUD_SHAPES = [
   `<svg viewBox="0 0 200 80" xmlns="http://www.w3.org/2000/svg"><ellipse cx="100" cy="55" rx="95" ry="28"/><ellipse cx="70" cy="45" rx="45" ry="35"/><ellipse cx="110" cy="38" rx="52" ry="40"/><ellipse cx="150" cy="48" rx="38" ry="30"/></svg>`,
@@ -111,18 +133,19 @@ export const KB_NUMS = [
 export const SCAN_KEYS = ["scan_steam", "scan_xbox", "scan_uwp", "scan_desktop", "scan_battlenet"] as const;
 
 export const DEFAULT_SETTINGS = {
-  accent: "ember", theme: "space", stars_enabled: true, lofi_music_enabled: true, wide_layout: false, transparent_bars: false, transparent_topbar: false, transparent_bottombar: false, hide_bottom_bar: false,
+  accent: "ember", theme: "space", stars_enabled: true, lofi_music_enabled: true, wide_layout: false, wide_topbar: false, wide_bottombar: false, wide_games: false, wide_apps: false, wide_settings: false, topbar_background: true, bottombar_background: true, hide_bottom_bar: false,
   default_tab: "Home", scan_steam: true, scan_xbox: true,
   scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
   launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
-  language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false, show_immersive_hero_art: true,
+  language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, app_cover_scale: 1.0, app_list_view: false, app_list_cols: 1, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false, home_mode: "normal", home_section_title_size: "small", show_home_recents: true, hero_content_pos: "bottom", show_immersive_hero_art: true,
   nav_bumpers_pos: "bottom",
-  tabbar_show_buttons: "tabbar", tabbar_text_tabs: false, tabbar_with_background: false, tabbar_font_weight: "medium",
-  bottombar_alignment: "left", tabbar_label_case: "default",
-  show_home_collections: false, show_home_collection_names: true, show_hero_cover: true, show_home_pinned: true,
+  tabbar_show_buttons: "tabbar", tabbar_text_tabs: false, tabbar_with_background: false, tabbar_background_compact: false, tabbar_font_weight: "medium", tabbar_icon_mode: "text",
+  bottombar_alignment: "left", bottombar_compact: "off", tabbar_label_case: "default",
+  show_recent_games_only: false, show_home_collections: false, show_home_collection_names: true, show_hero_cover: true, show_home_pinned: true, home_pinned_pos: "bottom", onyx_flat_settings: true,
   gamepad_platform: "xbox", gamepad_icons_colored: false, gamepad_icons_filled: true, gamepad_icons_theme_color: false,
   gamepad_btn_size: "small", gamepad_auto_detect: true,
   surface_style: "clear",
+  onyx_top_light: true,
 } as const;
 
 export type AccentKey = keyof typeof ACCENTS;

@@ -91,6 +91,7 @@ pub struct Settings {
     pub accent: String,
     pub theme: String,
     pub stars_enabled: bool,
+    pub onyx_top_light: bool,
     #[serde(default = "default_true")]
     pub lofi_music_enabled: bool,
     pub default_tab: String,
@@ -121,21 +122,43 @@ pub struct Settings {
     #[serde(default)]
     pub wide_layout: bool,
     #[serde(default)]
+    pub wide_topbar: bool,
+    #[serde(default)]
+    pub wide_bottombar: bool,
+    #[serde(default)]
+    pub wide_games: bool,
+    #[serde(default)]
+    pub wide_apps: bool,
+    #[serde(default)]
+    pub wide_settings: bool,
+    #[serde(default)]
     pub cinematic_home: bool,
+    #[serde(default = "default_home_mode")]
+    pub home_mode: String,
+    #[serde(default = "default_home_section_title_size")]
+    pub home_section_title_size: String,
+    #[serde(default = "default_true")]
+    pub show_home_recents: bool,
+    #[serde(default = "default_hero_content_pos")]
+    pub hero_content_pos: String,
     #[serde(default = "default_true")]
     pub show_immersive_hero_art: bool,
     #[serde(default)]
     pub hide_bottom_bar: bool,
-    #[serde(default)]
-    pub transparent_bars: bool,
-    #[serde(default)]
-    pub transparent_topbar: bool,
-    #[serde(default)]
-    pub transparent_bottombar: bool,
+    #[serde(default = "default_true")]
+    pub topbar_background: bool,
+    #[serde(default = "default_true")]
+    pub bottombar_background: bool,
     #[serde(default = "default_cover_scale")]
     pub home_cover_scale: f32,
     #[serde(default = "default_cover_scale")]
     pub game_cover_scale: f32,
+    #[serde(default = "default_cover_scale")]
+    pub app_cover_scale: f32,
+    #[serde(default)]
+    pub app_list_view: bool,
+    #[serde(default = "default_app_list_cols")]
+    pub app_list_cols: i32,
     // Navigation bar settings (moi952 PRs)
     #[serde(default = "default_nav_bumpers_pos")]
     pub nav_bumpers_pos: String,
@@ -145,13 +168,21 @@ pub struct Settings {
     pub tabbar_text_tabs: bool,
     #[serde(default)]
     pub tabbar_with_background: bool,
+    #[serde(default)]
+    pub tabbar_background_compact: bool,
     #[serde(default = "default_tabbar_font_weight")]
     pub tabbar_font_weight: String,
+    #[serde(default = "default_tabbar_icon_mode")]
+    pub tabbar_icon_mode: String,
     #[serde(default = "default_tabbar_label_case")]
     pub tabbar_label_case: String,
     #[serde(default = "default_bottombar_alignment")]
     pub bottombar_alignment: String,
+    #[serde(default = "default_bottombar_compact")]
+    pub bottombar_compact: String,
     // Home collections
+    #[serde(default)]
+    pub show_recent_games_only: bool,
     #[serde(default)]
     pub show_home_collections: bool,
     #[serde(default = "default_true")]
@@ -160,6 +191,10 @@ pub struct Settings {
     pub show_hero_cover: bool,
     #[serde(default = "default_true")]
     pub show_home_pinned: bool,
+    #[serde(default = "default_home_pinned_pos")]
+    pub home_pinned_pos: String,
+    #[serde(default = "default_true")]
+    pub onyx_flat_settings: bool,
     // Gamepad icon settings (moi952 PRs)
     #[serde(default = "default_gamepad_platform")]
     pub gamepad_platform: String,
@@ -182,12 +217,19 @@ pub struct Settings {
 fn default_language()             -> String { "auto".to_string() }
 fn default_time_format()          -> String { "auto".to_string() }
 fn default_cover_scale()          -> f32    { 1.0 }
+fn default_app_list_cols()        -> i32    { 1 }
 fn default_nav_bumpers_pos()      -> String { "bottom".to_string() }
 fn default_tabbar_show_buttons()  -> String { "tabbar".to_string() }
 fn default_tabbar_font_weight()   -> String { "medium".to_string() }
 fn default_tabbar_label_case()    -> String { "default".to_string() }
+fn default_tabbar_icon_mode()     -> String { "text".to_string() }
 fn default_bottombar_alignment()  -> String { "left".to_string() }
-fn default_gamepad_platform()     -> String { "xbox".to_string() }
+fn default_bottombar_compact()          -> String { "off".to_string() }
+fn default_home_mode()                  -> String { "normal".to_string() }
+fn default_home_section_title_size()    -> String { "small".to_string() }
+fn default_hero_content_pos()           -> String { "bottom".to_string() }
+fn default_home_pinned_pos()            -> String { "bottom".to_string() }
+fn default_gamepad_platform()           -> String { "xbox".to_string() }
 fn default_gamepad_btn_size()     -> String { "small".to_string() }
 fn default_topbar_show_bumpers()  -> bool   { false }
 fn default_surface_style()        -> String { "clear".to_string() }
@@ -215,25 +257,43 @@ impl Default for Settings {
             show_date: true,
             show_battery: true,
             wide_layout: false,
+            wide_topbar: false,
+            wide_bottombar: false,
+            wide_games: false,
+            wide_apps: false,
+            wide_settings: false,
             cinematic_home: false,
+            home_mode: "normal".to_string(),
+            home_section_title_size: "small".to_string(),
+            show_home_recents: true,
+            hero_content_pos: "bottom".to_string(),
             show_immersive_hero_art: true,
+            onyx_top_light: true,
             hide_bottom_bar: false,
-            transparent_bars: false,
-            transparent_topbar: false,
-            transparent_bottombar: false,
+            topbar_background: true,
+            bottombar_background: true,
             home_cover_scale: 1.0,
             game_cover_scale: 1.0,
+            app_cover_scale: 1.0,
+            app_list_view: false,
+            app_list_cols: 1,
             nav_bumpers_pos: "bottom".to_string(),
             tabbar_show_buttons: "tabbar".to_string(),
             tabbar_text_tabs: false,
             tabbar_with_background: false,
+            tabbar_background_compact: false,
             tabbar_font_weight: "medium".to_string(),
+            tabbar_icon_mode: "text".to_string(),
             tabbar_label_case: "default".to_string(),
             bottombar_alignment: "left".to_string(),
+            bottombar_compact: "off".to_string(),
+            show_recent_games_only: false,
             show_home_collections: false,
             show_home_collection_names: true,
             show_hero_cover: true,
             show_home_pinned: true,
+            home_pinned_pos: "bottom".to_string(),
+            onyx_flat_settings: true,
             gamepad_platform: "xbox".to_string(),
             gamepad_icons_colored: false,
             gamepad_icons_filled: true,
@@ -289,6 +349,22 @@ fn settings_path() -> std::path::PathBuf { liftoff_dir().join("settings.json") }
 fn pins_path() -> std::path::PathBuf { liftoff_dir().join("pins.json") }
 fn hidden_path() -> std::path::PathBuf { liftoff_dir().join("hidden.json") }
 fn recent_games_path() -> std::path::PathBuf { liftoff_dir().join("recent_games.json") }
+fn custom_names_path() -> std::path::PathBuf { liftoff_dir().join("custom_names.json") }
+
+fn load_custom_names() -> std::collections::HashMap<String, String> {
+    let path = custom_names_path();
+    std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+fn save_custom_names(names: &std::collections::HashMap<String, String>) {
+    let path = custom_names_path();
+    if let Ok(json) = serde_json::to_string_pretty(names) {
+        let _ = std::fs::write(path, json);
+    }
+}
 
 fn art_dir() -> std::path::PathBuf { liftoff_dir().join("art") }
 fn grid_art_dir() -> std::path::PathBuf { art_dir().join("grid") }
@@ -569,6 +645,23 @@ fn rename_custom_app(id: String, name: String) -> Result<(), String> {
         app.name = name;
     }
     save_custom_data(&data);
+    Ok(())
+}
+
+#[tauri::command]
+fn rename_app(id: String, name: String) -> Result<(), String> {
+    // For custom apps, also update the name in custom_data.json
+    if id.starts_with("custom_") {
+        let mut data = load_custom_data();
+        if let Some(app) = data.apps.iter_mut().find(|a| a.id == id) {
+            app.name = name.clone();
+        }
+        save_custom_data(&data);
+    }
+    // Store override in custom_names.json for all app types
+    let mut names = load_custom_names();
+    names.insert(id, name);
+    save_custom_names(&names);
     Ok(())
 }
 
@@ -1712,6 +1805,16 @@ fn get_all_apps() -> Vec<AppEntry> {
         }
     }
 
+    // Apply user-defined name overrides
+    let custom_names = load_custom_names();
+    if !custom_names.is_empty() {
+        for app in &mut apps {
+            if let Some(name) = custom_names.get(&app.id) {
+                app.name = name.clone();
+            }
+        }
+    }
+
     apps
 }
 
@@ -2276,7 +2379,7 @@ pub fn run() {
             get_screen_resolution,
             search_sgdb_art, download_sgdb_art,
             list_dir, get_drives,
-            get_custom_data, add_custom_app, remove_custom_app, rename_custom_app, remove_custom_source,
+            get_custom_data, add_custom_app, remove_custom_app, rename_custom_app, rename_app, remove_custom_source,
             add_custom_folder, remove_custom_folder, toggle_custom_folder,
             get_app_collections, create_app_collection, delete_app_collection, rename_app_collection,
             get_app_memberships, set_app_memberships,

@@ -52,8 +52,10 @@ import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO,
   ACCENTS, THEMES, CLOUD_SHAPES, CLOUD_CONFIGS, KB_ALPHA, KB_NUMS,
   normalizeThemeKey, isDarkThemeKey,
+  THEME_LOCKED_SETTINGS, THEME_BG_COLORS,
   getRunAsAdmin, setRunAsAdmin,
 } from "./constants";
+import { FocusRing } from "./components/ui/FocusRing";
 
 export default function App() {
   const { t } = useTranslation();
@@ -317,7 +319,7 @@ export default function App() {
     ACCENTS,
     GITHUB_REPO,
   });
-  const surfaceStyle = settings.surface_style ?? "glass";
+  const surfaceStyle = (THEME_LOCKED_SETTINGS[resolvedTheme]?.surface_style ?? settings.surface_style) ?? "glass";
   const glassEnabled = surfaceStyle !== "clear";
   const isMaterial = surfaceStyle === "material";
   const appPaused = !!launchingApp || !windowFocused;
@@ -327,9 +329,9 @@ export default function App() {
     materialTokens,
     surface,
     glass,
-    glassBar,
+    glassBar: _glassBar,
     settingsRowGlass,
-    appBg,
+    appBg: _appBg,
     bgGlow1,
     bgGlow2,
     cardBackdropFilter,
@@ -344,6 +346,14 @@ export default function App() {
     cinematicLight,
     accent,
   });
+  const appBg = THEME_BG_COLORS[resolvedTheme] ?? _appBg;
+  const glassBar = resolvedTheme === "onyx" ? {
+    background: "rgba(5, 9, 22, 0.92)",
+    backdropFilter: undefined,
+    WebkitBackdropFilter: undefined,
+    borderBottom: "1px solid rgba(255,255,255,0.07)",
+    boxShadow: "none",
+  } : _glassBar;
   const activeTextColor = isDark
     ? (accent.darkText ? "rgba(20, 14, 10, 0.90)" : "white")
     : (accent.lightDarkText ? "rgba(20, 14, 10, 0.90)" : "white");
@@ -753,7 +763,8 @@ export default function App() {
     .filter(a => tab === "Home" ? true : tab === "Games" ? a.app_type === "game" : a.app_type === "app");
 
   const effectiveGameCols = Math.max(2, Math.round(GAME_COLS / (settings.game_cover_scale ?? 1.0)));
-  const currentCols = tab === "Games" ? effectiveGameCols : COLS;
+  const effectiveAppCols  = Math.max(2, Math.round(COLS / (settings.app_cover_scale ?? 1.0)));
+  const currentCols = tab === "Games" ? effectiveGameCols : (settings.app_list_view ? Math.max(1, settings.app_list_cols ?? 1) : effectiveAppCols);
 
   useEffect(() => {
     if (tab === "Settings") return;
@@ -845,9 +856,26 @@ export default function App() {
             focusedCardRef.current.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
           }
         } else {
-          focusedRowRef.current.style.scrollMarginTop    = "120px";
-          focusedRowRef.current.style.scrollMarginBottom = "80px";
-          focusedRowRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          const scroller = homeScrollRef.current;
+          if (scroller && focusedRowRef.current) {
+            const scale = settings.ui_scale ?? 1;
+            const sr = scroller.getBoundingClientRect();
+            const rr = focusedRowRef.current.getBoundingClientRect();
+            const rowTop = (rr.top - sr.top) / scale;
+            const rowBottom = (rr.bottom - sr.top) / scale;
+            let newTop = scroller.scrollTop;
+            if (rowTop < 100) {
+              newTop = scroller.scrollTop + rowTop - 100;
+            } else if (rowBottom > scroller.clientHeight - 80) {
+              newTop = scroller.scrollTop + rowBottom - (scroller.clientHeight - 80);
+            }
+            scroller.scrollTo({ top: Math.max(0, newTop), behavior: "smooth" });
+          }
+          // Scroll the focused card horizontally within its row container only,
+          // without touching the outer vertical scroller.
+          if (focusedCardRef.current?.parentElement) {
+            scrollFocusedCardHorizontally(focusedCardRef.current.parentElement);
+          }
         }
       }
     } else if (focusSection === "pinned") {
@@ -1008,23 +1036,36 @@ export default function App() {
   const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, onRightClick }) => {
     const art = customArt[app.id] || gameArt[app.id];
     const cardRadius = surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 8 : 16;
+    const isOnyx = resolvedTheme === "onyx";
     return (
+      // Outer wrapper — no overflow:hidden so the ring can extend outside with a gap
       <div ref={cardRef} onClick={onClick} onDoubleClick={onDoubleClick}
         onContextMenu={onRightClick ? (e) => { e.preventDefault(); onRightClick(e, app); } : undefined}
-        style={focused
-          ? { ...glass, border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease", boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 40px ${accent.glow}0.2)`, transform: "scale(1.04) translateY(-1px)" }
-          : { ...glass, border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)", borderRadius: cardRadius, cursor: "pointer", overflow: "hidden", position: "relative", aspectRatio: "2/3", transition: "box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease" }
-        }
+        style={{
+          position: "relative", borderRadius: cardRadius, aspectRatio: "2/3",
+          cursor: "pointer", transition: "box-shadow 0.15s ease, transform 0.15s ease",
+          ...(focused ? { transform: "scale(1.04) translateY(-1px)" } : {}),
+        }}
       >
-        {art
-          ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-          : <img src={`/assets/liftoff_cover_${settings.accent}.svg`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-        }
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 12px 12px", background: "linear-gradient(transparent, rgba(0,0,0,0.8))" }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "white", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</span>
+        {/* Inner content — overflow:hidden clips the art to the card */}
+        <div style={focused
+          ? { ...glass, border: isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, overflow: "hidden", position: "absolute", inset: 0, boxShadow: isOnyx ? "none" : surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 40px ${accent.glow}0.2)` }
+          : { ...glass, border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)", borderRadius: cardRadius, overflow: "hidden", position: "absolute", inset: 0 }
+        }>
+          {art
+            ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            : <img src={`/assets/liftoff_cover_${settings.accent}.svg`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          }
+          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 12px 12px", background: "linear-gradient(transparent, rgba(0,0,0,0.8))" }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "white", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</span>
+          </div>
+          <PinBadge isPinned={isPinned} />
+          {focused && !isOnyx && (
+            <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, pointerEvents: "none" }} />
+          )}
         </div>
-        <PinBadge isPinned={isPinned} />
-        {focused && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, pointerEvents: "none" }} />}
+        {/* Ring — outside overflow:hidden, spaced 4px away from the card edge */}
+        <FocusRing focused={focused} variant="spin" elementRadius={cardRadius} />
       </div>
     );
   };
@@ -1189,11 +1230,11 @@ export default function App() {
   ) : undefined;
 
   // ── Render ────────────────────────────────────────────────────
-  const themeValue = { isDark, theme, accent, glass, glassBar, settingsRowGlass, glassEnabled, surfaceStyle, appBg, bgGlow1, bgGlow2, surface };
+  const themeValue = { isDark, resolvedTheme, theme, accent, glass, glassBar, settingsRowGlass, glassEnabled, surfaceStyle, appBg, bgGlow1, bgGlow2, surface };
   const settingsValue = { settings, settingsRef, updateSetting, updateSettingsBatch };
   const libraryViewProps = {
     scrollRef: tabScrollRef,
-    wideLayout: settings.wide_layout,
+    wideLayout: settings.wide_games,
     customSources,
     gameCollections,
     appCollections,
@@ -1224,7 +1265,9 @@ export default function App() {
     triggerLaunch,
     recent,
     setContextMenu,
-    COLS,
+    COLS: effectiveAppCols,
+    appListView: settings.app_list_view ?? false,
+    appListCols: Math.max(1, settings.app_list_cols ?? 1),
     iconColors,
     customArt,
     glass,
@@ -1510,7 +1553,11 @@ export default function App() {
         <EditNameModal
           app={editNameApp}
           onConfirm={(name) => {
-            invoke("rename_custom_app", { id: editNameApp.id, name }).then(() => refreshLibrary());
+            const renamedId = editNameApp.id;
+            setGameArt(prev => { const n = {...prev}; delete n[renamedId]; return n; });
+            setHeroStatic(prev => { const n = {...prev}; delete n[renamedId]; return n; });
+            setHeroAnimated(prev => { const n = {...prev}; delete n[renamedId]; return n; });
+            invoke("rename_app", { id: renamedId, name }).then(() => refreshLibrary());
             setEditNameApp(null);
           }}
           onClose={() => setEditNameApp(null)}
@@ -1634,18 +1681,18 @@ export default function App() {
                   <circle cx="8.5" cy="8.5" r="5.5" stroke={theme.text} strokeWidth="1.3"/>
                   <path d="M13 13l3.5 3.5" stroke={theme.text} strokeWidth="1.3" strokeLinecap="round"/>
                 </svg>
-                <span style={{ fontSize: 13 }}>Start typing to search</span>
+                <span style={{ fontSize: 13 }}>{t('search.startTyping')}</span>
                 {searchMode === "idle" && (
-                  <span style={{ fontSize: 11, color: theme.textFaint }}>Press <strong style={{ color: theme.textDim }}>Y</strong> to bring the keyboard back</span>
+                  <span style={{ fontSize: 11, color: theme.textFaint }}>{t('search.bringKeyboard_pre')}<strong style={{ color: theme.textDim }}>Y</strong>{t('search.bringKeyboard_post')}</span>
                 )}
               </div>
             )}
             {searchQuery.trim().length > 0 && searchResults.length === 0 && (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 10, color: theme.textFaint }}>
                 <span style={{ fontSize: 28 }}>¯\_(ツ)_/¯</span>
-                <span style={{ fontSize: 13 }}>No results for "{searchQuery}"</span>
+                <span style={{ fontSize: 13 }}>{t('search.noResultsFor', { query: searchQuery })}</span>
                 {searchMode === "idle" && (
-                  <span style={{ fontSize: 11, color: theme.textFaint }}>Press <strong style={{ color: theme.textDim }}>Y</strong> to keep typing</span>
+                  <span style={{ fontSize: 11, color: theme.textFaint }}>{t('search.keepTyping_pre')}<strong style={{ color: theme.textDim }}>Y</strong>{t('search.keepTyping_post')}</span>
                 )}
               </div>
             )}
@@ -1719,7 +1766,7 @@ export default function App() {
         {/* Tab content area — Home always mounted; cover layer hides it when elsewhere;
              clouds sit above cover, below all tab UI. */}
         <AppMainContent>
-        <div style={{ position: "relative", flex: 1, overflow: (settings.transparent_topbar && tab === "Home") || (settings.cinematic_home && tab === "Home") ? "auto" : "hidden" }}>
+        <div style={{ position: "relative", flex: 1, overflow: (!(settings.topbar_background ?? true) && tab === "Home") || ((settings.cinematic_home || settings.home_mode === "semi") && tab === "Home") ? "auto" : "hidden" }}>
 
           {tab === "Settings" && (
             <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
@@ -1729,7 +1776,8 @@ export default function App() {
           <HomeView
             scrollRef={homeScrollRef}
             active={tab === "Home"}
-            cinematicHome={settings.cinematic_home}
+            cinematicHome={settings.cinematic_home || settings.home_mode === "immersive"}
+            semiHome={settings.home_mode === "semi"}
             recent={recent}
             pins={pins}
             apps={apps}
@@ -1787,8 +1835,8 @@ export default function App() {
             heroIndexRef={heroIndexRef}
             iconColors={iconColors}
           />
-          {tab === "Games" && <GamesView {...libraryViewProps} />}
-          {tab === "Apps" && <AppsView {...libraryViewProps} />}
+          {tab === "Games" && <GamesView {...libraryViewProps} wideLayout={settings.wide_games} />}
+          {tab === "Apps" && <AppsView {...libraryViewProps} wideLayout={settings.wide_apps} />}
         </div>
         </AppMainContent>
 
@@ -1822,9 +1870,7 @@ export default function App() {
             ? [{ label: t('contextMenu.changeHeroArt'), action: () => { setArtPickerMode("hero"); artPickerModeRef.current = "hero"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
             : []),
           { label: t('contextMenu.collections'), action: () => { setColPickerApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
-          ...(contextMenu.app.id.startsWith("custom_")
-            ? [{ label: t('contextMenu.rename'), action: () => { setEditNameApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } }]
-            : []),
+          { label: t('contextMenu.rename'), action: () => { setEditNameApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
           ...(contextMenu.app.id.startsWith("custom_")
             ? [{ label: t('contextMenu.delete'), danger: true, action: () => { setConfirmDelete(contextMenu.app); confirmDeleteRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
             : []),

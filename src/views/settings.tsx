@@ -1,11 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { CollapsibleGroup, ToggleKnob, GamepadIconPreview } from "../components/ui";
+import { CollapsibleGroup, ToggleKnob, GamepadIconPreview, FocusRing } from "../components/ui";
 import { ControllerTestWidget } from "../components/ControllerTestWidget";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
-import { ACCENTS, APP_VERSION, GITHUB_REPO, THEME_OPTIONS, normalizeThemeKey } from "../constants";
+import { ACCENTS, APP_VERSION, GITHUB_REPO, THEME_OPTIONS, THEME_LOCKED_SETTINGS, normalizeThemeKey } from "../constants";
 import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem } from "../types";
 
 // ── Section definitions ────────────────────────────────────────
@@ -32,49 +32,65 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     activeTheme === "lofi"      ? t("settings.backgroundLofi")      :
     activeTheme === "forest"    ? t("settings.backgroundForest")    :
     activeTheme === "webcore"   ? t("settings.backgroundWebcore")   :
-    t("settings.backgroundWash");
-  return [
+    activeTheme === "wash"      ? t("settings.backgroundWash")      :
+    t("settings.backgroundEffects");
+  const items: SettingsItem[] = [
     // ── Appearance ───────────────────────────────────────────────
     D("theme", 0),
-    { key: "accent",        section: 0, label: t("settings.accentColor"),  type: "accent" },
     { key: "theme",         section: 0, label: t("settings.theme"),         type: "cycle",  options: [...THEME_OPTIONS] },
-    { key: "stars_enabled", section: 0, label: bgLabel, type: "toggle", subItems: activeTheme === "lofi" ? [
+    { key: "accent",        section: 0, label: t("settings.accentColor"),   type: "accent",  indent: true },
+    { key: "stars_enabled", section: 0, label: bgLabel, type: "toggle", indent: true, subItems: activeTheme === "lofi" ? [
       { key: "lofi_music_enabled", label: t("settings.lofiMusic"), type: "toggle" },
     ] : undefined },
-    { key: "surface_style", section: 0, label: t("settings.surfaceStyle"),                                                  type: "cycle",  options: ["glass", "aero", "material", "clear", "obsidian", "neon", "win9x"] },
+    { key: "surface_style", section: 0, label: t("settings.surfaceStyle"),  type: "cycle", options: ["glass", "aero", "material", "clear", "obsidian", "neon", "win9x"], indent: true },
 
     D("home", 0),
-    { key: "cinematic_home",         section: 0, label: t("settings.immersiveHome"),       type: "toggle", subItems: [
-      { key: "show_immersive_hero_art", label: t("settings.showImmersiveHeroArt"), type: "toggle" },
-    ] },
+    { key: "home_mode",              section: 0, label: t("settings.homeMode"),            type: "cycle", options: ["normal", "semi", "immersive"] },
+    { key: "show_immersive_hero_art",section: 0, label: t("settings.showImmersiveHeroArt"),type: "toggle" },
     { key: "show_hero_cover",        section: 0, label: t("settings.showHeroCover"),        type: "toggle" },
-    { key: "show_home_pinned",       section: 0, label: t("settings.showHomePinned"),       type: "toggle" },
+    { key: "home_pinned_pos",        section: 0, label: t("settings.homePinnedPos"),         type: "cycle", options: ["none", "top", "bottom"] },
+    { key: "show_home_recents",      section: 0, label: t("settings.showHomeRecents"),      type: "toggle" },
+    { key: "show_recent_games_only", section: 0, label: t("settings.showRecentGamesOnly"),  type: "toggle" },
+    { key: "home_section_title_size",section: 0, label: t("settings.homeSectionTitleSize"), type: "cycle", options: ["small", "medium", "large"] },
     { key: "show_home_collections",  section: 0, label: t("settings.showHomeCollections"),  type: "toggle", subItems: [
       { key: "show_home_collection_names", label: t("settings.showHomeCollectionNames"), type: "toggle" },
     ]},
 
     D("layout", 0),
-    { key: "wide_layout",       section: 0, label: t("settings.wideLayout"),     type: "toggle" },
+    { key: "wide_layout",       section: 0, label: t("settings.wideLayout"),     type: "toggle", subItems: [
+      { key: "wide_topbar",    label: t("settings.wideTopbar"),    type: "toggle" },
+      { key: "wide_games",     label: t("settings.wideGames"),     type: "toggle" },
+      { key: "wide_apps",      label: t("settings.wideApps"),      type: "toggle" },
+      { key: "wide_settings",  label: t("settings.wideSettings"),  type: "toggle" },
+      { key: "wide_bottombar", label: t("settings.wideBottombar"), type: "toggle" },
+    ]},
     { key: "ui_scale",          section: 0, label: t("settings.uiScale"),         type: "slider", min: 0.75, max: 2.0, step: 0.05 },
     { key: "reset_scale",       section: 0, label: t("settings.resetScale"),      type: "action" },
     { key: "home_cover_scale",  section: 0, label: t("settings.homeCoverScale"),  type: "slider", min: 0.5, max: 2.0, step: 0.05 },
     { key: "game_cover_scale",  section: 0, label: t("settings.gameCoverScale"),  type: "slider", min: 0.5, max: 2.0, step: 0.05 },
+    { key: "app_cover_scale",   section: 0, label: t("settings.appCoverScale"),   type: "slider", min: 0.5, max: 2.0, step: 0.05 },
+    { key: "app_list_view",     section: 0, label: t("settings.appListView"),     type: "toggle", subItems: [
+      { key: "app_list_cols", label: t("settings.appListCols"), type: "slider", min: 1, max: 6, step: 1, integer: true },
+    ]},
 
     D("navbar", 0),
-    { key: "hide_bottom_bar",        section: 0, label: t("settings.hideBottomBar"),       type: "toggle" },
-    { key: "transparent_bars",       section: 0, label: t("settings.transparentBars"),      type: "toggle", subItems: [
-      { key: "transparent_topbar",    label: t("settings.transparentTopbar"),    type: "toggle" },
-      { key: "transparent_bottombar", label: t("settings.transparentBottombar"), type: "toggle" },
+    { key: "hide_bottom_bar",     section: 0, label: t("settings.hideBottomBar"),      type: "toggle" },
+    { key: "topbar_background",   section: 0, label: t("settings.topbarBackground"),   type: "toggle" },
+    { key: "tabbar_with_background", section: 0, label: t("settings.tabbarBackground"), type: "toggle", subItems: [
+      { key: "tabbar_background_compact", label: t("settings.tabbarBackgroundCompact"), type: "toggle" },
     ]},
-    { key: "nav_bumpers_pos",         section: 0, label: t("settings.navBumpersPos"),        type: "cycle",  options: ["header", "bottom", "hidden"] },
+    { key: "bottombar_background", section: 0, label: t("settings.bottombarBackground"), type: "toggle", subItems: [
+      { key: "bottombar_compact",   label: t("settings.bottombarCompact"),   type: "cycle", options: ["off", "home", "always", "except_home"] },
+      { key: "bottombar_alignment", label: t("settings.bottombarAlignment"), type: "cycle", options: ["left", "center", "right"] },
+    ]},
+    { key: "nav_bumpers_pos",     section: 0, label: t("settings.navBumpersPos"),      type: "cycle",  options: ["header", "bottom", "hidden"] },
     D("tabbar", 0),
-    { key: "tabbar_show_buttons",    section: 0, label: t("settings.tabbarBadges"),          type: "cycle",  options: ["tabbar", "bottom", "hidden"] },
-    { key: "tabbar_label_case",      section: 0, label: t("settings.tabbarLabelCase"),        type: "cycle",  options: ["default", "ucfirst", "uppercase"] },
-    { key: "tabbar_text_tabs",       section: 0, label: t("settings.tabbarTextTabs"),         type: "toggle", subItems: [
+    { key: "tabbar_show_buttons", section: 0, label: t("settings.tabbarBadges"),       type: "cycle",  options: ["tabbar", "bottom", "hidden"] },
+    { key: "tabbar_label_case",   section: 0, label: t("settings.tabbarLabelCase"),    type: "cycle",  options: ["default", "ucfirst", "uppercase"] },
+    { key: "tabbar_text_tabs",    section: 0, label: t("settings.tabbarTextTabs"),     type: "toggle", subItems: [
       { key: "tabbar_font_weight", label: t("settings.tabbarFontWeight"), type: "cycle", options: ["thin", "medium", "bold"] },
     ]},
-    { key: "tabbar_with_background", section: 0, label: t("settings.tabbarWithBackground"),   type: "toggle" },
-    { key: "bottombar_alignment",     section: 0, label: t("settings.bottombarAlignment"),     type: "cycle",  options: ["left", "center", "right"] },
+    { key: "tabbar_icon_mode",    section: 0, label: t("settings.tabbarIconMode"),     type: "cycle",  options: ["text", "icons", "both"] },
 
     // ── Library ──────────────────────────────────────────────────
     D("sources", 1),
@@ -134,6 +150,24 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "credit3", section: 5, label: "Mysterious Sparkle Flourish",      author: "DanaiOuranos",  license: "CC0",        url: "https://freesound.org/s/844398/",                       type: "attribution" },
     { key: "credit4", section: 5, label: "Universal UI Soundpack",           author: "Nathan Gibson", license: "CC BY 4.0",  url: "https://cyrex-studios.itch.io/universal-ui-soundpack", type: "attribution" },
   ];
+
+  // Insert theme-specific items after stars_enabled (only visible for that theme)
+  if (activeTheme === "onyx") {
+    const starsIdx = items.findIndex(i => i.key === "stars_enabled");
+    if (starsIdx !== -1) items.splice(starsIdx + 1, 0,
+      { key: "onyx_top_light", section: 0, label: t("settings.onyxTopLight"), type: "toggle", indent: true },
+      { key: "onyx_flat_settings", section: 0, label: t("settings.onyxFlatSettings"), type: "toggle", indent: true },
+    );
+  }
+
+  // Mark items whose value is forced by the active theme
+  const lockedByTheme = THEME_LOCKED_SETTINGS[activeTheme] ?? {};
+  if (Object.keys(lockedByTheme).length === 0) return items;
+  return items.map(item =>
+    item.type !== "divider" && item.key in lockedByTheme
+      ? { ...item, locked: true, lockedValue: lockedByTheme[item.key] }
+      : item
+  );
 }
 
 /** Returns the navigable items for a given section index. */
@@ -166,7 +200,8 @@ export function getSectionNavigableItems(
         i.type !== "divider" &&
         i.type !== "info" &&
         i.type !== "icon_preview" &&
-        i.type !== "controller_test"
+        i.type !== "controller_test" &&
+        !('locked' in i && i.locked)
     );
 }
 
@@ -219,15 +254,16 @@ export function SettingsScreen({
   onToggleHomeCollection,
 }: SettingsScreenProps) {
   const { t } = useTranslation();
-  const { settingsRowGlass, accent, theme, isDark, glassEnabled, surfaceStyle, surface } = useTheme();
+  const { settingsRowGlass, accent, theme, isDark, glassEnabled, surfaceStyle, surface, resolvedTheme } = useTheme();
   const { settings, updateSetting } = useSettings();
-  const wideLayout = settings.wide_layout ?? false;
+  const wideLayout = settings.wide_settings ?? false;
 
   const ALL_ITEMS = buildSettingsItems(t, normalizeThemeKey(String(settings.theme)));
   const sectionItems = ALL_ITEMS.filter((i) => i.section === settingsSection);
   const navigableItems = getSectionNavigableItems(settingsSection, ALL_ITEMS, settings, { gameCollections, appCollections });
   const isMaterial = surfaceStyle === "material";
   const isPixel = surfaceStyle === "win9x";
+  const isOnyx = resolvedTheme === "onyx";
   const materialFocusStyle = isMaterial ? {
     border: `2px solid ${accent.primary}`,
     background: isDark
@@ -255,39 +291,61 @@ export function SettingsScreen({
     boxShadow: `${surface.bevelSunken}, 0 0 0 1px ${accent.primary}`,
   } : {};
 
-  const makeRowStyle = (focused: boolean, sub = false) => ({
-    ...settingsRowGlass,
-    borderRadius: isPixel ? 0 : isMaterial ? 8 : 16,
-    padding: "12px 20px",
-    marginBottom: sub ? 6 : 8,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    cursor: "pointer",
-    transition: "all 0.15s ease",
-    ...(focused && !sub
-      ? {
-          border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + (surfaceStyle === "aero" ? "0.50)" : "0.45)")}`,
-          backdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
-          WebkitBackdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
-          // Aero focus: crisp specular line + soft inner glow + accent bloom (no heavy shadow)
-          boxShadow: surfaceStyle === "aero"
-            ? `inset 0 1px 0 rgba(255,255,255,0.38), inset 0 2px 5px rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.10), 0 0 0 1px ${accent.glow}0.16), 0 6px 20px ${accent.glow}0.14)`
-            : surfaceStyle === "material"
-            ? "var(--material-shadow-medium)"
-            : `inset 0 1px 0 rgba(255,255,255,0.14), 0 0 0 1px ${accent.glow}0.12), 0 8px 22px ${accent.glow}0.10), 0 10px 28px rgba(0,0,0,0.28)`,
-          background: isDark
-            ? (surfaceStyle === "aero"
-                ? "linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.05) 100%)"
-                : surfaceStyle === "material" ? "var(--material-elevation-2)"
-                : surfaceStyle === "obsidian" ? "linear-gradient(180deg, rgba(6,4,14,0.92), rgba(6,4,14,0.86))"
-                : "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.032))")
-            : surfaceStyle === "material" ? "var(--material-elevation-3)" : `${accent.glow}0.05)`,
-          ...(isMaterial ? materialFocusStyle : {}),
-          ...(isPixel ? pixelFocusStyle : {}),
-        }
-      : {}),
-  });
+  const flatSettings = isOnyx && (settings.onyx_flat_settings ?? true);
+
+  const makeRowStyle = (focused: boolean, sub = false, indent = false) => {
+    if (flatSettings) {
+      return {
+        background: "transparent",
+        borderRadius: 0,
+        padding: "12px 20px",
+        marginBottom: 0,
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
+        marginLeft: indent ? 24 : 0,
+        position: "relative" as const,
+        zIndex: focused ? 2 : undefined,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        cursor: "pointer",
+        transition: "background 0.15s ease",
+      };
+    }
+    return {
+      ...settingsRowGlass,
+      borderRadius: isPixel ? 0 : isMaterial ? 8 : 16,
+      padding: "12px 20px",
+      marginBottom: sub ? 6 : 8,
+      marginLeft: indent ? 24 : 0,
+      position: "relative" as const,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      cursor: "pointer",
+      transition: "all 0.15s ease",
+      ...(focused && !sub
+        ? {
+            border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + (surfaceStyle === "aero" ? "0.50)" : "0.45)")}`,
+            backdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
+            WebkitBackdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
+            boxShadow: surfaceStyle === "aero"
+              ? `inset 0 1px 0 rgba(255,255,255,0.38), inset 0 2px 5px rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.10), 0 0 0 1px ${accent.glow}0.16), 0 6px 20px ${accent.glow}0.14)`
+              : surfaceStyle === "material"
+              ? "var(--material-shadow-medium)"
+              : `inset 0 1px 0 rgba(255,255,255,0.14), 0 0 0 1px ${accent.glow}0.12), 0 8px 22px ${accent.glow}0.10), 0 10px 28px rgba(0,0,0,0.28)`,
+            background: isDark
+              ? (surfaceStyle === "aero"
+                  ? "linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.08) 25%, rgba(255,255,255,0.05) 100%)"
+                  : surfaceStyle === "material" ? "var(--material-elevation-2)"
+                  : surfaceStyle === "obsidian" ? "linear-gradient(180deg, rgba(6,4,14,0.92), rgba(6,4,14,0.86))"
+                  : "linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.032))")
+              : surfaceStyle === "material" ? "var(--material-elevation-3)" : `${accent.glow}0.05)`,
+            ...(isMaterial ? materialFocusStyle : {}),
+            ...(isPixel ? pixelFocusStyle : {}),
+          }
+        : {}),
+    };
+  };
 
   const renderItem = (item: SettingsItem) => {
     if (item.type === "divider") {
@@ -301,10 +359,24 @@ export function SettingsScreen({
       );
     }
 
+    // Locked by active theme — greyed row, non-interactive, shows forced value
+    if (item.locked) {
+      const forced = typeof item.lockedValue === "boolean"
+        ? (item.lockedValue ? t("settings.values.on", "On") : t("settings.values.off", "Off"))
+        : String(t(`settings.values.${item.lockedValue}`, String(item.lockedValue ?? "")));
+      return (
+        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8, marginLeft: item.indent ? 24 : 0, display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0.42, cursor: "not-allowed", pointerEvents: "none" }}>
+          <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
+          <span style={{ fontSize: 12, color: theme.textDim }}>{forced}</span>
+        </div>
+      );
+    }
+
     const navIdx = navigableItems.findIndex((n) => n.key === item.key);
     const focused = settingsFocusIndex === navIdx && navIdx !== -1;
     const rowRef = focused ? settingsFocusedRef : null;
-    const rowStyle = makeRowStyle(focused);
+    const rowStyle = makeRowStyle(focused, false, !!item.indent);
+    const onyxRing = <FocusRing focused={focused} variant="spin" wide elementRadius={flatSettings ? 0 : isPixel ? 0 : isMaterial ? 8 : 16} />;
 
     if (item.type === "info")
       return (
@@ -348,6 +420,8 @@ export function SettingsScreen({
           justifyContent: "space-between",
           cursor: "pointer",
           transition: "all 0.15s ease",
+          position: "relative" as const,
+          zIndex: focused ? 2 : undefined,
           ...(focused
             ? {
                 border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + (surfaceStyle === "aero" ? "0.50)" : "0.45)")}`,
@@ -385,6 +459,7 @@ export function SettingsScreen({
             <div ref={rowRef} style={parentStyle} onClick={() => updateSetting(item.key, !val)}>
               <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
               <ToggleKnob value={val} />
+              {onyxRing}
             </div>
             {val && (
               <div style={subContainerStyle}>
@@ -466,6 +541,21 @@ export function SettingsScreen({
                   focusedRef: settingsFocusedRef,
                 };
               }
+              if (sub.type === "slider") {
+                const isDraggingSub = sliderDraft.key === sub.key;
+                return {
+                  type: "slider" as const,
+                  label: sub.label,
+                  sliderValue: isDraggingSub ? (sliderDraft.value ?? (settings[sub.key] as number)) : (settings[sub.key] as number),
+                  sliderMin: sub.min,
+                  sliderMax: sub.max,
+                  sliderStep: sub.step,
+                  integer: sub.integer,
+                  onSliderChange: (newVal: number) => updateSetting(sub.key, newVal),
+                  focused: subFocused,
+                  focusedRef: settingsFocusedRef,
+                };
+              }
               return {
                 label: sub.label,
                 value: settings[sub.key] as boolean,
@@ -481,6 +571,7 @@ export function SettingsScreen({
         <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => updateSetting(item.key, !val)}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <ToggleKnob value={val} />
+          {onyxRing}
         </div>
       );
     }
@@ -503,6 +594,7 @@ export function SettingsScreen({
             <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
               onClick={() => updateSetting(item.key, opts[(cur + 1) % opts.length])}>▶</span>
           </div>
+          {onyxRing}
         </div>
       );
     }
@@ -523,6 +615,7 @@ export function SettingsScreen({
             <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
               onClick={() => updateSetting("accent", accentKeys[(curIdx + 1) % accentKeys.length])}>▶</span>
           </div>
+          {onyxRing}
         </div>
       );
     }
@@ -536,6 +629,7 @@ export function SettingsScreen({
         <div key={item.key} ref={rowRef} style={rowStyle} onClick={refreshLibrary}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <span style={{ fontSize: 12, color: statusColor }}>{statusText}</span>
+          {onyxRing}
         </div>
       );
     }
@@ -544,7 +638,7 @@ export function SettingsScreen({
       const val = (settings[item.key] as number) ?? 1.0;
       const isDragging = sliderDraft.key === item.key;
       const displayVal = isDragging ? sliderDraft.value! : val;
-      const pct = `${Math.round(displayVal * 100)}%`;
+      const pct = item.integer ? `${Math.round(displayVal)}` : `${Math.round(displayVal * 100)}%`;
       const trackPct = ((displayVal - item.min) / (item.max - item.min)) * 100;
 
       const handleTrackMouseDown = (e: React.MouseEvent) => {
@@ -588,6 +682,7 @@ export function SettingsScreen({
               onClick={() => updateSetting(item.key, Math.min(item.max, Math.round((val + item.step) * 100) / 100))}>▶</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: accent.primary, minWidth: 40, textAlign: "right" }}>{pct}</span>
           </div>
+          {onyxRing}
         </div>
       );
     }
@@ -603,6 +698,7 @@ export function SettingsScreen({
           <span style={{ fontSize: 12, color: theme.textDim }}>
             {item.key === "reset_scale" ? t("settings.status.apply") : t("settings.status.confirm")}
           </span>
+          {onyxRing}
         </div>
       );
 
@@ -626,6 +722,7 @@ export function SettingsScreen({
         }}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <span style={{ fontSize: 12, color: statusColor, fontWeight: updateStatus === "available" ? 600 : 400 }}>{statusText}</span>
+          {onyxRing}
         </div>
       );
     }
@@ -639,6 +736,7 @@ export function SettingsScreen({
         }}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <span style={{ fontSize: 12, color: theme.textDim }}>{t("settings.status.open")}</span>
+          {onyxRing}
         </div>
       );
 
@@ -652,6 +750,7 @@ export function SettingsScreen({
             <span style={{ fontSize: 11, color: theme.textDim }}>{t("settings.attribution", { author: item.author, license: item.license })}</span>
           </div>
           <span style={{ fontSize: 12, color: theme.textDim }}>{t("settings.status.open")}</span>
+          {onyxRing}
         </div>
       );
 
