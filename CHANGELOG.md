@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Added
+- **Expanded layout and Home customization** - [moi952](https://github.com/moi952) added independent Wide Layout sub-toggles for top bar, Games, Apps, Settings, and bottom bar; Home mode controls for normal/semi/immersive layouts; Home pinned positioning; section title sizing; and a toggle to hide apps from the Home recents shelf.
+- **Apps view scaling and list mode** - [moi952](https://github.com/moi952) added an Apps Cover Scale slider plus an optional Apps list view with configurable column count.
+- **Tab and bar presentation controls** - [moi952](https://github.com/moi952) added tab icon display modes, compact tab-bar background, separate top/bottom bar background toggles, and bottom-bar compact behavior.
+- **Onyx theme settings polish** - [moi952](https://github.com/moi952) added Onyx-specific top-light and flat-settings toggles, theme-locked settings display, Onyx background handling, and shared focus-ring styling for cards/settings rows.
+- **Rename support for all entries** - [moi952](https://github.com/moi952) extended rename from custom entries to all apps and games, storing overrides in `custom_names.json` and applying them during library scans.
 - **Expanded animated theme environments** - added Aurora, Synthwave, Lofi, Forest, and Webcore/Win9X theme support alongside the existing Space, Sky, Plasma, Cinder, and Wash environments.
 - **Win9X surface style** - renamed the former Pixel surface to Win9X and added square-edged, desktop-shell-inspired chrome, app cards, modals, title bars, dark-mode coloring, and Webcore-specific window styling.
 - **Webcore background refresh** - replaced the plain gray/Webcore window background with a Windows XP-inspired sky treatment using soft cloud puffs and a bouncing LiftOff logo screensaver element.
@@ -15,6 +20,10 @@
 - **Startup bootstrap hook** - moved splash loading state, splash exit timing, gamepad-ready signaling, and load-error fallback handling into `useStartupBootstrap`.
 
 ### Changed
+- **Onyx focus-ring polish** - Onyx focused app/list items now use the same animated ring treatment as subtabs, while wide Settings rows use a perimeter-stroke focus ring to avoid stretched conic-gradient bands; disabling Onyx background effects now falls back to a static accent border.
+- **Settings model expanded for Moi's latest UI work** - added new Rust/TypeScript settings fields and defaults for Onyx controls, granular wide-layout areas, Home display options, app list/scaling controls, tab icon mode, compact bars, and recents filtering.
+- **Physical keyboard rename flow** - rename modals now focus the HTML input immediately and only open the gamepad keyboard on demand, so physical typing works naturally.
+- **Gamepad keyboard mode cycle** - the RT keyboard control now cycles through `abc`, `ABC`, and `123` modes with matching key labels and hints.
 - **Gamepad navigation hook extracted** - the entire input layer (RAF poll, hold-repeat, button suppression, tab/focus state machine, launch session tracking, window focus handling, and all suppression-wrapped close helpers) moved into `src/hooks/useGamepadNavigation.ts`. `App.jsx` now calls the hook and wires its returned state and actions into JSX; it no longer owns any navigation logic directly.
 - **Theme surface defaults updated** - Plasma now defaults to Neon, Forest defaults to Glass, Webcore defaults to Win9X, and Lofi defaults to Obsidian while manual Surface Style selection remains independent after theme selection.
 - **Synthwave background layering** - adjusted the synthwave ground/mountain layer so it no longer blocks app content.
@@ -29,12 +38,15 @@
 - **Home hero media handling** - Home now owns hero media playback against the actual rendered hero list, treats animated WebP/GIF hero art as pausable media, keeps video heroes preloaded, and clips the non-Webcore hero surface to a fully rounded border.
 
 ### Bug Fixes
+- **Stale renamed recents** - Home recents now look up the current app/game name from the full library instead of showing cached `RecentEntry.name` values.
+- **Rename artwork refresh** - renaming an entry clears cached grid and hero art for that ID before refreshing the library, forcing SteamGridDB lookup under the new name.
+- **Duplicate Settings hints** - LT/RT hints no longer duplicate in the bottom bar when they already appear in the tab bar.
 - **Obsidian focused settings row contrast** - the focused settings row in Obsidian surface style (Lo-fi theme default) now uses a near-opaque dark background (`rgba(6,4,14,0.92)`) instead of the previous near-transparent white overlay. This prevents the warm hero background from bleeding through and washing out the orange accent text on the focused row.
 - **Accidental relaunch after closing apps/games** - returning to LiftOff after a launched app/game now snapshots held gamepad buttons and blocks launch attempts briefly, preventing stale confirm input from opening another item.
 - **Lofi playback during launches** - Lofi music and the Lofi video background now pause while a launched app/game is active or LiftOff loses focus.
 - **Animated hero media on focus loss** - animated WebP/GIF hero banners now pause correctly when LiftOff is launched, blurred, or alt-tabbed away instead of continuing through the static image path.
 
-## [2.0.0] - Alpha 1 & 2
+## [2.0.0-alpha.2] - Alpha 2
 
 ### Added
 - **Launch focus feedback** - launch overlay now distinguishes between launched-and-focused, launched-but-running-behind-LiftOff, failed-to-launch, and launched-but-unconfirmed states. Focus detection uses a one-shot Win32 foreground/window check, never treats missing focus as launch failure, and offers a controller-friendly **Try to focus again** action for unfocused/unconfirmed launches.

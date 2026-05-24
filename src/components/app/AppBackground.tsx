@@ -318,6 +318,19 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
               from { transform: rotate(0deg); }
               to   { transform: rotate(360deg); }
             }
+            .onyx-focus-ring,
+            .onyx-focus-ring-stroke,
+            .onyx-focus-ring-static {
+              --onyx-focus-primary: ${accent.primary};
+              --onyx-focus-glow: ${accent.glow}0.45);
+              --onyx-focus-glow-soft: ${accent.glow}0.24);
+            }
+            .onyx-focus-ring-static {
+              position: absolute;
+              border: 2px solid var(--onyx-focus-primary);
+              box-shadow: 0 0 0 1px var(--onyx-focus-glow-soft);
+              pointer-events: none;
+            }
             .onyx-focus-ring {
               position: absolute;
               inset: 0;
@@ -337,9 +350,9 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
               background: conic-gradient(
                 from 0deg,
                 transparent 0%,
-                ${accent.glow}0.45) 6%,
-                ${accent.primary} 25%,
-                ${accent.glow}0.45) 44%,
+                var(--onyx-focus-glow) 6%,
+                var(--onyx-focus-primary) 25%,
+                var(--onyx-focus-glow) 44%,
                 transparent 50%,
                 transparent 100%
               );
@@ -359,47 +372,46 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
               background: conic-gradient(
                 from 218deg,
                 transparent 0%,
-                ${accent.glow}0.45) 11%,
-                ${accent.primary} 15%,
-                ${accent.glow}0.45) 19%,
+                var(--onyx-focus-glow) 11%,
+                var(--onyx-focus-primary) 15%,
+                var(--onyx-focus-glow) 19%,
                 transparent 26%,
                 transparent 100%
               );
               animation: onyx-ring-h-sweep 5s ease-in-out infinite;
             }
-            /* Flat/wide variant — glowing border + top-edge scan for settings rows */
-            @keyframes onyx-scan {
-              0%   { background-position: -150% 0; }
-              100% { background-position: 250% 0; }
+            @keyframes onyx-ring-dash {
+              from { stroke-dashoffset: 0; }
+              to   { stroke-dashoffset: -100; }
             }
-            @keyframes onyx-border-breathe {
-              0%, 100% { opacity: 0.55; }
-              50%       { opacity: 1; }
-            }
-            .onyx-ring-flat {
+            .onyx-focus-ring-stroke {
               position: absolute;
-              border: 1.5px solid ${accent.primary};
               pointer-events: none;
-              animation: onyx-border-breathe 2.5s ease-in-out infinite;
             }
-            .onyx-ring-flat::after {
-              content: '';
+            .onyx-focus-ring-stroke svg {
               position: absolute;
-              top: -1px; left: 0; right: 0; height: 3px;
-              background: linear-gradient(
-                90deg,
-                ${accent.glow}0.0) 0%,
-                ${accent.primary} 50%,
-                ${accent.glow}0.0) 100%
-              );
-              background-size: 35% 100%;
-              background-repeat: no-repeat;
-              animation: onyx-scan 2.5s ease-in-out infinite;
-              filter: blur(1px);
+              inset: 0;
+              overflow: visible;
+            }
+            .onyx-ring-stroke-base,
+            .onyx-ring-stroke-runner {
+              fill: none;
+              vector-effect: non-scaling-stroke;
+            }
+            .onyx-ring-stroke-base {
+              stroke: var(--onyx-focus-glow-soft);
+              stroke-width: 1.5;
+            }
+            .onyx-ring-stroke-runner {
+              stroke: var(--onyx-focus-primary);
+              stroke-width: 2.2;
+              opacity: 0.82;
+              stroke-linecap: round;
+              animation: onyx-ring-dash 7.2s linear infinite;
+              filter: drop-shadow(0 0 4px var(--onyx-focus-glow)) drop-shadow(0 0 10px var(--onyx-focus-glow-soft));
             }
             @media (prefers-reduced-motion: reduce) {
-              .onyx-ring-spin, .onyx-ring-h, .onyx-ring-flat { animation: none; }
-              .onyx-ring-flat::after { display: none; }
+              .onyx-ring-spin, .onyx-ring-h, .onyx-ring-stroke-runner { animation: none; }
             }
           `}</style>
           {/* Subtle depth vignette */}

@@ -1,7 +1,7 @@
 export const COLS = 6;
 export const GAME_COLS = 5;
 export const TABS = ["Home", "Games", "Apps", "Settings"] as const;
-export const APP_VERSION = "2.0.0";
+export const APP_VERSION = "2.0.0-alpha.2";
 export const GITHUB_REPO = "PixelateWizard/LiftOff";
 
 // Key: `admin_pref_${gameId}`, Value: boolean

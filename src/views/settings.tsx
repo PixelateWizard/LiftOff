@@ -144,7 +144,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "discord", section: 5, label: t("settings.discord"), type: "link" },
 
     D("credits", 5),
-    { key: "credit0", section: 5, label: "i18n, component architecture & UI", author: "moi952", license: "GitHub", url: "https://github.com/moi952", type: "attribution" },
+    { key: "credit0", section: 5, label: "i18n, SGDB art, custom sources, controller glyphs, themes & settings", author: "moi952", license: "GitHub", url: "https://github.com/moi952", type: "attribution" },
     { key: "credit1", section: 5, label: "Mysterious Magical Bell Flourish", author: "DanaiOuranos",  license: "CC0",        url: "https://freesound.org/s/848847/",                       type: "attribution" },
     { key: "credit2", section: 5, label: "Achievement Sparkle",              author: "DanaiOuranos",  license: "CC0",        url: "https://freesound.org/s/715067/",                       type: "attribution" },
     { key: "credit3", section: 5, label: "Mysterious Sparkle Flourish",      author: "DanaiOuranos",  license: "CC0",        url: "https://freesound.org/s/844398/",                       type: "attribution" },
@@ -292,12 +292,13 @@ export function SettingsScreen({
   } : {};
 
   const flatSettings = isOnyx && (settings.onyx_flat_settings ?? true);
+  const onyxSettingsFocusRadius = 10;
 
   const makeRowStyle = (focused: boolean, sub = false, indent = false) => {
     if (flatSettings) {
       return {
         background: "transparent",
-        borderRadius: 0,
+        borderRadius: focused ? onyxSettingsFocusRadius : 0,
         padding: "12px 20px",
         marginBottom: 0,
         borderBottom: "1px solid rgba(255,255,255,0.07)",
@@ -308,7 +309,7 @@ export function SettingsScreen({
         alignItems: "center",
         justifyContent: "space-between",
         cursor: "pointer",
-        transition: "background 0.15s ease",
+        transition: "background 0.15s ease, border-radius 0.15s ease",
       };
     }
     return {
@@ -376,7 +377,7 @@ export function SettingsScreen({
     const focused = settingsFocusIndex === navIdx && navIdx !== -1;
     const rowRef = focused ? settingsFocusedRef : null;
     const rowStyle = makeRowStyle(focused, false, !!item.indent);
-    const onyxRing = <FocusRing focused={focused} variant="spin" wide elementRadius={flatSettings ? 0 : isPixel ? 0 : isMaterial ? 8 : 16} />;
+    const onyxRing = <FocusRing focused={focused} variant="spin" wide elementRadius={flatSettings ? onyxSettingsFocusRadius : isPixel ? 0 : isMaterial ? 8 : 16} />;
 
     if (item.type === "info")
       return (

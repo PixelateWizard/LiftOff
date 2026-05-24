@@ -13,7 +13,7 @@
 
 - **Stack:** Tauri 2, Rust (`src-tauri/src/lib.rs`), React (`src/App.jsx`)
 - **Identifier:** `com.taylo.liftoff`
-- **Version:** `2.0.0` (APP_VERSION in constants.ts) / `2.0.0` (tauri.conf.json — update both together on release; also update Cargo.toml, package.json, package-lock.json, docs/index.html, CHANGELOG.md)
+- **Version:** `2.0.0-alpha.2` (APP_VERSION in constants.ts) / `2.0.0-alpha.2` (tauri.conf.json — update both together on release; also update Cargo.toml, package.json, package-lock.json, docs/index.html, CHANGELOG.md)
 - **Installer:** NSIS bundle at `src-tauri/target/release/bundle/nsis/`
 - **Dev command:** `npm run dev` (frontend) + `cargo tauri dev`
 - **Build:** `cargo tauri build` → use NSIS installer for testing, not raw `.exe`
@@ -100,6 +100,10 @@
 - Post-launch return cooldown:
   - Returning focus after LiftOff launched an app/game sets `launchReturnCooldownUntil` for 1.8 seconds.
   - Held gamepad buttons are snapshotted into `suppressUntilRelease`, preventing stale confirm inputs from immediately launching another item.
+- Onyx focus rings:
+  - `FocusRing` respects the Onyx effects toggle (`settings.stars_enabled`): effects off renders a static accent border instead of animated focus.
+  - Regular app/tab-sized Onyx focus uses the shared conic spin ring. Wide Settings rows must pass `wide` so they use the SVG perimeter-stroke path; the conic ring stretches into horizontal bands on full-width rows.
+  - Keep `AppListItem` row focus on the regular conic ring to match selected app/subtab behavior; only settings-style full-width rows should use the wide stroke path.
 
 ### Verification Notes
 
@@ -120,7 +124,7 @@
   - `source`: `"steam"` | `"xbox"` | `"uwp"` | `"desktop"` | `"battlenet"`
 - `RecentEntry` — `{ id, name, launch_path, app_type, launched_at }` (no icon — look up via `allAppsRef` in frontend)
 - `BatteryInfo` — `{ percent: u32, charging: bool }`
-- `Settings` — accent, theme, stars_enabled, default_tab, scan_steam, scan_xbox, scan_uwp, scan_desktop, scan_battlenet, repeat_speed, launch_at_startup, animated_heroes (String: `"static"` | `"animated"` | `"custom"`), ui_scale (Option<f32> — None = not yet set, frontend fills in auto-detected value), language, time_format, show_clock, show_date, show_battery, wide_layout, cinematic_home, hide_bottom_bar, transparent_bars, transparent_topbar, transparent_bottombar, home_cover_scale, game_cover_scale, nav_bumpers_pos, tabbar_show_buttons, tabbar_text_tabs, tabbar_with_background, tabbar_font_weight, tabbar_label_case, bottombar_alignment, show_home_collections, show_home_collection_names, show_hero_cover, show_home_pinned, gamepad_platform, gamepad_icons_colored, gamepad_icons_filled, gamepad_icons_theme_color, gamepad_btn_size, gamepad_auto_detect, topbar_show_bumpers, surface_style (String: `"glass"` | `"aero"` | `"material"` | `"clear"`)
+- `Settings` — accent/theme/background fields; scan toggles; launch/default-tab/repeat behavior; `animated_heroes` (`"static"` | `"animated"` | `"custom"`); `ui_scale` (Option<f32> in Rust; frontend fills auto-detected value); localization/time/status display fields; granular layout fields (`wide_layout`, `wide_topbar`, `wide_games`, `wide_apps`, `wide_settings`, `wide_bottombar`); Home fields (`home_mode`, `show_home_recents`, `show_recent_games_only`, `home_section_title_size`, `home_pinned_pos`, hero/collection/cover toggles); card scale/list fields (`home_cover_scale`, `game_cover_scale`, `app_cover_scale`, `app_list_view`, `app_list_cols`); bar/tab fields (`topbar_background`, `bottombar_background`, `hide_bottom_bar`, `nav_bumpers_pos`, `tabbar_show_buttons`, `tabbar_text_tabs`, `tabbar_with_background`, `tabbar_background_compact`, `tabbar_font_weight`, `tabbar_icon_mode`, `tabbar_label_case`, `bottombar_alignment`, `bottombar_compact`); Onyx fields (`onyx_top_light`, `onyx_flat_settings`); gamepad icon fields; `surface_style`.
 - **All Settings fields must be present in both the Rust `Settings` struct (`lib.rs`) and the TypeScript `Settings` interface (`types.ts`). Missing Rust fields cause serde to silently drop those values on save, resetting them to defaults on next load.**
 - **When adding a new Settings field in Rust, also add it to the `impl Default for Settings` block (around line 207 in `lib.rs`). The compiler will error with E0063 "missing fields in initializer" if omitted — always fix this before committing.**
 
@@ -129,6 +133,7 @@
 - `hidden.json` — Vec<String> of hidden app IDs
 - `recents.json` — Vec<RecentEntry> (all recent launches — drives the Home tab recents shelf)
 - `recent_games.json` — Vec<RecentEntry> (games only — drives the hero on Home; capped at 20)
+- `custom_names.json` — HashMap<String, String> of user-defined name overrides for any app/game ID. `rename_app` updates this file and `get_all_apps` applies overrides after scanning.
 - `art_cache.json` — HashMap<String, String> (game name → local disk path for grid art, or remote URL fallback)
 - `hero_cache.json` — HashMap<String, String> (game name → local disk path for static hero, or remote URL fallback)
 - `hero_animated_cache.json` — HashMap<String, String> (game name → local disk path for animated hero .webm, or remote URL fallback)
@@ -144,6 +149,7 @@
 - `launch_app(path, id, name, app_type)` — routes by path type (see launch path handling below). Always updates `recents.json`; also updates `recent_games.json` (dedup by id, cap 20) when `app_type == "game"`.
 - `get_recents` / `clear_recents`
 - `get_recent_games` — returns `Vec<RecentEntry>` from `recent_games.json`
+- `rename_app(id, name)` — persists display-name overrides for all app/game types in `custom_names.json`; for `custom_` entries it also updates `custom_data.json`. Use this for current rename UI instead of only `rename_custom_app`.
 - `get_pins` / `toggle_pin(app_id)`
 - `get_hidden` / `toggle_hidden(app_id)`
 - `fetch_game_art(game_name)` — returns `GameArtBundle { grid: Option<String>, hero_static: Option<String>, hero_animated: Option<String> }`. Makes one SGDB search call, then separately fetches `types=static` and `types=animated` heroes. Each image/video is **downloaded to disk** (`art/grid/`, `art/hero_static/`, `art/hero_animated/`) via `download_file()` and the local path is returned. Falls back to remote URL if download fails. Cache entries = local path; empty string = checked/none; absent = uncached.
@@ -222,7 +228,7 @@ Priority order of `else if` branches:
 ## Frontend (`src/App.jsx`)
 
 ### Constants (top of file)
-- `APP_VERSION = "1.1.0"` — compared against GitHub Releases API for update checks
+- `APP_VERSION = "2.0.0-alpha.2"` — compared against GitHub Releases API for update checks
 - `GITHUB_REPO = "PixelateWizard/LiftOff"` — used for update check and releases link
 
 ### State
@@ -561,9 +567,9 @@ Enabled via `settings.show_home_collections`. Renders game and app collections a
 
 ---
 
-## Contributor PRs (merged from moi952, April 2025)
+## Contributor PRs (merged from moi952)
 
-Three PRs merged in sequence — all code reviewed, conflict-resolved, and tested:
+Notable merged PRs from Moi that affect current architecture and settings:
 
 **PR #3 — feat(i18n): internationalization**
 - `i18next` + `react-i18next`; English + French; language selector in settings
@@ -583,6 +589,17 @@ Three PRs merged in sequence — all code reviewed, conflict-resolved, and teste
 - `react-icons` dependency added (`@types/react`, `@types/react-dom` devDeps)
 - New Rust commands: `list_dir`, `get_drives`, `add_custom_app`, `remove_custom_app`, `add_custom_folder`, `remove_custom_folder`, `toggle_custom_folder`, full collection CRUD (`get_collections`, `create_collection`, `delete_collection`, `get_memberships`, `toggle_membership`)
 - `custom_data.json` — new persistence file for custom apps, folders, collections, and memberships
+
+**PR #14 — feat(settings): layout sub-options, app scale, rename all, recents filter**
+- Wide Layout gained independent area toggles: `wide_topbar`, `wide_games`, `wide_apps`, `wide_settings`, and `wide_bottombar`.
+- Home gained `home_mode`, `show_home_recents`, `show_recent_games_only`, `home_section_title_size`, `home_pinned_pos`, and `hero_content_pos` settings. Recents can now hide app entries while keeping game recents visible.
+- Apps gained `app_cover_scale`, `app_list_view`, and `app_list_cols` so the Apps tab can use scaled cards or a compact list layout.
+- Bar controls changed from the old transparent-bar model toward `topbar_background`, `bottombar_background`, `tabbar_background_compact`, and `bottombar_compact`; keep migration/back-compat in mind if older settings files surface.
+- Tab bar gained `tabbar_icon_mode` (`text` / `icons` / `both`) using `react-icons` Io5 nav icons.
+- Rename is now available for all apps/games through `rename_app`; overrides live in `custom_names.json`, are applied at scan time, and renamed IDs clear grid/hero art before refresh so SGDB searches use the new name.
+- Rename modal now auto-focuses the physical text input; `Y` opens the gamepad keyboard on demand. The virtual keyboard RT hint cycles `abc` -> `ABC` -> `123`.
+- Onyx gained theme-specific polish: `onyx_top_light`, `onyx_flat_settings`, locked theme settings display, dedicated background/bar handling, and shared `FocusRing` styling.
+- Settings schema additions must be mirrored in Rust `Settings`, `impl Default for Settings`, TypeScript `Settings`, defaults, translations, and settings UI items.
 
 ---
 

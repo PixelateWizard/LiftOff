@@ -62,6 +62,7 @@ export function CollapsibleGroup({
   const isPixel = surfaceStyle === "win9x";
   const isOnyx = resolvedTheme === "onyx";
   const flatSettings = isOnyx && (settings.onyx_flat_settings ?? true);
+  const onyxSettingsFocusRadius = 10;
   const materialFocusStyle: CSSProperties = isMaterial ? {
     border: `2px solid ${accent.primary}`,
     background: isDark
@@ -88,7 +89,7 @@ export function CollapsibleGroup({
   } : {};
   const parentStyle: CSSProperties = flatSettings ? {
     background: "transparent",
-    borderRadius: 0,
+    borderRadius: focused ? onyxSettingsFocusRadius : 0,
     padding: "14px 20px",
     marginBottom: 0,
     borderBottom: "1px solid rgba(255,255,255,0.07)",
@@ -96,7 +97,7 @@ export function CollapsibleGroup({
     alignItems: "center",
     justifyContent: "space-between",
     cursor: "pointer",
-    transition: "background 0.15s ease",
+    transition: "background 0.15s ease, border-radius 0.15s ease",
     position: "relative" as const,
     zIndex: focused ? 2 : undefined,
   } : {
@@ -145,7 +146,7 @@ export function CollapsibleGroup({
       <div ref={focusedRef} style={parentStyle} onClick={() => onChange(!value)}>
         <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{label}</span>
         <ToggleKnob value={value} />
-        <FocusRing focused={!!focused} variant="spin" wide elementRadius={flatSettings || isPixel ? 0 : isMaterial ? 8 : 16} />
+        <FocusRing focused={!!focused} variant="spin" wide elementRadius={flatSettings ? onyxSettingsFocusRadius : isPixel ? 0 : isMaterial ? 8 : 16} />
       </div>
 
       {value && (
@@ -158,6 +159,7 @@ export function CollapsibleGroup({
               padding: "12px 20px 12px 36px",
               cursor: "pointer",
               transition: "background 0.15s ease",
+              borderRadius: item.focused ? onyxSettingsFocusRadius : 0,
               background: "transparent",
               borderBottom: "1px solid rgba(255,255,255,0.05)",
               position: "relative" as const,
@@ -208,7 +210,7 @@ export function CollapsibleGroup({
                     <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
                       onClick={(e) => { e.stopPropagation(); item.onCycleChange(next); }}>▶</span>
                   </div>
-                  {flatSettings && <FocusRing focused={!!item.focused} variant="spin" wide elementRadius={0} />}
+                  {flatSettings && <FocusRing focused={!!item.focused} variant="spin" wide elementRadius={onyxSettingsFocusRadius} />}
                 </div>
               );
             }
@@ -231,7 +233,7 @@ export function CollapsibleGroup({
                     <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
                       onClick={(e) => { e.stopPropagation(); item.onSliderChange(Math.min(item.sliderMax, Math.round((item.sliderValue + item.sliderStep) / item.sliderStep) * item.sliderStep)); }}>▶</span>
                   </div>
-                  {flatSettings && <FocusRing focused={!!item.focused} variant="spin" wide elementRadius={0} />}
+                  {flatSettings && <FocusRing focused={!!item.focused} variant="spin" wide elementRadius={onyxSettingsFocusRadius} />}
                 </div>
               );
             }
@@ -247,7 +249,7 @@ export function CollapsibleGroup({
                   {item.label}
                 </span>
                 <ToggleKnob value={item.value} />
-                {flatSettings && <FocusRing focused={!!item.focused} variant="spin" wide elementRadius={0} />}
+                {flatSettings && <FocusRing focused={!!item.focused} variant="spin" wide elementRadius={onyxSettingsFocusRadius} />}
               </div>
             );
           })}

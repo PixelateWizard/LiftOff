@@ -1,5 +1,6 @@
 import { forwardRef, type ReactNode, type CSSProperties, type MouseEvent } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
+import { FocusRing } from "./FocusRing";
 
 interface AppListItemProps {
   name: string;
@@ -88,11 +89,7 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
             {children}
           </div>
           {/* Ring — outside inner overflow:hidden, with gap */}
-          {focused && isOnyx && (
-            <div className="onyx-focus-ring" style={{ top: -3, right: -3, bottom: -3, left: -3, borderRadius: cardRadius + 3 }}>
-              <div className="onyx-ring-spin" />
-            </div>
-          )}
+          <FocusRing focused={focused && isOnyx} variant="spin" elementRadius={cardRadius} />
         </div>
       );
     }
@@ -161,11 +158,7 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
           {children}
         </div>
         {/* Ring — horizontal variant (left spotlight), outside overflow:hidden, with gap */}
-        {focused && isOnyx && (
-          <div className="onyx-focus-ring" style={{ top: -3, right: -3, bottom: -3, left: -3, borderRadius: cardRadius + 3 }}>
-            <div className="onyx-ring-h" />
-          </div>
-        )}
+        <FocusRing focused={focused && isOnyx} variant="spin" elementRadius={cardRadius} />
       </div>
     );
   },
