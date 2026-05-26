@@ -68,7 +68,7 @@
 - `useGamepadNavigation` owns: RAF poll loop, hold-repeat, button suppression (`suppressUntilRelease`), tab/focus state machine (all `useState` + mirrored `useRef` pairs for `tab`, `focusSection`, `focusIndex`, `heroIndex`, `settingsSection`, `gameSourceTab`, etc.), `launchingApp`/`launchingAppRef`, `windowFocused`, `heroVideoRefs`, `triggerLaunch`, `switchTab`, all suppression-wrapped close/open helpers (`closeLaunchOverlay`, `closeHideModal`, `closeLibraryActionsModal`, `closeArtPicker`, `openHideModal`, `openLibraryActionsModal`), `handleNav`, the window blur/focus/poll effect, and the hero video pause/resume effect.
 - `App.jsx` passes `handleClearRecents`, `handleClearCache`, and `toggleHomeCollection` into the hook via stable ref callbacks so the hook can trigger them from within `handleNav` without circular dependencies.
 - `AppBackground` owns theme background rendering.
-- `AppBackground` pauses its Lofi music and Lofi video background when `appPaused` is true.
+- `AppBackground` pauses its Lofi music and Lofi video playback when `appPaused` is true. Lo-fi Effects off also pauses music/video playback, but the Lo-fi video/poster remains rendered as a static background.
 - `LaunchOverlay` owns its internal launch status state; `launchingAppRef` in `useGamepadNavigation` gates main gamepad input while a launch overlay is active.
 - `useCustomArt` owns custom art maps/refs, custom art loading, cached art hydration, SGDB fetch batching, and clear-art reset.
 - `useAudioFeedback` owns WebAudio preload/playback for UI, alt UI, game launch, and app-loaded sounds.
@@ -111,6 +111,9 @@
   - Keep `AppListItem` row focus on the regular conic ring to match selected app/subtab behavior; only settings-style full-width rows should use the wide stroke path.
 - Win9X app list rows:
   - In list mode, `AppListItem` rows must stay opaque for `surfaceStyle === "win9x"` and should not apply backdrop blur. Use the Win9X panel surface instead of translucent rgba fills.
+- Apps list focus:
+  - `AppListItem` row focus must remain visible on busy/dark surfaces such as Plasma, Glass, and Obsidian without using oversized borders or a left rail.
+  - Current row focus uses a 1px accent border, subtle inset highlight, restrained glow/lift, and bold text. Keep focused row text as `theme.text` so Obsidian/Lo-fi titles do not turn dark.
 
 ### Verification Notes
 
@@ -392,10 +395,10 @@ Types: `accent`, `cycle`, `toggle`, `divider`, `action`, `link`, `info`, `update
 
 ### Theming
 - `ACCENTS` — ember, ocean, neon, rose, midnight, nova, steel, lunar (defined in `constants.ts`)
-- `THEME_OPTIONS` — `space`, `sky`, `plasma`, `cinder`, `wash`. Themes are animated environments, not surface materials.
+- `THEME_OPTIONS` — `space`, `sky`, `plasma`, `cinder`, `wash`, `aurora`, `synthwave`, `cyberpunk`, `lofi`, `forest`, `webcore`, `onyx`. Themes are environments, not surface materials.
 - `THEME_SURFACE_DEFAULTS` — selecting a theme applies a default surface without locking it: Space → Clear, Sky → Aero, Plasma → Glass, Cinder → Glass, Wash → Material. Manual Surface Style changes persist until the next theme selection.
 - `normalizeThemeKey()` maps legacy `dark`/`system` → `space`, `light` → `sky`, and legacy theme `ember` → `cinder`.
-- `isDarkThemeKey()` returns false for `sky` and `wash`; all other themes use dark text/surface assumptions.
+- `isDarkThemeKey()` returns false for `sky`, `wash`, and `webcore`; all other themes use dark text/surface assumptions.
 - Neon accent updated to Xbox-inspired vivid lime-green (`#44d62c`); `lightPrimary: "#1a8a09"` for WCAG AA in light mode
 - Silver and white accents have `darkText: true` — when this flag is set, any UI element that uses `accent.primary` as a background fill must use `"#1a1a1a"` instead of `"white"` for text/icon color to maintain accessibility. Pattern: `accent.darkText ? "#1a1a1a" : "white"`. Applied in: active tab pills (`SectionTabBar.tsx`), Launch button, pinned pill focused text, and any other filled button with accent background.
 - `ToggleKnob.tsx` has a special dark-mode treatment for light accents (`value && isDark && accent.darkText`): enabled toggles use a dark knob on a dimensional accent track. This is important for Lunar, where a normal white knob on a pale enabled track is hard to distinguish.
@@ -408,8 +411,11 @@ Types: `accent`, `cycle`, `toggle`, `divider`, `action`, `link`, `info`, `update
 - **Plasma** — dark, accent-driven electric ribbons plus low-density sparks; defaults to Glass.
 - **Cinder** — dark smoldering heat field with layered red/orange glow pockets, drifting cinder particles, and subtle accent undertones; defaults to Glass. Accent affects glow pockets and bright particles at low intensity, but the theme stays warm and smoky rather than becoming a flat accent wash.
 - **Wash** — light watercolor paper field. SVG-filtered compound radial gradients simulate warm and cool pigment masses with dried edges, internal density variation, a faint cool cohesion bridge, and a barely visible tertiary hue whisper. Defaults to Material. Wash uses accent-derived tints softly and Material gets gentler off-white card tokens plus low-contrast accent-tinted shadows.
-- `stars_enabled` is still the persisted master toggle for theme effects. Settings labels change by theme: Space Stars, Sky Clouds, Plasma Effects, Cinder Effects, Wash Effects.
-- Reduced motion is handled in global CSS by collapsing `.theme-plasma-*`, `.theme-cinder-*`, `.theme-wash-w1`, `.theme-wash-w2`, `.theme-wash-w3`, `.theme-wash-c1`, `.theme-wash-c2`, `.theme-wash-mix`, `.theme-wash-bleed1`, `.theme-wash-bleed2`, `.bg-star`, and `.bg-cloud` animation durations.
+- **Lo-fi** - animated MP4 room scene with optional background music; defaults to Obsidian.
+- **Webcore** - Windows XP-inspired sky/cloud field with a LiftOff logo screensaver element; defaults to Win9X.
+- `stars_enabled` is still the persisted master toggle for theme effects, but effects off means "static background", not "remove background". The root gets `data-effects="static"` so CSS animations freeze; JS-driven Webcore/Cyberpunk motion receives `effectsEnabled={false}`; Lo-fi keeps the video/poster visible while pausing playback and music.
+- Settings labels change by theme. Space uses `Star Effects`, Sky uses `Cloud Effects`; the other environment themes use `* Effects`.
+- Reduced motion is handled in global CSS by collapsing/freeze-targeting animated environment classes such as `.theme-plasma-*`, `.theme-cinder-*`, `.theme-wash-static`, `.theme-wash-float`, `.theme-aurora-*`, `.theme-synthwave-*`, `.theme-cyberpunk-*`, `.theme-forest-*`, `.theme-webcore-*`, `.bg-star`, and `.bg-cloud`.
 
 ### Surface Style System
 Four surface options controlled by `settings.surface_style` (`"glass"` | `"aero"` | `"material"` | `"clear"`). Three CSS token objects as `useMemo`s in `App.jsx` adapt to the active style, with an additional `materialTokens` object for Material CSS custom properties:
@@ -464,16 +470,18 @@ Both `glassEnabled` and `surfaceStyle` are threaded via `ThemeContext`; any comp
 - `CLOUD_CONFIGS` — 16 cloud instances with `{ shape, width, top, duration, delay, opacity }` for varied sizes and scroll speeds
 - Individual `.bg-cloud` elements are `position: absolute` (scoped inside `#cloud-container`, NOT fixed — so they don't escape to the root stacking context)
 - Animation: `cloudDrift` keyframe from `translateX(110vw)` to `translateX(-110vw)`
+- Effects-off mode keeps backgrounds visible and static. `App.jsx` still creates the DOM particles/clouds, but assigns no animation and static positions; `AppBackground` still renders environment components; the root `data-effects="static"` selector freezes CSS keyframes.
 - **Z-index layering (tab content area):**
   - z=0: Opaque `appBg` cover — visible when `tab !== "Home"`, hides always-mounted Home
   - z=1: `#cloud-container` — clouds visible on all tabs (light, `stars_enabled` only)
   - z=2: Home wrapper (`visibility: tab==="Home" ? visible : hidden`) + active non-Home tab wrapper (transparent bg)
   - Stars (dark mode) remain `position: fixed` and are appended to `document.body` as before
-- Space creates `.bg-star` nodes in `#star-container`; Sky creates `.bg-cloud` nodes in `#cloud-container`.
+- Space creates `.bg-star` nodes in `#star-container`; Sky creates `.bg-cloud` nodes in `#cloud-container`. These containers render even when Effects is off.
 - Plasma renders `.theme-plasma-layer` CSS gradients and `.theme-plasma-spark` nodes in `#plasma-particle-container`.
 - Cinder renders `.theme-cinder-layer` heat gradients/glow pockets and `.theme-cinder-particle` nodes in `#cinder-particle-container`.
-- Wash renders SVG-filtered `.theme-wash-w1/w2/w3` (warm), `.theme-wash-c1/c2` (cool), `.theme-wash-mix` (meeting zone), `.theme-wash-bleed1` (cool cohesion bridge), and `.theme-wash-bleed2` (tertiary whisper) layers plus an inline grain SVG; no particles.
-- Toggled by `settings.stars_enabled`; Settings changes the label to match the active theme.
+- Wash renders static SVG-filtered `.theme-wash-static` pigment layers plus unfiltered CSS-blur `.theme-wash-float` layers and an inline grain SVG. Do not animate SVG-filtered Wash layers with transforms; keep moving layers free of SVG filters.
+- Lo-fi renders the MP4 background plus poster while active. Effects off pauses the video and music but keeps the visible scene and overlay.
+- Toggled by `settings.stars_enabled`; Settings changes the label to match the active theme. This toggle controls motion/special effects, not whether the theme background exists.
 
 ### Splash screen (`SplashScreen`)
 - CSS injected in `useEffect` — rocket wrapper, `splash-word`, and `splash-dots` all have inline `opacity: 0` to prevent flash before CSS loads

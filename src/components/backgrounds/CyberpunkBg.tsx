@@ -2,7 +2,7 @@ import React from "react";
 import type { AccentColors } from "../../types";
 import { CyberCircuit, GlyphCity } from "./neonblade";
 
-interface Props { accent: AccentColors; }
+interface Props { accent: AccentColors; effectsEnabled?: boolean; }
 
 function hexPath(cx: number, cy: number, r: number): string {
   return Array.from({ length: 6 }, (_, i) => {
@@ -19,7 +19,7 @@ const HUD_NODES = [
   { text: "LAT:4ms", left: "82%", top: "90.5%", cls: "theme-cyberpunk-hud-4" },
 ] as const;
 
-export default function CyberpunkBg({ accent }: Props) {
+export default function CyberpunkBg({ accent, effectsEnabled = true }: Props) {
   const primary = accent.primary || "#00e5ff";
   const magenta = "rgba(255,20,140,1)";
   const bs = 16;
@@ -54,9 +54,9 @@ export default function CyberpunkBg({ accent }: Props) {
           colorTertiary="rgba(255,220,30,0.85)"
           bgColor="rgba(0,0,0,0)"
           fontSize={11}
-          speed={90}
-          showVehicles
-          blinkingLights
+          speed={effectsEnabled ? 90 : 0}
+          showVehicles={effectsEnabled}
+          blinkingLights={effectsEnabled}
           opacity={58}
         />
       </div>

@@ -47,6 +47,7 @@ import { useGamepadNavigation } from "./hooks/useGamepadNavigation";
 import { useStartupBootstrap } from "./hooks/useStartupBootstrap";
 import { useSystemStatus } from "./hooks/useSystemStatus";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
+import { useAppFocusPause } from "./hooks/useAppFocusPause";
 import { detectPlatform } from "./utils/gamepad";
 import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO,
@@ -58,6 +59,7 @@ import {
 import { CyberpunkCard, FocusRing } from "./components/ui";
 
 export default function App() {
+  useAppFocusPause();
   const { t } = useTranslation();
   const [addAppType, setAddAppType]                 = useState("game"); // "game" | "app"
   const [adminPrefsVersion, setAdminPrefsVersion]   = useState(0);
@@ -407,16 +409,12 @@ export default function App() {
       "@keyframes cinderDrift   { 0% { transform: translate3d(0, 8vh, 0) scale(0.8); opacity: 0; } 18% { opacity: 0.28; } 42% { opacity: 0.62; } 76% { opacity: 0.30; } 100% { transform: translate3d(var(--cinder-drift-x, 10px), -106vh, 0) scale(0.92); opacity: 0; } }",
       "@keyframes cinderFlicker { 0%, 100% { filter: brightness(0.8); } 35% { filter: brightness(1.35); } 58% { filter: brightness(0.95); } 78% { filter: brightness(1.65); } }",
       "@keyframes cinderBreathe { 0%, 100% { opacity: 0.54; transform: scale(1); } 50% { opacity: 0.74; transform: scale(1.035); } }",
-      "@keyframes washW1 { 0%,100% { transform: translate3d(-4%,-2%,0) scale(1.0) rotate(-2deg); } 50% { transform: translate3d(3%,2%,0) scale(1.06) rotate(2deg); } }",
-      "@keyframes washW2 { 0%,100% { transform: translate3d(3%,-3%,0) scale(0.98) rotate(2deg); } 50% { transform: translate3d(-3%,2%,0) scale(1.05) rotate(-2deg); } }",
-      "@keyframes washW3 { 0%,100% { transform: translate3d(-3%,3%,0) scale(0.97) rotate(-3deg); } 50% { transform: translate3d(4%,-2%,0) scale(1.04) rotate(2deg); } }",
-      "@keyframes washC1 { 0%,100% { transform: translate3d(3%,2%,0) scale(1.0); } 50% { transform: translate3d(-2%,-3%,0) scale(1.05); } }",
-      "@keyframes washC2 { 0%,100% { transform: translate3d(-2%,-3%,0) scale(0.98); } 50% { transform: translate3d(3%,2%,0) scale(1.05); } }",
-      "@keyframes washMix  { 0%,100% { transform: translate3d(-3%,2%,0) scale(0.98); } 50% { transform: translate3d(3%,-2%,0) scale(1.06); } }",
-      "@keyframes washB1   { 0%,100% { transform: translate3d(3%,-2%,0) scale(0.99); } 50% { transform: translate3d(-3%,3%,0) scale(1.04); } }",
-      "@keyframes washB2   { 0%,100% { transform: translate3d(-2%,3%,0) scale(1.0); } 50% { transform: translate3d(3%,-2%,0) scale(1.05); } }",
-      "@keyframes washPink { 0%,100% { transform: translate3d(-2%,-3%,0) scale(1.0); } 50% { transform: translate3d(3%,2%,0) scale(1.06); } }",
-      "@keyframes washOpacity { 0%,100% { opacity: 0.95; } 28% { opacity: 1.0; } 62% { opacity: 0.90; } }",
+      "@keyframes washStaticPulse { 0%,100% { opacity: 0.90; } 50% { opacity: 1.0; } }",
+      "@keyframes washFloat1 { 0%,100% { transform: translate3d(-4%,-2%,0) scale(1.0); } 50% { transform: translate3d(4%,2%,0) scale(1.06); } }",
+      "@keyframes washFloat2 { 0%,100% { transform: translate3d(3%,-3%,0) scale(0.97); } 50% { transform: translate3d(-3%,3%,0) scale(1.05); } }",
+      "@keyframes washFloat3 { 0%,100% { transform: translate3d(-2%,3%,0) scale(1.01); } 50% { transform: translate3d(3%,-2%,0) scale(1.06); } }",
+      "@keyframes washFloat4 { 0%,100% { transform: translate3d(3%,2%,0) scale(0.98); } 50% { transform: translate3d(-3%,-2%,0) scale(1.04); } }",
+      "@keyframes washFloatOpacity { 0%,100% { opacity: 0.85; } 40% { opacity: 1.0; } 75% { opacity: 0.80; } }",
       "@keyframes colChevronBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }",
       ".bg-star  { position: fixed; border-radius: 50%; pointer-events: none; z-index: 0; animation: bgStarTwinkle ease-in-out infinite; }",
       ".bg-cloud { position: fixed; top: 0; pointer-events: none; z-index: -1; animation: cloudDrift linear infinite; }",
@@ -424,16 +422,14 @@ export default function App() {
       ".theme-plasma-spark { animation: plasmaSpark ease-in-out infinite; will-change: transform, opacity; }",
       ".theme-cinder-layer { animation: cinderBreathe 16s ease-in-out infinite; will-change: transform, opacity; }",
       ".theme-cinder-particle { position: fixed; border-radius: 999px; pointer-events: none; animation-name: cinderDrift, cinderFlicker; animation-timing-function: linear, ease-in-out; animation-iteration-count: infinite, infinite; will-change: transform, opacity, filter; }",
-      ".theme-wash-layer { will-change: transform, opacity; contain: paint; backface-visibility: hidden; transform: translateZ(0); }",
-      ".theme-wash-w1 { animation: washW1 22s ease-in-out infinite, washOpacity 24s ease-in-out infinite; }",
-      ".theme-wash-w2 { animation: washW2 20s ease-in-out infinite, washOpacity 26s ease-in-out infinite; animation-delay: -8s, -4s; }",
-      ".theme-wash-w3 { animation: washW3 28s ease-in-out infinite, washOpacity 22s ease-in-out infinite; animation-delay: -14s, -10s; }",
-      ".theme-wash-c1 { animation: washC1 24s ease-in-out infinite, washOpacity 28s ease-in-out infinite; animation-delay: -6s, -18s; }",
-      ".theme-wash-c2     { animation: washC2  21s ease-in-out infinite, washOpacity 25s ease-in-out infinite; animation-delay: -12s, -7s; }",
-      ".theme-wash-mix    { animation: washMix 28s ease-in-out infinite, washOpacity 26s ease-in-out infinite; animation-delay: -18s, -16s; }",
-      ".theme-wash-bleed1 { animation: washB1  26s ease-in-out infinite, washOpacity 24s ease-in-out infinite; animation-delay: -8s, -14s; }",
-      ".theme-wash-bleed2 { animation: washB2  23s ease-in-out infinite, washOpacity 27s ease-in-out infinite; animation-delay: -16s, -7s; }",
-      ".theme-wash-pink { animation: washPink 22s ease-in-out infinite, washOpacity 26s ease-in-out infinite; animation-delay: -9s, -3s; }",
+      ".theme-wash-static { contain: paint; backface-visibility: hidden; transform: translateZ(0); animation: washStaticPulse 50s ease-in-out infinite; }",
+      ".theme-wash-float { will-change: transform, opacity; contain: paint; backface-visibility: hidden; transform: translateZ(0); }",
+      ".theme-wash-float-1 { animation: washFloat1 32s ease-in-out infinite, washFloatOpacity 28s ease-in-out infinite; }",
+      ".theme-wash-float-2 { animation: washFloat2 38s ease-in-out infinite, washFloatOpacity 34s ease-in-out infinite; animation-delay: -13s, -9s; }",
+      ".theme-wash-float-3 { animation: washFloat3 42s ease-in-out infinite, washFloatOpacity 30s ease-in-out infinite; animation-delay: -21s, -16s; }",
+      ".theme-wash-float-4 { animation: washFloat4 36s ease-in-out infinite, washFloatOpacity 38s ease-in-out infinite; animation-delay: -7s, -24s; }",
+      ".app-bg-paused .theme-wash-static { animation-play-state: paused; }",
+      ".app-bg-paused .theme-wash-float { animation-play-state: paused; }",
       "@keyframes auroraB1 { 0%,100%{transform:translate(0,0) scaleX(1)} 40%{transform:translate(6%,-4%) scaleX(1.08)} 70%{transform:translate(-4%,3%) scaleX(0.94)} }",
       "@keyframes auroraB2 { 0%,100%{transform:translate(0,0) scaleX(1)} 35%{transform:translate(-8%,5%) scaleX(0.92)} 68%{transform:translate(5%,-3%) scaleX(1.07)} }",
       "@keyframes auroraB3 { 0%,100%{transform:translate(0,0) scaleX(1)} 30%{transform:translate(4%,6%) scaleX(1.1)} 65%{transform:translate(-6%,-2%) scaleX(0.96)} }",
@@ -512,8 +508,9 @@ export default function App() {
       ".theme-webcore-ghost-2 { animation:webGhostFloat2 22s ease-in-out infinite, webWinFlicker2 24s ease-in-out infinite; animation-delay:-8s; }",
       ".theme-webcore-ghost-3 { animation:webGhostFloat3 25s ease-in-out infinite, webWinFlicker3 30s ease-in-out infinite; animation-delay:-12s; }",
       ".theme-webcore-cursor { animation:webCursorBlink 1.1s step-end infinite; }",
+      `[data-effects="static"] .bg-star, [data-effects="static"] .bg-cloud, [data-effects="static"] .theme-plasma-layer, [data-effects="static"] .theme-plasma-spark, [data-effects="static"] .theme-cinder-layer, [data-effects="static"] .theme-cinder-particle, [data-effects="static"] .theme-wash-static, [data-effects="static"] .theme-wash-float, [data-effects="static"] .theme-aurora-b1, [data-effects="static"] .theme-aurora-b2, [data-effects="static"] .theme-aurora-b3, [data-effects="static"] .theme-aurora-b4, [data-effects="static"] .theme-aurora-shimmer, [data-effects="static"] .theme-synthwave-sun, [data-effects="static"] .theme-synthwave-horizon, [data-effects="static"] .theme-cyberpunk-glow, [data-effects="static"] .theme-cyberpunk-glow-2, [data-effects="static"] .theme-cyberpunk-horizon, [data-effects="static"] .theme-cyberpunk-flicker-1, [data-effects="static"] .theme-cyberpunk-flicker-2, [data-effects="static"] .theme-cyberpunk-scan, [data-effects="static"] .theme-cyberpunk-rain, [data-effects="static"] .theme-forest-moonbeam, [data-effects="static"] .theme-forest-fog, [data-effects="static"] .theme-forest-fog-2, [data-effects="static"] .theme-forest-firefly, [data-effects="static"] .theme-forest-firefly-wrapper, [data-effects="static"] .theme-webcore-ghost-0, [data-effects="static"] .theme-webcore-ghost-1, [data-effects="static"] .theme-webcore-ghost-2, [data-effects="static"] .theme-webcore-ghost-3, [data-effects="static"] .theme-webcore-cursor { animation: none !important; }`,
       ".app-launch-paused *:not(.launch-overlay):not(.launch-overlay *) { animation-play-state: paused !important; transition-property: none !important; }",
-      "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-w1, .theme-wash-w2, .theme-wash-w3, .theme-wash-c1, .theme-wash-c2, .theme-wash-mix, .theme-wash-bleed1, .theme-wash-bleed2, .theme-wash-pink, .theme-aurora-b1, .theme-aurora-b2, .theme-aurora-b3, .theme-aurora-b4, .theme-aurora-shimmer, .theme-synthwave-sun, .theme-synthwave-horizon, .theme-cyberpunk-glow, .theme-cyberpunk-glow-2, .theme-cyberpunk-horizon, .theme-cyberpunk-flicker-1, .theme-cyberpunk-flicker-2, .theme-cyberpunk-scan, .theme-cyberpunk-rain, .theme-forest-moonbeam, .theme-forest-fog, .theme-forest-fog-2, .theme-forest-firefly, .theme-webcore-ghost-0, .theme-webcore-ghost-1, .theme-webcore-ghost-2, .theme-webcore-ghost-3, .theme-webcore-cursor, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } }",
+      "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-static, .theme-wash-float, .theme-aurora-b1, .theme-aurora-b2, .theme-aurora-b3, .theme-aurora-b4, .theme-aurora-shimmer, .theme-synthwave-sun, .theme-synthwave-horizon, .theme-cyberpunk-glow, .theme-cyberpunk-glow-2, .theme-cyberpunk-horizon, .theme-cyberpunk-flicker-1, .theme-cyberpunk-flicker-2, .theme-cyberpunk-scan, .theme-cyberpunk-rain, .theme-forest-moonbeam, .theme-forest-fog, .theme-forest-fog-2, .theme-forest-firefly, .theme-webcore-ghost-0, .theme-webcore-ghost-1, .theme-webcore-ghost-2, .theme-webcore-ghost-3, .theme-webcore-cursor, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } }",
       "html, body { overflow-x: hidden; }",
       "* { scrollbar-width: none !important; -ms-overflow-style: none !important; }",
       "*::-webkit-scrollbar { display: none !important; }",
@@ -537,9 +534,9 @@ export default function App() {
 
   useEffect(() => {
     const activeTheme = normalizeThemeKey(settings.theme);
+    const effectsEnabled = settings.stars_enabled !== false;
     const particleSelector = ".bg-star, .bg-cloud, .theme-plasma-spark, .theme-cinder-particle, .theme-cyberpunk-rain, .theme-forest-firefly, .theme-forest-firefly-wrapper";
     document.querySelectorAll(particleSelector).forEach(s => s.remove());
-    if (!settings.stars_enabled) return;
     if (activeTheme === "space") {
       for (let i = 0; i < 60; i++) {
         const star = document.createElement("div");
@@ -548,20 +545,21 @@ export default function App() {
         star.style.width = star.style.height = size;
         star.style.left  = Math.random() * 100 + "vw";
         star.style.top   = Math.random() * 100 + "vh";
-        star.style.animationDuration = (Math.random() * 4 + 2) + "s";
-        star.style.animationDelay    = (Math.random() * 4) + "s";
+        star.style.animationDuration = effectsEnabled ? (Math.random() * 4 + 2) + "s" : "0s";
+        star.style.animationDelay    = effectsEnabled ? (Math.random() * 4) + "s" : "0s";
         star.style.background = "rgba(245,237,232,0.9)";
         const sc = document.getElementById("star-container"); if (sc) sc.appendChild(star);
       }
     } else if (activeTheme === "sky") {
-      CLOUD_CONFIGS.forEach((cfg) => {
+      CLOUD_CONFIGS.forEach((cfg, idx) => {
         const div = document.createElement("div");
         div.className = "bg-cloud";
         div.style.top             = cfg.top;
         div.style.width           = cfg.width + "px";
         div.style.opacity         = cfg.opacity;
-        div.style.animationDuration = cfg.duration + "s";
-        div.style.animationDelay    = cfg.delay + "s";
+        div.style.animationDuration = effectsEnabled ? cfg.duration + "s" : "0s";
+        div.style.animationDelay    = effectsEnabled ? cfg.delay + "s" : "0s";
+        if (!effectsEnabled) div.style.transform = `translateX(${((idx * 17) % 118) - 12}vw)`;
         div.innerHTML = CLOUD_SHAPES[cfg.shape];
         div.querySelector("svg").style.fill = "rgba(255,255,255,0.9)";
         const cc = document.getElementById("cloud-container"); if (cc) cc.appendChild(div);
@@ -579,8 +577,8 @@ export default function App() {
         spark.style.top = Math.random() * 100 + "vh";
         spark.style.background = accent.primary;
         spark.style.boxShadow = `0 0 ${Math.random() * 10 + 8}px ${accent.light}`;
-        spark.style.animationDuration = (Math.random() * 7 + 6) + "s";
-        spark.style.animationDelay = -(Math.random() * 8) + "s";
+        spark.style.animationDuration = effectsEnabled ? (Math.random() * 7 + 6) + "s" : "0s";
+        spark.style.animationDelay = effectsEnabled ? -(Math.random() * 8) + "s" : "0s";
         const pc = document.getElementById("plasma-particle-container"); if (pc) pc.appendChild(spark);
       }
     } else if (activeTheme === "cinder") {
@@ -596,15 +594,15 @@ export default function App() {
         cinder.style.width = `${size}px`;
         cinder.style.height = `${size * (Math.random() * 1.15 + 0.85)}px`;
         cinder.style.left = Math.random() * 100 + "vw";
-        cinder.style.bottom = "-8vh";
+        cinder.style.bottom = effectsEnabled ? "-8vh" : Math.random() * 92 + "vh";
         cinder.style.background = bright
           ? `color-mix(in srgb, ${accent.primary} 18%, #ffd6a3 82%)`
           : `color-mix(in srgb, ${accent.primary} 12%, #ff6a2b 88%)`;
         cinder.style.boxShadow = bright
           ? `0 0 ${Math.random() * 14 + 12}px color-mix(in srgb, ${accent.primary} 20%, #ffd6a3 80%)`
           : `0 0 ${Math.random() * 9 + 7}px color-mix(in srgb, ${accent.primary} 14%, #ff6a2b 86%)`;
-        cinder.style.animationDuration = `${duration}s, ${flickerDuration}s`;
-        cinder.style.animationDelay = `-${Math.random() * duration}s, -${Math.random() * flickerDuration}s`;
+        cinder.style.animationDuration = effectsEnabled ? `${duration}s, ${flickerDuration}s` : "0s, 0s";
+        cinder.style.animationDelay = effectsEnabled ? `-${Math.random() * duration}s, -${Math.random() * flickerDuration}s` : "0s, 0s";
         const cc = document.getElementById("cinder-particle-container"); if (cc) cc.appendChild(cinder);
       }
     } else if (activeTheme === "aurora") {
@@ -618,8 +616,8 @@ export default function App() {
           star.style.left = Math.random() * 100 + "vw";
           star.style.top = Math.random() * 62 + "vh";
           star.style.background = `rgba(${200 + Math.floor(Math.random() * 55)},${220 + Math.floor(Math.random() * 35)},255,${(0.5 + Math.random() * 0.45).toFixed(2)})`;
-          star.style.animationDuration = (Math.random() * 4 + 3) + "s";
-          star.style.animationDelay = -(Math.random() * 5) + "s";
+          star.style.animationDuration = effectsEnabled ? (Math.random() * 4 + 3) + "s" : "0s";
+          star.style.animationDelay = effectsEnabled ? -(Math.random() * 5) + "s" : "0s";
           container.appendChild(star);
         }
       }
@@ -637,8 +635,8 @@ export default function App() {
           star.style.background = pink
             ? `rgba(255,${100 + Math.floor(Math.random() * 80)},${180 + Math.floor(Math.random() * 75)},${(0.55 + Math.random() * 0.38).toFixed(2)})`
             : `rgba(${80 + Math.floor(Math.random() * 60)},${200 + Math.floor(Math.random() * 55)},255,${(0.50 + Math.random() * 0.40).toFixed(2)})`;
-          star.style.animationDuration = (Math.random() * 3 + 2) + "s";
-          star.style.animationDelay = -(Math.random() * 5) + "s";
+          star.style.animationDuration = effectsEnabled ? (Math.random() * 3 + 2) + "s" : "0s";
+          star.style.animationDelay = effectsEnabled ? -(Math.random() * 5) + "s" : "0s";
           container.appendChild(star);
         }
       }
@@ -649,7 +647,7 @@ export default function App() {
         for (let i = 0; i < 14; i++) {
           const wrapper = document.createElement("div");
           wrapper.className = "theme-forest-firefly-wrapper";
-          wrapper.style.cssText = `position:fixed;pointer-events:none;left:${(8 + Math.random() * 82).toFixed(1)}vw;top:${(30 + Math.random() * 50).toFixed(1)}vh;animation:forestFireflyDrift ${(6 + Math.random() * 8).toFixed(1)}s ease-in-out infinite;animation-delay:-${(Math.random() * 10).toFixed(1)}s;`;
+          wrapper.style.cssText = `position:fixed;pointer-events:none;left:${(8 + Math.random() * 82).toFixed(1)}vw;top:${(30 + Math.random() * 50).toFixed(1)}vh;${effectsEnabled ? `animation:forestFireflyDrift ${(6 + Math.random() * 8).toFixed(1)}s ease-in-out infinite;animation-delay:-${(Math.random() * 10).toFixed(1)}s;` : ""}`;
           const glow = document.createElement("div");
           const size = (2 + Math.random() * 2).toFixed(1);
           glow.className = "theme-forest-firefly";
@@ -657,8 +655,8 @@ export default function App() {
           glow.style.height = size + "px";
           glow.style.background = ffColor;
           glow.style.boxShadow = `0 0 ${(4 + Math.random() * 8).toFixed(0)}px 2px ${ffColor}`;
-          glow.style.animationDuration = `${(1.5 + Math.random() * 2.4).toFixed(1)}s, ${(1.5 + Math.random() * 2.4).toFixed(1)}s`;
-          glow.style.animationDelay = `-${(Math.random() * 3).toFixed(1)}s, -${(Math.random() * 3).toFixed(1)}s`;
+          glow.style.animationDuration = effectsEnabled ? `${(1.5 + Math.random() * 2.4).toFixed(1)}s, ${(1.5 + Math.random() * 2.4).toFixed(1)}s` : "0s, 0s";
+          glow.style.animationDelay = effectsEnabled ? `-${(Math.random() * 3).toFixed(1)}s, -${(Math.random() * 3).toFixed(1)}s` : "0s, 0s";
           wrapper.appendChild(glow);
           container.appendChild(wrapper);
         }
@@ -670,8 +668,8 @@ export default function App() {
           star.style.left = Math.random() * 100 + "vw";
           star.style.top = Math.random() * 45 + "vh";
           star.style.background = `rgba(200,240,215,${(0.4 + Math.random() * 0.5).toFixed(2)})`;
-          star.style.animationDuration = (3 + Math.random() * 4) + "s";
-          star.style.animationDelay = -(Math.random() * 5) + "s";
+          star.style.animationDuration = effectsEnabled ? (3 + Math.random() * 4) + "s" : "0s";
+          star.style.animationDelay = effectsEnabled ? -(Math.random() * 5) + "s" : "0s";
           container.appendChild(star);
         }
       }
@@ -1282,7 +1280,7 @@ export default function App() {
     <ThemeProvider value={themeValue}>
     <SettingsProvider value={settingsValue}>
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
-    <div data-theme={resolvedTheme} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
+    <div data-theme={resolvedTheme} data-effects={settings.stars_enabled === false ? "static" : "animated"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
 
       <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} />
       <AppOverlays>

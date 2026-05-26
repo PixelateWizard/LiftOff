@@ -37,11 +37,15 @@
 - **Semi-immersive Home slot sizing** - semi-immersive Home now uses a fixed bottom snap-scrolling slot for recents and collection rows. Hero height is derived from UI scale, Home cover scale, label height, focus bleed, and shadow allowance so larger cards resize the hero instead of overlapping it.
 - **Immersive drawer polish** - drawer collection navigation now keeps row headers below the drawer chrome, preserves bottom padding on the final row, scrolls focused cards horizontally without re-pinning the row vertically, and uses a subtler Material top-edge highlight instead of a heavy upward shadow.
 - **Win9X app list tiles** - Win9X list-mode app tiles now use opaque panel surfaces with backdrop blur disabled, preventing the page background from showing through the tiles.
+- **Theme effects toggles** - theme Effects toggles now preserve the theme background in a static state instead of removing it. Space/Sky keep static stars/clouds, animated environment layers freeze, Lo-fi keeps the video frame visible while pausing playback/music, and Webcore/Cyberpunk stop their JS-driven motion.
+- **Space/Sky effects labels** - renamed the Space and Sky settings labels from Background Stars/Background Clouds to Star Effects/Cloud Effects to match the new behavior.
 
 ### Bug Fixes
 - **Stale renamed recents** - Home recents now look up the current app/game name from the full library instead of showing cached `RecentEntry.name` values.
 - **Rename artwork refresh** - renaming an entry clears cached grid and hero art for that ID before refreshing the library, forcing SteamGridDB lookup under the new name.
 - **Duplicate Settings hints** - LT/RT hints no longer duplicate in the bottom bar when they already appear in the tab bar.
+- **Apps list focus readability** - focused Apps list rows now use a subtler accent outline, background lift, and restrained glow that remains visible on Plasma, Glass, and Obsidian without oversized borders or darkened titles.
+- **Wash theme performance** - Wash now separates static SVG-filtered pigment layers from animated CSS-blur float layers, reducing per-frame SVG filter rasterization while keeping the watercolor look.
 - **Obsidian focused settings row contrast** - the focused settings row in Obsidian surface style (Lo-fi theme default) now uses a near-opaque dark background (`rgba(6,4,14,0.92)`) instead of the previous near-transparent white overlay. This prevents the warm hero background from bleeding through and washing out the orange accent text on the focused row.
 - **Accidental relaunch after closing apps/games** - returning to LiftOff after a launched app/game now snapshots held gamepad buttons and blocks launch attempts briefly, preventing stale confirm input from opening another item.
 - **Lofi playback during launches** - Lofi music and the Lofi video background now pause while a launched app/game is active or LiftOff loses focus.

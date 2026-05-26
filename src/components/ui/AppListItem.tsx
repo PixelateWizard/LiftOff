@@ -106,17 +106,23 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
       ? glass.background
       : isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)";
 
-    const focusBorder = surfaceStyle === "material"
-      ? accent.primary
-      : `${accent.glow}0.6)`;
+    const isOnyx = resolvedTheme === "onyx";
+    const focusBorder = accent.primary;
     const idleBorderRow = surfaceStyle === "material"
       ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)")
       : "rgba(255,255,255,0.08)";
+    const focusBg = surfaceStyle === "material"
+      ? "var(--material-elevation-3)"
+      : isPixel
+      ? surface.panelBg
+      : surfaceStyle === "obsidian"
+      ? `linear-gradient(90deg, ${accent.glow}0.24), ${accent.glow}0.10) 45%, transparent), ${glass.background}`
+      : isDark
+      ? `linear-gradient(90deg, ${accent.glow}0.22), ${accent.glow}0.12) 42%, rgba(255,255,255,0.055))`
+      : `${accent.glow}0.12)`;
     const focusShadow = surfaceStyle === "material"
-      ? "var(--material-shadow-medium)"
-      : `0 0 0 1px ${accent.glow}0.25), 0 0 18px ${accent.glow}0.10)`;
-
-    const isOnyx = resolvedTheme === "onyx";
+      ? `0 0 0 1px ${accent.primary}, var(--material-shadow-medium)`
+      : `0 0 0 1px ${accent.primary}, 0 8px 22px rgba(0,0,0,0.24), 0 0 18px ${accent.glow}0.16)`;
 
     return (
       // Outer wrapper — no overflow:hidden, holds ring + inner content as siblings
@@ -140,8 +146,10 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
             cursor: "pointer", transition: "all 0.15s ease",
             borderRadius: cardRadius,
             overflow: "hidden",
+            position: "relative",
+            transform: focused && !isOnyx ? "translateY(-1px)" : undefined,
             ...glass,
-            background: rowBg,
+            background: focused && !isOnyx ? focusBg : rowBg,
             backdropFilter: isPixel ? undefined : glass.backdropFilter,
             WebkitBackdropFilter: isPixel ? undefined : glass.WebkitBackdropFilter,
             border: `1px solid ${focused && !isOnyx ? focusBorder : idleBorderRow}`,
@@ -149,6 +157,16 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
           }}
         >
           {/* Icon — fixed-width container so the text column is always aligned */}
+          {focused && !isOnyx && (
+            <div style={{
+              position: "absolute",
+              inset: 0,
+              borderRadius: cardRadius,
+              boxShadow: `inset 0 0 0 1px ${accent.glow}0.24)`,
+              pointerEvents: "none",
+            }} />
+          )}
+
           <div style={{ width: 40, height: 40, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
             {icon}
           </div>
@@ -156,8 +174,9 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
           {/* Name — 2-line clamp with ellipsis */}
           <div style={{
             flex: 1, minWidth: 0,
-            fontSize: 13, fontWeight: 500,
+            fontSize: 13, fontWeight: focused && !isOnyx ? 700 : 500,
             color: theme.text,
+            textShadow: focused && !isOnyx && !accent.darkText ? "0 1px 2px rgba(0,0,0,0.35)" : undefined,
             overflow: "hidden",
             display: "-webkit-box",
             WebkitLineClamp: 2,

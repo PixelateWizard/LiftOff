@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import type { AccentConfig } from "../../constants";
 
-interface Props { accent: AccentConfig; }
+interface Props { accent: AccentConfig; effectsEnabled?: boolean; }
 
 // Blurred puff: the core primitive.
 interface PuffProps {
@@ -161,7 +161,7 @@ function LiftOffLogo({ color }: { color: string }) {
 const LOGO_W = 210;
 const LOGO_H = 58;
 
-function BouncingLogo({ accent }: { accent: AccentConfig }) {
+function BouncingLogo({ accent, effectsEnabled = true }: { accent: AccentConfig; effectsEnabled?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const posRef = useRef({ x: 180, y: 120 });
   const velRef = useRef({ x: 1.5, y: 1.1 });
@@ -172,6 +172,12 @@ function BouncingLogo({ accent }: { accent: AccentConfig }) {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+    if (!effectsEnabled) {
+      posRef.current = { x: 180, y: 120 };
+      setPos({ x: 180, y: 120 });
+      setFlash(false);
+      return;
+    }
 
     const tick = () => {
       const containerRect = container.getBoundingClientRect();
@@ -213,7 +219,7 @@ function BouncingLogo({ accent }: { accent: AccentConfig }) {
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-  }, []);
+  }, [effectsEnabled]);
 
   return (
     <div ref={containerRef} style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none" }}>
@@ -237,7 +243,7 @@ function BouncingLogo({ accent }: { accent: AccentConfig }) {
   );
 }
 
-export default function WebcoreBg({ accent }: Props) {
+export default function WebcoreBg({ accent, effectsEnabled = true }: Props) {
   return (
     <>
       <div style={{
@@ -252,7 +258,7 @@ export default function WebcoreBg({ accent }: Props) {
         <Cloud4 />
         <Cloud5 />
       </div>
-      <BouncingLogo accent={accent} />
+      <BouncingLogo accent={accent} effectsEnabled={effectsEnabled} />
     </>
   );
 }
