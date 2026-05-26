@@ -13,7 +13,6 @@
 - **Webcore background refresh** - replaced the plain gray/Webcore window background with a Windows XP-inspired sky treatment using soft cloud puffs and a bouncing LiftOff logo screensaver element.
 - **Immersive Home hero-art toggle** - added a setting that keeps the immersive Home carousel, selected title, and cover art visible while hiding the large hero background artwork so the active theme background can show through.
 - **Shared surface token layer** - moved theme/surface styling decisions into `src/theme/surfaces.ts` via `useSurfaceTheme`, centralizing card, bar, settings-row, background, and surface tokens outside `App.jsx`.
-- **Cyberpunk HUD prototype** - replaced the in-progress cyberpunk skyline/rain experiment with a holographic HUD background prototype including grid lines, scan sweep, corner brackets, HUD readouts, hex outlines, and horizontal glitch sparks. Cyberpunk is kept in code but temporarily removed from the public theme selector.
 - **Lofi background music** - added theme-scoped Lofi background music that loops only while the Lofi theme is active, pauses when switching away, and can be disabled from Settings.
 - **Launch handoff pause and return cooldown** - added an `appPaused` path that pauses launcher animations, animated hero media, and Lofi media while an app/game is being launched or LiftOff is out of focus, plus a short post-return cooldown before another launch can start.
 - **App settings hook** - moved settings bootstrap, refs, saving, update helpers, auto UI-scale setup, language sync, default-tab loading, and scan-toggle refresh tracking into `useAppSettings`.
@@ -33,9 +32,11 @@
 - **Settings nested tray borders** - reduced the odd border treatment around nested settings groups for non-Win9X surfaces while preserving Win9X bevel styling.
 - **Obsidian app tiles** - app tiles now use the same darker, low-transparency Obsidian treatment as the nav instead of picking up bright colour bleed from the background artwork.
 - **Lofi video background cleanup** - removed the old Lofi CSS-driven overlay animations now that the theme uses an animated MP4 background.
-- **Theme selector cleanup** - Cyberpunk is temporarily hidden from the theme cycle until the HUD prototype is ready for release.
 - **App.jsx hook extraction** - moved system status, search state, modal state/refs, collections, custom sources, library data, update checks, settings, and startup bootstrap into dedicated hooks while keeping gamepad-sensitive close helpers in `App.jsx`.
 - **Home hero media handling** - Home now owns hero media playback against the actual rendered hero list, treats animated WebP/GIF hero art as pausable media, keeps video heroes preloaded, and clips the non-Webcore hero surface to a fully rounded border.
+- **Semi-immersive Home slot sizing** - semi-immersive Home now uses a fixed bottom snap-scrolling slot for recents and collection rows. Hero height is derived from UI scale, Home cover scale, label height, focus bleed, and shadow allowance so larger cards resize the hero instead of overlapping it.
+- **Immersive drawer polish** - drawer collection navigation now keeps row headers below the drawer chrome, preserves bottom padding on the final row, scrolls focused cards horizontally without re-pinning the row vertically, and uses a subtler Material top-edge highlight instead of a heavy upward shadow.
+- **Win9X app list tiles** - Win9X list-mode app tiles now use opaque panel surfaces with backdrop blur disabled, preventing the page background from showing through the tiles.
 
 ### Bug Fixes
 - **Stale renamed recents** - Home recents now look up the current app/game name from the full library instead of showing cached `RecentEntry.name` values.
@@ -45,6 +46,8 @@
 - **Accidental relaunch after closing apps/games** - returning to LiftOff after a launched app/game now snapshots held gamepad buttons and blocks launch attempts briefly, preventing stale confirm input from opening another item.
 - **Lofi playback during launches** - Lofi music and the Lofi video background now pause while a launched app/game is active or LiftOff loses focus.
 - **Animated hero media on focus loss** - animated WebP/GIF hero banners now pause correctly when LiftOff is launched, blurred, or alt-tabbed away instead of continuing through the static image path.
+- **Semi-home card clipping** - fixed idle no-art app cards showing unintended borders and fixed focused card borders/shadows being clipped by the semi-home slot.
+- **Immersive drawer scroll alignment** - fixed second-row collection headers being clipped after drawer scrolling and fixed bottom drawer padding being bypassed by vertical `scrollIntoView` calls.
 
 ## [2.0.0-alpha.2] - Alpha 2
 

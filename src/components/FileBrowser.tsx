@@ -234,7 +234,7 @@ export default function FileBrowser({ mode = "file", repeatSpeed = "normal", onS
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: "'Segoe UI', sans-serif",
     }}>
-      <div style={{
+      <div data-modal="" style={{
         ...glass, width: 560, maxHeight: "75vh", borderRadius: isPixel ? 0 : 20,
         display: "flex", flexDirection: "column", overflow: "hidden",
         border: `1px solid ${accent.glow}0.3)`,

@@ -138,7 +138,7 @@ export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, t
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       fontFamily: "'Segoe UI', sans-serif",
     }}>
-      <div style={{ ...glass, borderRadius: isPixel ? 0 : 20, padding: isPixel ? 0 : "20px 24px", width: 520, display: "flex", flexDirection: "column", gap: isPixel ? 0 : 14,
+      <div data-modal="" style={{ ...glass, borderRadius: isPixel ? 0 : 20, padding: isPixel ? 0 : "20px 24px", width: 520, display: "flex", flexDirection: "column", gap: isPixel ? 0 : 14,
         border: `1px solid ${accent.glow}0.3)`, boxShadow: "0 12px 60px rgba(0,0,0,0.7)", ...pixelShell }}>
 
         {isPixel && (

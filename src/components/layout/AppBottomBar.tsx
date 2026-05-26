@@ -11,7 +11,7 @@ interface Props {
 
 export function AppBottomBar({ tab, appCollectionsCount }: Props) {
   const { t } = useTranslation();
-  const { glassBar, theme, isDark, surfaceStyle, accent } = useTheme();
+  const { glassBar, theme, isDark, surfaceStyle, accent, resolvedTheme } = useTheme();
   const { settings } = useSettings();
 
   if (settings.hide_bottom_bar) return null;
@@ -42,7 +42,7 @@ export function AppBottomBar({ tab, appCollectionsCount }: Props) {
   // from glassBar (which is designed for the top nav). Inset highlights stay the same.
   const barGlass: CSSProperties = isTransparent ? {} : {
     ...glassBar,
-    borderRadius: isPixel ? 0 : surfaceStyle === "material" ? 8 : 16,
+    borderRadius: resolvedTheme === "cyberpunk" ? 0 : isPixel ? 0 : surfaceStyle === "material" ? 8 : 16,
     ...(surfaceStyle === "aero" ? {
       boxShadow: isDark
         ? `inset 0 1px 0 rgba(255,255,255,0.52), inset 0 2px 7px rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.18), 0 0 0 1px ${accent.glow}0.14), 0 -4px 16px rgba(0,0,0,0.22)`
@@ -74,7 +74,7 @@ export function AppBottomBar({ tab, appCollectionsCount }: Props) {
 
   return (
     <div style={{ position: "sticky", bottom: 0, zIndex: 100 }}>
-      <div style={{
+      <div data-bottom-bar="" style={{
         display: "flex", gap: 20, alignItems: "center", padding: "10px 20px",
         justifyContent: justify,
         ...barGlass,

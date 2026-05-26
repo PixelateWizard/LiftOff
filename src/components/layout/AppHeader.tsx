@@ -1,18 +1,40 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { IoHomeSharp, IoGameController, IoApps, IoSettings } from "react-icons/io5";
+import { IoDocumentTextOutline, IoHomeOutline, IoHomeSharp, IoGameController, IoApps, IoSearchOutline, IoSettings } from "react-icons/io5";
 import { GamepadBtn } from "../GamepadBtn";
 import { SectionTabHeader } from "../SectionTabHeader";
 import type { TabItem } from "../SectionTabBar";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import { FocusRing } from "../ui/FocusRing";
+import { GlitchText } from "../neonblade-ui/glitch-text";
 
 const TAB_ICONS: Record<string, (size: number, color: string) => ReactNode> = {
   Home:     (s, c) => <IoHomeSharp     size={s} color={c} />,
   Games:    (s, c) => <IoGameController size={s} color={c} />,
   Apps:     (s, c) => <IoApps          size={s} color={c} />,
   Settings: (s, c) => <IoSettings      size={s} color={c} />,
+};
+
+const CYBER_TAB_LABELS: Record<string, string> = {
+  Home: "HOME",
+  Games: "EXPLORE",
+  Apps: "DOCS",
+  Settings: "ACCOUNT",
+};
+
+const CYBER_TAB_ICONS: Record<string, (size: number, color: string) => ReactNode> = {
+  Home:     (s, c) => <IoHomeOutline size={s} color={c} />,
+  Games:    (s, c) => <IoSearchOutline size={s} color={c} />,
+  Apps:     (s, c) => <IoDocumentTextOutline size={s} color={c} />,
+  Settings: (s, c) => (
+    <span style={{
+      width: s + 12, height: s + 12, borderRadius: "50%",
+      border: `1px solid ${c}`, color: c, display: "inline-flex",
+      alignItems: "center", justifyContent: "center", fontSize: 11,
+      fontWeight: 800, lineHeight: 1,
+    }}>N</span>
+  ),
 };
 
 interface Props {
@@ -87,7 +109,8 @@ export function AppHeader({
   const uiScale        = settings.ui_scale ?? 1;
   const subtabGap      = Math.round(16 / uiScale);
   const isPixel        = surfaceStyle === "win9x";
-  const navRadius      = isPixel ? 0 : surfaceStyle === "material" ? 8 : 16;
+  const navRadius      = resolvedTheme === "cyberpunk" ? 0 : isPixel ? 0 : surfaceStyle === "material" ? 8 : 16;
+  const isCyberpunk = resolvedTheme === "cyberpunk";
   const pixelFullBleedNav: CSSProperties = isPixel ? {
     width: "100%",
     maxWidth: "none",
@@ -117,12 +140,28 @@ export function AppHeader({
   const navContent = (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-        <RocketLogo accent={accent} />
+        {!isCyberpunk && <RocketLogo accent={accent} />}
+        {isCyberpunk ? (
+          <GlitchText
+            text="LiftOff"
+            mode="active"
+            intensity="subtle"
+            speed="slow"
+            colorA="rgba(255,20,140,0.95)"
+            colorB={accent.primary}
+            neon
+            glowColor={accent.primary}
+            style={{ fontWeight: 800, fontSize: 16, letterSpacing: "0.08em", color: accent.primary, textTransform: "uppercase" }}
+          >
+            LiftOff
+          </GlitchText>
+        ) : (
         <span key={`${settings.accent}-${settings.theme}`} style={{
           fontWeight: 700, fontSize: 16, letterSpacing: "0.04em",
           background: `linear-gradient(135deg, ${accent.light}, ${accent.primary})`,
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
         }}>LiftOff</span>
+        )}
       </div>
       <div style={{ display: "flex", gap: "40px", justifyContent: "center", alignItems: "center" }}>
         {settings.nav_bumpers_pos === "header" && (
@@ -133,30 +172,32 @@ export function AppHeader({
             const isActive = tab === tabName;
             const iconMode = settings.tabbar_icon_mode ?? "text";
             const color = isActive ? (resolvedTheme === "onyx" ? accent.primary : activeTextColor) : theme.textDim;
-            const iconNode = TAB_ICONS[tabName]?.(16, color);
+            const iconNode = (isCyberpunk ? CYBER_TAB_ICONS : TAB_ICONS)[tabName]?.(isCyberpunk && tabName === "Settings" ? 14 : 16, color);
             const showIcon = iconMode === "icons" || iconMode === "both";
             const showText = iconMode === "text"  || iconMode === "both";
+            const label = isCyberpunk ? CYBER_TAB_LABELS[tabName] : t(`tabs.${tabName.toLowerCase()}`);
             return (
-              <div key={tabName} onClick={() => switchTab(tabName)} style={{
-                fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase",
-                padding: showIcon && !showText ? "6px 10px" : "6px 16px",
-                borderRadius: isPixel ? 0 : 8, cursor: "pointer",
+              <div key={tabName} data-tab-pill="" className={isActive ? "active" : ""} onClick={() => switchTab(tabName)} style={{
+                fontSize: isCyberpunk ? 9 : 11, fontWeight: isCyberpunk ? 500 : 600, letterSpacing: isCyberpunk ? "0.10em" : "0.08em", textTransform: "uppercase",
+                padding: isCyberpunk ? "6px 14px" : showIcon && !showText ? "6px 10px" : "6px 16px",
+                minWidth: isCyberpunk ? 58 : undefined,
+                borderRadius: isPixel || isCyberpunk ? 0 : 8, cursor: "pointer",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 gap: showIcon && showText ? 2 : 0,
                 position: "relative",
                 transition: "background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease",
                 ...(isActive
                   ? {
-                      background: resolvedTheme === "onyx" ? "transparent" : accent.primary,
-                      border: `1px solid ${resolvedTheme === "onyx" ? "transparent" : accent.primary}`,
-                      boxShadow: resolvedTheme === "onyx"
+                      background: resolvedTheme === "onyx" || isCyberpunk ? "transparent" : accent.primary,
+                      border: `1px solid ${resolvedTheme === "onyx" || isCyberpunk ? "transparent" : accent.primary}`,
+                      boxShadow: resolvedTheme === "onyx" || isCyberpunk
                         ? "none"
                         : surfaceStyle === "aero"
                         ? `inset 0 1px 0 rgba(255,255,255,0.80), inset 0 2px 10px rgba(255,255,255,0.24), inset 0 -1px 0 rgba(0,0,0,0.28), 0 4px 16px ${accent.glow}0.55)`
                         : surfaceStyle === "material"
                         ? "var(--material-shadow-medium)"
                         : `0 4px 24px ${accent.glow}0.5)`,
-                      color: resolvedTheme === "onyx" ? accent.primary : activeTextColor,
+                      color: resolvedTheme === "onyx" || isCyberpunk ? accent.primary : activeTextColor,
                     }
                   : {
                       background: "transparent",
@@ -165,7 +206,8 @@ export function AppHeader({
                     }),
               }}>
                 {showIcon && iconNode}
-                {showText && <span style={{ lineHeight: 1 }}>{t(`tabs.${tabName.toLowerCase()}`)}</span>}
+                {showText && <span style={{ lineHeight: 1 }}>{label}</span>}
+                {isCyberpunk && isActive && <span style={{ position: "absolute", bottom: 0, width: 4, height: 4, borderRadius: "50%", background: accent.primary, boxShadow: `0 0 8px ${accent.primary}` }} />}
                 <FocusRing focused={isActive} variant="spin" elementRadius={isPixel ? 0 : 8} />
               </div>
             );
@@ -220,7 +262,7 @@ export function AppHeader({
   if (!transparentNav && tabbarBg && !tabbarBgCompact && !isHome) {
     return (
       <div data-liftoff-nav-boundary style={{ position: "sticky", top: 0, zIndex: 100 }}>
-        <div style={{
+        <div data-top-bar="" style={{
           ...widthConstraints(wideLayout, false, true, uiScale),
           ...pixelFullBleedNav,
           ...glassBar, borderRadius: navRadius,
@@ -241,7 +283,7 @@ export function AppHeader({
     <div data-liftoff-nav-boundary style={{ position: "sticky", top: 0, zIndex: 100 }}>
 
       {/* Nav row */}
-      <div style={{
+      <div data-top-bar="" style={{
         display: "flex", flexDirection: isPixel ? "column" : "row", alignItems: isPixel ? "stretch" : "center", gap: isPixel ? 0 : 16, padding: isPixel ? 0 : "10px 20px",
         ...widthConstraints(wideLayout, transparentNav, true, uiScale),
         ...pixelFullBleedNav,

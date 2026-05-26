@@ -26,7 +26,7 @@ export default function ModalShell({
   zIndex = 2000,
   onOverlayClick,
 }: ModalShellProps) {
-  const { glass, accent, theme, isDark, surfaceStyle, surface } = useTheme();
+  const { glass, accent, theme, isDark, surfaceStyle, surface, resolvedTheme } = useTheme();
   const hasBody = children != null && children !== false;
   const isPixel = surfaceStyle === "win9x";
   const pixelShell = isPixel ? {
@@ -74,11 +74,12 @@ export default function ModalShell({
       onClick={onOverlayClick}
     >
       <div
+        data-modal=""
         style={{
           ...glass,
           width: `min(${width}px, 90vw)`,
           ...(maxHeight ? { maxHeight } : {}),
-          borderRadius: isPixel ? 0 : surfaceStyle === "material" ? 16 : 24,
+          borderRadius: resolvedTheme === "cyberpunk" ? 0 : isPixel ? 0 : surfaceStyle === "material" ? 16 : 24,
           display: "flex", flexDirection: "column",
           overflow: "hidden",
           border: `1px solid ${accent.glow}0.3)`,

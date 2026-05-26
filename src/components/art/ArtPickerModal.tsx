@@ -149,7 +149,7 @@ export function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "port
 
   return (
     <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
-      <div style={{ ...glass, borderRadius: isPixel ? 0 : 20, padding: isPixel ? 0 : 24, width: 380, ...pixelShell }}>
+      <div data-modal="" style={{ ...glass, borderRadius: isPixel ? 0 : 20, padding: isPixel ? 0 : 24, width: 380, ...pixelShell }}>
         {isPixel && (
           <div style={{ margin: 3, height: 22, padding: "0 5px 0 7px", boxSizing: "border-box", background: surface.titleBarBg, borderBottom: surface.titleBarBorder, color: surface.titleBarText, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ fontSize: 11, fontWeight: 700, fontFamily: "Tahoma, Arial, sans-serif" }}>{app.name}</div>

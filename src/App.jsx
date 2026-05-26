@@ -55,7 +55,7 @@ import {
   THEME_LOCKED_SETTINGS, THEME_BG_COLORS,
   getRunAsAdmin, setRunAsAdmin,
 } from "./constants";
-import { FocusRing } from "./components/ui/FocusRing";
+import { CyberpunkCard, FocusRing } from "./components/ui";
 
 export default function App() {
   const { t } = useTranslation();
@@ -471,7 +471,25 @@ export default function App() {
       ".theme-cyberpunk-hud-2 { animation:cyberHudFade 13s ease-in-out infinite; animation-delay:-5s; }",
       ".theme-cyberpunk-hud-3 { animation:cyberHudFade 13s ease-in-out infinite; animation-delay:-7.5s; }",
       ".theme-cyberpunk-hud-4 { animation:cyberHudFade 13s ease-in-out infinite; animation-delay:-10s; }",
-      ".theme-cyberpunk-rain { position:fixed; z-index:2; pointer-events:none; transform-origin:left center; animation-name:cyberGlitchSpark; animation-timing-function:ease-in-out; animation-iteration-count:infinite; }",
+      ".theme-cyberpunk-rain { display:none !important; }",
+      `[data-theme="cyberpunk"] { --cyber-primary: ${accent.primary}; --cyber-glow: ${accent.glow}; --cyber-panel: rgba(0,10,22,0.72); --cyber-panel-bar: rgba(0,8,18,0.82); --cyber-border: ${accent.glow}0.55); --cyber-border-idle: ${accent.glow}0.22); --cyber-neon-shadow: 0 0 0 1px ${accent.glow}0.55), 0 0 8px ${accent.glow}0.38), 0 0 22px ${accent.glow}0.18), 0 0 44px ${accent.glow}0.08); --cyber-neon-shadow-idle: 0 0 0 1px ${accent.glow}0.22), 0 0 6px ${accent.glow}0.12); }`,
+      `[data-theme="cyberpunk"] [data-card] { border-radius: 0 !important; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%); }`,
+      `[data-theme="cyberpunk"] [data-card].focused > div, [data-theme="cyberpunk"] [data-card]:focus-visible > div { border: 1px solid var(--cyber-border) !important; box-shadow: var(--cyber-neon-shadow) !important; }`,
+      `[data-theme="cyberpunk"] [data-card]:not(.focused) > div { border: 1px solid var(--cyber-border-idle) !important; box-shadow: var(--cyber-neon-shadow-idle) !important; }`,
+      `[data-theme="cyberpunk"] [data-launch-btn] { border-radius: 0 !important; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%); box-shadow: 0 0 0 1px ${accent.glow}0.70), 0 0 12px ${accent.glow}0.45), 0 0 32px ${accent.glow}0.22) !important; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.78em; }`,
+      `[data-theme="cyberpunk"] [data-launch-btn]:active { box-shadow: 0 0 0 1px ${accent.glow}0.90), 0 0 20px ${accent.glow}0.65), 0 0 50px ${accent.glow}0.30) !important; transform: scale(0.97) !important; }`,
+      `[data-theme="cyberpunk"] [data-top-bar] { background: var(--cyber-panel-bar) !important; backdrop-filter: blur(8px) !important; -webkit-backdrop-filter: blur(8px) !important; border-bottom: 1px solid var(--cyber-border-idle) !important; box-shadow: 0 2px 14px ${accent.glow}0.10) !important; border-radius: 0 !important; }`,
+      `[data-theme="cyberpunk"] [data-bottom-bar] { background: var(--cyber-panel-bar) !important; backdrop-filter: blur(8px) !important; -webkit-backdrop-filter: blur(8px) !important; border-top: 1px solid var(--cyber-border-idle) !important; box-shadow: 0 -2px 14px ${accent.glow}0.10) !important; border-radius: 0 !important; }`,
+      `[data-theme="cyberpunk"] [data-tab-pill] { border-radius: 0 !important; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%); }`,
+      `[data-theme="cyberpunk"] [data-tab-pill].active { box-shadow: 0 0 0 1px ${accent.glow}0.60), 0 0 10px ${accent.glow}0.30) !important; }`,
+      `[data-theme="cyberpunk"] [data-settings-row] { border-radius: 0 !important; border-left: 2px solid transparent !important; transition: border-color 0.15s, background 0.15s !important; }`,
+      `[data-theme="cyberpunk"] [data-settings-row].focused { border-left: 2px solid var(--cyber-primary) !important; background: rgba(0,229,255,0.04) !important; box-shadow: inset 0 0 12px ${accent.glow}0.06) !important; }`,
+      `[data-theme="cyberpunk"] [data-modal] { border-radius: 0 !important; clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%); background: rgba(0,8,20,0.88) !important; backdrop-filter: blur(10px) saturate(130%) !important; -webkit-backdrop-filter: blur(10px) saturate(130%) !important; border: 1px solid var(--cyber-border) !important; box-shadow: var(--cyber-neon-shadow) !important; }`,
+      `[data-theme="cyberpunk"] [data-toggle-track] { border-radius: 0 !important; border: 1px solid var(--cyber-border-idle) !important; }`,
+      `[data-theme="cyberpunk"] [data-toggle-track].on { border-color: var(--cyber-border) !important; box-shadow: 0 0 8px ${accent.glow}0.35) !important; }`,
+      `[data-theme="cyberpunk"] [data-toggle-knob] { border-radius: 0 !important; }`,
+      "html, body, #root { scrollbar-width: none !important; -ms-overflow-style: none !important; overflow-x: hidden !important; }",
+      "html::-webkit-scrollbar, body::-webkit-scrollbar, #root::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none !important; }",
       "@keyframes forestMoonBeam { 0%,100%{opacity:0.55} 50%{opacity:0.72} }",
       "@keyframes forestFogDrift { 0%,100%{transform:translateX(0)} 50%{transform:translateX(2%)} }",
       "@keyframes forestFireflyDrift { 0%{transform:translate(0,0)} 25%{transform:translate(14px,-10px)} 50%{transform:translate(6px,-22px)} 75%{transform:translate(-8px,-14px)} 100%{transform:translate(0,0)} }",
@@ -502,7 +520,7 @@ export default function App() {
     ].join("\n");
     document.head.appendChild(style);
     return () => style.remove();
-  }, []);
+  }, [accent.glow, accent.primary]);
 
   // Auto-detect controller platform on gamepad connect
   useEffect(() => {
@@ -622,28 +640,6 @@ export default function App() {
           star.style.animationDuration = (Math.random() * 3 + 2) + "s";
           star.style.animationDelay = -(Math.random() * 5) + "s";
           container.appendChild(star);
-        }
-      }
-    } else if (activeTheme === "cyberpunk") {
-      const container = document.getElementById("cyberpunk-rain-container");
-      if (container) {
-        for (let i = 0; i < 20; i++) {
-          const spark = document.createElement("div");
-          spark.className = "theme-cyberpunk-rain";
-          spark.style.width = `${20 + Math.random() * 90}px`;
-          spark.style.height = "1px";
-          spark.style.left = `${Math.random() * 94}vw`;
-          spark.style.top = `${Math.random() * 90}vh`;
-          const usePrimary = Math.random() > 0.45;
-          spark.style.background = usePrimary
-            ? `color-mix(in srgb, ${accent.primary} 70%, rgba(0,229,255,1) 30%)`
-            : "rgba(0,229,255,0.9)";
-          spark.style.boxShadow = usePrimary
-            ? `0 0 6px ${accent.primary}`
-            : "0 0 6px rgba(0,229,255,0.7)";
-          spark.style.animationDuration = `${4 + Math.random() * 9}s`;
-          spark.style.animationDelay = `-${Math.random() * 12}s`;
-          container.appendChild(spark);
         }
       }
     } else if (activeTheme === "forest") {
@@ -850,10 +846,11 @@ export default function App() {
         if (drawerScrollRef.current) {
           const drawerRect = drawerScrollRef.current.getBoundingClientRect();
           const rowRect = focusedRowRef.current.getBoundingClientRect();
-          const scrollTarget = drawerScrollRef.current.scrollTop + rowRect.top - drawerRect.top - 16;
+          const drawerTopClearance = 56;
+          const scrollTarget = drawerScrollRef.current.scrollTop + rowRect.top - drawerRect.top - drawerTopClearance;
           drawerScrollRef.current.scrollTo({ top: scrollTarget, behavior: "smooth" });
           if (focusedCardRef.current) {
-            focusedCardRef.current.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+            scrollFocusedCardHorizontally(focusedCardRef.current.parentElement);
           }
         } else {
           const scroller = homeScrollRef.current;
@@ -1035,11 +1032,11 @@ export default function App() {
 
   const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, onRightClick }) => {
     const art = customArt[app.id] || gameArt[app.id];
-    const cardRadius = surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 8 : 16;
+    const cardRadius = resolvedTheme === "cyberpunk" ? 0 : surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 8 : 16;
     const isOnyx = resolvedTheme === "onyx";
     return (
       // Outer wrapper — no overflow:hidden so the ring can extend outside with a gap
-      <div ref={cardRef} onClick={onClick} onDoubleClick={onDoubleClick}
+      <div ref={cardRef} data-card="" className={focused ? "focused" : ""} onClick={onClick} onDoubleClick={onDoubleClick}
         onContextMenu={onRightClick ? (e) => { e.preventDefault(); onRightClick(e, app); } : undefined}
         style={{
           position: "relative", borderRadius: cardRadius, aspectRatio: "2/3",
@@ -1048,7 +1045,7 @@ export default function App() {
         }}
       >
         {/* Inner content — overflow:hidden clips the art to the card */}
-        <div style={focused
+        <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={focused
           ? { ...glass, border: isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, overflow: "hidden", position: "absolute", inset: 0, boxShadow: isOnyx ? "none" : surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 40px ${accent.glow}0.2)` }
           : { ...glass, border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)", borderRadius: cardRadius, overflow: "hidden", position: "absolute", inset: 0 }
         }>
@@ -1063,7 +1060,7 @@ export default function App() {
           {focused && !isOnyx && (
             <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, pointerEvents: "none" }} />
           )}
-        </div>
+        </CyberpunkCard>
         {/* Ring — outside overflow:hidden, spaced 4px away from the card edge */}
         <FocusRing focused={focused} variant="spin" elementRadius={cardRadius} />
       </div>
@@ -1285,7 +1282,7 @@ export default function App() {
     <ThemeProvider value={themeValue}>
     <SettingsProvider value={settingsValue}>
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
-    <div className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
+    <div data-theme={resolvedTheme} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
 
       <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} />
       <AppOverlays>
@@ -1566,7 +1563,7 @@ export default function App() {
       {libraryRefreshStatus === "scanning" && (
         <div style={{ position: "fixed", inset: 0, zIndex: 5000, display: "flex", alignItems: "center", justifyContent: "center",
           background: surfaceStyle === "material" ? (isDark ? "rgba(23,21,19,0.96)" : "rgba(244,240,235,0.96)") : isDark ? "rgba(10,5,2,0.75)" : "rgba(240,230,220,0.75)", backdropFilter: surfaceStyle === "material" ? undefined : "blur(12px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : "blur(12px)" }}>
-          <div style={{ ...glass, borderRadius: surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 16 : 24, padding: "32px 48px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
+          <div data-modal="" style={{ ...glass, borderRadius: resolvedTheme === "cyberpunk" ? 0 : surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 16 : 24, padding: "32px 48px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
             border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.3)` }}>
             <div className="splash-dots" style={{ opacity: 1 }}>
               <div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" />
@@ -1656,18 +1653,20 @@ export default function App() {
                       );
                     }
                     return (
-                      <div key={app.id} ref={focused ? searchFocusedCardRef : null}
+                      <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? searchFocusedCardRef : null}
                         onClick={() => { setSearchFocusIndex(i); searchFocusIndexRef.current = i; if (searchModeRef.current !== "results") switchSearchMode("results"); }}
                         onDoubleClick={() => { closeSearch(); triggerLaunch(app, recentRef.current); }}
-                        style={{ ...glass, border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : "1px solid rgba(255,255,255,0.06)", borderRadius: 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "2/3", position: "relative", overflow: "hidden",
+                        style={{ borderRadius: resolvedTheme === "cyberpunk" ? 0 : 16, cursor: "pointer", transition: "all 0.15s ease", aspectRatio: "2/3", position: "relative",
                           ...(focused ? { background: surfaceStyle === "material" ? "var(--material-elevation-3)" : isDark ? `${accent.glow}0.12)` : `${accent.glow}0.08)`,
                             boxShadow: surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 30px ${accent.glow}0.15)`,
                             transform: "scale(1.06)" } : {}) }}>
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, height: "100%", padding: "12px 8px" }}>
-                          <AppIcon app={app} size={40} />
-                          <div style={{ fontSize: 10, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
-                        </div>
-                        <PinBadge isPinned={isPinned} small />
+                        <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ ...glass, border: focused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}` : "1px solid rgba(255,255,255,0.06)", borderRadius: resolvedTheme === "cyberpunk" ? 0 : 16, position: "absolute", inset: 0, overflow: "hidden" }}>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, height: "100%", padding: "12px 8px" }}>
+                            <AppIcon app={app} size={40} />
+                            <div style={{ fontSize: 10, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{app.name}</div>
+                          </div>
+                          <PinBadge isPinned={isPinned} small />
+                        </CyberpunkCard>
                       </div>
                     );
                   })}

@@ -1,5 +1,6 @@
 import { forwardRef, type ReactNode, type CSSProperties, type MouseEvent } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
+import { CyberpunkCard } from "./CyberpunkCard";
 import { FocusRing } from "./FocusRing";
 
 interface AppListItemProps {
@@ -42,10 +43,10 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
     },
     ref,
   ) => {
-    const { accent, theme, isDark, glass, surfaceStyle, resolvedTheme } = useTheme();
+    const { accent, theme, isDark, glass, surface, surfaceStyle, resolvedTheme } = useTheme();
 
     const isPixel = surfaceStyle === "win9x";
-    const cardRadius = isPixel ? 0 : surfaceStyle === "material" ? 8 : 12;
+    const cardRadius = resolvedTheme === "cyberpunk" ? 0 : isPixel ? 0 : surfaceStyle === "material" ? 8 : 12;
 
     // ── Pill variant ───────────────────────────────────────────────
     if (variant === "pill") {
@@ -53,6 +54,8 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
       return (
         // Outer wrapper — no overflow:hidden, holds ring + inner content as siblings
         <div
+          data-card=""
+          className={focused ? "focused" : ""}
           ref={ref}
           onClick={onClick}
           onDoubleClick={onDoubleClick}
@@ -60,7 +63,7 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
           style={{ position: "relative", flexShrink: 0, borderRadius: cardRadius, cursor: "pointer", ...style }}
         >
           {/* Inner content — overflow:hidden */}
-          <div style={{
+          <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{
             display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
             borderRadius: cardRadius,
             overflow: "hidden",
@@ -87,7 +90,7 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
               {name}
             </div>
             {children}
-          </div>
+          </CyberpunkCard>
           {/* Ring — outside inner overflow:hidden, with gap */}
           <FocusRing focused={focused && isOnyx} variant="spin" elementRadius={cardRadius} />
         </div>
@@ -97,6 +100,8 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
     // ── Row variant ────────────────────────────────────────────────
     const rowBg = surfaceStyle === "material"
       ? "var(--material-elevation-2)"
+      : isPixel
+      ? surface.panelBg
       : surfaceStyle === "obsidian"
       ? glass.background
       : isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)";
@@ -116,6 +121,8 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
     return (
       // Outer wrapper — no overflow:hidden, holds ring + inner content as siblings
       <div
+        data-card=""
+        className={focused ? "focused" : ""}
         ref={ref}
         onClick={onClick}
         onDoubleClick={onDoubleClick}
@@ -123,7 +130,10 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
         style={{ position: "relative", borderRadius: cardRadius, ...style }}
       >
         {/* Inner content — overflow:hidden */}
-        <div
+        <CyberpunkCard
+          enabled={resolvedTheme === "cyberpunk"}
+          focused={focused}
+          accent={accent}
           style={{
             display: "flex", alignItems: "center", gap: 12,
             padding: "8px 14px",
@@ -132,6 +142,8 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
             overflow: "hidden",
             ...glass,
             background: rowBg,
+            backdropFilter: isPixel ? undefined : glass.backdropFilter,
+            WebkitBackdropFilter: isPixel ? undefined : glass.WebkitBackdropFilter,
             border: `1px solid ${focused && !isOnyx ? focusBorder : idleBorderRow}`,
             ...(focused && !isOnyx ? { boxShadow: focusShadow } : {}),
           }}
@@ -156,7 +168,7 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
           </div>
 
           {children}
-        </div>
+        </CyberpunkCard>
         {/* Ring — horizontal variant (left spotlight), outside overflow:hidden, with gap */}
         <FocusRing focused={focused && isOnyx} variant="spin" elementRadius={cardRadius} />
       </div>

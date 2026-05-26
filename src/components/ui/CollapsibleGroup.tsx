@@ -143,7 +143,7 @@ export function CollapsibleGroup({
 
   return (
     <div>
-      <div ref={focusedRef} style={parentStyle} onClick={() => onChange(!value)}>
+      <div data-settings-row="" className={focused ? "focused" : ""} ref={focusedRef} style={parentStyle} onClick={() => onChange(!value)}>
         <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{label}</span>
         <ToggleKnob value={value} />
         <FocusRing focused={!!focused} variant="spin" wide elementRadius={flatSettings ? onyxSettingsFocusRadius : isPixel ? 0 : isMaterial ? 8 : 16} />
@@ -201,7 +201,7 @@ export function CollapsibleGroup({
               const next = item.cycleOptions[(cur + 1) % item.cycleOptions.length];
               const displayLabel = item.cycleLabel ? item.cycleLabel(item.cycleValue) : item.cycleValue;
               return (
-                <div key={idx} ref={item.focused ? item.focusedRef : undefined} style={rowStyle}>
+                <div key={idx} data-settings-row="" className={item.focused ? "focused" : ""} ref={item.focused ? item.focusedRef : undefined} style={rowStyle}>
                   <span style={{ fontSize: 13, fontWeight: 500, color: isMaterial ? theme.text : theme.textDim }}>{item.label}</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
@@ -219,7 +219,7 @@ export function CollapsibleGroup({
               const pct = (item.sliderValue - item.sliderMin) / (item.sliderMax - item.sliderMin);
               const displayVal = item.integer ? `${Math.round(item.sliderValue)}` : `${Math.round(item.sliderValue * 100)}%`;
               return (
-                <div key={idx} ref={item.focused ? item.focusedRef : undefined} style={rowStyle}>
+                <div key={idx} data-settings-row="" className={item.focused ? "focused" : ""} ref={item.focused ? item.focusedRef : undefined} style={rowStyle}>
                   <span style={{ fontSize: 13, fontWeight: 500, color: isMaterial ? theme.text : theme.textDim }}>{item.label}</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
@@ -241,6 +241,8 @@ export function CollapsibleGroup({
             return (
               <div
                 key={idx}
+                data-settings-row=""
+                className={item.focused ? "focused" : ""}
                 ref={item.focused ? item.focusedRef : undefined}
                 style={rowStyle}
                 onClick={() => item.onChange(!item.value)}

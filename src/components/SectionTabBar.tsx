@@ -157,7 +157,7 @@ export function SectionTabBar({
         const active = activeIndex === i;
         if (textTabs) {
           return (
-            <div key={i} onClick={() => onSelect?.(i)} style={{ ...makeTextTabStyle(active), position: "relative" }}>
+            <div key={i} data-tab-pill="" className={active ? "active" : ""} onClick={() => onSelect?.(i)} style={{ ...makeTextTabStyle(active), position: "relative" }}>
               {item.label}
               <FocusRing focused={active} variant="spin" elementRadius={isPixel ? 0 : 10} />
             </div>
@@ -167,6 +167,8 @@ export function SectionTabBar({
         const baseStyle = makePillTabStyle(active, item.isDashed, hovered);
         return (
           <div key={i}
+            data-tab-pill=""
+            className={active ? "active" : ""}
             onClick={() => onSelect?.(i)}
             onMouseEnter={() => setHoveredIndex(i)}
             onMouseLeave={() => setHoveredIndex(null)}

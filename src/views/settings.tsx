@@ -366,7 +366,7 @@ export function SettingsScreen({
         ? (item.lockedValue ? t("settings.values.on", "On") : t("settings.values.off", "Off"))
         : String(t(`settings.values.${item.lockedValue}`, String(item.lockedValue ?? "")));
       return (
-        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8, marginLeft: item.indent ? 24 : 0, display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0.42, cursor: "not-allowed", pointerEvents: "none" }}>
+        <div key={item.key} data-settings-row="" style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8, marginLeft: item.indent ? 24 : 0, display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0.42, cursor: "not-allowed", pointerEvents: "none" }}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <span style={{ fontSize: 12, color: theme.textDim }}>{forced}</span>
         </div>
@@ -381,7 +381,7 @@ export function SettingsScreen({
 
     if (item.type === "info")
       return (
-        <div key={item.key} ref={rowRef} style={{ ...rowStyle, justifyContent: "center", cursor: "default" }}>
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={{ ...rowStyle, justifyContent: "center", cursor: "default" }}>
           <span style={{ fontSize: 13, color: theme.textDim }}>{item.label}</span>
         </div>
       );
@@ -457,7 +457,7 @@ export function SettingsScreen({
         );
         return (
           <div key={item.key}>
-            <div ref={rowRef} style={parentStyle} onClick={() => updateSetting(item.key, !val)}>
+            <div data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={parentStyle} onClick={() => updateSetting(item.key, !val)}>
               <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
               <ToggleKnob value={val} />
               {onyxRing}
@@ -466,6 +466,8 @@ export function SettingsScreen({
               <div style={subContainerStyle}>
                 {/* Show Collection Names sub-toggle */}
                 <div
+                  data-settings-row=""
+                  className={subFocused ? "focused" : ""}
                   ref={subFocused ? settingsFocusedRef : undefined}
                   style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: subFocused ? (isPixel ? surface.activeBg : isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: subFocused && isPixel ? pixelSubFocusStyle.boxShadow : subFocused && isMaterial ? "var(--material-shadow-pressed)" : isPixel ? surface.bevelRaisedSoft : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial || isPixel ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`, ...(subFocused && isMaterial ? materialSubFocusStyle : {}), ...(subFocused && isPixel ? pixelSubFocusStyle : {}) }}
                   onClick={() => updateSetting("show_home_collection_names", !settings.show_home_collection_names)}
@@ -487,6 +489,8 @@ export function SettingsScreen({
                       const colFocused = colNavIdx !== -1 && settingsFocusIndex === colNavIdx;
                       return (
                         <div key={col.id}
+                          data-settings-row=""
+                          className={colFocused ? "focused" : ""}
                           ref={colFocused ? settingsFocusedRef : undefined}
                           style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: colFocused ? (isPixel ? surface.activeBg : isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: colFocused && isPixel ? pixelSubFocusStyle.boxShadow : colFocused && isMaterial ? "var(--material-shadow-pressed)" : isPixel ? surface.bevelRaisedSoft : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial || isPixel ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`, ...(colFocused && isMaterial ? materialSubFocusStyle : {}), ...(colFocused && isPixel ? pixelSubFocusStyle : {}) }}
                           onClick={() => onToggleHomeCollection?.(col.name)}>
@@ -502,6 +506,8 @@ export function SettingsScreen({
                       const colFocused = colNavIdx !== -1 && settingsFocusIndex === colNavIdx;
                       return (
                         <div key={col.id}
+                          data-settings-row=""
+                          className={colFocused ? "focused" : ""}
                           ref={colFocused ? settingsFocusedRef : undefined}
                           style={{ ...rowBase, marginBottom: isMaterial ? 3 : undefined, background: colFocused ? (isPixel ? surface.activeBg : isMaterial ? "var(--material-inset-row-active)" : isDark ? `${accent.glow}0.08)` : `${accent.glow}0.05)`) : isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-row)" : "transparent", boxShadow: colFocused && isPixel ? pixelSubFocusStyle.boxShadow : colFocused && isMaterial ? "var(--material-shadow-pressed)" : isPixel ? surface.bevelRaisedSoft : isMaterial ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.018)" : "inset 0 1px 0 rgba(255,255,255,0.45)") : undefined, borderBottom: isMaterial || isPixel ? "none" : `1px solid ${isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)"}`, ...(colFocused && isMaterial ? materialSubFocusStyle : {}), ...(colFocused && isPixel ? pixelSubFocusStyle : {}) }}
                           onClick={() => onToggleHomeCollection?.(col.name)}>
@@ -569,7 +575,7 @@ export function SettingsScreen({
         );
       }
       return (
-        <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => updateSetting(item.key, !val)}>
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={() => updateSetting(item.key, !val)}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <ToggleKnob value={val} />
           {onyxRing}
@@ -584,7 +590,7 @@ export function SettingsScreen({
         : settings[item.key] as string;
       const cur = opts.indexOf(curVal);
       return (
-        <div key={item.key} ref={rowRef} style={rowStyle}>
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
@@ -604,7 +610,7 @@ export function SettingsScreen({
       const accentKeys = Object.keys(ACCENTS);
       const curIdx = accentKeys.indexOf(settings.accent);
       return (
-        <div key={item.key} ref={rowRef} style={rowStyle}>
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
@@ -627,7 +633,7 @@ export function SettingsScreen({
         : t("settings.status.refresh");
       const statusColor = libraryRefreshStatus === "done" ? "#4ae88a" : theme.textDim;
       return (
-        <div key={item.key} ref={rowRef} style={rowStyle} onClick={refreshLibrary}>
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={refreshLibrary}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <span style={{ fontSize: 12, color: statusColor }}>{statusText}</span>
           {onyxRing}
@@ -669,7 +675,7 @@ export function SettingsScreen({
       };
 
       return (
-        <div key={item.key} ref={rowRef} style={rowStyle}>
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 11, color: focused ? accent.primary : theme.textDim, cursor: "pointer", userSelect: "none" }}
@@ -690,7 +696,7 @@ export function SettingsScreen({
 
     if (item.type === "action")
       return (
-        <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => {
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={() => {
           if (item.key === "clear_recents") onClearRecents();
           if (item.key === "clear_cache")   handleClearCache();
           if (item.key === "reset_scale")   updateSetting("ui_scale", autoScale);
@@ -716,7 +722,7 @@ export function SettingsScreen({
         : updateStatus === "error"      ? "#e84a4a"
         : theme.textDim;
       return (
-        <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => {
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={() => {
           if (updateStatus === "available")
             invoke("launch_app", { path: `https://github.com/${GITHUB_REPO}/releases/latest`, id: "releases", name: "LiftOff Releases", appType: "app", runAsAdmin: false }).catch(() => {});
           else checkForUpdates();
@@ -730,7 +736,7 @@ export function SettingsScreen({
 
     if (item.type === "link")
       return (
-        <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => {
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={() => {
           if (item.key === "coffee")  invoke("launch_app", { path: "https://buymeacoffee.com/liftoff_handheld_launcher", id: "coffee", name: "Buy Me a Coffee", appType: "app", runAsAdmin: false }).catch(() => {});
           if (item.key === "github")  invoke("launch_app", { path: "https://github.com/PixelateWizard/LiftOff", id: "github", name: "GitHub", appType: "app", runAsAdmin: false }).catch(() => {});
           if (item.key === "discord") invoke("launch_app", { path: "https://discord.gg/F5ncP75WtD", id: "discord", name: "Discord", appType: "app", runAsAdmin: false }).catch(() => {});
@@ -743,7 +749,7 @@ export function SettingsScreen({
 
     if (item.type === "attribution")
       return (
-        <div key={item.key} ref={rowRef} style={rowStyle} onClick={() => {
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={() => {
           if (item.url) invoke("launch_app", { path: item.url, id: item.key, name: item.label, appType: "app", runAsAdmin: false }).catch(() => {});
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -757,14 +763,14 @@ export function SettingsScreen({
 
     if (item.type === "icon_preview")
       return (
-        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "14px 20px", marginBottom: 8 }}>
+        <div key={item.key} data-settings-row="" style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "14px 20px", marginBottom: 8 }}>
           <GamepadIconPreview />
         </div>
       );
 
     if (item.type === "controller_test")
       return (
-        <div key={item.key} style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8 }}>
+        <div key={item.key} data-settings-row="" style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8 }}>
           <ControllerTestWidget />
         </div>
       );
@@ -795,7 +801,7 @@ export function SettingsScreen({
         );
 
       return (
-        <div key={item.key} ref={rowRef} style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8, ...(focused ? {
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8, ...(focused ? {
           border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + (surfaceStyle === "aero" ? "0.50)" : "0.45)")}`,
           backdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
           WebkitBackdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",

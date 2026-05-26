@@ -1,7 +1,7 @@
 export const COLS = 6;
 export const GAME_COLS = 5;
 export const TABS = ["Home", "Games", "Apps", "Settings"] as const;
-export const APP_VERSION = "2.0.0-alpha.2";
+export const APP_VERSION = "2.0.0";
 export const GITHUB_REPO = "PixelateWizard/LiftOff";
 
 // Key: `admin_pref_${gameId}`, Value: boolean
@@ -70,6 +70,9 @@ export const THEME_SURFACE_DEFAULTS: Record<string, string> = {
 export const THEME_LOCKED_SETTINGS: Partial<Record<string, Partial<Record<string, string | boolean | number>>>> = {
   onyx: {
     surface_style: "clear",
+  },
+  cyberpunk: {
+    surface_style: "neon",
   },
 };
 

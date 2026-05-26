@@ -92,6 +92,11 @@
   - This avoids one/two-pixel vertical nudges while moving horizontally through scaled focused covers.
 - Home hero gamepad scroll:
   - Returning focus to Home hero also resets the outer scroller so the hero top margin is visible.
+- Semi-immersive Home snap slot:
+  - `semiHome` uses a fixed `.semi-home-slot` for recents and collection rows; the outer Home scroller stays `overflowY: hidden`.
+  - Slot height is calculated from `home_cover_scale`, `ui_scale`, card aspect ratio, collection label height, focus bleed, shadow bleed, and bottom-bar clearance. Hero height must use the same `SEMI_SLOT_H` basis so scaling cards resize the hero instead of overlapping it.
+  - Do not reintroduce the old `55vh` spacer or page-flow recents in semiHome.
+  - Horizontal shelves inside the slot need internal vertical padding because `overflow-x: auto` clips vertical shadows.
 - Launch overlay input isolation:
   - `launchingAppRef` blocks main gamepad navigation while `LaunchOverlay` is open.
   - `closeLaunchOverlay` suppresses currently held gamepad buttons until release, so pressing `A` on "Got it" cannot launch the focused grid item underneath.
@@ -104,6 +109,8 @@
   - `FocusRing` respects the Onyx effects toggle (`settings.stars_enabled`): effects off renders a static accent border instead of animated focus.
   - Regular app/tab-sized Onyx focus uses the shared conic spin ring. Wide Settings rows must pass `wide` so they use the SVG perimeter-stroke path; the conic ring stretches into horizontal bands on full-width rows.
   - Keep `AppListItem` row focus on the regular conic ring to match selected app/subtab behavior; only settings-style full-width rows should use the wide stroke path.
+- Win9X app list rows:
+  - In list mode, `AppListItem` rows must stay opaque for `surfaceStyle === "win9x"` and should not apply backdrop blur. Use the Win9X panel surface instead of translucent rgba fills.
 
 ### Verification Notes
 
@@ -438,7 +445,7 @@ Both `glassEnabled` and `surfaceStyle` are threaded via `ThemeContext`; any comp
 - **Active nav tab pill / focused pinned items (both shelves) / Launch CTA / section filter pills**: solid `accent.primary` fill + `border: 1px solid accent.primary`. Box-shadow is material-dependent — Aero: triple-inset gloss (`inset 0 1px 0 rgba(255,255,255,0.80)` hard specular + `inset 0 2px 10px rgba(255,255,255,0.24)` bloom + `inset 0 -1px 0 rgba(0,0,0,0.28)` bottom rim + outer accent glow); Material: flat accent with material shadows only, no accent glow; Glass/Clear: plain outer glow `0 4px 24px accent(0.5)`. Text color: `activeTextColor = isDark ? (accent.darkText ? activePillText : "white") : (accent.lightDarkText ? activePillText : "white")` where `activePillText = "rgba(20,14,10,0.90)"`. Computed locally in `App.jsx`, `AppHeader.tsx`, and `SectionTabBar.tsx`.
 - **Inactive pills / unfocused pinned items / unfocused Launch CTA** (when `glassEnabled`): Aero — directional gradient fill, thin neutral border + `accent.glow` outer ring (10–12%), `inset 0 1px 0` top highlight + `inset 0 -1px 0` bottom rim. Glass — flat `rgba(255,255,255,0.08)` + `blur(12–14px) saturate(150%)`. Clear — flat translucent fallback.
 - **Home pinned shelf label color:** focused labels use `activeTextColor`. Unfocused Material labels use warm paper text (`rgba(255,250,245,0.84)` dark / `rgba(31,22,15,0.82)` light). Other surfaces use `rgba(245,237,232,0.88)` only in dark mode and `theme.text` in light mode so Clear/Glass/Aero light shelves remain readable.
-- **Immersive home drawer** follows the selected surface in both modes. Material: opaque `--material-elevation-3`, no blur, stronger upward shadow. Dark Aero: `blur(18px) saturate(130%) brightness(0.88)` + `rgba(255,255,255,0.16→0.08)` background. Dark Glass: `blur(32px) saturate(140%) brightness(0.85)` + `rgba(255,255,255,0.08→0.04)`. Light Aero: brighter acrylic `rgba(255,255,255,0.74→0.52)`, tighter blur, strong top highlight. Light Glass: more transparent `rgba(255,255,255,0.58→0.38)` with heavier blur. Clear: light mode uses a warm translucent sheet; dark mode uses `appBg`.
+- **Immersive home drawer** follows the selected surface in both modes. Material: opaque `--material-elevation-3`, no blur, subtle inset top highlight; avoid heavy upward cast shadows because they create a visible band at the drawer top. Dark Aero: `blur(18px) saturate(130%) brightness(0.88)` + `rgba(255,255,255,0.16→0.08)` background. Dark Glass: `blur(32px) saturate(140%) brightness(0.85)` + `rgba(255,255,255,0.08→0.04)`. Light Aero: brighter acrylic `rgba(255,255,255,0.74→0.52)`, tighter blur, strong top highlight. Light Glass: more transparent `rgba(255,255,255,0.58→0.38)` with heavier blur. Clear: light mode uses a warm translucent sheet; dark mode uses `appBg`.
 - `settingsRowGlass` Glass branch keeps accent tint (`accent.glow` at 2.5%/1.0%) layered behind the white gradient. Aero branch uses neutral fill only — accent is present solely via the `0 0 0 1px accent.glow` outer ring in `boxShadow`.
 
 ### App icons (UI)
@@ -504,14 +511,21 @@ Enabled via `settings.show_home_collections`. Renders game and app collections a
 
 **Normal mode:** rendered inline below the recents shelf, scrolls with the page.
 
+**Semi-immersive mode (`settings.home_mode === "semi"`):**
+- Recents and collection rows render inside a fixed bottom `.semi-home-slot` with vertical scroll snap. The main Home wrapper should not vertically scroll in this mode.
+- `SEMI_SLOT_H` is the single source of truth for the slot and hero relationship. It includes card height, label allowance, focus bleed, shadow bleed, top/bottom slot padding, and bottom-bar clearance.
+- Focused row scrolling should use actual DOM `offsetTop` for the target slot page (`data-semi-slot-page`) instead of multiplying a page index by slot height. This keeps rows aligned when labels or card scale change.
+- Keep extra bottom/shadow allowance inside each horizontal shelf because `overflow-x: auto` clips vertical shadows and focus rings.
+
 **Cinematic/Immersive mode (`settings.cinematic_home`):**
 - A **down chevron** sits fixed at `bottom: 16px`, bobs via `colChevronBob` keyframe animation, fades when panel is open. Clickable for mouse/keyboard users to open the drawer. The chevron/drawer only exists when `show_home_collections` is enabled.
 - Pressing down from the pinned shelf opens a **slide-up drawer panel** that covers the screen from `top: 72px` (below the nav bar) to the bottom. The hero and pinned shelf are hidden behind it.
 - When `hide_bottom_bar` is true and `show_home_collections` is false, the lower UI lane is free: the cinematic pinned shelf moves to the bottom with bottom-bar-like padding, and hero content stays close above it. If pinned is hidden or empty too, hero content drops to the bottom lane.
 - The panel slides in via `translateY(100%) → translateY(0)` with `cubic-bezier(0.4,0,0.2,1)`.
-- Panel has `borderTop`, `boxShadow: 0 -8px 40px`, and `backdropFilter: blur(24px)` for a bottom-sheet feel.
+- Panel has `borderTop` plus surface-specific background/elevation. Material uses an inset top highlight instead of a heavy upward cast shadow.
 - An **up chevron** is fixed at the top of the panel (outside the scroll container) — always visible regardless of scroll. Clickable to close the drawer.
 - Scrollable content inside: recents row first, then collection rows.
+- Drawer collection content keeps generous bottom padding (currently `180px`) so the final row has visible breathing room when focused.
 - `panelOpen = colsFocused || focusSec === "recent"` — panel is open whenever the user is in either section.
 - Tab switching resets `focusSection` to `"hero"`, automatically closing the panel.
 
@@ -519,10 +533,11 @@ Enabled via `settings.show_home_collections`. Renders game and app collections a
 
 **Scroll handling:**
 - `drawerScrollRef` — ref on the scrollable div inside the panel
-- When `focusSection === "home_collections"`, uses `getBoundingClientRect()` diff between drawer and focused row to calculate exact scroll position: `drawerScrollRef.current.scrollTo({ top: scrollTarget, behavior: "smooth" })`
+- When `focusSection === "home_collections"`, uses `getBoundingClientRect()` diff between drawer and focused row plus `drawerTopClearance` to calculate exact scroll position: `drawerScrollRef.current.scrollTo({ top: scrollTarget, behavior: "smooth" })`
 - `focusedRowRef` — attached to the currently focused collection row div; used for scroll targeting (scrolls to the row, not just the card, so the label is always visible)
 - `recentShelfRef` — attached to the drawer recents horizontal row when cinematic mode is active, and to the regular Home recents row otherwise. The focus effect scrolls the active recent card horizontally with gamepad navigation.
 - Drawer recents and collection rows use extra lane padding/margins so outlines, focus rings, and soft shadows are not clipped by the horizontal scroll container.
+- In drawer mode, do not call `focusedCardRef.current.scrollIntoView({ block: "nearest" })` after row scrolling; it can re-scroll vertically and pin the card to the bottom. Use horizontal shelf scrolling only.
 - When returning to `recent`, drawer scrolls to top and then horizontally scrolls the focused recent card into view.
 
 **Card focus style:** uses `outline` + `boxShadow` instead of `transform: scale()` to avoid neighbor jitter.
@@ -663,7 +678,7 @@ Notable merged PRs from Moi that affect current architecture and settings:
 - NSIS installer builds correctly; package named `liftoff`, exe `LiftOff`
 - Non-game app cards: dark frosted glass (`rgba(255,255,255,0.04)` background, `blur(16px)`); border subtly tinted by dominant icon color (`rgba(r,g,b,0.18)`); no radial gradient overlay; graceful fallback to plain glass when color not yet sampled
 - Settings persist correctly — all fields present in both Rust `Settings` struct and TS `Settings` interface; missing Rust fields previously caused silent serde drops on save
-- Home collections: gamepad-navigable horizontal card rows on Home tab; cinematic mode uses slide-up drawer with recents + collections, chevron hints, and correct scroll targeting via `getBoundingClientRect`
+- Home collections: gamepad-navigable horizontal card rows on Home tab; semi-immersive mode uses a fixed snap slot tied to hero height; cinematic mode uses slide-up drawer with recents + collections, chevron hints, row top clearance, horizontal-only card scrolling, bottom tail padding, and correct scroll targeting via `getBoundingClientRect`
 - `show_home_pinned` setting (default true): hides the pinned shelf on the home screen (both regular and immersive modes) without unpinning any items; toggle in Settings → Appearance → HOME
 - Home pinned shelf scroll handling: `pinnedShelfRef` is attached to Home pinned shelves. When `focusSection === "pinned"` and `focusIndex === 0`, scroll the shelf container to `left: 0` directly so the left-most pill returns to the shelf's starting padding instead of relying on `scrollIntoView`.
 - Focused card scroll handling in `App.jsx` avoids `scrollIntoView` for main grid/card navigation. It picks `homeScrollRef` for Home or `tabScrollRef` for Games/Apps/Settings, computes focused card position with `getBoundingClientRect()`, divides by `settings.ui_scale`, and scrolls only enough to preserve ~100px top and ~80px bottom clearance. First-row grid focus snaps the active scroller to top. This prevents CSS-scaled root scroll jumps and keeps cards from sliding under sticky UI.

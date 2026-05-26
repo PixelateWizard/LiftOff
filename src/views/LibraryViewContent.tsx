@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 import { useTheme } from "../contexts/ThemeContext";
-import { AppListItem, FocusRing } from "../components/ui";
+import { AppListItem, CyberpunkCard, FocusRing } from "../components/ui";
 
 export interface LibraryViewContentProps {
   tab: "Games" | "Apps";
@@ -182,10 +182,10 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                         borderColor: focused ? accent.primary : surface.borderRaisedSoft,
                         boxShadow: focused ? `0 0 0 1px ${surface.cardFocusRing}, 0 0 0 3px ${accent.primary}` : surface.bevelRaised,
                       } : {};
-                      const appCardRadius = isPixel ? 0 : 16;
+                      const appCardRadius = resolvedTheme === "cyberpunk" ? 0 : isPixel ? 0 : 16;
                       return (
                         // Outer wrapper — no overflow:hidden so ring can extend outside
-                        <div key={app.id} ref={focused ? focusedCardRef : null}
+                        <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
                           onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
                           onDoubleClick={() => triggerLaunch(app, recent)}
                           onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
@@ -193,7 +193,7 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                             ...(focused ? { transform: "scale(1.06)" } : {}),
                           }}>
                           {/* Inner content — overflow:hidden clips art */}
-                          <div style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
+                          <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
                             border: focused
                               ? (isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`)
                               : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
@@ -219,7 +219,7 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                               </>
                             )}
                             <PinBadge isPinned={true} small />
-                          </div>
+                          </CyberpunkCard>
                           {/* Ring — outside overflow:hidden, with gap */}
                           <FocusRing focused={focused} variant="spin" elementRadius={appCardRadius} />
                         </div>
@@ -290,10 +290,10 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                     borderColor: focused ? accent.primary : surface.borderRaisedSoft,
                     boxShadow: focused ? `0 0 0 1px ${surface.cardFocusRing}, 0 0 0 3px ${accent.primary}` : surface.bevelRaised,
                   } : {};
-                  const appGridCardRadius = isPixel ? 0 : 16;
+                  const appGridCardRadius = resolvedTheme === "cyberpunk" ? 0 : isPixel ? 0 : 16;
                   return (
                     // Outer wrapper — no overflow:hidden so ring can extend outside
-                    <div key={app.id} ref={focused ? focusedCardRef : null}
+                    <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recent)}
                       onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
@@ -301,7 +301,7 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                         ...(focused ? { transform: "scale(1.06)" } : {}),
                       }}>
                       {/* Inner content — overflow:hidden clips art */}
-                      <div style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
+                      <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
                         border: focused
                           ? (isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`)
                           : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
@@ -327,7 +327,7 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
                           </>
                         )}
                         <PinBadge isPinned={isPinned} small />
-                      </div>
+                      </CyberpunkCard>
                       {/* Ring — outside overflow:hidden, with gap */}
                       <FocusRing focused={focused} variant="spin" elementRadius={appGridCardRadius} />
                     </div>

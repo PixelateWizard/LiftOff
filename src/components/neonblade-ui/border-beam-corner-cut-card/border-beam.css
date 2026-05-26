@@ -1,0 +1,223 @@
+/* ================================================================
+   BorderBeamCornerCutCard — border-beam.css
+   All class names are prefixed with `bbc-` to avoid conflicts
+   with globals.css.
+   ================================================================
+
+   CSS custom properties (set inline by the component):
+     --bbc-corner-size  : diagonal cut depth in px  (default 20)
+     --bbc-beam-color   : primary beam color
+     --bbc-beam-color-b : secondary beam color (dual / gradient-sweep)
+     --bbc-duration     : primary beam rotation speed in seconds
+     --bbc-duration-b   : secondary beam rotation speed in seconds
+================================================================ */
+
+/* ---- Clip-path variants ------------------------------------- */
+
+.bbc-clip-br {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% calc(100% - var(--bbc-corner-size, 20px)),
+    calc(100% - var(--bbc-corner-size, 20px)) 100%,
+    0 100%
+  );
+}
+
+.bbc-clip-bl {
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 100%,
+    var(--bbc-corner-size, 20px) 100%,
+    0 calc(100% - var(--bbc-corner-size, 20px))
+  );
+}
+
+.bbc-clip-tr {
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--bbc-corner-size, 20px)) 0,
+    100% var(--bbc-corner-size, 20px),
+    100% 100%,
+    0 100%
+  );
+}
+
+.bbc-clip-tl {
+  clip-path: polygon(
+    var(--bbc-corner-size, 20px) 0,
+    100% 0,
+    100% 100%,
+    0 100%,
+    0 var(--bbc-corner-size, 20px)
+  );
+}
+
+.bbc-clip-all {
+  clip-path: polygon(
+    var(--bbc-corner-size, 20px) 0,
+    100% 0,
+    100% calc(100% - var(--bbc-corner-size, 20px)),
+    calc(100% - var(--bbc-corner-size, 20px)) 100%,
+    0 100%,
+    0 var(--bbc-corner-size, 20px)
+  );
+}
+
+/* .bbc-wrapper — relative w-full overflow-hidden bg-white/[0.05] handled by Tailwind; */
+/* class name kept for .bbc-wrapper:hover hover-state selectors. */
+
+/* .bbc-inner — layout + bg handled by Tailwind; class name kept for glow box-shadow targeting. */
+
+/* ---- Animations -------------------------------------------- */
+
+@keyframes bbc-spin-cw {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bbc-spin-ccw {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes bbc-pulse-opacity {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes bbc-rainbow-hue {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+
+/* ---- Primary beam ------------------------------------------ */
+
+.bbc-beam {
+  position: absolute;
+  inset: -100%;
+  background: conic-gradient(
+    from 90deg at 50% 50%,
+    transparent 50%,
+    var(--bbc-beam-color, #ff00ff) 100%
+  );
+  animation: bbc-spin-cw var(--bbc-duration, 4s) linear infinite;
+}
+
+/* ---- Secondary beam (dual variant) ------------------------- */
+
+.bbc-beam-b {
+  position: absolute;
+  inset: -100%;
+  background: conic-gradient(
+    from 270deg at 50% 50%,
+    transparent 50%,
+    var(--bbc-beam-color-b, #00f3ff) 100%
+  );
+  animation: bbc-spin-ccw var(--bbc-duration-b, 6s) linear infinite;
+}
+
+/* ---- Variant overrides ------------------------------------- */
+
+/* gradient-sweep: wide blending beam from colorA → colorB */
+.bbc-variant-gradient-sweep .bbc-beam {
+  background: conic-gradient(
+    from 90deg at 50% 50%,
+    transparent 38%,
+    color-mix(in srgb, var(--bbc-beam-color, #ff00ff) 40%, transparent) 55%,
+    var(--bbc-beam-color, #ff00ff) 70%,
+    var(--bbc-beam-color-b, #00f3ff) 85%,
+    transparent 100%
+  );
+}
+
+/* rainbow: full neon spectrum cycling with hue rotation */
+.bbc-variant-rainbow .bbc-beam {
+  background: conic-gradient(
+    from 90deg at 50% 50%,
+    transparent 50%,
+    #ff00ff 60%,
+    #00f3ff 72%,
+    #39ff14 83%,
+    #ff9900 92%,
+    transparent 100%
+  );
+  animation:
+    bbc-spin-cw var(--bbc-duration, 4s) linear infinite,
+    bbc-rainbow-hue 4s linear infinite;
+}
+
+/* pulse: single beam that breathes in opacity while spinning */
+.bbc-variant-pulse .bbc-beam {
+  animation:
+    bbc-spin-cw var(--bbc-duration, 4s) linear infinite,
+    bbc-pulse-opacity 1.4s ease-in-out infinite;
+}
+
+/* ---- Glow intensity (box-shadow on inner card) ------------- */
+
+.bbc-glow-low .bbc-inner {
+  box-shadow: 0 0 8px
+    color-mix(in srgb, var(--bbc-beam-color, #ff00ff) 35%, transparent);
+}
+
+.bbc-glow-medium .bbc-inner {
+  box-shadow:
+    0 0 15px color-mix(in srgb, var(--bbc-beam-color, #ff00ff) 50%, transparent),
+    inset 0 0 10px
+      color-mix(in srgb, var(--bbc-beam-color, #ff00ff) 15%, transparent);
+}
+
+.bbc-glow-high .bbc-inner {
+  box-shadow:
+    0 0 28px var(--bbc-beam-color, #ff00ff),
+    0 0 50px color-mix(in srgb, var(--bbc-beam-color, #ff00ff) 40%, transparent),
+    inset 0 0 20px
+      color-mix(in srgb, var(--bbc-beam-color, #ff00ff) 25%, transparent);
+}
+
+/* .bbc-icon-box — layout + base styles handled by Tailwind; class name kept for hover selectors. */
+
+.bbc-wrapper:hover .bbc-icon-box {
+  border-color: var(--bbc-beam-color, #ff00ff);
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--bbc-beam-color, #ff00ff) 50%, transparent),
+    inset 0 0 8px
+      color-mix(in srgb, var(--bbc-beam-color, #ff00ff) 20%, transparent);
+}
+
+/* .bbc-icon — layout + base color handled by Tailwind; class name kept for hover selector. */
+
+.bbc-wrapper:hover .bbc-icon {
+  color: var(--bbc-beam-color, #ff00ff);
+}
+
+/* .bbc-title — layout + base styles handled by Tailwind; class name kept for hover text-shadow selector. */
+
+.bbc-wrapper:hover .bbc-title {
+  text-shadow:
+    0 0 10px var(--bbc-beam-color, #ff00ff),
+    0 0 20px var(--bbc-beam-color, #ff00ff);
+}
+
+/* .bbc-description — fully handled by Tailwind; class removed. */
+
+/* ---- Size variants — all padding/sizing moved to Tailwind via JSX maps ------------ */

@@ -44,8 +44,8 @@ export function ToggleKnob({ value }: ToggleKnobProps) {
   };
 
   return (
-    <div style={trackStyle}>
-      <div style={knobStyle} />
+    <div data-toggle-track="" className={value ? "on" : ""} style={trackStyle}>
+      <div data-toggle-knob="" style={knobStyle} />
     </div>
   );
 }

@@ -184,6 +184,16 @@ function neonSurface(accent: AccentColors): CSSProperties {
   };
 }
 
+function cyberpunkSurface(accent: AccentColors): CSSProperties {
+  return {
+    background: "rgba(0,10,22,0.72)",
+    backdropFilter: "blur(6px) saturate(120%)",
+    WebkitBackdropFilter: "blur(6px) saturate(120%)",
+    border: `1px solid ${accent.glow}0.22)`,
+    boxShadow: `0 0 0 1px ${accent.glow}0.22), 0 0 6px ${accent.glow}0.12)`,
+  };
+}
+
 function buildGlassSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, flat: CSSProperties): CSSProperties {
   const { glassEnabled, surfaceStyle, isDark, cinematicLight, accent, resolvedTheme } = args;
   if (!glassEnabled) return flat;
@@ -194,6 +204,7 @@ function buildGlassSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, flat:
     border: "1.5px solid rgba(255,255,255,0.14)",
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.24), 0 10px 32px rgba(0,0,0,0.48)",
   };
+  if (resolvedTheme === "cyberpunk") return cyberpunkSurface(accent);
   if (surfaceStyle === "material") return {
     background: `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-2)`,
     backdropFilter: undefined,
@@ -241,6 +252,13 @@ function buildGlassBarSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, fl
     WebkitBackdropFilter: "blur(18px) saturate(130%) brightness(0.88)",
     border: "1.5px solid rgba(255,255,255,0.12)",
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.32)",
+  };
+  if (resolvedTheme === "cyberpunk") return {
+    background: "rgba(0,8,18,0.82)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
+    border: `1px solid ${accent.glow}0.28)`,
+    boxShadow: `0 0 0 1px ${accent.glow}0.28), 0 2px 14px ${accent.glow}0.10)`,
   };
   if (surfaceStyle === "material") return {
     background: `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-3)`,
@@ -291,6 +309,13 @@ function buildSettingsRowSurface(args: SurfaceThemeArgs, surface: SurfaceTokens,
     WebkitBackdropFilter: "blur(8px) saturate(110%) brightness(0.92)",
     border: "1.5px solid rgba(255,255,255,0.09)",
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.20)",
+  };
+  if (resolvedTheme === "cyberpunk") return {
+    background: "rgba(0,229,255,0.03)",
+    backdropFilter: undefined,
+    WebkitBackdropFilter: undefined,
+    border: "1px solid transparent",
+    boxShadow: "none",
   };
   if (surfaceStyle === "material") return {
     background: `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-2)`,
