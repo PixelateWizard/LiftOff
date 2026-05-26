@@ -1032,8 +1032,9 @@ export function useGamepadNavigation(
 
   useEffect(() => {
     let lastKnownFocused = true;
+    let pauseCheckTimer: number | undefined;
 
-    const pauseForBackground = () => {
+    const applyBackgroundPause = () => {
       lastKnownFocused = false;
       setWindowFocused(false);
       Object.values(heroVideoRefs.current).forEach(vid => {
@@ -1041,7 +1042,26 @@ export function useGamepadNavigation(
       });
     };
 
+    const pauseForBackground = () => {
+      if (pauseCheckTimer !== undefined) window.clearTimeout(pauseCheckTimer);
+      pauseCheckTimer = window.setTimeout(() => {
+        if (document.hidden) {
+          applyBackgroundPause();
+          return;
+        }
+        getCurrentWindow().isFocused().then((tauriFocused) => {
+          if (!tauriFocused || document.hidden) applyBackgroundPause();
+        }).catch(() => {
+          applyBackgroundPause();
+        });
+      }, 80);
+    };
+
     const resumeFromBackground = () => {
+      if (pauseCheckTimer !== undefined) {
+        window.clearTimeout(pauseCheckTimer);
+        pauseCheckTimer = undefined;
+      }
       lastKnownFocused = true;
       setWindowFocused(true);
       if (launchedAppSessionRef.current) {
@@ -1096,9 +1116,8 @@ export function useGamepadNavigation(
     const startFocusPoll = window.setTimeout(() => {
       focusPoll = window.setInterval(() => {
         if (!options.isReadyRef.current) return;
-        const documentFocused = typeof document.hasFocus === "function" ? document.hasFocus() : true;
         getCurrentWindow().isFocused().then((tauriFocused) => {
-          const focused = tauriFocused && documentFocused && !document.hidden;
+          const focused = tauriFocused && !document.hidden;
           if (focused !== lastKnownFocused) handleNativeFocus(focused);
         }).catch(() => {});
       }, 300);
@@ -1107,6 +1126,7 @@ export function useGamepadNavigation(
     return () => {
       cancelled = true;
       unlistenFocus?.();
+      if (pauseCheckTimer !== undefined) window.clearTimeout(pauseCheckTimer);
       window.clearTimeout(startFocusPoll);
       if (focusPoll !== undefined) window.clearInterval(focusPoll);
       window.removeEventListener("blur", pauseForBackground);

@@ -1,5 +1,36 @@
 # LiftOff — Claude Code Handoff
 
+## ⚡ Active Task
+> Update this block whenever starting a new task. This is the first thing the AI reads.
+
+**Task:** Background extraction completed. `AppBackground.tsx` now imports background components from `src/components/backgrounds/index.ts` instead of carrying Space/Sky/Plasma/Cinder/Wash/Lofi JSX inline.
+
+**Completed this session:**
+- Added `SpaceBg.tsx`, `SkyBg.tsx`, `PlasmaBg.tsx`, `CinderBg.tsx`, `WashBg.tsx`, and `LofiBg.tsx`.
+- Replaced inline theme blocks in `AppBackground.tsx` with imported components.
+- Kept particle container ids unchanged: `star-container`, `cloud-container`, `plasma-particle-container`, and `cinder-particle-container`.
+- Kept lofi audio creation/playback in `AppBackground.tsx`; `LofiBg` owns the rendered `<video>` and video retry/playback effect because the effect needs the actual mounted video ref.
+- Removed `cozy_moonlit_study_night_scene-old.png` poster usage from lofi video to avoid old-art flashing when switching themes.
+- Hardened lofi media startup by retrying video on `loadeddata`, `canplay`, focus, and visibility return, and retrying music on focus/visibility return.
+- Adjusted `useGamepadNavigation` focus tracking so transient DOM blur from settings controls does not mark the whole Tauri window as unfocused.
+
+**Current lofi ownership:**
+- `AppBackground.tsx`: `lofiMusicRef`, `lofiVideoRef`, lofi mp4/mp3 imports, lofi audio effect.
+- `LofiBg.tsx`: video element, overlay gradient, video load/play/pause retry effect.
+
+**Do not re-add the lofi poster** unless the flash is intentionally redesigned. The active lofi visual should be `cozy_moonlit_study_night_scene.mp4` only.
+
+---
+
+## 🚫 Non-Negotiable Rules
+> Violating these breaks things silently or causes legal/community issues.
+
+1. **English-only code comments.** All code comments must be in English, always, regardless of what language you're responding to the user in.
+2. **Serde defaults are required.** Every field added to any Rust `struct` that maps to `Settings` (or any persisted struct) MUST have `#[serde(default)]` or `#[serde(default = "fn_name")]`. Missing this causes silent reversion to defaults on app load.
+3. **No Xbox branding in binary.** Xbox color palette and aesthetic are fine for themes. The Xbox logo and the word "Xbox" must not appear in shipped UI without Microsoft trademark approval. Use custom SVG gamepad icons.
+4. **SGDB API key stays user-supplied.** Do not hardcode SteamGridDB API keys into the binary. This is a known deferred tradeoff; do not "fix" it without Taylor's direction.
+5. **`#[serde(default)]` applies to ALL new Rust settings fields.** No exceptions.
+
 ## Code Style Rules
 
 - **All code comments must be in English.** This is a community project with contributors from different countries. Never write comments in French or any other language.
@@ -67,8 +98,8 @@
 - `App.jsx` is now a thin orchestration layer: hook calls, derived display values, and a JSX return. It owns no navigation logic directly.
 - `useGamepadNavigation` owns: RAF poll loop, hold-repeat, button suppression (`suppressUntilRelease`), tab/focus state machine (all `useState` + mirrored `useRef` pairs for `tab`, `focusSection`, `focusIndex`, `heroIndex`, `settingsSection`, `gameSourceTab`, etc.), `launchingApp`/`launchingAppRef`, `windowFocused`, `heroVideoRefs`, `triggerLaunch`, `switchTab`, all suppression-wrapped close/open helpers (`closeLaunchOverlay`, `closeHideModal`, `closeLibraryActionsModal`, `closeArtPicker`, `openHideModal`, `openLibraryActionsModal`), `handleNav`, the window blur/focus/poll effect, and the hero video pause/resume effect.
 - `App.jsx` passes `handleClearRecents`, `handleClearCache`, and `toggleHomeCollection` into the hook via stable ref callbacks so the hook can trigger them from within `handleNav` without circular dependencies.
-- `AppBackground` owns theme background rendering.
-- `AppBackground` pauses its Lofi music and Lofi video playback when `appPaused` is true. Lo-fi Effects off also pauses music/video playback, but the Lo-fi video/poster remains rendered as a static background.
+- `AppBackground` owns theme background orchestration and imports all background components from `src/components/backgrounds/index.ts`.
+- `AppBackground` owns Lofi music playback and passes `appPaused` to `LofiBg`. `LofiBg` owns the mounted video element and video retry/playback effect. Lo-fi Effects off pauses music/video playback. The Lofi poster was removed; do not use `cozy_moonlit_study_night_scene-old.png` for the theme background.
 - `LaunchOverlay` owns its internal launch status state; `launchingAppRef` in `useGamepadNavigation` gates main gamepad input while a launch overlay is active.
 - `useCustomArt` owns custom art maps/refs, custom art loading, cached art hydration, SGDB fetch batching, and clear-art reset.
 - `useAudioFeedback` owns WebAudio preload/playback for UI, alt UI, game launch, and app-loaded sounds.
@@ -77,6 +108,28 @@
 - `useStartupBootstrap` owns splash loading state, splash exit timing, `isReadyRef`, the app-loaded sound trigger, `set_gamepad_ready`, and the load-error splash fallback.
 - `useModalState` owns only modal state and mirrored refs.
 - `App.jsx` owns `appPaused`, which is `!!launchingApp || !windowFocused`. It pauses launch-time app chrome animations, animated hero media, and passes the pause state to `AppBackground`.
+
+## Background Component Map
+
+All animated theme backgrounds live in `src/components/backgrounds/` and are barrel-exported from `src/components/backgrounds/index.ts`.
+
+| Theme | Component | File |
+|-------|-----------|------|
+| `aurora` | `AuroraBg` | `AuroraBg.tsx` |
+| `synthwave` | `SynthwaveBg` | `SynthwaveBg.tsx` |
+| `cyberpunk` | `CyberpunkBg` | `CyberpunkBg.tsx` |
+| `forest` | `ForestBg` | `ForestBg.tsx` |
+| `webcore` | `WebcoreBg` | `WebcoreBg.tsx` |
+| `space` | `SpaceBg` | `SpaceBg.tsx` |
+| `sky` | `SkyBg` | `SkyBg.tsx` |
+| `wash` | `WashBg` | `WashBg.tsx` |
+| `cinder` | `CinderBg` | `CinderBg.tsx` |
+| `plasma` | `PlasmaBg` | `PlasmaBg.tsx` |
+| `lofi` | `LofiBg` | `LofiBg.tsx` |
+
+**Barrel export** (`src/components/backgrounds/index.ts`) must export every component. `AppBackground.tsx` imports only from this barrel.
+
+**Future themes** follow the same pattern: one file per theme, one named export, props typed from `../../types` when needed.
 
 ### Recent Behavioral Fixes To Preserve
 
@@ -413,7 +466,7 @@ Types: `accent`, `cycle`, `toggle`, `divider`, `action`, `link`, `info`, `update
 - **Wash** — light watercolor paper field. SVG-filtered compound radial gradients simulate warm and cool pigment masses with dried edges, internal density variation, a faint cool cohesion bridge, and a barely visible tertiary hue whisper. Defaults to Material. Wash uses accent-derived tints softly and Material gets gentler off-white card tokens plus low-contrast accent-tinted shadows.
 - **Lo-fi** - animated MP4 room scene with optional background music; defaults to Obsidian.
 - **Webcore** - Windows XP-inspired sky/cloud field with a LiftOff logo screensaver element; defaults to Win9X.
-- `stars_enabled` is still the persisted master toggle for theme effects, but effects off means "static background", not "remove background". The root gets `data-effects="static"` so CSS animations freeze; JS-driven Webcore/Cyberpunk motion receives `effectsEnabled={false}`; Lo-fi keeps the video/poster visible while pausing playback and music.
+- `stars_enabled` is still the persisted master toggle for theme effects, but effects off means "static background", not "remove background". The root gets `data-effects="static"` so CSS animations freeze; JS-driven Webcore/Cyberpunk motion receives `effectsEnabled={false}`; Lo-fi keeps the video element and overlay mounted while pausing video playback and music.
 - Settings labels change by theme. Space uses `Star Effects`, Sky uses `Cloud Effects`; the other environment themes use `* Effects`.
 - Reduced motion is handled in global CSS by collapsing/freeze-targeting animated environment classes such as `.theme-plasma-*`, `.theme-cinder-*`, `.theme-wash-static`, `.theme-wash-float`, `.theme-aurora-*`, `.theme-synthwave-*`, `.theme-cyberpunk-*`, `.theme-forest-*`, `.theme-webcore-*`, `.bg-star`, and `.bg-cloud`.
 
@@ -480,7 +533,7 @@ Both `glassEnabled` and `surfaceStyle` are threaded via `ThemeContext`; any comp
 - Plasma renders `.theme-plasma-layer` CSS gradients and `.theme-plasma-spark` nodes in `#plasma-particle-container`.
 - Cinder renders `.theme-cinder-layer` heat gradients/glow pockets and `.theme-cinder-particle` nodes in `#cinder-particle-container`.
 - Wash renders static SVG-filtered `.theme-wash-static` pigment layers plus unfiltered CSS-blur `.theme-wash-float` layers and an inline grain SVG. Do not animate SVG-filtered Wash layers with transforms; keep moving layers free of SVG filters.
-- Lo-fi renders the MP4 background plus poster while active. Effects off pauses the video and music but keeps the visible scene and overlay.
+- Lo-fi renders the MP4 background while active. The old PNG poster was removed because it flashed during theme switches. Effects off pauses the video and music but keeps the video element and overlay mounted.
 - Toggled by `settings.stars_enabled`; Settings changes the label to match the active theme. This toggle controls motion/special effects, not whether the theme background exists.
 
 ### Splash screen (`SplashScreen`)
