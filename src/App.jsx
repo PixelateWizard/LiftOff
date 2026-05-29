@@ -18,6 +18,7 @@ import ContextMenuModal from "./components/modals/ContextMenuModal";
 import HideModal from "./components/modals/HideModal";
 import LibraryActionsModal from "./components/modals/LibraryActionsModal";
 import EditNameModal from "./components/modals/EditNameModal";
+import PowerModal from "./components/modals/PowerModal";
 import { SettingsScreen, buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "./views/settings";
 import { HomeView } from "./views/HomeView";
 import { GamesView } from "./views/GamesView";
@@ -95,6 +96,7 @@ export default function App() {
   const handleClearCacheRef   = useRef(null);
   const handleClearRecentsRef = useRef(null);
   const toggleHomeCollectionRef = useRef(null);
+  const scrollFocusRef = useRef({ tab: null, focusSection: null, focusIndex: 0, gameSourceTab: null, appCollectionTab: null, cols: 0 });
 
   const {
     searchOpen, searchQuery, searchMode, searchFocusIndex,
@@ -109,13 +111,13 @@ export default function App() {
   const {
     showHideModal, showLibraryActions, showFileBrowser, pendingFile,
     showColModal, colPickerApp, confirmDelete, showFolderManager,
-    artPickerApp, artPickerMode, contextMenu, editNameApp,
+    artPickerApp, artPickerMode, contextMenu, editNameApp, showPowerModal,
     setShowHideModal, setShowLibraryActions, setShowFileBrowser, setPendingFile,
     setShowColModal, setColPickerApp, setConfirmDelete, setShowFolderManager,
-    setArtPickerApp, setArtPickerMode, setContextMenu, setEditNameApp,
+    setArtPickerApp, setArtPickerMode, setContextMenu, setEditNameApp, setShowPowerModal,
     showHideModalRef, showLibraryActionsRef, showFileBrowserRef, pendingFileRef,
     showColModalRef, colPickerAppRef, confirmDeleteRef, showFolderManagerRef,
-    artPickerAppRef, artPickerModeRef, contextMenuRef, editNameAppRef,
+    artPickerAppRef, artPickerModeRef, contextMenuRef, editNameAppRef, showPowerModalRef,
   } = useModalState();
   const {
     appCollections, setAppCollections, appCollectionsRef,
@@ -131,11 +133,6 @@ export default function App() {
     customFolders,
     setCustomFolders,
   } = useCustomSources();
-  const { updateStatus, updateInfo, checkForUpdates } = useUpdateCheck({
-    appVersion: APP_VERSION,
-    githubRepo: GITHUB_REPO,
-  });
-
   const { playSound, playSoundAlt, playSoundGameStart, playAppLoadedSound } = useAudioFeedback();
   const {
     gameArt,
@@ -182,6 +179,11 @@ export default function App() {
   } = useAppSettings({
     onScanKeyChange: refreshLibrary,
     autoScaleRef,
+  });
+  const { updateStatus, updateInfo, checkForUpdates } = useUpdateCheck({
+    appVersion: APP_VERSION,
+    githubRepo: GITHUB_REPO,
+    channel: settings.update_channel ?? "stable",
   });
   const { time, date, battery, charging, hasBattery } = useSystemStatus({
     timeFormat: settings.time_format,
@@ -244,6 +246,7 @@ export default function App() {
     closeLaunchOverlay,
     closeHideModal,
     closeLibraryActionsModal,
+    closePowerModal,
     closeArtPicker,
     openHideModal,
     openLibraryActionsModal,
@@ -279,11 +282,13 @@ export default function App() {
     showColModalRef,
     colPickerAppRef,
     editNameAppRef,
+    showPowerModalRef,
     artPickerAppRef,
     artPickerModeRef,
     contextMenuRef,
     setShowHideModal,
     setShowLibraryActions,
+    setShowPowerModal,
     setArtPickerApp,
     playSoundGameStart,
     playSound,
@@ -767,6 +772,16 @@ export default function App() {
 
   useEffect(() => {
     if (tab === "Settings") return;
+    const previousFocus = scrollFocusRef.current;
+    const sameGridRow =
+      focusSection === "grid" &&
+      previousFocus.focusSection === "grid" &&
+      previousFocus.tab === tab &&
+      previousFocus.gameSourceTab === gameSourceTab &&
+      previousFocus.appCollectionTab === appCollectionTab &&
+      previousFocus.cols === currentCols &&
+      Math.floor(previousFocus.focusIndex / currentCols) === Math.floor(focusIndex / currentCols);
+    scrollFocusRef.current = { tab, focusSection, focusIndex, gameSourceTab, appCollectionTab, cols: currentCols };
     const visiblePinnedAboveGrid = tab !== "Home"
       && !(tab === "Games" && gameSourceTabRef.current !== "All")
       && !(tab === "Apps" && appCollectionTabRef.current !== "All")
@@ -892,6 +907,8 @@ export default function App() {
           }
         }, 80);
       }
+    } else if (focusSection === "grid" && sameGridRow) {
+      return;
     } else if (focusSection === "grid" && focusIndex < currentCols) {
       if (visiblePinnedAboveGrid && focusedCardRef.current) {
         scrollFocusedCardIntoView();
@@ -902,7 +919,7 @@ export default function App() {
     } else if (focusedCardRef.current) {
       scrollFocusedCardIntoView();
     }
-  }, [focusSection, focusIndex, homeColFocusRow, tab, gameSourceTab, appCollectionTab, pins, apps, settings.ui_scale]);
+  }, [focusSection, focusIndex, homeColFocusRow, tab, gameSourceTab, appCollectionTab, pins, apps, settings.ui_scale, currentCols]);
 
 
   // Block ALL click/mousedown events while modal is open — gamepad A button fires
@@ -1035,6 +1052,7 @@ export default function App() {
 
   const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, onRightClick }) => {
     const art = customArt[app.id] || gameArt[app.id];
+    const placeholderCover = `/assets/liftoff_cover_${settings.accent}.svg`;
     const cardRadius = resolvedTheme === "cyberpunk" ? 0 : surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 8 : 16;
     const isOnyx = resolvedTheme === "onyx";
     return (
@@ -1053,8 +1071,8 @@ export default function App() {
           : { ...glass, border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)", borderRadius: cardRadius, overflow: "hidden", position: "absolute", inset: 0 }
         }>
           {art
-            ? <img src={art} alt={app.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-            : <img src={`/assets/liftoff_cover_${settings.accent}.svg`} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            ? <img src={art} alt={app.name} onError={(e) => { const img = e.currentTarget; if (img.dataset.fallbackApplied === "true") return; img.dataset.fallbackApplied = "true"; img.src = placeholderCover; }} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            : <img src={placeholderCover} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           }
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 12px 12px", background: "linear-gradient(transparent, rgba(0,0,0,0.8))" }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "white", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</span>
@@ -1143,6 +1161,29 @@ export default function App() {
   const batteryBoltStroke = isDark ? "rgba(255,255,255,0.70)" : "rgba(255,255,255,0.82)";
   const batteryWidth = battery > 0 ? `${battery}%` : "72%";
 
+  const _hasSource = (key) => apps.some(a => a.source === key && a.app_type === "game");
+  const _showSteam     = settings.scan_steam     !== false && _hasSource("steam");
+  const _showXbox      = settings.scan_xbox      !== false && _hasSource("xbox");
+  const _showBattlenet = settings.scan_battlenet !== false && _hasSource("battlenet");
+  const _hdrSources = [
+    "All",
+    ...(_showSteam     ? ["Steam"]      : []),
+    ...(_showXbox      ? ["Xbox"]       : []),
+    ...(_showBattlenet ? ["Battle.net"] : []),
+    "Other",
+    ...customSources,
+    ...gameCollections.map(c => c.name),
+  ];
+  const _hdrSourceKey = _hdrSources.join("|");
+  useEffect(() => {
+    if (!_hdrSources.includes(gameSourceTab)) {
+      setGameSourceTab("All");
+      gameSourceTabRef.current = "All";
+      setSubtabFocusIndex(0);
+      subtabFocusIndexRef.current = 0;
+    }
+  }, [_hdrSourceKey, gameSourceTab, setGameSourceTab, gameSourceTabRef, setSubtabFocusIndex, subtabFocusIndexRef]);
+
 
 
 
@@ -1185,7 +1226,6 @@ export default function App() {
   );
 
   // ── Section tab bar data for the unified sticky header ────────
-  const _hdrSources = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSources, ...gameCollections.map(c => c.name)];
   const _hdrAppCols = ["All", ...appCollections.map(c => c.name)];
   const headerTabItems =
     tab === "Games"    ? _hdrSources.map(src => ({ label: src === "All" ? t('sources.all') : src === "Other" ? t('sources.other') : src, isDashed: gameCollections.some(c => c.name === src) }))
@@ -1244,6 +1284,7 @@ export default function App() {
     surfaceStyle,
     t,
     gameSourceTab,
+    gameSourceTabs: _hdrSources,
     appCollectionTab,
     setAddAppType,
     setShowFileBrowser,
@@ -1371,6 +1412,13 @@ export default function App() {
           onManage={openHideModal}
           onCollections={() => { setShowColModal(true); showColModalRef.current = true; }}
           onClose={closeLibraryActionsModal}
+        />
+      )}
+      {showPowerModal && (
+        <PowerModal
+          onClose={closePowerModal}
+          onRestartApp={() => { invoke("restart_app").catch(() => {}); }}
+          onExitApp={() => { invoke("exit_app").catch(() => {}); }}
         />
       )}
       {showFileBrowser && (
@@ -1762,7 +1810,7 @@ export default function App() {
       )}
       </AppOverlays>
 
-      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions) ? "none" : "auto" }}>
+      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal) ? "none" : "auto" }}>
 
         {/* Topbar */}
         <AppHeader

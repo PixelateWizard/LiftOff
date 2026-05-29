@@ -3,23 +3,22 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Update `CLAUDE.md` and `CHANGELOG.md` for the splash loading status text work and known TypeScript casing warning.
+**Task:** Fix Home animated hero startup fallback and adjust splash long-wait timing.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- Read the Tier 1 splash loading status text proposal.
-- Added localized rotating splash status text in `src/components/launch/SplashScreen.tsx`, below the existing bouncing dots.
-- Added a fixed-height status row and fade-in/fade-out CSS while leaving the rocket, stars, wordmark, dots markup, audio effects, and existing style injection/cleanup intact.
-- Added English and French `splash.status.*` locale keys.
-- Verified `npm run build` passes; Vite still warns that the main chunk is larger than 500 kB.
-- Ran `npx.cmd tsc --noEmit`; it still fails on the pre-existing `Gamepad.tsx`/`gamepad.tsx` casing conflict noted below.
-- User asked to defer the casing fix, document it under a known bugs/warnings section, and update `CHANGELOG.md`.
-- Added a dedicated Known Bugs / Warnings section for the deferred TypeScript casing conflict.
-- Updated the SplashScreen handoff notes and `CHANGELOG.md` for the new splash loading status text.
-- Verified `git diff --check` passes; Git reports only LF-to-CRLF normalization warnings.
+- User reported Home animated heroes still fail on app load: they appear blurry, switch to animated hero briefly, then become blurry again.
+- User also asked for the splash long-wait message to appear 8 seconds after the last regular status label appears, not 8 seconds after splash mount.
+- Updated `useGamepadNavigation` so startup/background pause checks trust `document.hasFocus()` before accepting a native false-focus result; this prevents `appPaused` from flipping on while the app is visibly focused.
+- Updated `HomeView` so active hero videos retry playback every 500ms while active, and animated hero media uses the real static hero banner underneath when available instead of immediately exposing a blurred cover fallback.
+- Updated `SplashScreen` so the long-wait timeout starts only after the final normal status label is displayed.
+- Updated Alpha 4 release notes in `CHANGELOG.md`.
+- Verified `npm run build` passes; Vite still reports the existing large chunk warning.
+- Verified `npm.cmd run tauri -- build` passes with normal filesystem access and rebuilt the NSIS installer; Rust still reports the existing unused helper warnings.
+- Verified `git diff --check` passes with only existing LF-to-CRLF normalization warnings.
 
 **Current implementation target:**
-- Documentation updates are complete.
+- Ready for user verification in the built app.
 
 ---
 
@@ -45,7 +44,7 @@
 
 - **Stack:** Tauri 2, Rust (`src-tauri/src/lib.rs`), React (`src/App.jsx`)
 - **Identifier:** `com.taylo.liftoff`
-- **Version:** `2.0.0-alpha.2` (APP_VERSION in constants.ts) / `2.0.0-alpha.2` (tauri.conf.json — update both together on release; also update Cargo.toml, package.json, package-lock.json, docs/index.html, CHANGELOG.md)
+- **Version:** `2.0.0-alpha.4` (APP_VERSION in constants.ts) / `2.0.0-alpha.4` (tauri.conf.json — update both together on release; also update Cargo.toml, Cargo.lock, package.json, package-lock.json, docs/index.html, CHANGELOG.md)
 - **Installer:** NSIS bundle at `src-tauri/target/release/bundle/nsis/`
 - **Dev command:** `npm run dev` (frontend) + `cargo tauri dev`
 - **Build:** `cargo tauri build` → use NSIS installer for testing, not raw `.exe`
@@ -301,7 +300,7 @@ Priority order of `else if` branches:
 ## Frontend (`src/App.jsx`)
 
 ### Constants (top of file)
-- `APP_VERSION = "2.0.0-alpha.2"` — compared against GitHub Releases API for update checks
+- `APP_VERSION = "2.0.0-alpha.4"` — compared against GitHub Releases API for update checks
 - `GITHUB_REPO = "PixelateWizard/LiftOff"` — used for update check and releases link
 
 ### State
@@ -403,7 +402,7 @@ Two parallel input paths:
 - `togglePin(app)` — calls backend, updates state
 - `toggleHidden(appId)` — calls backend, removes/restores from apps state (uses `allAppsRef`)
 - `refreshLibrary()` — re-scans library, shows blocking overlay, sets status to "done" for 2.5s
-- `checkForUpdates()` — fetches GitHub Releases API, compares to `APP_VERSION`
+- `checkForUpdates()` — fetches GitHub Releases API, compares to `APP_VERSION`; Stable checks `/releases/latest`, while Alpha / Beta checks the releases list so prereleases can surface
 - `updateSetting(key, value)` — saves setting + triggers refresh if key is a scan toggle
 - `closeArtPicker()` — clears `artPickerApp`, snapshots held buttons into `suppressUntilRelease`
 - `toUrl(pathOrUrl)` — converts Rust path to browser-loadable URL: https:// passes through, otherwise `convertFileSrc(path)` returns `asset://` URL
@@ -701,6 +700,7 @@ Notable merged PRs from Moi that affect current architecture and settings:
 - `.lnk` and other indirect app launches (`child_pid == 0`, `app_type == "app"`) use 1.5s fast-dismiss instead of 15s window watcher — avoids false "Failed" overlays for tray apps and already-running processes
 - Direct `.exe` apps and all games use full window-detection watcher with real success/fail feedback
 - Single library scan on startup; auto-refresh when scan toggles change; manual Refresh Library button
+- Games source sub-tabs hide built-in sources when their scan toggle is off or no installed games exist for that source; All, Other, custom sources, and collections remain available.
 - Blocking overlay modal during library refresh
 - UWP/desktop/Steam icon extraction via `DrawIconEx` at 128px with jumbo/large fallback
 - No console window flash on launch (CREATE_NO_WINDOW everywhere)
@@ -721,17 +721,19 @@ Notable merged PRs from Moi that affect current architecture and settings:
 - Tab switching lands on first pinned item or first grid item
 - Source sub-tabs on Games tab (All/Steam/Xbox/Bnet/Other) via LT/RT or d-pad
 - Unified Manage modal with full gamepad nav, input isolation, bleed prevention
-- Settings: accent colors (WCAG-compliant in light mode for neon), theme, scan toggles (incl. Battle.net), startup, repeat speed, controller test, Discord link, Hero Art Mode cycle (static/animated/custom), UI scale slider
+- Settings: accent colors (WCAG-compliant in light mode for neon), theme, scan toggles (incl. Battle.net), startup, repeat speed, controller test, Discord link, Hero Art Mode cycle (static/animated/custom), update channel cycle (Stable/Alpha-Beta), UI scale slider
 - Themes: Space/Sky/Plasma/Cinder/Wash are animated environments separate from Surface Style. Theme selection applies a default surface, but users can manually override Surface Style afterward.
 - Wash theme: liquid tie-dye / marble-ink background built from layered radial pigment pools. Main blobs use SVG `wash-edge` / `wash-flow` filters for organic displacement; soft perimeter fills intentionally avoid SVG filters for performance. Keep future Wash additions mindful of full-screen animated SVG filter cost in WebView2.
 - UI Scale: auto-detected from screen resolution on first launch; `transform: scale()` on root; "Reset Scale to Auto" in Settings
 - Controller Test widget in Settings (live button/axis display); stable across D-pad navigation via module-level cache
 - Check for Updates (GitHub Releases API); Refresh Library (manual + auto on toggle change)
+- Update checks respect `settings.update_channel`: Stable uses GitHub `/releases/latest`, while Alpha / Beta checks the releases list so prereleases can be detected and opens the full releases page when an update is available.
 - Search overlay with virtual keyboard
 - Battery icon shows percent + charging indicator (lightning bolt + green color); polls every 10s
 - Hero section fully themed for light mode (no hardcoded dark colors, WCAG-compliant text)
 - Background clouds (light theme): 16 cloud instances drifting across full-height, behind all UI on every tab; toggled by `stars_enabled` setting
 - LaunchOverlay: shows "Launching…" then transitions to success (dismiss) or "Failed to launch" + Dismiss button based on `EnumWindows` window detection
+- Power modal: pressing B at the Home root opens controller-navigable Restart LiftOff / Exit LiftOff actions backed by Tauri `restart_app` and `exit_app` commands.
 - Launch window watcher: detects game window via PID (direct exe) or snapshot diff (Steam/BNet/UWP); brings window to front on success
 - Splash screen: no flash before CSS loads (inline opacity on all animated elements); localized status text below the dots reassures during longer startup scans without claiming real progress.
 - Recent cards show correct icons (looked up from allAppsRef)

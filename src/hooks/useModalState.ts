@@ -24,6 +24,7 @@ export interface ModalState {
   artPickerMode: ArtPickerMode;
   contextMenu: ContextMenuState | null;
   editNameApp: App | null;
+  showPowerModal: boolean;
   setShowHideModal: React.Dispatch<React.SetStateAction<boolean>>;
   setShowLibraryActions: React.Dispatch<React.SetStateAction<boolean>>;
   setShowFileBrowser: React.Dispatch<React.SetStateAction<FileBrowserMode>>;
@@ -36,6 +37,7 @@ export interface ModalState {
   setArtPickerMode: React.Dispatch<React.SetStateAction<ArtPickerMode>>;
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
   setEditNameApp: React.Dispatch<React.SetStateAction<App | null>>;
+  setShowPowerModal: React.Dispatch<React.SetStateAction<boolean>>;
   showHideModalRef: React.MutableRefObject<boolean>;
   showLibraryActionsRef: React.MutableRefObject<boolean>;
   showFileBrowserRef: React.MutableRefObject<FileBrowserMode>;
@@ -48,6 +50,7 @@ export interface ModalState {
   artPickerModeRef: React.MutableRefObject<ArtPickerMode>;
   contextMenuRef: React.MutableRefObject<ContextMenuState | null>;
   editNameAppRef: React.MutableRefObject<App | null>;
+  showPowerModalRef: React.MutableRefObject<boolean>;
 }
 
 export function useModalState(): ModalState {
@@ -63,6 +66,7 @@ export function useModalState(): ModalState {
   const [artPickerMode, setArtPickerMode] = useState<ArtPickerMode>("grid");
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [editNameApp, setEditNameApp] = useState<App | null>(null);
+  const [showPowerModal, setShowPowerModal] = useState(false);
 
   const showHideModalRef = useRef(false);
   const showLibraryActionsRef = useRef(false);
@@ -76,6 +80,7 @@ export function useModalState(): ModalState {
   const artPickerModeRef = useRef<ArtPickerMode>("grid");
   const contextMenuRef = useRef<ContextMenuState | null>(null);
   const editNameAppRef = useRef<App | null>(null);
+  const showPowerModalRef = useRef(false);
 
   useEffect(() => { showHideModalRef.current = showHideModal; }, [showHideModal]);
   useEffect(() => { showLibraryActionsRef.current = showLibraryActions; }, [showLibraryActions]);
@@ -89,6 +94,7 @@ export function useModalState(): ModalState {
   useEffect(() => { artPickerModeRef.current = artPickerMode; }, [artPickerMode]);
   useEffect(() => { contextMenuRef.current = contextMenu; }, [contextMenu]);
   useEffect(() => { editNameAppRef.current = editNameApp; }, [editNameApp]);
+  useEffect(() => { showPowerModalRef.current = showPowerModal; }, [showPowerModal]);
 
   return {
     showHideModal,
@@ -103,6 +109,7 @@ export function useModalState(): ModalState {
     artPickerMode,
     contextMenu,
     editNameApp,
+    showPowerModal,
     setShowHideModal,
     setShowLibraryActions,
     setShowFileBrowser,
@@ -115,6 +122,7 @@ export function useModalState(): ModalState {
     setArtPickerMode,
     setContextMenu,
     setEditNameApp,
+    setShowPowerModal,
     showHideModalRef,
     showLibraryActionsRef,
     showFileBrowserRef,
@@ -127,5 +135,6 @@ export function useModalState(): ModalState {
     artPickerModeRef,
     contextMenuRef,
     editNameAppRef,
+    showPowerModalRef,
   };
 }

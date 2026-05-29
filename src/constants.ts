@@ -1,7 +1,7 @@
 export const COLS = 6;
 export const GAME_COLS = 5;
 export const TABS = ["Home", "Games", "Apps", "Settings"] as const;
-export const APP_VERSION = "2.0.0";
+export const APP_VERSION = "2.0.0-alpha.4";
 export const GITHUB_REPO = "PixelateWizard/LiftOff";
 
 // Key: `admin_pref_${gameId}`, Value: boolean
@@ -139,7 +139,7 @@ export const DEFAULT_SETTINGS = {
   accent: "ember", theme: "space", stars_enabled: true, lofi_music_enabled: true, wide_layout: false, wide_topbar: false, wide_bottombar: false, wide_games: false, wide_apps: false, wide_settings: false, topbar_background: true, bottombar_background: true, hide_bottom_bar: false,
   default_tab: "Home", scan_steam: true, scan_xbox: true,
   scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
-  launch_at_startup: false, animated_heroes: "animated", ui_scale: 1.0,
+  launch_at_startup: false, animated_heroes: "animated", update_channel: "stable", ui_scale: 1.0,
   language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, app_cover_scale: 1.0, app_list_view: false, app_list_cols: 1, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false, home_mode: "normal", home_section_title_size: "small", show_home_recents: true, hero_content_pos: "bottom", show_immersive_hero_art: true,
   nav_bumpers_pos: "bottom",
   tabbar_show_buttons: "tabbar", tabbar_text_tabs: false, tabbar_with_background: false, tabbar_background_compact: false, tabbar_font_weight: "medium", tabbar_icon_mode: "text",

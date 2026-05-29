@@ -69,9 +69,11 @@ export interface UseGamepadNavigationOptions {
   artPickerAppRef?: AnyRef<App | null>;
   artPickerModeRef?: AnyRef<string>;
   contextMenuRef?: AnyRef<unknown>;
+  showPowerModalRef?: AnyRef<boolean>;
 
   setShowHideModal?: (value: boolean) => void;
   setShowLibraryActions?: (value: boolean) => void;
+  setShowPowerModal?: (value: boolean) => void;
   setArtPickerApp?: (app: App | null) => void;
 
   playSoundGameStart?: () => void;
@@ -173,6 +175,7 @@ export interface GamepadNavigationResult {
   closeLaunchOverlay: () => void;
   closeHideModal: () => void;
   closeLibraryActionsModal: () => void;
+  closePowerModal: () => void;
   closeArtPicker: () => void;
   openHideModal: () => void;
   openLibraryActionsModal: () => void;
@@ -252,8 +255,10 @@ export function useGamepadNavigation(
     artPickerAppRef,
     artPickerModeRef,
     contextMenuRef,
+    showPowerModalRef = { current: false } as AnyRef<boolean>,
     setShowHideModal = noop as (value: boolean) => void,
     setShowLibraryActions = noop as (value: boolean) => void,
+    setShowPowerModal = noop as (value: boolean) => void,
     setArtPickerApp = noop as (app: App | null) => void,
     playSoundGameStart = noop,
     playSound = noop,
@@ -367,6 +372,42 @@ export function useGamepadNavigation(
     setShowLibraryActions(false); showLibraryActionsRef.current = false;
   };
 
+  const closePowerModal = () => {
+    const gp = getBestGamepad();
+    if (gp) {
+      const s = readGpState(gp);
+      suppressUntilRelease.current = {
+        Enter: s.Enter,
+        Escape: s.Escape,
+        Select: s.Select,
+        ButtonX: s.ButtonX,
+        ButtonY: s.ButtonY,
+        BumperLeft: s.BumperLeft,
+        BumperRight: s.BumperRight,
+        Start: s.Start,
+      };
+    }
+    setShowPowerModal(false); showPowerModalRef.current = false;
+  };
+
+  const openPowerModal = () => {
+    const gp = getBestGamepad();
+    if (gp) {
+      const s = readGpState(gp);
+      suppressUntilRelease.current = {
+        Enter: s.Enter,
+        Escape: s.Escape,
+        Select: s.Select,
+        ButtonX: s.ButtonX,
+        ButtonY: s.ButtonY,
+        BumperLeft: s.BumperLeft,
+        BumperRight: s.BumperRight,
+        Start: s.Start,
+      };
+    }
+    setShowPowerModal(true); showPowerModalRef.current = true;
+  };
+
   // ── Hide helpers ──────────────────────────────────────────────
   const openHideModal  = () => {
     // Blur whatever DOM element has focus so the browser doesn't send synthetic
@@ -442,7 +483,7 @@ export function useGamepadNavigation(
   // ── handleNav ─────────────────────────────────────────────────
   const handleNav = (key) => {
     // Modal intercepts all input via its own poll — main nav must not run
-    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current) return;
+    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current) return;
 
     // Art picker open — only Escape closes it (user interacts via touch/mouse)
     if (artPickerAppRef.current) {
@@ -467,6 +508,18 @@ export function useGamepadNavigation(
         ? Math.max(1, settingsRef.current.app_list_cols ?? 1)
         : Math.max(2, Math.round(COLS / (settingsRef.current.app_cover_scale ?? 1.0)));
     const currentSettings = settingsRef.current;
+    const getGameSourceTabs = () => {
+      const hasSource = (source: string) => appsRef.current.some(a => a.app_type === "game" && a.source === source);
+      return [
+        "All",
+        ...(currentSettings.scan_steam !== false && hasSource("steam") ? ["Steam"] : []),
+        ...(currentSettings.scan_xbox !== false && hasSource("xbox") ? ["Xbox"] : []),
+        ...(currentSettings.scan_battlenet !== false && hasSource("battlenet") ? ["Battle.net"] : []),
+        "Other",
+        ...customSourcesRef.current,
+        ...gameCollectionsRef.current.map(c => c.name),
+      ];
+    };
 
     const fApps = allApps.filter(a => {
       if (currentTab === "Home" || currentTab === "All") return true;
@@ -670,7 +723,12 @@ export function useGamepadNavigation(
         }
         else if (item.type === "refresh") { refreshLibrary(); }
         else if (item.type === "update") {
-          if (updateStatus === "available") invoke("launch_app", { path: `https://github.com/${GITHUB_REPO}/releases/latest`, id: "releases", name: "LiftOff Releases", appType: "app", runAsAdmin: false }).catch(() => {});
+          if (updateStatus === "available") {
+            const releasesUrl = (currentSettings.update_channel ?? "stable") === "prerelease"
+              ? `https://github.com/${GITHUB_REPO}/releases`
+              : `https://github.com/${GITHUB_REPO}/releases/latest`;
+            invoke("launch_app", { path: releasesUrl, id: "releases", name: "LiftOff Releases", appType: "app", runAsAdmin: false }).catch(() => {});
+          }
           else checkForUpdates();
         }
         else if (item.type === "link") {
@@ -737,6 +795,12 @@ export function useGamepadNavigation(
       const chainIdx  = chain.indexOf(section);
       const chainPrev = chain[chainIdx - 1] as string | undefined;
       const chainNext = chain[chainIdx + 1] as string | undefined;
+
+      if (key === "Escape" && section === chain[0]) {
+        openPowerModal();
+        playSoundAlt();
+        return;
+      }
 
       const goTo = (sec: string) => {
         setFocusSection(sec); focusSectionRef.current = sec;
@@ -811,7 +875,7 @@ export function useGamepadNavigation(
     // Games / Apps tabs
     // LT/RT cycle source sub-tabs on Games tab (from anywhere)
     if (currentTab === "Games") {
-      const SOURCES = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSourcesRef.current, ...gameCollectionsRef.current.map(c => c.name)];
+      const SOURCES = getGameSourceTabs();
       if (key === "TriggerLeft") {
         const cur = SOURCES.indexOf(gameSourceTabRef.current);
         const next = SOURCES[(cur - 1 + SOURCES.length) % SOURCES.length];
@@ -852,7 +916,7 @@ export function useGamepadNavigation(
     }
 
     // subtabs row: source pills + manage button
-    const SOURCES = ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSourcesRef.current, ...gameCollectionsRef.current.map(c => c.name)];
+    const SOURCES = getGameSourceTabs();
     const APP_COLS_NAV = ["All", ...appCollectionsRef.current.map(c => c.name)];
     const subtabItems = currentTab === "Games"
       ? [...SOURCES, "manage"]
@@ -996,7 +1060,13 @@ export function useGamepadNavigation(
             && !showHideModalRef?.current
             && !showLibraryActionsRef?.current
             && !showFileBrowserRef?.current
-            && !pendingFileRef?.current;
+            && !pendingFileRef?.current
+            && !showFolderManagerRef?.current
+            && !confirmDeleteRef?.current
+            && !showColModalRef?.current
+            && !colPickerAppRef?.current
+            && !editNameAppRef?.current
+            && !showPowerModalRef?.current;
 
           if (pressed && !wasPressed) {
             if (canNavigate) handleNavRef?.current?.(key);
@@ -1047,6 +1117,11 @@ export function useGamepadNavigation(
       pauseCheckTimer = window.setTimeout(() => {
         if (document.hidden) {
           applyBackgroundPause();
+          return;
+        }
+        if (document.hasFocus()) {
+          lastKnownFocused = true;
+          setWindowFocused(true);
           return;
         }
         getCurrentWindow().isFocused().then((tauriFocused) => {
@@ -1176,6 +1251,7 @@ export function useGamepadNavigation(
     closeLaunchOverlay,
     closeHideModal,
     closeLibraryActionsModal,
+    closePowerModal,
     closeArtPicker,
     openHideModal,
     openLibraryActionsModal,

@@ -64,6 +64,11 @@
     "save": "Sauvegarder",
     "shortcutToggle": "Masquer/Afficher"
   },
+  "power": {
+    "title": "Alimentation",
+    "restartApp": "Redemarrer LiftOff",
+    "exitApp": "Quitter LiftOff"
+  },
   "settings": {
     "sections": {
       "appearance": "Apparence",
@@ -144,6 +149,7 @@
     "repeatSpeed": "Vitesse de répétition",
     "launchAtStartup": "Lancer au démarrage",
     "heroArtMode": "Mode art héros",
+    "updateChannel": "Canal de mise a jour",
     "showImmersiveHeroArt": "Afficher l'art héros immersif",
     "controllerTest": "Test manette",
     "noController": "Aucune manette détectée — connectez un contrôleur et appuyez sur un bouton.",
@@ -219,6 +225,8 @@
       "static": "Statique",
       "animated": "Animé",
       "custom": "Personnalisé",
+      "stable": "Stable",
+      "prerelease": "Alpha / Beta",
       "Home": "Accueil",
       "Games": "Jeux",
       "Apps": "Apps",

@@ -59,12 +59,14 @@ export function SplashScreen({ exiting }: SplashScreenProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exiting, longWait]);
 
-  // If loading is taking unusually long, switch to the honest "still working" message.
+  // If the last regular phrase sits for a while, switch to the honest long-wait message.
   useEffect(() => {
-    if (exiting) return;
+    if (exiting || longWait || statusIdx < STATUS_KEYS.length - 1) return;
     const id = window.setTimeout(() => setLongWait(true), 8000);
     return () => window.clearTimeout(id);
-  }, [exiting]);
+  // STATUS_KEYS is a stable literal; intentionally not in deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exiting, longWait, statusIdx]);
 
   const statusKey = longWait ? "splash.status.stillWorking" : STATUS_KEYS[statusIdx];
   const statusText = t(statusKey, STATUS_FALLBACKS[statusKey]);

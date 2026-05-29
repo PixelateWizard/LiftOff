@@ -104,6 +104,8 @@ pub struct Settings {
     pub launch_at_startup: bool,
     #[serde(deserialize_with = "deser_animated_heroes", default = "default_animated_heroes")]
     pub animated_heroes: String,
+    #[serde(default = "default_update_channel")]
+    pub update_channel: String,
     // None means "not yet set by user"; frontend fills in auto-detected value.
     #[serde(default)]
     pub ui_scale: Option<f32>,
@@ -233,6 +235,7 @@ fn default_gamepad_platform()           -> String { "xbox".to_string() }
 fn default_gamepad_btn_size()     -> String { "small".to_string() }
 fn default_topbar_show_bumpers()  -> bool   { false }
 fn default_surface_style()        -> String { "clear".to_string() }
+fn default_update_channel()       -> String { "stable".to_string() }
 
 impl Default for Settings {
     fn default() -> Self {
@@ -250,6 +253,7 @@ impl Default for Settings {
             repeat_speed: "normal".to_string(),
             launch_at_startup: false,
             animated_heroes: "animated".to_string(),
+            update_channel: "stable".to_string(),
             ui_scale: None,
             language: "auto".to_string(),
             time_format: "auto".to_string(),
@@ -1034,6 +1038,16 @@ fn save_settings(settings: Settings, app_handle: tauri::AppHandle) -> Result<(),
     if settings.launch_at_startup { let _ = autostart.enable(); } else { let _ = autostart.disable(); }
     save_settings_inner(&settings);
     Ok(())
+}
+
+#[tauri::command]
+fn exit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
+#[tauri::command]
+fn restart_app(app: tauri::AppHandle) {
+    app.restart();
 }
 
 #[derive(Serialize)]
@@ -2372,6 +2386,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_apps, get_all_apps, launch_app, check_launch_focus, try_focus_launched_app, fetch_game_art, get_cached_art_bulk, get_recents, get_recent_games, get_battery,
             set_gamepad_ready, get_settings, save_settings, clear_recents,
+            exit_app, restart_app,
             clear_art_cache, set_frontend_active, open_osk,
             get_pins, toggle_pin,
             get_hidden, toggle_hidden,

@@ -136,6 +136,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
 
     // ── About ─────────────────────────────────────────────────────
     { key: "version",      section: 5, label: t("settings.version", { version: APP_VERSION }), type: "info" },
+    { key: "update_channel", section: 5, label: t("settings.updateChannel"), type: "cycle", options: ["stable","prerelease"] },
     { key: "check_updates",section: 5, label: t("settings.checkUpdates"), type: "update" },
 
     D("community", 5),
@@ -724,7 +725,7 @@ export function SettingsScreen({
       return (
         <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={() => {
           if (updateStatus === "available")
-            invoke("launch_app", { path: `https://github.com/${GITHUB_REPO}/releases/latest`, id: "releases", name: "LiftOff Releases", appType: "app", runAsAdmin: false }).catch(() => {});
+            invoke("launch_app", { path: (settings.update_channel ?? "stable") === "prerelease" ? `https://github.com/${GITHUB_REPO}/releases` : `https://github.com/${GITHUB_REPO}/releases/latest`, id: "releases", name: "LiftOff Releases", appType: "app", runAsAdmin: false }).catch(() => {});
           else checkForUpdates();
         }}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>

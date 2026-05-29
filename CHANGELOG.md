@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+No changes yet.
+
+## [2.0.0-alpha.4] - Alpha 4
+
+### Added
+- **Splash loading status text** - added a localized, rotating status line below the startup splash dots so long library scans show reassuring activity without claiming a fake progress percentage.
+- **Update channel setting** - added a Settings option for Stable vs Alpha / Beta update checks, allowing prerelease users to discover alpha and beta GitHub releases from inside LiftOff.
+- **Power modal** - added a controller-friendly Power modal from the Home root with Restart LiftOff and Exit LiftOff actions.
+
+### Changed
+- **Alpha versioning and installer target** - bumped the app to `2.0.0-alpha.4` and switched Tauri bundling to NSIS-only so prerelease SemVer can be used without MSI/WiX version errors.
+- **Game source tabs** - Steam, Xbox, and Battle.net source tabs now appear only when their scan toggle is enabled and at least one installed game from that source exists; hidden/removed active filters fall back to All.
+- **Home tab switch performance** - Games and Apps now stay mounted behind inactive tab panes to reduce switching delay when returning to Home, while inactive panes use private refs and memoized library content so they do not steal active gamepad scroll/focus ownership or rebuild full grids unnecessarily.
+- **Splash long-wait timing** - the "Still working" splash message now appears only after the final regular status label has been visible for 8 seconds, instead of 8 seconds after splash mount.
+
+### Bug Fixes
+- **Startup blank screen regression** - fixed a React hook-order crash after the splash screen by keeping the game-source tab fallback effect above the splash early return.
+- **Games/Apps gamepad scrolling** - fixed down-navigation on Games and Apps tabs after the keep-mounted tab optimization by ensuring only the active library pane owns `tabScrollRef` and `focusedCardRef`; hidden panes keep separate private refs.
+- **Broken game cover fallback** - failed custom or cached game cover URLs now fall back to the accent placeholder cover instead of showing a broken image icon.
+- **Horizontal grid browse stability** - moving left/right within the same game grid row no longer applies vertical scroll correction, preventing the view from wiggling during lateral browsing.
+- **Animated hero startup stability** - active hero videos now keep retrying playback while active, use a real static hero layer under animated media when available, and avoid a startup focus-poll false negative that could hide animated heroes behind a blurred fallback until the app was refocused.
+
+## [2.0.0-alpha.3] - Alpha 3
+
 ### Added
 - **Expanded layout and Home customization** - [moi952](https://github.com/moi952) added independent Wide Layout sub-toggles for top bar, Games, Apps, Settings, and bottom bar; Home mode controls for normal/semi/immersive layouts; Home pinned positioning; section title sizing; and a toggle to hide apps from the Home recents shelf.
 - **Apps view scaling and list mode** - [moi952](https://github.com/moi952) added an Apps Cover Scale slider plus an optional Apps list view with configurable column count.
@@ -17,7 +41,6 @@
 - **Launch handoff pause and return cooldown** - added an `appPaused` path that pauses launcher animations, animated hero media, and Lofi media while an app/game is being launched or LiftOff is out of focus, plus a short post-return cooldown before another launch can start.
 - **App settings hook** - moved settings bootstrap, refs, saving, update helpers, auto UI-scale setup, language sync, default-tab loading, and scan-toggle refresh tracking into `useAppSettings`.
 - **Startup bootstrap hook** - moved splash loading state, splash exit timing, gamepad-ready signaling, and load-error fallback handling into `useStartupBootstrap`.
-- **Splash loading status text** - added a localized, rotating status line below the startup splash dots so long library scans show reassuring activity without claiming a fake progress percentage.
 
 ### Changed
 - **Onyx focus-ring polish** - Onyx focused app/list items now use the same animated ring treatment as subtabs, while wide Settings rows use a perimeter-stroke focus ring to avoid stretched conic-gradient bands; disabling Onyx background effects now falls back to a static accent border.
@@ -40,7 +63,6 @@
 - **Win9X app list tiles** - Win9X list-mode app tiles now use opaque panel surfaces with backdrop blur disabled, preventing the page background from showing through the tiles.
 - **Theme effects toggles** - theme Effects toggles now preserve the theme background in a static state instead of removing it. Space/Sky keep static stars/clouds, animated environment layers freeze, Lo-fi keeps the video frame visible while pausing playback/music, and Webcore/Cyberpunk stop their JS-driven motion.
 - **Space/Sky effects labels** - renamed the Space and Sky settings labels from Background Stars/Background Clouds to Star Effects/Cloud Effects to match the new behavior.
-- **Home tab switch performance** - Games and Apps now stay mounted behind inactive tab panes to reduce switching delay when returning to Home, while inactive panes use private refs and memoized library content so they do not steal active gamepad scroll/focus ownership or rebuild full grids unnecessarily.
 
 ### Bug Fixes
 - **Stale renamed recents** - Home recents now look up the current app/game name from the full library instead of showing cached `RecentEntry.name` values.
@@ -54,7 +76,6 @@
 - **Animated hero media on focus loss** - animated WebP/GIF hero banners now pause correctly when LiftOff is launched, blurred, or alt-tabbed away instead of continuing through the static image path.
 - **Semi-home card clipping** - fixed idle no-art app cards showing unintended borders and fixed focused card borders/shadows being clipped by the semi-home slot.
 - **Immersive drawer scroll alignment** - fixed second-row collection headers being clipped after drawer scrolling and fixed bottom drawer padding being bypassed by vertical `scrollIntoView` calls.
-- **Games/Apps gamepad scrolling** - fixed down-navigation on Games and Apps tabs after the keep-mounted tab optimization by ensuring only the active library pane owns `tabScrollRef` and `focusedCardRef`; hidden panes keep separate private refs.
 
 ## [2.0.0-alpha.2] - Alpha 2
 

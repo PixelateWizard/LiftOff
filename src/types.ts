@@ -44,6 +44,7 @@ export type ThemeMode        =
 export type DefaultTab       = "Home" | "Games" | "Apps";
 export type RepeatSpeed      = "slow" | "normal" | "fast";
 export type AnimatedHeroes   = "static" | "animated" | "custom";
+export type UpdateChannel    = "stable" | "prerelease";
 export type TimeFormat       = "auto" | "12h" | "24h";
 export type NavBumpersPos    = "header" | "bottom" | "hidden";
 export type TabbarButtons    = "tabbar" | "bottom" | "hidden";
@@ -78,6 +79,7 @@ export interface Settings {
   repeat_speed: RepeatSpeed;
   launch_at_startup: boolean;
   animated_heroes: AnimatedHeroes;
+  update_channel: UpdateChannel;
   ui_scale: number;
   language: string;
   home_cover_scale: number;

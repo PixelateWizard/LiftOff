@@ -64,6 +64,11 @@
     "save": "Save",
     "shortcutToggle": "Hide/Show"
   },
+  "power": {
+    "title": "Power",
+    "restartApp": "Restart LiftOff",
+    "exitApp": "Exit LiftOff"
+  },
   "settings": {
     "sections": {
       "appearance": "Appearance",
@@ -143,6 +148,7 @@
     "repeatSpeed": "Stick Repeat Speed",
     "launchAtStartup": "Launch at Startup",
     "heroArtMode": "Hero Art Mode",
+    "updateChannel": "Update Channel",
     "showImmersiveHeroArt": "Show Immersive Hero Art",
     "controllerTest": "Controller Test",
     "noController": "No controller detected — connect a gamepad and press any button.",
@@ -218,6 +224,8 @@
       "static": "Static",
       "animated": "Animated",
       "custom": "Custom",
+      "stable": "Stable",
+      "prerelease": "Alpha / Beta",
       "Home": "Home",
       "Games": "Games",
       "Apps": "Apps",

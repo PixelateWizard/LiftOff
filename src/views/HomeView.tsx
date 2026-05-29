@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../theme/surfaces";
 import { AppListItem, CyberpunkCard, FocusRing } from "../components/ui";
@@ -116,6 +115,12 @@ export function HomeView(props: HomeViewProps) {
   const activeHeroStaticUrl = activeHeroGame
     ? customHeroArt[activeHeroGame.id] || heroStatic[activeHeroGame.id] || null
     : null;
+  const playActiveHeroVideo = useCallback((video: HTMLVideoElement | null, gameId: string) => {
+    if (!video || !active || appPaused || heroMediaPaused) return;
+    const activeGame = heroGames[heroIdx];
+    if (!activeGame || activeGame.id !== gameId) return;
+    video.play().catch(() => {});
+  }, [active, appPaused, heroGames, heroIdx, heroMediaPaused]);
 
   useEffect(() => {
     if (!appPaused && !heroMediaPaused) return;
@@ -125,8 +130,6 @@ export function HomeView(props: HomeViewProps) {
   }, [appPaused, heroMediaPaused, heroVideoRefs]);
 
   useEffect(() => {
-    let cancelled = false;
-    let unlistenFocus: (() => void) | undefined;
     const pauseHeroMedia = () => {
       Object.values(heroVideoRefs.current).forEach((video: HTMLVideoElement | null) => {
         if (video) video.pause();
@@ -145,24 +148,12 @@ export function HomeView(props: HomeViewProps) {
       if (event.key === "Alt" && document.hasFocus()) resumeHeroMedia();
     };
 
-    window.addEventListener("blur", pauseHeroMedia);
-    window.addEventListener("focus", resumeHeroMedia);
+    setHeroMediaPaused(document.hidden);
     window.addEventListener("keydown", onKeyDown, true);
     window.addEventListener("keyup", onKeyUp, true);
     document.addEventListener("visibilitychange", onVisibilityChange);
-    getCurrentWindow().onFocusChanged(({ payload: focused }) => {
-      if (focused) resumeHeroMedia();
-      else pauseHeroMedia();
-    }).then((unlisten) => {
-      if (cancelled) unlisten();
-      else unlistenFocus = unlisten;
-    }).catch(() => {});
 
     return () => {
-      cancelled = true;
-      unlistenFocus?.();
-      window.removeEventListener("blur", pauseHeroMedia);
-      window.removeEventListener("focus", resumeHeroMedia);
       window.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("keyup", onKeyUp, true);
       document.removeEventListener("visibilitychange", onVisibilityChange);
@@ -178,13 +169,30 @@ export function HomeView(props: HomeViewProps) {
       return;
     }
 
+    const activeGame = heroGames[heroIdx];
+    const activeVideo = activeGame ? heroVideoRefs.current[activeGame.id] : null;
+    const playActiveVideo = () => {
+      if (activeGame) playActiveHeroVideo(activeVideo, activeGame.id);
+    };
+    const playActiveVideoWhenVisible = () => {
+      if (!document.hidden) playActiveVideo();
+    };
+    Object.entries(heroVideoRefs.current as Record<string, HTMLVideoElement | null>).forEach(([id, video]) => {
+      if (!video) return;
+      if (!activeGame || activeGame.id !== id) video.pause();
+    });
+    if (activeVideo) {
+      activeVideo.preload = "auto";
+      if (activeVideo.readyState < 2) activeVideo.load();
+      activeVideo.addEventListener("loadeddata", playActiveVideo);
+      activeVideo.addEventListener("canplay", playActiveVideo);
+      activeVideo.addEventListener("canplaythrough", playActiveVideo);
+      window.addEventListener("focus", playActiveVideo);
+      document.addEventListener("visibilitychange", playActiveVideoWhenVisible);
+    }
+
     const rafId = requestAnimationFrame(() => {
-      const activeGame = heroGames[heroIdx];
-      Object.entries(heroVideoRefs.current as Record<string, HTMLVideoElement | null>).forEach(([id, video]) => {
-        if (!video) return;
-        if (activeGame && activeGame.id === id) video.play().catch(() => {});
-        else video.pause();
-      });
+      playActiveVideo();
       [heroIdx + 1, heroIdx + 2, heroIdx - 1, heroIdx - 2].forEach(i => {
         const game = heroGames[i];
         if (!game) return;
@@ -192,9 +200,20 @@ export function HomeView(props: HomeViewProps) {
         if (video && video.readyState < 3) video.load();
       });
     });
+    const retryId = window.setInterval(playActiveVideo, 500);
 
-    return () => cancelAnimationFrame(rafId);
-  }, [active, appPaused, heroGames, heroIdx, heroMediaPaused, heroVideoRefs]);
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.clearInterval(retryId);
+      if (activeVideo) {
+        activeVideo.removeEventListener("loadeddata", playActiveVideo);
+        activeVideo.removeEventListener("canplay", playActiveVideo);
+        activeVideo.removeEventListener("canplaythrough", playActiveVideo);
+        window.removeEventListener("focus", playActiveVideo);
+        document.removeEventListener("visibilitychange", playActiveVideoWhenVisible);
+      }
+    };
+  }, [active, activeHeroAnimatedUrl, appPaused, heroGames, heroIdx, heroMediaPaused, heroVideoRefs, playActiveHeroVideo]);
 
   const homeFilteredRecent = recent.filter((a: any) => !settings.show_recent_games_only || a.app_type === "game").slice(0, 8);
   const homePinnedApps = pins.map((id: string) => apps.find((a: any) => a.id === id)).filter(Boolean);
@@ -537,7 +556,7 @@ export function HomeView(props: HomeViewProps) {
               const primaryHeroMedia = animatedUrl || rawStaticBanner;
               const showVideo = isHeroVideoUrl(primaryHeroMedia);
               const showAnimatedImage = isAnimatedImageUrl(primaryHeroMedia);
-              const staticBanner = showVideo || showAnimatedImage ? null : rawStaticBanner;
+              const staticBanner = rawStaticBanner;
               const mediaPaused = appPaused || heroMediaPaused;
 
               const coverStyle: any = { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" };
@@ -566,11 +585,15 @@ export function HomeView(props: HomeViewProps) {
                       ref={el => {
                         if (el) {
                           heroVideoRefs.current[game.id] = el;
+                          requestAnimationFrame(() => playActiveHeroVideo(el, game.id));
                         } else {
                           delete heroVideoRefs.current[game.id];
                         }
                       }}
                       src={primaryHeroMedia}
+                      autoPlay={isActive && !mediaPaused}
+                      onCanPlay={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
+                      onLoadedData={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
                       loop muted playsInline preload={isNearby ? "auto" : "none"}
                       style={{
                         position: "absolute",
