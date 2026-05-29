@@ -3,35 +3,23 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Update `CLAUDE.md` and `CHANGELOG.md` for the Games/Apps navigation and Home switch performance work.
+**Task:** Update `CLAUDE.md` and `CHANGELOG.md` for the splash loading status text work and known TypeScript casing warning.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- Tried the splash-screen proposal from `C:\Users\taylo\Downloads\splash-screen-upgrade-proposal.md`, then rolled it back when the user disliked the result; do not document or ship that visual change.
+- Read the Tier 1 splash loading status text proposal.
+- Added localized rotating splash status text in `src/components/launch/SplashScreen.tsx`, below the existing bouncing dots.
+- Added a fixed-height status row and fade-in/fade-out CSS while leaving the rocket, stars, wordmark, dots markup, audio effects, and existing style injection/cleanup intact.
+- Added English and French `splash.status.*` locale keys.
+- Verified `npm run build` passes; Vite still warns that the main chunk is larger than 500 kB.
 - Ran `npx.cmd tsc --noEmit`; it still fails on the pre-existing `Gamepad.tsx`/`gamepad.tsx` casing conflict noted below.
-- Restored `src/components/launch/SplashScreen.tsx` to the pre-upgrade version.
-- Verified `npm run build` passes after the rollback.
-- User reported Games and Apps tabs no longer scroll while navigating down with a gamepad.
-- Found the regression in `src/App.jsx`: Games and Apps were both mounted in tab panes while sharing `tabScrollRef` and `focusedCardRef`, so the gamepad scroll helper could target hidden pane DOM.
-- Restored conditional mounting for `GamesView` and `AppsView` so the shared refs belong to the visible tab again.
-- Verified `npm run build` passes after the gamepad scroll fix.
-- User still wants a tab-switch optimization to reduce lag when switching to Home.
-- Added active-only ref ownership for keep-mounted Games/Apps panes in `src/App.jsx`.
-- Inactive Games/Apps panes now stay mounted with private `scrollRef`/`focusedCardRef` objects, while the active pane owns `tabScrollRef`/`focusedCardRef`.
-- Verified `npm run build` passes with the safer keep-mounted optimization.
-- User reported switching to Home is improved but still has delay.
-- Split Games and Apps library filtering so keep-mounted hidden panes no longer receive the Home tab's all-apps list.
-- Added a memo boundary to `LibraryViewContent` so inactive Games/Apps panes keep their DOM but skip React grid recalculation while they remain inactive.
-- Verified `npm run build` passes after the additional Home-switch optimization.
-- User asked to update `CLAUDE.md` and `CHANGELOG.md` with the validated session work.
-- Added durable handoff notes for active-only library refs, inactive-pane memoization, and split Games/Apps filtering.
-- Added Unreleased changelog entries for Home tab switch performance and Games/Apps gamepad scrolling.
-- Verified `npm run build` passes after the documentation updates.
+- User asked to defer the casing fix, document it under a known bugs/warnings section, and update `CHANGELOG.md`.
+- Added a dedicated Known Bugs / Warnings section for the deferred TypeScript casing conflict.
+- Updated the SplashScreen handoff notes and `CHANGELOG.md` for the new splash loading status text.
+- Verified `git diff --check` passes; Git reports only LF-to-CRLF normalization warnings.
 
 **Current implementation target:**
-- Documentation update is complete.
-- Do not add release notes for the rejected splash-screen experiment because it was rolled back.
-- Leave unrelated local changes in `src/App.jsx` and `src/views/HomeView.tsx` untouched.
+- Documentation updates are complete.
 
 ---
 
@@ -189,9 +177,13 @@ All animated theme backgrounds live in `src/components/backgrounds/` and are bar
 
 - `npm.cmd run build` passes after the full hook refactor including `useGamepadNavigation` extraction.
 - `npm run build` passes after the Games/Apps keep-mounted Home-switch optimization and gamepad scroll fix.
-- `npx.cmd tsc --noEmit` still fails on the pre-existing casing mismatch: imports reference `Gamepad.tsx` while the filesystem also exposes/contains `gamepad.tsx` casing. Treat that separately from the refactor unless asked. All other TS errors from the extraction have been fixed.
+- `npm run build` passes after adding splash loading status text. Vite still warns that the main chunk is larger than 500 kB.
 - `cargo check` passed after the `clear_recents` backend change, with only pre-existing unused-function warnings.
 - `CHANGELOG.md` may already be modified by the user; do not overwrite or revert it unless explicitly asked.
+
+### Known Bugs / Warnings
+
+- `npx.cmd tsc --noEmit` currently fails with TS1261 because the filesystem has `src/components/ui/gamepad.tsx`, while several imports and the UI barrel reference uppercase `Gamepad` (`../components/ui/Gamepad`, `./ui/Gamepad`, `./Gamepad`). Windows resolves this at runtime, but TypeScript treats the case-only path mismatch as conflicting file identities. The fix is deferred; when ready, choose one casing and update the filename plus every import/export consistently.
 
 ---
 
@@ -556,6 +548,8 @@ Both `glassEnabled` and `surfaceStyle` are threaded via `ThemeContext`; any comp
 
 ### Splash screen (`SplashScreen`)
 - CSS injected in `useEffect` — rocket wrapper, `splash-word`, and `splash-dots` all have inline `opacity: 0` to prevent flash before CSS loads
+- Splash now shows a localized, indeterminate status line below the existing dots. It cycles through `splash.status.*` phrases every 2.2s, clamps at "Almost ready...", switches to a "Still working..." message after 8s, and fades out with the wordmark/dots on exit.
+- Keep the status row's fixed `minHeight`/`lineHeight` so phrase changes do not move the dots or wordmark. English fallbacks remain in the component so the splash is readable even before locale files load.
 
 ### Battery / Charging
 - `get_battery` returns `{ percent, charging }`
@@ -739,7 +733,7 @@ Notable merged PRs from Moi that affect current architecture and settings:
 - Background clouds (light theme): 16 cloud instances drifting across full-height, behind all UI on every tab; toggled by `stars_enabled` setting
 - LaunchOverlay: shows "Launching…" then transitions to success (dismiss) or "Failed to launch" + Dismiss button based on `EnumWindows` window detection
 - Launch window watcher: detects game window via PID (direct exe) or snapshot diff (Steam/BNet/UWP); brings window to front on success
-- Splash screen: no flash before CSS loads (inline opacity on all animated elements)
+- Splash screen: no flash before CSS loads (inline opacity on all animated elements); localized status text below the dots reassures during longer startup scans without claiming real progress.
 - Recent cards show correct icons (looked up from allAppsRef)
 - Settings scroll margin accounts for sticky nav bar (80px top margin); last item not cut off (160px bottom padding)
 - Settings rows: Clear mode uses the same row padding/height as other surface modes. Material focused rows are opaque, slightly accent-tinted solid surfaces with a single 2px accent border and higher elevation; avoid transparency, double borders, or left accent bars in Material focus states.
@@ -784,7 +778,7 @@ src/
       AppHeader.tsx
       AppBottomBar.tsx
     ui/
-      Gamepad.tsx            — all gamepad button SVG components
+      gamepad.tsx            — all gamepad button SVG components
       GamepadBtn.tsx
       GamepadKeyboard.tsx
       ToggleKnob.tsx

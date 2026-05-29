@@ -20,6 +20,16 @@
     "tryFocusAgain": "Try to focus again",
     "dismiss": "Dismiss  ·  B"
   },
+  "splash": {
+    "status": {
+      "starting": "Starting up\u2026",
+      "scanning": "Scanning your library\u2026",
+      "findingGames": "Finding installed games\u2026",
+      "loadingArt": "Loading artwork\u2026",
+      "almostReady": "Almost ready\u2026",
+      "stillWorking": "Still working \u2014 large libraries can take a moment\u2026"
+    }
+  },
   "artPicker": {
     "replaceCoverArt": "Replace cover art",
     "uploadCustomImage": "Upload a custom image",

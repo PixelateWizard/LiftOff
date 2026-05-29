@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import { useTranslation } from "react-i18next";
 
 const startingSound = new URL("../../assets/appLaunchSound.wav", import.meta.url).href;
 
@@ -17,10 +18,56 @@ const ss: Record<string, CSSProperties> = {
   tl2:      { width: 3, height: 10, borderRadius: 2, background: "linear-gradient(to bottom, rgba(255,140,50,0.5), transparent)", marginLeft: 5 },
   tl3:      { width: 3, height: 8,  borderRadius: 2, background: "linear-gradient(to bottom, rgba(255,140,50,0.5), transparent)", marginLeft: -5 },
   wordmark: { fontWeight: 700, fontSize: 36, letterSpacing: "0.04em", background: "linear-gradient(135deg, #ff9a6c, #e8714a)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text", fontFamily: "'Segoe UI', sans-serif" },
+  status:   { minHeight: 18, marginTop: 2, fontSize: 13, fontWeight: 500, letterSpacing: "0.01em", color: "rgba(245,237,232,0.62)", fontFamily: "'Segoe UI', sans-serif", textAlign: "center", maxWidth: 320, lineHeight: "18px" },
 };
 
 export function SplashScreen({ exiting }: SplashScreenProps) {
   const audioRefStart = useRef(new Audio(startingSound));
+  const { t } = useTranslation();
+  const [statusIdx, setStatusIdx] = useState(0);
+  const [longWait, setLongWait] = useState(false);
+
+  // Rotating, honest "we're working" phrases. Indeterminate by design - we do not
+  // have real per-source progress here, so these reassure rather than measure.
+  const STATUS_KEYS = [
+    "splash.status.starting",
+    "splash.status.scanning",
+    "splash.status.findingGames",
+    "splash.status.loadingArt",
+    "splash.status.almostReady",
+  ];
+
+  // English fallbacks so the splash reads correctly even before locale files load.
+  const STATUS_FALLBACKS: Record<string, string> = {
+    "splash.status.starting": "Starting up\u2026",
+    "splash.status.scanning": "Scanning your library\u2026",
+    "splash.status.findingGames": "Finding installed games\u2026",
+    "splash.status.loadingArt": "Loading artwork\u2026",
+    "splash.status.almostReady": "Almost ready\u2026",
+    "splash.status.stillWorking": "Still working \u2014 large libraries can take a moment\u2026",
+  };
+
+  // Advance the phrase every 2.2s. Stop advancing once we enter the long-wait state
+  // and once the splash starts exiting.
+  useEffect(() => {
+    if (exiting || longWait) return;
+    const id = window.setInterval(() => {
+      setStatusIdx((i) => Math.min(i + 1, STATUS_KEYS.length - 1));
+    }, 2200);
+    return () => window.clearInterval(id);
+  // STATUS_KEYS is a stable literal; intentionally not in deps.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exiting, longWait]);
+
+  // If loading is taking unusually long, switch to the honest "still working" message.
+  useEffect(() => {
+    if (exiting) return;
+    const id = window.setTimeout(() => setLongWait(true), 8000);
+    return () => window.clearTimeout(id);
+  }, [exiting]);
+
+  const statusKey = longWait ? "splash.status.stillWorking" : STATUS_KEYS[statusIdx];
+  const statusText = t(statusKey, STATUS_FALLBACKS[statusKey]);
 
   useEffect(() => {
     audioRefStart.current.currentTime = 0;
@@ -58,6 +105,7 @@ export function SplashScreen({ exiting }: SplashScreenProps) {
       }
       @keyframes splashGlow    { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.15); opacity: 1; } }
       @keyframes splashTrail   { 0% { opacity: 0.9; transform: scaleY(1); } 100% { opacity: 0.3; transform: scaleY(0.6); } }
+      @keyframes splashStatusIn { from { opacity: 0; } to { opacity: 1; } }
       @keyframes starFall {
         0%   { transform: translateY(-10px); opacity: 0; }
         5%   { opacity: 1; } 95% { opacity: 1; }
@@ -71,13 +119,15 @@ export function SplashScreen({ exiting }: SplashScreenProps) {
       .splash-dot     { width: 5px; height: 5px; border-radius: 50%; animation: splashDot 1.2s ease-in-out infinite; background: rgba(232,113,74,0.3); }
       .splash-dot:nth-child(2) { animation-delay: 0.2s; }
       .splash-dot:nth-child(3) { animation-delay: 0.4s; }
+      .splash-status { animation: splashFadeUp 0.4s ease forwards; animation-delay: 1.7s; opacity: 0; }
+      .splash-status-text { animation: splashStatusIn 0.35s ease; }
       .splash-glow    { animation: splashGlow 2s ease-in-out infinite; }
       .splash-trail1  { animation: splashTrail 0.4s ease-in-out infinite alternate; }
       .splash-trail2  { animation: splashTrail 0.4s ease-in-out infinite alternate; animation-delay: 0.08s; }
       .splash-trail3  { animation: splashTrail 0.4s ease-in-out infinite alternate; animation-delay: 0.13s; }
       .splash-star    { animation: starFall linear infinite; position: absolute; border-radius: 50%; background: rgba(245,237,232,0.6); }
       .splash-exiting .splash-rocket { animation: splashRocketExit 0.6s cubic-bezier(0.4,0,0.2,1) forwards !important; }
-      .splash-exiting .splash-word, .splash-exiting .splash-dots { animation: splashFadeOut 0.35s ease forwards !important; }
+      .splash-exiting .splash-word, .splash-exiting .splash-dots, .splash-exiting .splash-status { animation: splashFadeOut 0.35s ease forwards !important; }
       .splash-exiting { animation: splashFadeOut 0.8s ease forwards; }
       .kb-cursor      { animation: cursorBlink 1s ease-in-out infinite; }
       @keyframes pinPop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.3); } 100% { transform: scale(1); opacity: 1; } }
@@ -135,6 +185,9 @@ export function SplashScreen({ exiting }: SplashScreenProps) {
         <div className="splash-word" style={{ ...ss.wordmark, opacity: 0 }}>LiftOff</div>
         <div className="splash-dots" style={{ opacity: 0 }}>
           <div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" />
+        </div>
+        <div className="splash-status" style={{ ...ss.status, opacity: 0 }}>
+          <span key={statusKey} className="splash-status-text">{statusText}</span>
         </div>
       </div>
     </div>

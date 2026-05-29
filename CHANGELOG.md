@@ -17,6 +17,7 @@
 - **Launch handoff pause and return cooldown** - added an `appPaused` path that pauses launcher animations, animated hero media, and Lofi media while an app/game is being launched or LiftOff is out of focus, plus a short post-return cooldown before another launch can start.
 - **App settings hook** - moved settings bootstrap, refs, saving, update helpers, auto UI-scale setup, language sync, default-tab loading, and scan-toggle refresh tracking into `useAppSettings`.
 - **Startup bootstrap hook** - moved splash loading state, splash exit timing, gamepad-ready signaling, and load-error fallback handling into `useStartupBootstrap`.
+- **Splash loading status text** - added a localized, rotating status line below the startup splash dots so long library scans show reassuring activity without claiming a fake progress percentage.
 
 ### Changed
 - **Onyx focus-ring polish** - Onyx focused app/list items now use the same animated ring treatment as subtabs, while wide Settings rows use a perimeter-stroke focus ring to avoid stretched conic-gradient bands; disabling Onyx background effects now falls back to a static accent border.

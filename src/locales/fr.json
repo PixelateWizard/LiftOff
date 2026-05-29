@@ -20,6 +20,16 @@
     "failed": "Échec du lancement",
     "dismiss": "Ignorer  ·  B"
   },
+  "splash": {
+    "status": {
+      "starting": "D\u00e9marrage\u2026",
+      "scanning": "Analyse de votre biblioth\u00e8que\u2026",
+      "findingGames": "Recherche des jeux install\u00e9s\u2026",
+      "loadingArt": "Chargement des illustrations\u2026",
+      "almostReady": "Presque pr\u00eat\u2026",
+      "stillWorking": "Toujours en cours \u2014 les grandes biblioth\u00e8ques peuvent prendre un moment\u2026"
+    }
+  },
   "artPicker": {
     "replaceCoverArt": "Remplacer la couverture",
     "uploadCustomImage": "Télécharger une image",
