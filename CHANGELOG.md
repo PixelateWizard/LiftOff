@@ -39,6 +39,7 @@
 - **Win9X app list tiles** - Win9X list-mode app tiles now use opaque panel surfaces with backdrop blur disabled, preventing the page background from showing through the tiles.
 - **Theme effects toggles** - theme Effects toggles now preserve the theme background in a static state instead of removing it. Space/Sky keep static stars/clouds, animated environment layers freeze, Lo-fi keeps the video frame visible while pausing playback/music, and Webcore/Cyberpunk stop their JS-driven motion.
 - **Space/Sky effects labels** - renamed the Space and Sky settings labels from Background Stars/Background Clouds to Star Effects/Cloud Effects to match the new behavior.
+- **Home tab switch performance** - Games and Apps now stay mounted behind inactive tab panes to reduce switching delay when returning to Home, while inactive panes use private refs and memoized library content so they do not steal active gamepad scroll/focus ownership or rebuild full grids unnecessarily.
 
 ### Bug Fixes
 - **Stale renamed recents** - Home recents now look up the current app/game name from the full library instead of showing cached `RecentEntry.name` values.
@@ -52,6 +53,7 @@
 - **Animated hero media on focus loss** - animated WebP/GIF hero banners now pause correctly when LiftOff is launched, blurred, or alt-tabbed away instead of continuing through the static image path.
 - **Semi-home card clipping** - fixed idle no-art app cards showing unintended borders and fixed focused card borders/shadows being clipped by the semi-home slot.
 - **Immersive drawer scroll alignment** - fixed second-row collection headers being clipped after drawer scrolling and fixed bottom drawer padding being bypassed by vertical `scrollIntoView` calls.
+- **Games/Apps gamepad scrolling** - fixed down-navigation on Games and Apps tabs after the keep-mounted tab optimization by ensuring only the active library pane owns `tabScrollRef` and `focusedCardRef`; hidden panes keep separate private refs.
 
 ## [2.0.0-alpha.2] - Alpha 2
 

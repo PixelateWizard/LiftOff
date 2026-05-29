@@ -245,6 +245,9 @@ export function HomeView(props: HomeViewProps) {
     const materialHeroText = isDark ? "#fffefd" : "#18110b";
     const materialHeroDimText = isDark ? "rgba(255,250,245,0.72)" : "rgba(24,17,11,0.66)";
     const materialCinematicHero = materialHero && settings.cinematic_home;
+    const materialCinematicCardShadow = isDark
+      ? "0 14px 36px rgba(0,0,0,0.40), 0 32px 72px rgba(0,0,0,0.28)"
+      : "0 13px 36px rgba(18,18,20,0.13), 0 30px 72px rgba(18,18,20,0.09)";
     const surfaceCardRadius = resolvedTheme === "cyberpunk" ? 0 : webcoreHero ? 0 : surfaceStyle === "material" ? 8 : 16;
     const modalSurfaceRadius = resolvedTheme === "cyberpunk" ? 0 : webcoreHero ? 0 : surfaceStyle === "material" ? 16 : 24;
     const launchRadius = resolvedTheme === "cyberpunk" ? 0 : webcoreHero ? 0 : surfaceStyle === "material" ? 8 : 999;
@@ -660,9 +663,10 @@ export function HomeView(props: HomeViewProps) {
                 background: webcoreHero
                   ? surface.panelBg
                   : `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, ${isDark ? "var(--material-elevation-2)" : "var(--material-elevation-3)"}`,
-                border: webcoreHero ? "2px solid" : "1px solid var(--material-border-subtle)",
+                border: webcoreHero ? "2px solid" : "none",
                 borderColor: webcoreHero ? surface.borderRaisedSoft : undefined,
-                boxShadow: webcoreHero ? `${surface.bevelRaised}, 0 14px 32px rgba(0,0,0,${isDark ? "0.38" : "0.24"})` : "var(--material-shadow-high)",
+                outline: "none",
+                boxShadow: webcoreHero ? `${surface.bevelRaised}, 0 14px 32px rgba(0,0,0,${isDark ? "0.38" : "0.24"})` : materialCinematicCardShadow,
                 maxWidth: 480,
                 pointerEvents: "auto",
               }

@@ -3,22 +3,35 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Background extraction completed. `AppBackground.tsx` now imports background components from `src/components/backgrounds/index.ts` instead of carrying Space/Sky/Plasma/Cinder/Wash/Lofi JSX inline.
+**Task:** Update `CLAUDE.md` and `CHANGELOG.md` for the Games/Apps navigation and Home switch performance work.
 
 **Completed this session:**
-- Added `SpaceBg.tsx`, `SkyBg.tsx`, `PlasmaBg.tsx`, `CinderBg.tsx`, `WashBg.tsx`, and `LofiBg.tsx`.
-- Replaced inline theme blocks in `AppBackground.tsx` with imported components.
-- Kept particle container ids unchanged: `star-container`, `cloud-container`, `plasma-particle-container`, and `cinder-particle-container`.
-- Kept lofi audio creation/playback in `AppBackground.tsx`; `LofiBg` owns the rendered `<video>` and video retry/playback effect because the effect needs the actual mounted video ref.
-- Removed `cozy_moonlit_study_night_scene-old.png` poster usage from lofi video to avoid old-art flashing when switching themes.
-- Hardened lofi media startup by retrying video on `loadeddata`, `canplay`, focus, and visibility return, and retrying music on focus/visibility return.
-- Adjusted `useGamepadNavigation` focus tracking so transient DOM blur from settings controls does not mark the whole Tauri window as unfocused.
+- Read `CLAUDE.md` before starting, per repo instruction.
+- Tried the splash-screen proposal from `C:\Users\taylo\Downloads\splash-screen-upgrade-proposal.md`, then rolled it back when the user disliked the result; do not document or ship that visual change.
+- Ran `npx.cmd tsc --noEmit`; it still fails on the pre-existing `Gamepad.tsx`/`gamepad.tsx` casing conflict noted below.
+- Restored `src/components/launch/SplashScreen.tsx` to the pre-upgrade version.
+- Verified `npm run build` passes after the rollback.
+- User reported Games and Apps tabs no longer scroll while navigating down with a gamepad.
+- Found the regression in `src/App.jsx`: Games and Apps were both mounted in tab panes while sharing `tabScrollRef` and `focusedCardRef`, so the gamepad scroll helper could target hidden pane DOM.
+- Restored conditional mounting for `GamesView` and `AppsView` so the shared refs belong to the visible tab again.
+- Verified `npm run build` passes after the gamepad scroll fix.
+- User still wants a tab-switch optimization to reduce lag when switching to Home.
+- Added active-only ref ownership for keep-mounted Games/Apps panes in `src/App.jsx`.
+- Inactive Games/Apps panes now stay mounted with private `scrollRef`/`focusedCardRef` objects, while the active pane owns `tabScrollRef`/`focusedCardRef`.
+- Verified `npm run build` passes with the safer keep-mounted optimization.
+- User reported switching to Home is improved but still has delay.
+- Split Games and Apps library filtering so keep-mounted hidden panes no longer receive the Home tab's all-apps list.
+- Added a memo boundary to `LibraryViewContent` so inactive Games/Apps panes keep their DOM but skip React grid recalculation while they remain inactive.
+- Verified `npm run build` passes after the additional Home-switch optimization.
+- User asked to update `CLAUDE.md` and `CHANGELOG.md` with the validated session work.
+- Added durable handoff notes for active-only library refs, inactive-pane memoization, and split Games/Apps filtering.
+- Added Unreleased changelog entries for Home tab switch performance and Games/Apps gamepad scrolling.
+- Verified `npm run build` passes after the documentation updates.
 
-**Current lofi ownership:**
-- `AppBackground.tsx`: `lofiMusicRef`, `lofiVideoRef`, lofi mp4/mp3 imports, lofi audio effect.
-- `LofiBg.tsx`: video element, overlay gradient, video load/play/pause retry effect.
-
-**Do not re-add the lofi poster** unless the flash is intentionally redesigned. The active lofi visual should be `cozy_moonlit_study_night_scene.mp4` only.
+**Current implementation target:**
+- Documentation update is complete.
+- Do not add release notes for the rejected splash-screen experiment because it was rolled back.
+- Leave unrelated local changes in `src/App.jsx` and `src/views/HomeView.tsx` untouched.
 
 ---
 
@@ -143,6 +156,10 @@ All animated theme backgrounds live in `src/components/backgrounds/` and are bar
 - Game grid scroll jitter:
   - Vertical scroll helper measures focused cards by layout box instead of transformed visual box.
   - This avoids one/two-pixel vertical nudges while moving horizontally through scaled focused covers.
+- Games/Apps keep-mounted tab panes:
+  - Games and Apps can stay mounted to reduce Home tab switch delay, but only the active pane may receive `tabScrollRef` and `focusedCardRef`.
+  - Inactive library panes must use private scroll/card refs and `LibraryViewContent` memoization so hidden grids do not steal gamepad focus ownership or rebuild while inactive.
+  - Keep Games and Apps filtered data split from Home's all-apps list; passing the Home list into hidden library panes recreates the Home-switch lag.
 - Home hero gamepad scroll:
   - Returning focus to Home hero also resets the outer scroller so the hero top margin is visible.
 - Semi-immersive Home snap slot:
@@ -171,6 +188,7 @@ All animated theme backgrounds live in `src/components/backgrounds/` and are bar
 ### Verification Notes
 
 - `npm.cmd run build` passes after the full hook refactor including `useGamepadNavigation` extraction.
+- `npm run build` passes after the Games/Apps keep-mounted Home-switch optimization and gamepad scroll fix.
 - `npx.cmd tsc --noEmit` still fails on the pre-existing casing mismatch: imports reference `Gamepad.tsx` while the filesystem also exposes/contains `gamepad.tsx` casing. Treat that separately from the refactor unless asked. All other TS errors from the extraction have been fixed.
 - `cargo check` passed after the `clear_recents` backend change, with only pre-existing unused-function warnings.
 - `CHANGELOG.md` may already be modified by the user; do not overwrite or revert it unless explicitly asked.

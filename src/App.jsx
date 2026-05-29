@@ -83,6 +83,10 @@ export default function App() {
   const outerRef              = useRef(null);
   const homeScrollRef         = useRef(null);
   const tabScrollRef          = useRef(null);
+  const gamesScrollRef        = useRef(null);
+  const appsScrollRef         = useRef(null);
+  const gamesHiddenCardRef    = useRef(null);
+  const appsHiddenCardRef     = useRef(null);
   const pinnedShelfRef        = useRef(null);
   const recentShelfRef        = useRef(null);
   const drawerScrollRef       = useRef(null);
@@ -725,36 +729,37 @@ export default function App() {
   };
   handleClearRecentsRef.current = handleClearRecents;
 
-  const filteredApps = apps.filter((a) => {
-    if (tab === "Games") {
-      if (a.app_type !== "game") return false;
-      if (gameSourceTab === "Steam") return a.source === "steam";
-      if (gameSourceTab === "Xbox")  return a.source === "xbox";
-      if (gameSourceTab === "Battle.net")  return a.source === "battlenet";
-      if (gameSourceTab === "Other") return a.source !== "steam" && a.source !== "xbox" && a.source !== "battlenet" && !customSources.includes(a.source);
-      if (customSources.includes(gameSourceTab)) return a.source === gameSourceTab;
-      const gameCol = gameCollections.find(c => c.name === gameSourceTab);
-      if (gameCol) return (gameMemberships[a.id] || []).includes(gameCol.id);
-      return true; // "All"
-    }
-    if (tab === "Apps") {
-      if (a.app_type !== "app") return false;
-      if (appCollectionTab === "All") return true;
-      const col = appCollections.find(c => c.name === appCollectionTab);
-      if (!col) return true;
-      return (appMemberships[a.id] || []).includes(col.id);
-    }
+  const gamesFilteredApps = useMemo(() => apps.filter((a) => {
+    if (a.app_type !== "game") return false;
+    if (gameSourceTab === "Steam") return a.source === "steam";
+    if (gameSourceTab === "Xbox")  return a.source === "xbox";
+    if (gameSourceTab === "Battle.net")  return a.source === "battlenet";
+    if (gameSourceTab === "Other") return a.source !== "steam" && a.source !== "xbox" && a.source !== "battlenet" && !customSources.includes(a.source);
+    if (customSources.includes(gameSourceTab)) return a.source === gameSourceTab;
+    const gameCol = gameCollections.find(c => c.name === gameSourceTab);
+    if (gameCol) return (gameMemberships[a.id] || []).includes(gameCol.id);
     return true;
-  });
+  }), [apps, customSources, gameCollections, gameMemberships, gameSourceTab]);
+  const libraryAppsFilteredApps = useMemo(() => apps.filter((a) => {
+    if (a.app_type !== "app") return false;
+    if (appCollectionTab === "All") return true;
+    const col = appCollections.find(c => c.name === appCollectionTab);
+    if (!col) return true;
+    return (appMemberships[a.id] || []).includes(col.id);
+  }), [appCollectionTab, appCollections, appMemberships, apps]);
+  const filteredApps = tab === "Games" ? gamesFilteredApps : tab === "Apps" ? libraryAppsFilteredApps : apps;
   const filteredRecent = recent.filter(a =>
     tab === "Home" ? true : tab === "Games" ? a.app_type === "game" : a.app_type === "app"
   ).slice(0, 8);
 
   // Pinned apps reactive (for render)
-  const pinnedAppsReactive = (tab === "Apps" && appCollectionTab !== "All") ? [] : pins
+  const pinnedAppsFor = (pane) => (pane === "Apps" && appCollectionTab !== "All") ? [] : pins
     .map(id => apps.find(a => a.id === id))
     .filter(Boolean)
-    .filter(a => tab === "Home" ? true : tab === "Games" ? a.app_type === "game" : a.app_type === "app");
+    .filter(a => pane === "Home" ? true : pane === "Games" ? a.app_type === "game" : a.app_type === "app");
+  const gamesPinnedApps = useMemo(() => pinnedAppsFor("Games"), [appCollectionTab, apps, pins]);
+  const appsPinnedApps = useMemo(() => pinnedAppsFor("Apps"), [appCollectionTab, apps, pins]);
+  const pinnedAppsReactive = tab === "Games" ? gamesPinnedApps : tab === "Apps" ? appsPinnedApps : pinnedAppsFor("Home");
 
   const effectiveGameCols = Math.max(2, Math.round(GAME_COLS / (settings.game_cover_scale ?? 1.0)));
   const effectiveAppCols  = Math.max(2, Math.round(COLS / (settings.app_cover_scale ?? 1.0)));
@@ -1275,6 +1280,25 @@ export default function App() {
     isFocused,
     pins,
   };
+  const gamesLibraryViewProps = {
+    ...libraryViewProps,
+    active: tab === "Games",
+    scrollRef: tab === "Games" ? tabScrollRef : gamesScrollRef,
+    focusedCardRef: tab === "Games" ? focusedCardRef : gamesHiddenCardRef,
+    filteredApps: gamesFilteredApps,
+    pinnedAppsReactive: gamesPinnedApps,
+  };
+  const appsLibraryViewProps = {
+    ...libraryViewProps,
+    active: tab === "Apps",
+    scrollRef: tab === "Apps" ? tabScrollRef : appsScrollRef,
+    focusedCardRef: tab === "Apps" ? focusedCardRef : appsHiddenCardRef,
+    filteredApps: libraryAppsFilteredApps,
+    pinnedAppsReactive: appsPinnedApps,
+  };
+  const tabPaneStyle = (active) => active
+    ? { position: "absolute", inset: 0, zIndex: 2 }
+    : { position: "absolute", inset: 0, zIndex: 1, contentVisibility: "hidden", pointerEvents: "none" };
 
   return (
     <ThemeProvider value={themeValue}>
@@ -1832,8 +1856,12 @@ export default function App() {
             heroIndexRef={heroIndexRef}
             iconColors={iconColors}
           />
-          {tab === "Games" && <GamesView {...libraryViewProps} wideLayout={settings.wide_games} />}
-          {tab === "Apps" && <AppsView {...libraryViewProps} wideLayout={settings.wide_apps} />}
+          <div aria-hidden={tab !== "Games"} data-tab-pane="games" style={tabPaneStyle(tab === "Games")}>
+            <GamesView {...gamesLibraryViewProps} wideLayout={settings.wide_games} />
+          </div>
+          <div aria-hidden={tab !== "Apps"} data-tab-pane="apps" style={tabPaneStyle(tab === "Apps")}>
+            <AppsView {...appsLibraryViewProps} wideLayout={settings.wide_apps} />
+          </div>
         </div>
         </AppMainContent>
 

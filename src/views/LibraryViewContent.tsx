@@ -1,15 +1,16 @@
-import type { RefObject } from "react";
+import { memo, type RefObject } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { AppListItem, CyberpunkCard, FocusRing } from "../components/ui";
 
 export interface LibraryViewContentProps {
   tab: "Games" | "Apps";
+  active?: boolean;
   scrollRef: RefObject<HTMLDivElement>;
   wideLayout: boolean;
   [key: string]: any;
 }
 
-export function LibraryViewContent(props: LibraryViewContentProps) {
+function LibraryViewContentBase(props: LibraryViewContentProps) {
   const {
     tab,
     scrollRef,
@@ -339,4 +340,9 @@ export function LibraryViewContent(props: LibraryViewContentProps) {
             </div>
           );
 }
+
+export const LibraryViewContent = memo(LibraryViewContentBase, (prev, next) => {
+  if (!prev.active && !next.active) return true;
+  return false;
+});
 
