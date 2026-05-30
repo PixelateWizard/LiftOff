@@ -3,19 +3,19 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Fix full-screen SteamGrid art picker edge clipping at scaled UI sizes.
+**Task:** Update app version labels to Alpha 4.1.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- Started SteamGrid art picker clipping follow-up from user screenshot.
-- Updated `SteamGridArtPickerModal` to size its expanded panel against the scaled app viewport using `settings.ui_scale`.
-- Added overlay padding and panel `boxSizing`/overflow bounds so the bottom/right controls remain inside the visible area.
-- Updated `CHANGELOG.md` for the art picker clipping fix.
+- Started the Alpha 4.1 version-label sweep.
+- Updated `APP_VERSION`, npm metadata, Tauri config, Cargo metadata/lockfile, docs page badge, and handoff version references to `2.0.0-alpha.4.1`.
+- Updated `CHANGELOG.md` under Alpha 4.1 Changed.
+- Verified no stale `2.0.0-alpha.4` current-version surfaces remain outside historical changelog text.
 - Verified `npm run build` passes; Vite still reports the existing large chunk warning.
 - Verified `git diff --check` passes, with only existing line-ending warnings.
 
 **Current implementation target:**
-- Ready for user verification: the SteamGrid art picker should keep the expanded/full-screen feel without clipping at the bottom or right edge when UI scale is above 1.
+- Ready for release verification: app and installer metadata should now present `2.0.0-alpha.4.1` instead of `2.0.0-alpha.4`.
 
 ---
 
@@ -41,7 +41,7 @@
 
 - **Stack:** Tauri 2, Rust (`src-tauri/src/lib.rs`), React (`src/App.jsx`)
 - **Identifier:** `com.taylo.liftoff`
-- **Version:** `2.0.0-alpha.4` (APP_VERSION in constants.ts) / `2.0.0-alpha.4` (tauri.conf.json — update both together on release; also update Cargo.toml, Cargo.lock, package.json, package-lock.json, docs/index.html, CHANGELOG.md)
+- **Version:** `2.0.0-alpha.4.1` (APP_VERSION in constants.ts) / `2.0.0-alpha.4.1` (tauri.conf.json — update both together on release; also update Cargo.toml, Cargo.lock, package.json, package-lock.json, docs/index.html, CHANGELOG.md)
 - **Installer:** NSIS bundle at `src-tauri/target/release/bundle/nsis/`
 - **Dev command:** `npm run dev` (frontend) + `cargo tauri dev`
 - **Build:** `cargo tauri build` → use NSIS installer for testing, not raw `.exe`
@@ -297,7 +297,7 @@ Priority order of `else if` branches:
 ## Frontend (`src/App.jsx`)
 
 ### Constants (top of file)
-- `APP_VERSION = "2.0.0-alpha.4"` — compared against GitHub Releases API for update checks
+- `APP_VERSION = "2.0.0-alpha.4.1"` — compared against GitHub Releases API for update checks
 - `GITHUB_REPO = "PixelateWizard/LiftOff"` — used for update check and releases link
 
 ### State

@@ -215,6 +215,9 @@ export function useGamepadNavigation(
   const lastBtn = useRef<ButtonStateMap>({});
   const btnPressTime = useRef<ButtonTimeMap>({});
   const btnRepeating = useRef<ButtonStateMap>({});
+  // True while a directional input is in hold-repeat mode (not a single press).
+  // Read by the scroll-correction effect in App.jsx to choose instant vs smooth scroll.
+  const navRepeatingRef = useRef(false);
   const suppressUntilRelease = useRef<ButtonStateMap>({});
   const launchedAppSessionRef = useRef(false);
   const launchReturnCooldownUntil = useRef(0);
@@ -1096,14 +1099,17 @@ export function useGamepadNavigation(
             if (!btnRepeating.current[key] && heldMs >= initialDelay) {
               btnRepeating.current[key] = true;
               btnPressTime.current[key] = now;
+              navRepeatingRef.current = true;
               if (canNavigate) handleNavRef?.current?.(key);
             } else if (btnRepeating.current[key] && heldMs >= repeatDelay) {
               btnPressTime.current[key] = now;
+              navRepeatingRef.current = true;
               if (canNavigate) handleNavRef?.current?.(key);
             }
           } else if (!pressed && wasPressed) {
             btnPressTime.current[key] = 0;
             btnRepeating.current[key] = false;
+            navRepeatingRef.current = false;
           }
 
           lastBtn.current[key] = pressed;
@@ -1235,6 +1241,7 @@ export function useGamepadNavigation(
     tabRef,
     focusSection,
     focusSectionRef,
+    navRepeatingRef,
     focusIndex,
     focusIndexRef,
     heroIndex,

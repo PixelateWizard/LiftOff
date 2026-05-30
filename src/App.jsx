@@ -212,6 +212,7 @@ export default function App() {
     tabRef,
     focusSection,
     focusSectionRef,
+    navRepeatingRef,
     focusIndex,
     focusIndexRef,
     heroIndex,
@@ -812,6 +813,7 @@ export default function App() {
 
   useEffect(() => {
     if (tab === "Settings") return;
+    const scrollBehavior = navRepeatingRef.current ? "instant" : "smooth";
     const previousFocus = scrollFocusRef.current;
     const sameGridRow =
       focusSection === "grid" &&
@@ -829,7 +831,7 @@ export default function App() {
         .map(id => appsRef.current.find(a => a.id === id))
         .filter(Boolean)
         .some(a => tab === "Games" ? a.app_type === "game" : a.app_type === "app");
-    const scrollToTop = (behavior = "smooth") => {
+    const scrollToTop = (behavior = scrollBehavior) => {
       const scroller = tab === "Home" ? homeScrollRef.current : tabScrollRef.current;
       if (scroller) scroller.scrollTo({ top: 0, behavior });
       if (tab === "Home" && outerRef.current) outerRef.current.scrollTo({ top: 0, behavior });
@@ -862,7 +864,7 @@ export default function App() {
       } else if (cardBottom > visH - bottomClearance) {
         newTop = scroller.scrollTop + cardBottom - (visH - bottomClearance);
       }
-      scroller.scrollTo({ top: Math.max(0, newTop), behavior: "smooth" });
+      scroller.scrollTo({ top: Math.max(0, newTop), behavior: scrollBehavior });
     };
     const scrollFocusedCardHorizontally = (container, resetWhenFirst = false) => {
       const card = focusedCardRef.current;
@@ -954,7 +956,7 @@ export default function App() {
         scrollFocusedCardIntoView();
       } else {
         const scroller = tab === "Home" ? homeScrollRef.current : tabScrollRef.current;
-        if (scroller) scroller.scrollTo({ top: 0, behavior: "smooth" });
+        if (scroller) scroller.scrollTo({ top: 0, behavior: scrollBehavior });
       }
     } else if (focusedCardRef.current) {
       scrollFocusedCardIntoView();

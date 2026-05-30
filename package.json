@@ -1,7 +1,7 @@
 {
   "name": "liftoff",
   "private": true,
-  "version": "2.0.0-alpha.4",
+  "version": "2.0.0-alpha.4.1",
   "type": "module",
   "scripts": {
     "dev": "vite",

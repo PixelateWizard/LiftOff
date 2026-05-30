@@ -8,6 +8,7 @@
 - **Games source tabs** - the Other source tab now hides when there are no visible games outside the built-in and custom game sources, matching the existing empty-source behavior for Steam, Xbox, and Battle.net.
 
 ### Bug Fixes
+- **Games/Apps stick-repeat scroll lag** - held-stick vertical scrolling on the Games and Apps grids now tracks the focused card instantly instead of stacking interrupted smooth-scroll animations that fell behind the cursor; single presses still scroll smoothly.
 - **SteamGrid art picker clipping** - the expanded art picker now accounts for UI scale when sizing itself, keeping the full-screen feel without cutting off the bottom or right controls.
 - **Modal stick-repeat navigation** - held left-stick directions now repeat through controller-driven modals and launch/art overlay actions instead of only moving once per stick tilt.
 - **Source tab gamepad navigation** - LT/RT navigation now recovers cleanly when the active source tab disappears, so hiding Other cannot cause the controller to skip adjacent source tabs.
