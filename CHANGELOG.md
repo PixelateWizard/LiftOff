@@ -4,9 +4,11 @@
 
 ### Changed
 - **Home tab switch performance** - Home, Games, and Apps now stay mounted across tab switches; inactive Games/Apps panes use `content-visibility: hidden`, inactive Home stays mounted at near-transparent opacity so theme effects can keep showing behind translucent tabs, and animated hero media now pauses off Home to avoid decoder/compositor work during non-Home scrolling while still pausing for launch, blur, alt-tab, and hidden-window cases.
+- **Home hero cycling performance** - hero carousel video playback now has a single pause owner, immediate-neighbor prebuffering, and one-shot playback recovery instead of repeated retry intervals during every carousel step.
 
 ### Fixed
 - **Animated hero off-tab stutter** - animated Home hero video and GIF/WebP media now pause whenever Home is not the active tab, preventing hidden hero playback from competing with Games/Apps repeat scrolling.
+- **Video hero load gap** - video-backed heroes now use the active theme background during tab transitions and first-frame gaps instead of briefly flashing a static banner or blurred cover.
 - **Settings stick-repeat scrolling** - repeated stick navigation in Settings now uses the active tab scroller directly and avoids stacking smooth scroll requests at list edges.
 
 ## [2.0.0-alpha.4] - Alpha 4

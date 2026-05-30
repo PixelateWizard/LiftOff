@@ -126,19 +126,13 @@ export function HomeView(props: HomeViewProps) {
   const activeHeroStaticUrl = activeHeroGame
     ? customHeroArt[activeHeroGame.id] || heroStatic[activeHeroGame.id] || null
     : null;
+  const activeIsVideo = !!activeHeroAnimatedUrl && !isAnimatedImageUrl(activeHeroAnimatedUrl);
   const playActiveHeroVideo = useCallback((video: HTMLVideoElement | null, gameId: string) => {
     if (!video || !active || appPaused || heroMediaPaused) return;
     const activeGame = heroGames[heroIdx];
     if (!activeGame || activeGame.id !== gameId) return;
     video.play().catch(() => {});
   }, [active, appPaused, heroGames, heroIdx, heroMediaPaused]);
-
-  useEffect(() => {
-    if (active && !appPaused && !heroMediaPaused) return;
-    Object.values(heroVideoRefs.current).forEach((video: HTMLVideoElement | null) => {
-      if (video) video.pause();
-    });
-  }, [active, appPaused, heroMediaPaused, heroVideoRefs]);
 
   useEffect(() => {
     const pauseHeroMedia = () => {
@@ -206,7 +200,8 @@ export function HomeView(props: HomeViewProps) {
 
     const rafId = requestAnimationFrame(() => {
       playActiveVideo();
-      [heroIdx + 1, heroIdx + 2, heroIdx - 1, heroIdx - 2].forEach(i => {
+      // Pre-buffer only immediate neighbors to limit concurrent decode/network pressure while cycling.
+      [heroIdx + 1, heroIdx - 1].forEach(i => {
         const game = heroGames[i];
         if (!game) return;
         const video = heroVideoRefs.current[game.id];
@@ -215,17 +210,11 @@ export function HomeView(props: HomeViewProps) {
         }
       });
     });
-    const retryId = window.setInterval(() => {
-      if (activeVideo && !activeVideo.paused && activeVideo.readyState >= 3) {
-        window.clearInterval(retryId);
-        return;
-      }
-      playActiveVideo();
-    }, 500);
+    const retryId = window.setTimeout(playActiveVideo, 400);
 
     return () => {
       cancelAnimationFrame(rafId);
-      window.clearInterval(retryId);
+      window.clearTimeout(retryId);
       if (activeVideo) {
         activeVideo.removeEventListener("loadeddata", playActiveVideo);
         activeVideo.removeEventListener("canplay", playActiveVideo);
@@ -563,7 +552,7 @@ export function HomeView(props: HomeViewProps) {
           border: (settings.cinematic_home || semiHome) ? "none" : heroFocused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.5)"}` : `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
           boxShadow: (settings.cinematic_home || semiHome) ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-          background: settings.cinematic_home && !showHeroArtwork ? "transparent" : materialHero ? appBg : isDark ? "#0a0502" : appBg,
+          background: (settings.cinematic_home && !showHeroArtwork) || (showHeroArtwork && activeIsVideo) ? "transparent" : materialHero ? appBg : isDark ? "#0a0502" : appBg,
         }}>
           <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: settings.cinematic_home ? 0 : surfaceCardRadius, overflow: "hidden" }}>
             {heroGames.map((game, idx) => {
@@ -572,11 +561,12 @@ export function HomeView(props: HomeViewProps) {
 
               const rawStaticBanner = customHeroArt[game.id] || heroStatic[game.id];
               const fallback = customArt[game.id] || gameArt[game.id];
-              const animatedUrl = resolveHeroType(game.id) === "animated"
+              const heroType = resolveHeroType(game.id);
+              const animatedUrl = heroType === "animated"
                 ? heroAnimated[game.id] : null;
               const primaryHeroMedia = animatedUrl || rawStaticBanner;
-              const showVideo = isHeroVideoUrl(primaryHeroMedia);
-              const showAnimatedImage = isAnimatedImageUrl(primaryHeroMedia);
+              const showAnimatedImage = !!animatedUrl && isAnimatedImageUrl(animatedUrl);
+              const showVideo = !!animatedUrl && !showAnimatedImage;
               const staticBanner = rawStaticBanner;
               const mediaPaused = appPaused || heroMediaPaused || !active;
               const mediaVisible = !mediaPaused;
@@ -585,7 +575,7 @@ export function HomeView(props: HomeViewProps) {
               return (
                 <div key={game.id} style={{ position: "absolute", inset: 0, opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
                   {/* Base layer: render images only for active ±1 to reduce GPU texture pressure */}
-                  {isNearby && showHeroArtwork
+                  {isNearby && showHeroArtwork && !showVideo
                     ? (staticBanner
                         ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
                         : fallback
@@ -633,7 +623,6 @@ export function HomeView(props: HomeViewProps) {
                         objectFit: "cover",
                         objectPosition: "center top",
                         transform: "translateZ(0)",
-                        willChange: "opacity",
                         visibility: mediaVisible ? "visible" : "hidden",
                       }}
                     />

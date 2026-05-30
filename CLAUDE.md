@@ -3,26 +3,25 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Pause animated Home hero media while off-tab to fix non-Home scroll stutter.
+**Task:** Remove static backup flash during video hero tab transitions.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- Read `hero-offtab-pause-fix.md`.
-- Confirmed the proposal supersedes the prior off-tab warm-decode approach for the reported non-Home repeat-scroll stutter.
-- Updated `HomeView` so `active` gates `playActiveHeroVideo`, the all-video pause effect, and the active-video retry/playback effect.
-- Folded `!active` into `mediaPaused`, so hero videos and animated image media are hidden while Home is off-tab.
-- Removed animated GIF/WebP `src` while media is paused, covering app pause, focus/visibility pause, and off-tab pause.
-- Left Home mounted and left video `src` intact so tab switches do not remount the video elements.
-- Updated `CHANGELOG.md` Unreleased notes.
+- User confirmed hero carousel cycling feels noticeably smoother after the previous pass.
+- User reported tab switching to/from Home still flashes the static backup hero before the video hero paints.
+- Inspected current `HomeView` video load-gap logic and confirmed the video intent check is still URL/paint-path sensitive.
+- Updated the video-intent check to treat an animated hero URL that is not GIF/WebP as video-intended before the first frame paints.
+- Kept GIF/WebP animated-image handling on the image path so static/animated-image heroes remain visually unchanged.
+- Updated `CHANGELOG.md` Unreleased notes for the tab-transition load-gap fix.
 - Verified `npm run build` passes; Vite still reports the existing large chunk warning.
 - Verified `git diff --check` passes; Git still reports the existing CRLF normalization warnings for touched files.
 
 **Current implementation target:**
-- Keep Home mounted off-tab, but pause every hero video and hide animated hero media whenever `active` is false.
-- Resume the active Home hero promptly when returning to Home.
-- Keep launch/focus pause behavior intact through the existing `appPaused` and `heroMediaPaused` gates.
-- Avoid remounting or clearing video sources unless pausing alone proves insufficient.
-- Ready for user verification in the built app; if non-Home scroll stutter remains, measure whether a paused hero video still retains too much GPU/decoder memory before considering source removal on tab leave.
+- Treat heroes with an animated URL in animated/custom mode as video-intended before the video frame paints, unless the URL is GIF/WebP.
+- Keep static heroes unchanged.
+- Keep animated-image GIF/WebP behavior unchanged except for existing pause/src removal.
+- Ensure video-intended heroes skip static backup art and use a transparent shell during tab transitions.
+- Ready for user/device verification that Home tab transitions show the app background rather than static backup art before video first paint.
 
 ---
 
