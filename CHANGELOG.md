@@ -2,10 +2,15 @@
 
 ## Unreleased
 
-## [2.0.0-alpha.4.1] - Alpha 4.1
+## [2.0.0-alpha.4.1] - Alpha 5
 
 ### Added
 - **Running app lifecycle controls** - LiftOff now tracks apps and games launched during the current session, shows Running badges, changes the Home hero CTA to Resume for running games, focuses an already-running game instead of launching a second copy, reclaims LiftOff focus after launched games exit, and adds confirmed Close / Force close controls from the hero and card context menu.
+
+### Bug Fixes
+- **Steam launch false "could not confirm" message** - the launch watcher now confirms a game on the window that actually matches its name/executable/source instead of the first new window, which was usually Steam's own launching popup. Steam launches show a "Launching Steam..." phase only when Steam was not already running, then switch to the game, and a game that goes straight to fullscreen-exclusive (never presenting a pollable window) now dismisses quietly as launched rather than surfacing an error. Quitting the game still pulls focus back to LiftOff.
+
+## [2.0.0-alpha.4.1] - Alpha 4.1
 
 ### Changed
 - **Games source tabs** - the Other source tab now hides when there are no visible games outside the built-in and custom game sources, matching the existing empty-source behavior for Steam, Xbox, and Battle.net.

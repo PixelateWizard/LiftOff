@@ -2026,6 +2026,41 @@ fn process_exe_path(pid: u32) -> Option<String> {
     }
 }
 
+// Returns true when a process with the given executable file name (e.g. "steam.exe")
+// is currently running. Used for honest two-phase launch messaging.
+fn is_process_running(exe_name: &str) -> bool {
+    use windows::Win32::System::Diagnostics::ToolHelp::{
+        CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
+    };
+    unsafe {
+        let Ok(snapshot) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else { return false; };
+        let mut entry = PROCESSENTRY32W {
+            dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+            ..Default::default()
+        };
+        let mut found = false;
+        if Process32FirstW(snapshot, &mut entry).is_ok() {
+            loop {
+                let end = entry
+                    .szExeFile
+                    .iter()
+                    .position(|&c| c == 0)
+                    .unwrap_or(entry.szExeFile.len());
+                let name = String::from_utf16_lossy(&entry.szExeFile[..end]);
+                if name.eq_ignore_ascii_case(exe_name) {
+                    found = true;
+                    break;
+                }
+                if Process32NextW(snapshot, &mut entry).is_err() {
+                    break;
+                }
+            }
+        }
+        let _ = CloseHandle(snapshot);
+        found
+    }
+}
+
 fn collect_launch_windows() -> Vec<LaunchWindowCandidate> {
     let mut windows = Vec::new();
     let mut state = LaunchWindowCollectState {
@@ -2157,6 +2192,14 @@ fn best_launch_window(
             (score > 0).then_some((window, score))
         })
         .max_by_key(|(_, score)| *score)
+}
+
+// Poll once for the best window matching this specific target (name/exe/source).
+// Returns (hwnd, score) of the best match with score > 0, else None. Unlike
+// poll_for_window's pid == 0 path, this never matches an unrelated new window
+// such as Steam's own "launching" popup.
+fn poll_for_matched_window(name: &str, launch_path: &str, source: &str) -> Option<(isize, u32)> {
+    best_launch_window(name, launch_path, source).map(|(w, score)| (w.hwnd, score))
 }
 
 #[tauri::command]
@@ -2356,6 +2399,10 @@ async fn launch_app(
     let name_for_tracking = name.clone();
     let path_for_tracking = path.clone();
     let source_for_tracking = source.clone();
+    // Identity clones for the launch-window watcher thread (scored matching + phase events).
+    let watch_name = name.clone();
+    let watch_path = path.clone();
+    let watch_source = source.clone();
     let mut recents = load_recents();
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -2379,6 +2426,12 @@ async fn launch_app(
     // Snapshot existing windows before launch so the watcher can detect new ones.
     let existing = snapshot_visible_windows();
     let our_hwnd = OUR_HWND.load(Ordering::Relaxed);
+
+    // Two-phase Steam messaging: only claim "Launching Steam…" when Steam was not
+    // already running. Detect this BEFORE dispatching the launch so the spawn does
+    // not race the check. If Steam is already up, skip straight to the game phase.
+    let is_steam_launch = path.starts_with("steam://");
+    let steam_was_running = is_steam_launch && is_process_running("steam.exe");
 
     // child_pid: Some(pid) when we spawn the game directly (allows precise matching);
     // None for launcher-mediated paths where the game process is a grandchild.
@@ -2513,14 +2566,55 @@ async fn launch_app(
             return;
         }
 
+        // Honest two-phase messaging: only show "Launching Steam…" when Steam was
+        // not already running. Once a matching window appears (or after a short
+        // grace) we advance to the game phase so the overlay never lies or sticks.
+        let mut phase_is_steam = is_steam_launch && !steam_was_running;
+        if phase_is_steam {
+            let _ = handle.emit("launch-phase", "steam");
+        }
+
         // Full window-detection path for direct exe apps and all games.
+        // Games confirm on the best-scoring window that matches THIS title/exe/source,
+        // never on "any new window" — that false match is usually Steam's own
+        // launching popup or client, not the game.
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+        let started = std::time::Instant::now();
         let mut found: isize = 0;
 
-        while std::time::Instant::now() < deadline {
+        loop {
+            // 1) Preferred: a window that specifically matches this game.
+            if let Some((hwnd, score)) = poll_for_matched_window(&watch_name, &watch_path, &watch_source) {
+                // A real matching window means the game is presenting — leave the Steam phase.
+                if phase_is_steam {
+                    let _ = handle.emit("launch-phase", "game");
+                    phase_is_steam = false;
+                }
+                // Confident match (medium+, score >= 45) — confirm immediately.
+                if score >= 45 {
+                    found = hwnd;
+                    break;
+                }
+            }
+
+            // 2) Fallback for direct-exe games with a real PID: the old PID match.
+            if child_pid != 0 {
+                let hwnd = poll_for_window(child_pid, &existing, our_hwnd);
+                if hwnd != 0 {
+                    found = hwnd;
+                    break;
+                }
+            }
+
+            // Advance to the game phase after a short grace even without a window yet,
+            // so the overlay does not sit on "Launching Steam…" indefinitely.
+            if phase_is_steam && started.elapsed() >= std::time::Duration::from_secs(2) {
+                let _ = handle.emit("launch-phase", "game");
+                phase_is_steam = false;
+            }
+
+            if std::time::Instant::now() >= deadline { break; }
             std::thread::sleep(std::time::Duration::from_millis(250));
-            found = poll_for_window(child_pid, &existing, our_hwnd);
-            if found != 0 { break; }
         }
 
         if found != 0 {
@@ -2531,6 +2625,10 @@ async fn launch_app(
             }
         }
 
+        // Decision 2A: the spawn itself succeeded, so emit success whether or not a
+        // window was confirmed. Steam fullscreen-exclusive games never present a
+        // pollable window; the overlay's verify step softly dismisses them rather
+        // than showing a scary "could not confirm" error.
         let _ = handle.emit("launch-success", ());
     });
 

@@ -3,23 +3,21 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Implement running-app lifecycle detection, resume/focus, focus reclaim, and close controls from `currently-running-detection (1).md`.
+**Task:** Implement the Steam launch confirmation fix (smart window match + two-phase status) from `steam-launch-confirmation-fix.md`.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- Read the running-app lifecycle proposal from Downloads.
-- Added session-scoped Rust launch tracking with hybrid PID/window running detection.
-- Added `get_running_launched`, `focus_self`, `close_launched`, and `force_close_launched` commands.
-- Threaded launch `source` through real app/game launches and direct URL launch call sites.
-- Added `useRunningApps` polling, focus reclaim after launched-game exit, and shared graceful/force close helpers.
-- Added Running badges, Home hero Launch-to-Resume labeling, already-running focus behavior, hero Close, and context-menu Close.
-- Added English/French strings and updated `CHANGELOG.md` under Alpha 4.1.
-- Verified `npm run build` passes; Vite still reports the existing large chunk warning.
-- Verified `cargo check` passes with only existing unused-function warnings.
-- Verified `npx.cmd tsc --noEmit` only fails with the existing TS1261 `Gamepad.tsx` / `gamepad.tsx` casing warning.
+- Added `is_process_running("steam.exe")` via a ToolHelp process snapshot (new `Win32_System_Diagnostics_ToolHelp` Cargo feature) and `poll_for_matched_window` reusing the existing `best_launch_window` scorer.
+- Rewrote the `launch_app` watcher thread so games confirm on the best-scoring window matching their name/exe/source (score >= 45) instead of "any new window"; direct-exe PID match kept as a fallback.
+- Added honest two-phase `launch-phase` events (`"steam"` then `"game"`) emitted only when Steam was not already running, advancing to the game phase once a matching window appears or after a 2s grace.
+- Made the watcher emit `launch-success` whether or not a window was confirmed (Decision 2A) so fullscreen-exclusive games dismiss softly.
+- Updated `LaunchOverlay.tsx`: added `phase` state + `launch-phase` listener, phase-aware launching copy, and softened the verify branch so `running`/unconfirmed/verify-error outcomes auto-focus (Decision 3C) and dismiss instead of dead-ending on a scary message. `running_unfocused`/`unconfirmed` states and the manual retry UI are left intact for rare edge cases.
+- Added `launch.launchingSteam` / `launch.launchingGame` and neutralized `launch.unconfirmed` in `en.json` + `fr.json`.
+- Updated `CHANGELOG.md` under the current Alpha 5 block.
+- Verified `cargo check` passes (only pre-existing unused-function warnings), `npm run build` passes (only the pre-existing large-chunk warning), and `npx.cmd tsc --noEmit` only fails with the pre-existing TS1261 `Gamepad.tsx` / `gamepad.tsx` casing warning.
 
 **Current implementation target:**
-- Ready for runtime validation on Windows with real launched games: direct `.exe`, Steam, Battle.net/Xbox/UWP, Resume focus, exit focus reclaim, graceful Close, and confirmed Force close.
+- Ready for runtime validation on Windows: Steam game with Steam closed (expect "Launching Steam..." then the game, focused, no error), Steam already running (no Steam phase), fullscreen-exclusive Steam game (soft dismiss), direct-exe / Xbox / UWP / Battle.net games (confirm via match, no false error), genuine bad-path spawn error (still shows `failed`), and exit reclaim (still returns focus to LiftOff).
 
 ---
 

@@ -20,6 +20,7 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone }: Launc
   const { t } = useTranslation();
   const art = app?.app_type === "game" ? (customArt?.[app.id] || gameArt[app.id]) : null;
   const [status, setStatus] = useState<LaunchStatus>("launching");
+  const [phase, setPhase] = useState<"app" | "steam" | "game">("app");
   const [focusedAction, setFocusedAction] = useState<FocusedAction>("dismiss");
   const rafRef = useRef<number | null>(null);
   const lastGp = useRef<Partial<GpState>>({});
@@ -67,6 +68,12 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone }: Launc
 
     let unlistenSuccess: (() => void) | undefined;
     let unlistenFailed: (() => void) | undefined;
+    let unlistenPhase: (() => void) | undefined;
+    listen<string>("launch-phase", (e) => {
+      if (!mounted.current) return;
+      if (e.payload === "steam") setPhase("steam");
+      else if (e.payload === "game") setPhase("game");
+    }).then(fn => { unlistenPhase = fn; });
     listen("launch-success", async () => {
       if (!mounted.current) return;
 
@@ -87,12 +94,33 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone }: Launc
             if (mounted.current) done();
           }, 700);
         } else if (result.running) {
-          setStatus("running_unfocused");
+          // Running but behind LiftOff — focus it, then dismiss softly (Decision 3C).
+          setStatus("focused");
+          invoke("try_focus_launched_app", {
+            name: launchTarget.name,
+            launchPath: launchTarget.launch_path,
+            source: launchTarget.source,
+          }).catch(() => {});
+          window.setTimeout(() => {
+            if (mounted.current) done();
+          }, 700);
         } else {
-          setStatus("unconfirmed");
+          // Launched but never presented a pollable window (e.g. Steam
+          // fullscreen-exclusive). Assume success and dismiss quietly rather
+          // than surfacing an error (Decision 2A).
+          setStatus("focused");
+          window.setTimeout(() => {
+            if (mounted.current) done();
+          }, 900);
         }
       } catch {
-        if (mounted.current) setStatus("unconfirmed");
+        // Verify failed outright — still soft-dismiss; the spawn itself succeeded.
+        if (mounted.current) {
+          setStatus("focused");
+          window.setTimeout(() => {
+            if (mounted.current) done();
+          }, 900);
+        }
       }
     })
       .then(fn => { unlistenSuccess = fn; });
@@ -164,6 +192,7 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone }: Launc
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       unlistenSuccess?.();
       unlistenFailed?.();
+      unlistenPhase?.();
     };
   }, []);
 
@@ -175,7 +204,7 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone }: Launc
       ? "rgba(145,255,175,0.95)"
       : "rgba(255,255,255,0.72)";
   const statusText = status === "launching"
-    ? t("launch.launching")
+    ? (phase === "steam" ? t("launch.launchingSteam") : t("launch.launching"))
     : status === "verifying"
       ? t("launch.verifying")
       : status === "focused"

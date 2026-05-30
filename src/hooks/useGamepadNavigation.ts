@@ -844,12 +844,27 @@ export function useGamepadNavigation(
       if (section === "hero") {
         const heroApp = fRecentGames[heroIndexRef.current];
         const heroRunning = !!heroApp && isRunning(heroApp.id);
+        const heroMax = Math.min(fRecentGames.length, 6) - 1;
+        const moveHero = (dir: number) => {
+          const ni = Math.min(Math.max(heroIndexRef.current + dir, 0), heroMax);
+          if (ni === heroIndexRef.current) return;
+          setHeroIndex(ni); heroIndexRef.current = ni;
+          setHeroActionIndex(0); heroActionIndexRef.current = 0;
+        };
         if (heroRunning) {
-          if (key === "ArrowLeft")  { setHeroActionIndex(0); heroActionIndexRef.current = 0; }
-          if (key === "ArrowRight") { setHeroActionIndex(1); heroActionIndexRef.current = 1; }
+          // Running games show two actions: Resume (0) and Close (1). Pressing past
+          // either edge scrolls the carousel so a running game can't trap hero nav.
+          if (key === "ArrowLeft") {
+            if (heroActionIndexRef.current === 1) { setHeroActionIndex(0); heroActionIndexRef.current = 0; }
+            else moveHero(-1);
+          }
+          if (key === "ArrowRight") {
+            if (heroActionIndexRef.current === 0) { setHeroActionIndex(1); heroActionIndexRef.current = 1; }
+            else moveHero(1);
+          }
         } else {
-          if (key === "ArrowLeft")  { const ni = Math.max(heroIndexRef.current - 1, 0); setHeroIndex(ni); heroIndexRef.current = ni; setHeroActionIndex(0); heroActionIndexRef.current = 0; }
-          if (key === "ArrowRight") { const ni = Math.min(heroIndexRef.current + 1, Math.min(fRecentGames.length, 6) - 1); setHeroIndex(ni); heroIndexRef.current = ni; setHeroActionIndex(0); heroActionIndexRef.current = 0; }
+          if (key === "ArrowLeft")  moveHero(-1);
+          if (key === "ArrowRight") moveHero(1);
         }
         if (key === "ArrowUp"   && chainPrev) goTo(chainPrev);
         if (key === "ArrowDown" && chainNext) goTo(chainNext);
