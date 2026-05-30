@@ -3,23 +3,19 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Keep animated hero video decoders warm across in-app Home/Games tab switches.
+**Task:** Fix animated/immersive Home hero visibly bleeding onto non-Home tabs.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- Read `C:\Users\taylo\Downloads\animated-hero-warm-decode.md`.
-- Confirmed the live `HomeView` playback effect still uses `const shouldPlayHero = active && !appPaused && !heroMediaPaused;`, so the proposal anchor is current.
-- Started implementation of the animated hero warm-decoder follow-up.
-- Updated `playActiveHeroVideo` so it no longer refuses playback solely because Home is not the active tab.
-- Updated the main hero playback effect so in-app tab switches do not pause hero videos; launch, blur, alt-tab, and hidden-document pauses still flow through `appPaused` / `heroMediaPaused`.
-- Kept animated GIF/WebP hero media mounted across pause toggles by hiding it with `visibility` instead of unmounting it.
-- Updated `CHANGELOG.md` Unreleased notes.
+- User provided a screenshot showing the animated Home hero still visible on Settings, so the root visibility gate is insufficient in the live WebView path.
+- Started implementation of explicit off-tab visual hiding for fixed/hero HomeView output while preserving warm decoder playback.
+- Found the root cause: hero media elements set their own `visibility: "visible"` when not paused, overriding the hidden Home root while the warm-decoder video kept playing off-tab.
+- Updated animated image/video visibility to require `active && !mediaPaused`, so media pixels hide off-tab while playback remains decoupled from tab activity.
 - Verified `npm run build` passes; Vite still reports the existing large chunk warning.
 
 **Current implementation target:**
-- Decouple hero video playback from the Home tab `active` flag so in-app tab switches do not cold-pause the active decoder.
-- Keep legitimate pause triggers (`appPaused`, `heroMediaPaused`) intact for launch, blur, alt-tab, and hidden-document cases.
-- Keep animated image hero media mounted across pause toggles where applicable.
+- Keep the warm-decoder behavior intact while explicitly hiding animated/immersive Home visuals on non-Home tabs.
+- Avoid touching shared Games/Apps `content-visibility` tab pane behavior.
 - Ready for user verification in the built app.
 
 ---

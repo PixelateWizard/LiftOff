@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Changed
-- **Home tab switch performance** - Home, Games, and Apps now stay mounted across tab switches; inactive Games/Apps panes use `content-visibility: hidden`, Home uses an instant visibility toggle, and animated hero videos stay decoder-warm across in-app tab switches while still pausing for launch, blur, alt-tab, and hidden-window cases.
+- **Home tab switch performance** - Home, Games, and Apps now stay mounted across tab switches; inactive Games/Apps panes use `content-visibility: hidden`, Home uses an instant visibility toggle that also hides immersive fixed hero layers off-tab, and animated hero videos stay decoder-warm across in-app tab switches while still pausing for launch, blur, alt-tab, and hidden-window cases.
 
 ## [2.0.0-alpha.4] - Alpha 4
 

@@ -579,6 +579,7 @@ export function HomeView(props: HomeViewProps) {
               const showAnimatedImage = isAnimatedImageUrl(primaryHeroMedia);
               const staticBanner = rawStaticBanner;
               const mediaPaused = appPaused || heroMediaPaused;
+              const mediaVisible = active && !mediaPaused;
 
               const coverStyle: any = { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" };
               return (
@@ -605,7 +606,7 @@ export function HomeView(props: HomeViewProps) {
                         left: 0,
                         transform: "translateZ(0)",
                         willChange: "opacity",
-                        visibility: mediaPaused ? "hidden" : "visible",
+                        visibility: mediaVisible ? "visible" : "hidden",
                       }}
                     />
                   )}
@@ -633,7 +634,7 @@ export function HomeView(props: HomeViewProps) {
                         objectPosition: "center top",
                         transform: "translateZ(0)",
                         willChange: "opacity",
-                        visibility: mediaPaused ? "hidden" : "visible",
+                        visibility: mediaVisible ? "visible" : "hidden",
                       }}
                     />
                   )}
@@ -1318,6 +1319,7 @@ export function HomeView(props: HomeViewProps) {
 
   return (
     <div
+      data-home-root=""
       ref={scrollRef}
       style={{
         position: "absolute",
