@@ -3,20 +3,19 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Fix animated-image (WebP/GIF) hero flash on tab-switch and launch return.
+**Task:** Fix full-screen SteamGrid art picker edge clipping at scaled UI sizes.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- Added debug tints + console logging to identify what was flashing — confirmed Stray's hero is an animated WebP, not a video. All prior fixes touched the video path and had no effect on it.
-- Root cause: the animated-image `<img>` had its `src` set to `undefined` on pause, forcing a re-decode on return and briefly exposing the static banner beneath.
-- Fix (Change A in `hero-flash-animated-image-fix.md`): `src` is now always `primaryHeroMedia` (never unloaded); `opacity` is a constant `1`. The off-tab Home wrapper being hidden already prevents compositing cost on other tabs.
-- Structural video-path work from prior sessions (intendedVideo gate, heroVideoPlaying hold-last-frame) remains in place and is correct for true `.webm`/`.mp4` heroes.
-- Removed debug console.log and magenta tints.
-- Updated CHANGELOG.md with two separate fix entries (animated-image path and video path).
+- Started SteamGrid art picker clipping follow-up from user screenshot.
+- Updated `SteamGridArtPickerModal` to size its expanded panel against the scaled app viewport using `settings.ui_scale`.
+- Added overlay padding and panel `boxSizing`/overflow bounds so the bottom/right controls remain inside the visible area.
+- Updated `CHANGELOG.md` for the art picker clipping fix.
 - Verified `npm run build` passes; Vite still reports the existing large chunk warning.
+- Verified `git diff --check` passes, with only existing line-ending warnings.
 
 **Current implementation target:**
-- Ready for user verification: Stray (animated WebP) should show no flash on tab-switch-to-Home or post-launch-return.
+- Ready for user verification: the SteamGrid art picker should keep the expanded/full-screen feel without clipping at the bottom or right edge when UI scale is above 1.
 
 ---
 
@@ -698,7 +697,7 @@ Notable merged PRs from Moi that affect current architecture and settings:
 - `.lnk` and other indirect app launches (`child_pid == 0`, `app_type == "app"`) use 1.5s fast-dismiss instead of 15s window watcher — avoids false "Failed" overlays for tray apps and already-running processes
 - Direct `.exe` apps and all games use full window-detection watcher with real success/fail feedback
 - Single library scan on startup; auto-refresh when scan toggles change; manual Refresh Library button
-- Games source sub-tabs hide built-in sources when their scan toggle is off or no installed games exist for that source; All, Other, custom sources, and collections remain available.
+- Games source sub-tabs hide built-in sources when their scan toggle is off or no installed games exist for that source; Other also hides when no visible games exist outside built-in/custom sources; All, custom sources, and collections remain available.
 - Blocking overlay modal during library refresh
 - UWP/desktop/Steam icon extraction via `DrawIconEx` at 128px with jumbo/large fallback
 - No console window flash on launch (CREATE_NO_WINDOW everywhere)

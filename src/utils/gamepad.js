@@ -64,6 +64,44 @@ export function readGpState(gp) {
   };
 }
 
+export function shouldHandleDirectionRepeat(
+  key,
+  state,
+  lastState,
+  now,
+  pressTime,
+  repeating,
+  initialDelay = 350,
+  repeatDelay = 100,
+) {
+  const pressed = !!state[key];
+  const wasPressed = !!lastState[key];
+
+  if (pressed && !wasPressed) {
+    pressTime[key] = now;
+    repeating[key] = false;
+    return true;
+  }
+
+  if (pressed && wasPressed) {
+    const held = now - (pressTime[key] || now);
+    if (!repeating[key] && held >= initialDelay) {
+      repeating[key] = true;
+      pressTime[key] = now;
+      return true;
+    }
+    if (repeating[key] && held >= repeatDelay) {
+      pressTime[key] = now;
+      return true;
+    }
+  } else if (!pressed && wasPressed) {
+    pressTime[key] = 0;
+    repeating[key] = false;
+  }
+
+  return false;
+}
+
 // Detect controller platform from gamepad ID string
 export function detectPlatform(gpId) {
   const id = (gpId || "").toLowerCase();

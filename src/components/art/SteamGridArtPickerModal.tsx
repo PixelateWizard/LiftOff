@@ -3,9 +3,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CSSProperties } from "react";
 import type { AccentColors, App, ThemeColors, RepeatSpeed } from "../../types";
-import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
 import { ThumbnailCard, type SgdbArtResult } from "./ThumbnailCard";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useSettings } from "../../contexts/SettingsContext";
 
 type ArtType = "grid" | "hero";
 type CropMode = "portrait" | "square" | "hero";
@@ -294,6 +295,8 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
   const pendingDataRef = useRef<string | null>(null);
   const focusedBtnRef = useRef("browse");
   const lastBtnRef = useRef<Partial<GpState>>({});
+  const pressTimeRef = useRef<Record<string, number>>({});
+  const repeatingRef = useRef<Record<string, boolean>>({});
 
   const getButtons = () => {
     const btns = ["browse"];
@@ -358,18 +361,18 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
     if (gp0) lastBtnRef.current = readGpState(gp0);
 
     let rAFId = 0;
-    const poll = () => {
+    const poll = (now: number) => {
       const gp = getBestGamepad();
       if (gp) {
         const state = readGpState(gp);
         const btns = getButtons();
 
-        if (state.ArrowDown && !lastBtnRef.current.ArrowDown) {
+        if (shouldHandleDirectionRepeat("ArrowDown", state, lastBtnRef.current, now, pressTimeRef.current, repeatingRef.current)) {
           const i = btns.indexOf(focusedBtnRef.current);
           const next = btns[Math.min(i + 1, btns.length - 1)];
           if (next !== focusedBtnRef.current) { setFocusedBtn(next); focusedBtnRef.current = next; }
         }
-        if (state.ArrowUp && !lastBtnRef.current.ArrowUp) {
+        if (shouldHandleDirectionRepeat("ArrowUp", state, lastBtnRef.current, now, pressTimeRef.current, repeatingRef.current)) {
           const i = btns.indexOf(focusedBtnRef.current);
           const next = btns[Math.max(i - 1, 0)];
           if (next !== focusedBtnRef.current) { setFocusedBtn(next); focusedBtnRef.current = next; }
@@ -432,6 +435,10 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
 export function SteamGridArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "portrait", artType = "grid", repeatSpeed = "normal", accent, theme, isDark, glass, surfaceStyle = "glass", onClose, onSet, onReset }: ArtPickerProps) {
   const { t } = useTranslation();
   const { surface } = useTheme();
+  const { settings } = useSettings();
+  const uiScale = settings.ui_scale ?? 1;
+  const scaledViewportW = `${100 / uiScale}vw`;
+  const scaledViewportH = `${100 / uiScale}vh`;
   const isPixel = surfaceStyle === "win9x";
   const pixelShell = isPixel ? {
     background: surface.panelBg,
@@ -475,8 +482,8 @@ export function SteamGridArtPickerModal({ app, currentArt, hasCustomArt, cropMod
   });
 
   return (
-    <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }}>
-      <div data-modal="" style={{ ...glass, borderRadius: isPixel ? 0 : surfaceStyle === "material" ? 16 : 24, padding: isPixel ? 0 : 20, width: "min(860px, 92vw)", height: "min(600px, 85vh)", display: "flex", flexDirection: "column",
+    <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 24, boxSizing: "border-box" }}>
+      <div data-modal="" style={{ ...glass, borderRadius: isPixel ? 0 : surfaceStyle === "material" ? 16 : 24, padding: isPixel ? 0 : 20, width: `calc(${scaledViewportW} - 48px)`, height: `calc(${scaledViewportH} - 48px)`, maxWidth: `calc(${scaledViewportW} - 48px)`, maxHeight: `calc(${scaledViewportH} - 48px)`, boxSizing: "border-box", display: "flex", flexDirection: "column", overflow: "hidden",
         border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.4)`, fontFamily: "'Segoe UI', sans-serif", ...pixelShell }}>
         {isPixel && (
           <div style={{ margin: 3, height: 22, padding: "0 5px 0 7px", boxSizing: "border-box", background: surface.titleBarBg, borderBottom: surface.titleBarBorder, color: surface.titleBarText, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>

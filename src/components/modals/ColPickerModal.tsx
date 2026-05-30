@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
 import ModalShell from "./ModalShell";
 import GamepadKeyboard from "../GamepadKeyboard";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -46,9 +46,11 @@ export default function ColPickerModal({ app, collections, memberships, onToggle
 
   useEffect(() => {
     const last: Partial<GpState> = {};
+    const pressTime: Record<string, number> = {};
+    const repeating: Record<string, boolean> = {};
     let rafId: number;
     let suppressFrames = 20;
-    const poll = () => {
+    const poll = (now: number) => {
       if (suppressFrames > 0) { suppressFrames--; rafId = requestAnimationFrame(poll); return; }
       if (showKbRef.current) {
         const gp = getBestGamepad();
@@ -59,11 +61,11 @@ export default function ColPickerModal({ app, collections, memberships, onToggle
       if (gp) {
         const state = readGpState(gp);
         const total = totalRows();
-        if (state.ArrowDown && !last.ArrowDown) {
+        if (shouldHandleDirectionRepeat("ArrowDown", state, last, now, pressTime, repeating)) {
           const next = Math.min(focusIdxRef.current + 1, total - 1);
           setFocusIdx(next); focusIdxRef.current = next;
         }
-        if (state.ArrowUp && !last.ArrowUp) {
+        if (shouldHandleDirectionRepeat("ArrowUp", state, last, now, pressTime, repeating)) {
           const next = Math.max(focusIdxRef.current - 1, 0);
           setFocusIdx(next); focusIdxRef.current = next;
         }

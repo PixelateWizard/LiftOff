@@ -767,12 +767,19 @@ export default function App() {
   };
   handleClearRecentsRef.current = handleClearRecents;
 
+  const isOtherGameSource = (a) =>
+    a.app_type === "game"
+    && a.source !== "steam"
+    && a.source !== "xbox"
+    && a.source !== "battlenet"
+    && !customSources.includes(a.source);
+
   const gamesFilteredApps = useMemo(() => apps.filter((a) => {
     if (a.app_type !== "game") return false;
     if (gameSourceTab === "Steam") return a.source === "steam";
     if (gameSourceTab === "Xbox")  return a.source === "xbox";
     if (gameSourceTab === "Battle.net")  return a.source === "battlenet";
-    if (gameSourceTab === "Other") return a.source !== "steam" && a.source !== "xbox" && a.source !== "battlenet" && !customSources.includes(a.source);
+    if (gameSourceTab === "Other") return isOtherGameSource(a);
     if (customSources.includes(gameSourceTab)) return a.source === gameSourceTab;
     const gameCol = gameCollections.find(c => c.name === gameSourceTab);
     if (gameCol) return (gameMemberships[a.id] || []).includes(gameCol.id);
@@ -1198,18 +1205,19 @@ export default function App() {
   const _showSteam     = settings.scan_steam     !== false && _hasSource("steam");
   const _showXbox      = settings.scan_xbox      !== false && _hasSource("xbox");
   const _showBattlenet = settings.scan_battlenet !== false && _hasSource("battlenet");
+  const _showOther     = apps.some(isOtherGameSource);
   const _hdrSources = [
     "All",
     ...(_showSteam     ? ["Steam"]      : []),
     ...(_showXbox      ? ["Xbox"]       : []),
     ...(_showBattlenet ? ["Battle.net"] : []),
-    "Other",
+    ...(_showOther     ? ["Other"]      : []),
     ...customSources,
     ...gameCollections.map(c => c.name),
   ];
   const _hdrSourceKey = _hdrSources.join("|");
   useEffect(() => {
-    if (!_hdrSources.includes(gameSourceTab)) {
+    if (!_hdrSources.includes(gameSourceTab) || !_hdrSources.includes(gameSourceTabRef.current)) {
       setGameSourceTab("All");
       gameSourceTabRef.current = "All";
       setSubtabFocusIndex(0);

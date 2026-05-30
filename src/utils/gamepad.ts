@@ -15,6 +15,9 @@ export interface GpState {
   Start: boolean;
 }
 
+export const GAMEPAD_DIRECTION_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
+export type GamepadDirectionKey = typeof GAMEPAD_DIRECTION_KEYS[number];
+
 export function getBestGamepad(): Gamepad | null {
   const gps = Array.from(navigator.getGamepads()).filter((g): g is Gamepad => g !== null);
   return (
@@ -90,6 +93,44 @@ export function readGpState(gp: Gamepad): GpState {
     Select:       btn(8),
     Start:        btn(9),
   };
+}
+
+export function shouldHandleDirectionRepeat(
+  key: GamepadDirectionKey,
+  state: Partial<GpState>,
+  lastState: Partial<GpState>,
+  now: number,
+  pressTime: Record<string, number>,
+  repeating: Record<string, boolean>,
+  initialDelay = 350,
+  repeatDelay = 100,
+): boolean {
+  const pressed = !!state[key];
+  const wasPressed = !!lastState[key];
+
+  if (pressed && !wasPressed) {
+    pressTime[key] = now;
+    repeating[key] = false;
+    return true;
+  }
+
+  if (pressed && wasPressed) {
+    const held = now - (pressTime[key] || now);
+    if (!repeating[key] && held >= initialDelay) {
+      repeating[key] = true;
+      pressTime[key] = now;
+      return true;
+    }
+    if (repeating[key] && held >= repeatDelay) {
+      pressTime[key] = now;
+      return true;
+    }
+  } else if (!pressed && wasPressed) {
+    pressTime[key] = 0;
+    repeating[key] = false;
+  }
+
+  return false;
 }
 
 export function detectPlatform(gpId: string): "ps" | "switch" | "xbox" | null {

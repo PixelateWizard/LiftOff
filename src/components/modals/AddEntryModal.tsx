@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import GamepadKeyboard from "../GamepadKeyboard";
 import ModalShell from "./ModalShell";
-import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
 import { useTheme } from "../../contexts/ThemeContext";
 import type { CSSProperties } from "react";
 
@@ -118,11 +118,13 @@ export default function AddEntryModal({
 
   useEffect(() => {
     const last: Partial<GpState> = {};
+    const pressTime: Record<string, number> = {};
+    const repeating: Record<string, boolean> = {};
     let rafId: number;
     let suppressFrames = 20;
     const FIRST = isFolderMode ? SECTION_PICKER : SECTION_NAME;
 
-    const poll = () => {
+    const poll = (now: number) => {
       if (suppressFrames > 0) { suppressFrames--; rafId = requestAnimationFrame(poll); return; }
       const gp = getBestGamepad();
       const state: Partial<GpState> = gp ? readGpState(gp) : {};
@@ -132,12 +134,12 @@ export default function AddEntryModal({
         if (state.Escape && !last.Escape) { onClose(); }
         if (state.Start  && !last.Start)  { confirmFnRef.current(); }
 
-        if (state.ArrowDown && !last.ArrowDown && gpSectionRef.current < SECTION_PICKER) {
+        if (shouldHandleDirectionRepeat("ArrowDown", state, last, now, pressTime, repeating) && gpSectionRef.current < SECTION_PICKER) {
           const next = gpSectionRef.current + 1;
           setGpSection(next); gpSectionRef.current = next;
           nameRef.current?.blur();
         }
-        if (state.ArrowUp && !last.ArrowUp && gpSectionRef.current > FIRST) {
+        if (shouldHandleDirectionRepeat("ArrowUp", state, last, now, pressTime, repeating) && gpSectionRef.current > FIRST) {
           const next = gpSectionRef.current - 1;
           setGpSection(next); gpSectionRef.current = next;
           if (next === SECTION_NAME) nameRef.current?.focus();
@@ -153,12 +155,12 @@ export default function AddEntryModal({
             const v: PickerOption = opt.kind === "new" ? { kind: "new" } : opt;
             setPicked(v); pickedRef.current = v;
           };
-          if (state.ArrowRight && !last.ArrowRight) {
+          if (shouldHandleDirectionRepeat("ArrowRight", state, last, now, pressTime, repeating)) {
             const next = Math.min(gpPickIdxRef.current + 1, opts.length - 1);
             setGpPickIdx(next); gpPickIdxRef.current = next;
             setOpt(opts[next]);
           }
-          if (state.ArrowLeft && !last.ArrowLeft) {
+          if (shouldHandleDirectionRepeat("ArrowLeft", state, last, now, pressTime, repeating)) {
             const next = Math.max(gpPickIdxRef.current - 1, 0);
             setGpPickIdx(next); gpPickIdxRef.current = next;
             setOpt(opts[next]);

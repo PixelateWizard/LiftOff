@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AccentColors, App } from "../../types";
-import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
 
 type LaunchStatus = "launching" | "verifying" | "focused" | "running_unfocused" | "unconfirmed" | "failed";
 type FocusedAction = "focus" | "dismiss";
@@ -23,6 +23,8 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone }: Launc
   const [focusedAction, setFocusedAction] = useState<FocusedAction>("dismiss");
   const rafRef = useRef<number | null>(null);
   const lastGp = useRef<Partial<GpState>>({});
+  const pressTimeRef = useRef<Record<string, number>>({});
+  const repeatingRef = useRef<Record<string, boolean>>({});
   const mounted = useRef(true);
   const statusRef = useRef(status);
   const focusedActionRef = useRef(focusedAction);
@@ -101,7 +103,7 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone }: Launc
     window.addEventListener("keydown", handleKey);
 
     let suppressFrames = 10;
-    const poll = () => {
+    const poll = (now: number) => {
       const gp = getBestGamepad();
       if (gp) {
         const state = readGpState(gp);
@@ -117,8 +119,12 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone }: Launc
               : [];
 
           if (actions.length > 0) {
-            const movedPrev = (state.ArrowLeft && !lastGp.current.ArrowLeft) || (state.ArrowUp && !lastGp.current.ArrowUp);
-            const movedNext = (state.ArrowRight && !lastGp.current.ArrowRight) || (state.ArrowDown && !lastGp.current.ArrowDown);
+            const movedLeft = shouldHandleDirectionRepeat("ArrowLeft", state, lastGp.current, now, pressTimeRef.current, repeatingRef.current);
+            const movedUp = shouldHandleDirectionRepeat("ArrowUp", state, lastGp.current, now, pressTimeRef.current, repeatingRef.current);
+            const movedRight = shouldHandleDirectionRepeat("ArrowRight", state, lastGp.current, now, pressTimeRef.current, repeatingRef.current);
+            const movedDown = shouldHandleDirectionRepeat("ArrowDown", state, lastGp.current, now, pressTimeRef.current, repeatingRef.current);
+            const movedPrev = movedLeft || movedUp;
+            const movedNext = movedRight || movedDown;
             if (movedPrev || movedNext) {
               const i = Math.max(0, actions.indexOf(focusedActionRef.current));
               const next = movedPrev

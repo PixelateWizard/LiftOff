@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CSSProperties } from "react";
 import type { AccentColors, App, ThemeColors } from "../../types";
-import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
 import { useTheme } from "../../contexts/ThemeContext";
 
 type CropMode = "portrait" | "square";
@@ -41,6 +41,8 @@ export function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "port
   const pendingDataRef = useRef<string | null>(null);
   const focusedBtnRef = useRef("browse");
   const lastBtnRef = useRef<Partial<GpState>>({});
+  const pressTimeRef = useRef<Record<string, number>>({});
+  const repeatingRef = useRef<Record<string, boolean>>({});
 
   const getButtons = () => {
     const btns = ["browse"];
@@ -100,18 +102,18 @@ export function ArtPickerModal({ app, currentArt, hasCustomArt, cropMode = "port
 
   useEffect(() => {
     let rAFId = 0;
-    const poll = () => {
+    const poll = (now: number) => {
       const gp = getBestGamepad();
       if (gp) {
         const state = readGpState(gp);
         const btns = getButtons();
 
-        if (state.ArrowDown && !lastBtnRef.current.ArrowDown) {
+        if (shouldHandleDirectionRepeat("ArrowDown", state, lastBtnRef.current, now, pressTimeRef.current, repeatingRef.current)) {
           const i = btns.indexOf(focusedBtnRef.current);
           const next = btns[Math.min(i + 1, btns.length - 1)];
           if (next !== focusedBtnRef.current) { setFocusedBtn(next); focusedBtnRef.current = next; }
         }
-        if (state.ArrowUp && !lastBtnRef.current.ArrowUp) {
+        if (shouldHandleDirectionRepeat("ArrowUp", state, lastBtnRef.current, now, pressTimeRef.current, repeatingRef.current)) {
           const i = btns.indexOf(focusedBtnRef.current);
           const next = btns[Math.max(i - 1, 0)];
           if (next !== focusedBtnRef.current) { setFocusedBtn(next); focusedBtnRef.current = next; }

@@ -508,6 +508,12 @@ export function useGamepadNavigation(
         ? Math.max(1, settingsRef.current.app_list_cols ?? 1)
         : Math.max(2, Math.round(COLS / (settingsRef.current.app_cover_scale ?? 1.0)));
     const currentSettings = settingsRef.current;
+    const isOtherGameSource = (app: App) =>
+      app.app_type === "game"
+      && app.source !== "steam"
+      && app.source !== "xbox"
+      && app.source !== "battlenet"
+      && !customSourcesRef.current.includes(app.source);
     const getGameSourceTabs = () => {
       const hasSource = (source: string) => appsRef.current.some(a => a.app_type === "game" && a.source === source);
       return [
@@ -515,7 +521,7 @@ export function useGamepadNavigation(
         ...(currentSettings.scan_steam !== false && hasSource("steam") ? ["Steam"] : []),
         ...(currentSettings.scan_xbox !== false && hasSource("xbox") ? ["Xbox"] : []),
         ...(currentSettings.scan_battlenet !== false && hasSource("battlenet") ? ["Battle.net"] : []),
-        "Other",
+        ...(appsRef.current.some(isOtherGameSource) ? ["Other"] : []),
         ...customSourcesRef.current,
         ...gameCollectionsRef.current.map(c => c.name),
       ];
@@ -529,7 +535,7 @@ export function useGamepadNavigation(
         if (src === "Steam") return a.source === "steam";
         if (src === "Xbox")  return a.source === "xbox";
         if (src === "Battle.net")  return a.source === "battlenet";
-        if (src === "Other") return a.source !== "steam" && a.source !== "xbox" && a.source !== "battlenet" && !customSourcesRef.current.includes(a.source);
+        if (src === "Other") return isOtherGameSource(a);
         if (customSourcesRef.current.includes(src)) return a.source === src;
         const gameCol = gameCollectionsRef.current.find(c => c.name === src);
         if (gameCol) return (gameMembershipsRef.current[a.id] || []).includes(gameCol.id);
@@ -877,8 +883,12 @@ export function useGamepadNavigation(
     // LT/RT cycle source sub-tabs on Games tab (from anywhere)
     if (currentTab === "Games") {
       const SOURCES = getGameSourceTabs();
-      if (key === "TriggerLeft") {
+      const currentSourceIndex = () => {
         const cur = SOURCES.indexOf(gameSourceTabRef.current);
+        return cur >= 0 ? cur : 0;
+      };
+      if (key === "TriggerLeft") {
+        const cur = currentSourceIndex();
         const next = SOURCES[(cur - 1 + SOURCES.length) % SOURCES.length];
         setGameSourceTab(next); gameSourceTabRef.current = next;
         const hasPinned = next === "All" && pinsRef.current.length > 0 && pinsRef.current.some(id => appsRef.current.find(a => a.id === id));
@@ -887,7 +897,7 @@ export function useGamepadNavigation(
         playSound(); return;
       }
       if (key === "TriggerRight") {
-        const cur = SOURCES.indexOf(gameSourceTabRef.current);
+        const cur = currentSourceIndex();
         const next = SOURCES[(cur + 1) % SOURCES.length];
         setGameSourceTab(next); gameSourceTabRef.current = next;
         const hasPinned = next === "All" && pinsRef.current.length > 0 && pinsRef.current.some(id => appsRef.current.find(a => a.id === id));
@@ -931,14 +941,22 @@ export function useGamepadNavigation(
     };
 
     if (section === "subtabs") {
+      const currentSubtabIndex = Math.min(
+        Math.max(subtabFocusIndexRef.current, 0),
+        subtabItems.length - 1
+      );
+      if (currentSubtabIndex !== subtabFocusIndexRef.current) {
+        setSubtabFocusIndex(currentSubtabIndex);
+        subtabFocusIndexRef.current = currentSubtabIndex;
+      }
       if (key === "ArrowRight") {
-        const ni = Math.min(subtabFocusIndexRef.current + 1, subtabItems.length - 1);
+        const ni = Math.min(currentSubtabIndex + 1, subtabItems.length - 1);
         setSubtabFocusIndex(ni); subtabFocusIndexRef.current = ni;
         switchSubtabItem(subtabItems[ni]);
         playSound();
       }
       else if (key === "ArrowLeft") {
-        const ni = Math.max(subtabFocusIndexRef.current - 1, 0);
+        const ni = Math.max(currentSubtabIndex - 1, 0);
         setSubtabFocusIndex(ni); subtabFocusIndexRef.current = ni;
         switchSubtabItem(subtabItems[ni]);
         playSound();

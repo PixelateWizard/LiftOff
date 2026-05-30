@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IoPower, IoRefresh } from "react-icons/io5";
-import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
 import { useTheme } from "../../contexts/ThemeContext";
 import ModalShell from "./ModalShell";
 
@@ -70,10 +70,12 @@ export default function PowerModal({ onClose, onRestartApp, onExitApp }: PowerMo
 
     let rafId: number;
     const last: Partial<GpState> = {};
+    const pressTime: Record<string, number> = {};
+    const repeating: Record<string, boolean> = {};
     let enterReleased = false;
     let escapeReleased = false;
 
-    const poll = () => {
+    const poll = (now: number) => {
       if (closed) return;
       const gp = getBestGamepad();
       if (gp) {
@@ -88,7 +90,11 @@ export default function PowerModal({ onClose, onRestartApp, onExitApp }: PowerMo
         (Object.keys(state) as (keyof GpState)[]).forEach((key) => {
           const pressed = state[key];
           const wasPressed = last[key];
-          if (pressed && !wasPressed) handle(key);
+          if (key === "ArrowDown" || key === "ArrowUp" || key === "ArrowLeft" || key === "ArrowRight") {
+            if (shouldHandleDirectionRepeat(key, state, last, now, pressTime, repeating)) handle(key);
+          } else if (pressed && !wasPressed) {
+            handle(key);
+          }
           last[key] = pressed;
         });
       }

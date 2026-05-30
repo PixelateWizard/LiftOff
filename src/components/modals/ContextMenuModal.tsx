@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
 import ModalShell from "./ModalShell";
 import { useTheme } from "../../contexts/ThemeContext";
 import type { App } from "../../types";
@@ -29,18 +29,20 @@ export default function ContextMenuModal({ app, items, onClose }: Props) {
 
   useEffect(() => {
     const last: Partial<GpState> = {};
+    const pressTime: Record<string, number> = {};
+    const repeating: Record<string, boolean> = {};
     let rafId: number;
     let suppressFrames = 20;
-    const poll = () => {
+    const poll = (now: number) => {
       if (suppressFrames > 0) { suppressFrames--; rafId = requestAnimationFrame(poll); return; }
       const gp = getBestGamepad();
       if (gp) {
         const state = readGpState(gp);
-        if (state.ArrowDown && !last.ArrowDown) {
+        if (shouldHandleDirectionRepeat("ArrowDown", state, last, now, pressTime, repeating)) {
           const next = Math.min(focusIdxRef.current + 1, itemsRef.current.length - 1);
           setFocusIdx(next); focusIdxRef.current = next;
         }
-        if (state.ArrowUp && !last.ArrowUp) {
+        if (shouldHandleDirectionRepeat("ArrowUp", state, last, now, pressTime, repeating)) {
           const next = Math.max(focusIdxRef.current - 1, 0);
           setFocusIdx(next); focusIdxRef.current = next;
         }
