@@ -82,6 +82,7 @@ export function HomeView(props: HomeViewProps) {
   } = props;
   const { surface, resolvedTheme } = useTheme();
   const [heroMediaPaused, setHeroMediaPaused] = useState(false);
+  const [heroVideoPlaying, setHeroVideoPlaying] = useState<Record<string, boolean>>({});
   const semiSlotRef = useRef<HTMLDivElement>(null);
   const BOTTOM_BAR_H = settings.hide_bottom_bar ? 0 : 48;
   const semiHomeBase = Math.round(110 * (settings.home_cover_scale ?? 1.0));
@@ -595,8 +596,8 @@ export function HomeView(props: HomeViewProps) {
                         top: 0,
                         left: 0,
                         transform: "translateZ(0)",
-                        willChange: "opacity",
-                        visibility: mediaVisible ? "visible" : "hidden",
+                        opacity: mediaVisible ? 1 : 0,
+                        transition: "opacity 0.25s ease",
                       }}
                     />
                   )}
@@ -608,12 +609,19 @@ export function HomeView(props: HomeViewProps) {
                           requestAnimationFrame(() => playActiveHeroVideo(el, game.id));
                         } else {
                           delete heroVideoRefs.current[game.id];
+                          setHeroVideoPlaying(prev => {
+                            if (!(game.id in prev)) return prev;
+                            const next = { ...prev }; delete next[game.id]; return next;
+                          });
                         }
                       }}
                       src={primaryHeroMedia}
                       autoPlay={isActive && !mediaPaused}
                       onCanPlay={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
                       onLoadedData={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
+                      onPlaying={() => setHeroVideoPlaying(prev => prev[game.id] ? prev : { ...prev, [game.id]: true })}
+                      onPause={() => setHeroVideoPlaying(prev => prev[game.id] ? { ...prev, [game.id]: false } : prev)}
+                      onEmptied={() => setHeroVideoPlaying(prev => prev[game.id] ? { ...prev, [game.id]: false } : prev)}
                       loop muted playsInline preload={isNearby ? "auto" : "none"}
                       style={{
                         position: "absolute",
@@ -623,7 +631,10 @@ export function HomeView(props: HomeViewProps) {
                         objectFit: "cover",
                         objectPosition: "center top",
                         transform: "translateZ(0)",
-                        visibility: mediaVisible ? "visible" : "hidden",
+                        // Only fully visible once actually playing — prevents static banner showing through during decode.
+                        opacity: (mediaVisible && heroVideoPlaying[game.id]) ? 1 : 0,
+                        transition: "opacity 0.25s ease",
+                        pointerEvents: "none",
                       }}
                     />
                   )}

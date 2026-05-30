@@ -2,15 +2,6 @@
 
 ## Unreleased
 
-### Changed
-- **Home tab switch performance** - Home, Games, and Apps now stay mounted across tab switches; inactive Games/Apps panes use `content-visibility: hidden`, inactive Home stays mounted at near-transparent opacity so theme effects can keep showing behind translucent tabs, and animated hero media now pauses off Home to avoid decoder/compositor work during non-Home scrolling while still pausing for launch, blur, alt-tab, and hidden-window cases.
-- **Home hero cycling performance** - hero carousel video playback now has a single pause owner, immediate-neighbor prebuffering, and one-shot playback recovery instead of repeated retry intervals during every carousel step.
-
-### Fixed
-- **Animated hero off-tab stutter** - animated Home hero video and GIF/WebP media now pause whenever Home is not the active tab, preventing hidden hero playback from competing with Games/Apps repeat scrolling.
-- **Video hero load gap** - video-backed heroes now use the active theme background during tab transitions and first-frame gaps instead of briefly flashing a static banner or blurred cover.
-- **Settings stick-repeat scrolling** - repeated stick navigation in Settings now uses the active tab scroller directly and avoids stacking smooth scroll requests at list edges.
-
 ## [2.0.0-alpha.4] - Alpha 4
 
 ### Added
@@ -21,7 +12,8 @@
 ### Changed
 - **Alpha versioning and installer target** - bumped the app to `2.0.0-alpha.4` and switched Tauri bundling to NSIS-only so prerelease SemVer can be used without MSI/WiX version errors.
 - **Game source tabs** - Steam, Xbox, and Battle.net source tabs now appear only when their scan toggle is enabled and at least one installed game from that source exists; hidden/removed active filters fall back to All.
-- **Home tab switch performance** - Games and Apps now stay mounted behind inactive tab panes to reduce switching delay when returning to Home, while inactive panes use private refs and memoized library content so they do not steal active gamepad scroll/focus ownership or rebuild full grids unnecessarily.
+- **Home tab switch performance** - Home, Games, and Apps now stay mounted across tab switches; inactive Games/Apps panes use `content-visibility: hidden`, inactive Home stays mounted at near-transparent opacity so theme effects can keep showing behind translucent tabs, and animated hero media now pauses off Home to avoid decoder/compositor work during non-Home scrolling while still pausing for launch, blur, alt-tab, and hidden-window cases.
+- **Home hero cycling performance** - hero carousel video playback now has a single pause owner, immediate-neighbor prebuffering, and one-shot playback recovery instead of repeated retry intervals during every carousel step.
 - **Splash long-wait timing** - the "Still working" splash message now appears only after the final regular status label has been visible for 8 seconds, instead of 8 seconds after splash mount.
 
 ### Bug Fixes
@@ -30,6 +22,10 @@
 - **Broken game cover fallback** - failed custom or cached game cover URLs now fall back to the accent placeholder cover instead of showing a broken image icon.
 - **Horizontal grid browse stability** - moving left/right within the same game grid row no longer applies vertical scroll correction, preventing the view from wiggling during lateral browsing.
 - **Animated hero startup stability** - active hero videos now keep retrying playback while active, use a real static hero layer under animated media when available, and avoid a startup focus-poll false negative that could hide animated heroes behind a blurred fallback until the app was refocused.
+- **Animated hero off-tab stutter** - animated Home hero video and GIF/WebP media now pause whenever Home is not the active tab, preventing hidden hero playback from competing with Games/Apps repeat scrolling.
+- **Video hero static flash** - video-backed heroes now fade in via opacity only once the video element is actually playing, eliminating the brief flash of the static banner that showed through during the decode gap when entering or leaving Home.
+- **Video hero load gap** - video-backed heroes now use the active theme background during tab transitions and first-frame gaps instead of briefly flashing a static banner or blurred cover.
+- **Settings stick-repeat scrolling** - repeated stick navigation in Settings now uses the active tab scroller directly and avoids stacking smooth scroll requests at list edges.
 
 ## [2.0.0-alpha.3] - Alpha 3
 

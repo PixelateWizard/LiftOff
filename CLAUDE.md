@@ -3,25 +3,21 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Remove static backup flash during video hero tab transitions.
+**Task:** Eliminate static hero banner flash when entering/leaving Home for video heroes.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- User confirmed hero carousel cycling feels noticeably smoother after the previous pass.
-- User reported tab switching to/from Home still flashes the static backup hero before the video hero paints.
-- Inspected current `HomeView` video load-gap logic and confirmed the video intent check is still URL/paint-path sensitive.
-- Updated the video-intent check to treat an animated hero URL that is not GIF/WebP as video-intended before the first frame paints.
-- Kept GIF/WebP animated-image handling on the image path so static/animated-image heroes remain visually unchanged.
-- Updated `CHANGELOG.md` Unreleased notes for the tab-transition load-gap fix.
+- Implemented `hero-static-flash-fix.md` design doc in `src/views/HomeView.tsx`:
+  - Added `heroVideoPlaying` state (`Record<string, boolean>`) to track per-id actual playback.
+  - Replaced hard `visibility` toggle on `<video>` with opacity gated on `onPlaying`; video only reaches `opacity: 1` after the `playing` event fires, so the static banner beneath is never exposed during the decode gap.
+  - Added `onPause`/`onEmptied` handlers that clear the playing flag (video fades to 0 on pause).
+  - Cleaned up stale entry from `heroVideoPlaying` in the ref unmount path.
+  - Switched animated-image (GIF/WebP) `<img>` from `visibility` to `opacity + transition` for consistency.
+  - Added entry to `CHANGELOG.md` Unreleased → Fixed section.
 - Verified `npm run build` passes; Vite still reports the existing large chunk warning.
-- Verified `git diff --check` passes; Git still reports the existing CRLF normalization warnings for touched files.
 
 **Current implementation target:**
-- Treat heroes with an animated URL in animated/custom mode as video-intended before the video frame paints, unless the URL is GIF/WebP.
-- Keep static heroes unchanged.
-- Keep animated-image GIF/WebP behavior unchanged except for existing pause/src removal.
-- Ensure video-intended heroes skip static backup art and use a transparent shell during tab transitions.
-- Ready for user/device verification that Home tab transitions show the app background rather than static backup art before video first paint.
+- Ready for user verification: navigate to Home for a video hero, navigate away, navigate back — no static banner flash should appear at any point.
 
 ---
 
