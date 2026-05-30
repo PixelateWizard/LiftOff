@@ -725,7 +725,7 @@ export function SettingsScreen({
       return (
         <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={() => {
           if (updateStatus === "available")
-            invoke("launch_app", { path: (settings.update_channel ?? "stable") === "prerelease" ? `https://github.com/${GITHUB_REPO}/releases` : `https://github.com/${GITHUB_REPO}/releases/latest`, id: "releases", name: "LiftOff Releases", appType: "app", runAsAdmin: false }).catch(() => {});
+            invoke("launch_app", { path: (settings.update_channel ?? "stable") === "prerelease" ? `https://github.com/${GITHUB_REPO}/releases` : `https://github.com/${GITHUB_REPO}/releases/latest`, id: "releases", name: "LiftOff Releases", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
           else checkForUpdates();
         }}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
@@ -738,9 +738,9 @@ export function SettingsScreen({
     if (item.type === "link")
       return (
         <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={() => {
-          if (item.key === "coffee")  invoke("launch_app", { path: "https://buymeacoffee.com/liftoff_handheld_launcher", id: "coffee", name: "Buy Me a Coffee", appType: "app", runAsAdmin: false }).catch(() => {});
-          if (item.key === "github")  invoke("launch_app", { path: "https://github.com/PixelateWizard/LiftOff", id: "github", name: "GitHub", appType: "app", runAsAdmin: false }).catch(() => {});
-          if (item.key === "discord") invoke("launch_app", { path: "https://discord.gg/F5ncP75WtD", id: "discord", name: "Discord", appType: "app", runAsAdmin: false }).catch(() => {});
+          if (item.key === "coffee")  invoke("launch_app", { path: "https://buymeacoffee.com/liftoff_handheld_launcher", id: "coffee", name: "Buy Me a Coffee", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
+          if (item.key === "github")  invoke("launch_app", { path: "https://github.com/PixelateWizard/LiftOff", id: "github", name: "GitHub", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
+          if (item.key === "discord") invoke("launch_app", { path: "https://discord.gg/F5ncP75WtD", id: "discord", name: "Discord", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
         }}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <span style={{ fontSize: 12, color: theme.textDim }}>{t("settings.status.open")}</span>
@@ -751,7 +751,7 @@ export function SettingsScreen({
     if (item.type === "attribution")
       return (
         <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={() => {
-          if (item.url) invoke("launch_app", { path: item.url, id: item.key, name: item.label, appType: "app", runAsAdmin: false }).catch(() => {});
+          if (item.url) invoke("launch_app", { path: item.url, id: item.key, name: item.label, appType: "app", source: "", runAsAdmin: false }).catch(() => {});
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ fontSize: 13, fontWeight: 500, color: theme.text }}>{item.label}</span>

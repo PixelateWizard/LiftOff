@@ -49,6 +49,7 @@ import { useStartupBootstrap } from "./hooks/useStartupBootstrap";
 import { useSystemStatus } from "./hooks/useSystemStatus";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { useAppFocusPause } from "./hooks/useAppFocusPause";
+import { useRunningApps } from "./hooks/useRunningApps";
 import { detectPlatform } from "./utils/gamepad";
 import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO,
@@ -67,6 +68,7 @@ export default function App() {
   const [heroCustomType, setHeroCustomType]         = usePersistentJson("liftoff_heroCustomType", {});
   const [cacheClearLoading, setCacheClearLoading]   = useState(false);
   const [cacheClearStatus, setCacheClearStatus]     = useState({ line1: "", line2: "" });
+  const [closeRequest, setCloseRequest]             = useState(null);
   const [sliderDraft, setSliderDraft] = useState({ key: null, value: null });
   const sliderDraftRef = useRef({ key: null, value: null });
   const [homeHiddenCollections, setHomeHiddenCollections] = useState(() => {
@@ -96,6 +98,7 @@ export default function App() {
   const handleClearCacheRef   = useRef(null);
   const handleClearRecentsRef = useRef(null);
   const toggleHomeCollectionRef = useRef(null);
+  const runningIdsRef = useRef(new Set());
   const scrollFocusRef = useRef({ tab: null, focusSection: null, focusIndex: 0, gameSourceTab: null, appCollectionTab: null, cols: 0 });
   const settingsScrollTimeRef = useRef(0);
 
@@ -191,6 +194,10 @@ export default function App() {
     language: i18n.language,
     settingsRef,
   });
+  const requestClose = (app) => {
+    if (!app) return;
+    setCloseRequest({ app, force: false });
+  };
 
   const resolvedTheme = normalizeThemeKey(settings.theme);
   const isDark = isDarkThemeKey(resolvedTheme);
@@ -229,6 +236,8 @@ export default function App() {
     homeColFocusRowRef,
     homeColFocusCol,
     homeColFocusColRef,
+    heroActionIndex,
+    heroActionIndexRef,
     launchingApp,
     launchingAppRef,
     windowFocused,
@@ -243,6 +252,7 @@ export default function App() {
     setSubtabFocusIndex,
     setHomeColFocusRow,
     setHomeColFocusCol,
+    setHeroActionIndex,
     switchTab,
     triggerLaunch,
     closeLaunchOverlay,
@@ -323,6 +333,8 @@ export default function App() {
     handleClearRecents: () => handleClearRecentsRef.current?.(),
     handleClearCache: () => handleClearCacheRef.current?.(),
     toggleHomeCollection: (colName) => toggleHomeCollectionRef.current?.(colName),
+    isRunning: (id) => !!id && runningIdsRef.current.has(id),
+    requestClose,
     autoScaleRef,
     handleNavRef,
     t,
@@ -336,6 +348,8 @@ export default function App() {
   const glassEnabled = surfaceStyle !== "clear";
   const isMaterial = surfaceStyle === "material";
   const appPaused = !!launchingApp || !windowFocused;
+  const { runningIds, isRunning, refreshRunning, gracefulClose, forceClose } = useRunningApps(appPaused);
+  runningIdsRef.current = runningIds;
   const cinematicLight = settings.cinematic_home && !isDark;
   const isWash = resolvedTheme === "wash";
   const {
@@ -1092,7 +1106,34 @@ export default function App() {
     );
   };
 
-  const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, onRightClick }) => {
+  const RunningBadge = ({ show, small = false, inline = false }) => {
+    if (!show) return null;
+    return (
+      <div style={{
+        position: inline ? "relative" : "absolute",
+        top: inline ? undefined : small ? 6 : 8,
+        left: inline ? undefined : small ? 6 : 8,
+        zIndex: 3,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: small ? 4 : 5,
+        padding: small ? "3px 6px" : "4px 8px",
+        borderRadius: 999,
+        fontSize: small ? 8 : 10,
+        fontWeight: 700,
+        lineHeight: 1,
+        color: "#082012",
+        background: "rgba(74,232,138,0.92)",
+        boxShadow: surfaceStyle === "material" ? "0 3px 10px rgba(0,0,0,0.22)" : "0 2px 10px rgba(74,232,138,0.35)",
+        pointerEvents: "none",
+      }}>
+        <span style={{ width: small ? 5 : 6, height: small ? 5 : 6, borderRadius: "50%", background: "#082012", opacity: 0.9 }} />
+        {t('running.badge')}
+      </div>
+    );
+  };
+
+  const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, isRunning: cardRunning, onRightClick }) => {
     const art = customArt[app.id] || gameArt[app.id];
     const placeholderCover = `/assets/liftoff_cover_${settings.accent}.svg`;
     const cardRadius = resolvedTheme === "cyberpunk" ? 0 : surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 8 : 16;
@@ -1119,6 +1160,7 @@ export default function App() {
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "24px 12px 12px", background: "linear-gradient(transparent, rgba(0,0,0,0.8))" }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: "white", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</span>
           </div>
+          <RunningBadge show={cardRunning} />
           <PinBadge isPinned={isPinned} />
           {focused && !isOnyx && (
             <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, pointerEvents: "none" }} />
@@ -1359,6 +1401,9 @@ export default function App() {
     materialRaisedShadow,
     AppIcon,
     PinBadge,
+    RunningBadge,
+    isRunning,
+    requestClose,
     filteredApps,
     effectiveGameCols,
     isFocused,
@@ -1393,6 +1438,29 @@ export default function App() {
       <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} />
       <AppOverlays>
       {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={closeLaunchOverlay} />}
+      {closeRequest && (
+        <ConfirmModal
+          message={closeRequest.force
+            ? t('close.forceTitle', { name: closeRequest.app.name })
+            : t('close.confirmTitle', { name: closeRequest.app.name })}
+          confirmLabel={closeRequest.force ? t('close.forceAction') : t('close.confirmAction')}
+          onConfirm={() => {
+            const { app, force } = closeRequest;
+            setCloseRequest(null);
+            if (force) {
+              forceClose(app);
+              return;
+            }
+            gracefulClose(app);
+            window.setTimeout(() => {
+              if (runningIdsRef.current.has(app.id)) {
+                setCloseRequest({ app, force: true });
+              }
+            }, 4800);
+          }}
+          onCancel={() => setCloseRequest(null)}
+        />
+      )}
       {artPickerApp && (
         <SteamGridArtPickerModal
           app={artPickerApp}
@@ -1923,6 +1991,9 @@ export default function App() {
             materialFocusShadow={materialFocusShadow}
             allAppsRef={allAppsRef}
             PinBadge={PinBadge}
+            RunningBadge={RunningBadge}
+            isRunning={isRunning}
+            requestClose={requestClose}
             glass={glass}
             cardBackdropFilter={cardBackdropFilter}
             gameCollections={gameCollections}
@@ -1933,10 +2004,13 @@ export default function App() {
             homeColFocusRow={homeColFocusRow}
             focusedRowRef={focusedRowRef}
             homeColFocusCol={homeColFocusCol}
+            heroActionIndex={heroActionIndex}
+            heroActionIndexRef={heroActionIndexRef}
             setHomeColFocusRow={setHomeColFocusRow}
             homeColFocusRowRef={homeColFocusRowRef}
             setHomeColFocusCol={setHomeColFocusCol}
             homeColFocusColRef={homeColFocusColRef}
+            setHeroActionIndex={setHeroActionIndex}
             glassEnabled={glassEnabled}
             drawerScrollRef={drawerScrollRef}
             recentShelfRef={recentShelfRef}
@@ -1986,6 +2060,9 @@ export default function App() {
             : []),
           { label: t('contextMenu.collections'), action: () => { setColPickerApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
           { label: t('contextMenu.rename'), action: () => { setEditNameApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
+          ...(isRunning(contextMenu.app.id)
+            ? [{ label: t('home.close'), danger: true, action: () => { requestClose(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } }]
+            : []),
           ...(contextMenu.app.id.startsWith("custom_")
             ? [{ label: t('contextMenu.delete'), danger: true, action: () => { setConfirmDelete(contextMenu.app); confirmDeleteRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
             : []),

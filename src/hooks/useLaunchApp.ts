@@ -10,6 +10,7 @@ export function launchApp(app: App) {
     id: app.id,
     name: app.name,
     appType: app.app_type,
+    source: app.source ?? "",
     runAsAdmin: getRunAsAdmin(app.id),
   }).catch((err) => {
     window.setTimeout(() => emit("launch-failed").catch(() => {}), 250);

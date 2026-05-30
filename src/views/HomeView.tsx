@@ -57,6 +57,9 @@ export function HomeView(props: HomeViewProps) {
     materialFocusShadow,
     allAppsRef,
     PinBadge,
+    RunningBadge,
+    isRunning,
+    requestClose,
     glass,
     cardBackdropFilter,
     gameCollections,
@@ -67,10 +70,13 @@ export function HomeView(props: HomeViewProps) {
     homeColFocusRow,
     focusedRowRef,
     homeColFocusCol,
+    heroActionIndex,
+    heroActionIndexRef,
     setHomeColFocusRow,
     homeColFocusRowRef,
     setHomeColFocusCol,
     homeColFocusColRef,
+    setHeroActionIndex,
     glassEnabled,
     drawerScrollRef,
     recentShelfRef,
@@ -129,6 +135,10 @@ export function HomeView(props: HomeViewProps) {
     : null;
   const activeHeroIsAnimatedImage = activeHeroType === "animated" && isAnimatedImageUrl(heroAnimated[activeHeroGame?.id]);
   const activeIsVideo = activeHeroType === "animated" && !activeHeroIsAnimatedImage;
+  useEffect(() => {
+    setHeroActionIndex?.(0);
+    if (heroActionIndexRef) heroActionIndexRef.current = 0;
+  }, [activeHeroGame?.id, setHeroActionIndex, heroActionIndexRef]);
   const playActiveHeroVideo = useCallback((video: HTMLVideoElement | null, gameId: string) => {
     if (!video || !active || appPaused || heroMediaPaused) return;
     const activeGame = heroGames[heroIdx];
@@ -271,6 +281,9 @@ export function HomeView(props: HomeViewProps) {
     const showHeroArtwork = !settings.cinematic_home || settings.show_immersive_hero_art !== false;
     const visibleHeroBanner = showHeroArtwork ? heroBanner : null;
     const heroFocused = focusSec === "hero";
+    const heroRunning = !!heroGame && !!isRunning?.(heroGame.id);
+    const heroResumeFocused = heroFocused && (!heroRunning || heroActionIndex === 0);
+    const heroCloseFocused = heroFocused && heroRunning && heroActionIndex === 1;
     const webcoreHero = surfaceStyle === "win9x";
     const materialHero = surfaceStyle === "material" || webcoreHero;
     const materialHeroText = isDark ? "#fffefd" : "#18110b";
@@ -463,6 +476,7 @@ export function HomeView(props: HomeViewProps) {
                 <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
               </div>
               <PinBadge isPinned={isPinned} small />
+              <RunningBadge show={isRunning?.(app.id)} small />
               {focused && !isOnyx && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
             </CyberpunkCard>
             <FocusRing focused={focused} variant="spin" elementRadius={surfaceCardRadius} />
@@ -484,6 +498,7 @@ export function HomeView(props: HomeViewProps) {
               <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{fullApp.name}</div>
             </div>
             <PinBadge isPinned={isPinned} small />
+            <RunningBadge show={isRunning?.(app.id)} small />
           </CyberpunkCard>
           <FocusRing focused={focused} variant="spin" elementRadius={surfaceCardRadius} />
         </div>
@@ -780,14 +795,14 @@ export function HomeView(props: HomeViewProps) {
                       style={{ minWidth: materialCinematicHero ? 130 : undefined }}
                     >
                       <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5l7 3.5-7 3.5z"/></svg>
-                      {t('home.launch')}
+                      {heroRunning ? t('home.resume') : t('home.launch')}
                     </CornerCutButton>
                   ) : (
                   <div data-launch-btn="" onClick={() => triggerLaunch(heroGame, recentRef.current)}
                     style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, minWidth: materialCinematicHero ? 130 : undefined, padding: materialCinematicHero ? "10px 20px" : "10px 24px", borderRadius: launchRadius, cursor: "pointer", transition: "all 0.15s ease", fontWeight: 600, fontSize: 14,
                       background: settings.cinematic_home
-                        ? (heroFocused ? accent.primary : surfaceStyle === "material" ? "var(--material-elevation-3)" : surfaceStyle === "aero" ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.11) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.72) 100%)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)")
-                        : heroFocused
+                        ? (heroResumeFocused ? accent.primary : surfaceStyle === "material" ? "var(--material-elevation-3)" : surfaceStyle === "aero" ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.11) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.72) 100%)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)")
+                        : heroResumeFocused
                           ? accent.primary
                           : isDark
                             ? "rgba(255,255,255,0.12)"
@@ -796,18 +811,42 @@ export function HomeView(props: HomeViewProps) {
                               : surfaceStyle === "clear"
                                 ? "rgba(255,255,255,0.34)"
                                 : "rgba(255,255,255,0.28)",
-                      color: heroFocused ? activeTextColor : settings.cinematic_home ? (materialHero ? materialHeroText : theme.text) : heroTextColor,
+                      color: heroResumeFocused ? activeTextColor : settings.cinematic_home ? (materialHero ? materialHeroText : theme.text) : heroTextColor,
                       border: settings.cinematic_home
-                        ? `1px solid ${heroFocused ? accent.primary : surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : surfaceStyle === "aero" ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`
-                        : `1px solid ${heroFocused ? accent.primary : isDark ? "rgba(255,255,255,0.2)" : surfaceStyle === "material" ? "rgba(80,48,28,0.14)" : "rgba(255,255,255,0.34)"}`,
+                        ? `1px solid ${heroResumeFocused ? accent.primary : surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : surfaceStyle === "aero" ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`
+                        : `1px solid ${heroResumeFocused ? accent.primary : isDark ? "rgba(255,255,255,0.2)" : surfaceStyle === "material" ? "rgba(80,48,28,0.14)" : "rgba(255,255,255,0.34)"}`,
                       backdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(8px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(8px)",
                       boxShadow: settings.cinematic_home
-                        ? (heroFocused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 4px 24px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-high)" : `0 4px 24px ${accent.glow}0.5)`) : surfaceStyle === "aero" ? (isDark ? `inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -1px 0 rgba(0,0,0,0.12), 0 0 0 1px ${accent.glow}0.12)` : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 0 0 1px ${accent.glow}0.10)`) : surfaceStyle === "material" ? (isDark ? "0 8px 22px rgba(0,0,0,0.36), 0 20px 46px rgba(0,0,0,0.24)" : "0 8px 22px rgba(39,27,18,0.16), 0 18px 44px rgba(39,27,18,0.10)") : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none")
-                        : heroFocused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 4px 24px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-high)" : `0 4px 24px ${accent.glow}0.5)`) : "none",
+                        ? (heroResumeFocused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 4px 24px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-high)" : `0 4px 24px ${accent.glow}0.5)`) : surfaceStyle === "aero" ? (isDark ? `inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -1px 0 rgba(0,0,0,0.12), 0 0 0 1px ${accent.glow}0.12)` : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 0 0 1px ${accent.glow}0.10)`) : surfaceStyle === "material" ? (isDark ? "0 8px 22px rgba(0,0,0,0.36), 0 20px 46px rgba(0,0,0,0.24)" : "0 8px 22px rgba(39,27,18,0.16), 0 18px 44px rgba(39,27,18,0.10)") : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none")
+                        : heroResumeFocused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 4px 24px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-high)" : `0 4px 24px ${accent.glow}0.5)`) : "none",
                     }}>
                     <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5l7 3.5-7 3.5z"/></svg>
-                    {t('home.launch')}
+                    {heroRunning ? t('home.resume') : t('home.launch')}
                   </div>
+                  )}
+                  {heroRunning && (
+                    <div
+                      data-hero-close-btn=""
+                      onClick={() => requestClose?.(heroGame)}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                        padding: materialCinematicHero ? "10px 18px" : "10px 20px",
+                        borderRadius: launchRadius,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        fontWeight: 600,
+                        fontSize: 14,
+                        color: heroCloseFocused ? "#fff" : "#e85a5a",
+                        background: heroCloseFocused ? "#e85a5a" : settings.cinematic_home ? "rgba(232,90,90,0.08)" : "rgba(232,90,90,0.10)",
+                        border: "1px solid #e85a5a",
+                        boxShadow: heroCloseFocused ? "0 4px 22px rgba(232,90,90,0.32)" : "none",
+                      }}
+                    >
+                      {t('home.close')}
+                    </div>
                   )}
                   {heroGames.length > 1 && (
                     <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
@@ -1027,6 +1066,7 @@ export function HomeView(props: HomeViewProps) {
                           <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
                         </div>
                         <PinBadge isPinned={isPinned} small />
+                        <RunningBadge show={isRunning?.(app.id)} small />
                         {focused && !isOnyx && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
                       </CyberpunkCard>
                       <FocusRing focused={focused} variant="spin" elementRadius={surfaceCardRadius} />
@@ -1052,6 +1092,7 @@ export function HomeView(props: HomeViewProps) {
                           <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
                         </div>
                         <PinBadge isPinned={isPinned} small />
+                        <RunningBadge show={isRunning?.(app.id)} small />
                         {focused && !isOnyx && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
                       </CyberpunkCard>
                       <FocusRing focused={focused} variant="spin" elementRadius={surfaceCardRadius} />
@@ -1074,6 +1115,7 @@ export function HomeView(props: HomeViewProps) {
                       <div style={{ fontSize: 8, fontWeight: 500, color: theme.textDim, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", width: "100%" }}>{fullApp.name}</div>
                     </div>
                     <PinBadge isPinned={isPinned} small />
+                    <RunningBadge show={isRunning?.(app.id)} small />
                     </CyberpunkCard>
                     <FocusRing focused={focused} variant="spin" elementRadius={surfaceCardRadius} />
                   </div>

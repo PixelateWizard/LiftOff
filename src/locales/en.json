@@ -279,6 +279,8 @@
     "recentlyPlayed": "▶ Recently played",
     "game": "Game",
     "launch": "Launch",
+    "resume": "Resume",
+    "close": "Close",
     "noGames": "Launch a game to see it here",
     "noRecents": "Nothing here yet — launch something!",
     "pinHint": "Pin apps with X to show them here"
@@ -332,6 +334,15 @@
     "show": "Show",
     "delete": "Delete",
     "rename": "Rename"
+  },
+  "running": {
+    "badge": "Running"
+  },
+  "close": {
+    "confirmTitle": "Close {{name}}?",
+    "confirmAction": "Close",
+    "forceTitle": "Force close {{name}}?",
+    "forceAction": "Force close"
   },
   "gamepad": {
     "aSelect": "A Select",

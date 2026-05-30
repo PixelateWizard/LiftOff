@@ -280,6 +280,8 @@
     "recentlyPlayed": "▶ Joué récemment",
     "game": "Jeu",
     "launch": "Lancer",
+    "resume": "Reprendre",
+    "close": "Fermer",
     "noGames": "Lancez un jeu pour le voir ici",
     "noRecents": "Rien ici pour l'instant — lancez quelque chose !",
     "pinHint": "Épinglez des apps avec X pour les afficher ici"
@@ -333,6 +335,15 @@
     "show": "Afficher",
     "delete": "Supprimer",
     "rename": "Renommer"
+  },
+  "running": {
+    "badge": "En cours"
+  },
+  "close": {
+    "confirmTitle": "Fermer {{name}} ?",
+    "confirmAction": "Fermer",
+    "forceTitle": "Forcer la fermeture de {{name}} ?",
+    "forceAction": "Forcer"
   },
   "gamepad": {
     "aSelect": "A Sélectionner",

@@ -129,6 +129,8 @@ export interface UseGamepadNavigationOptions {
   handleClearCache?: () => void;
   autoScaleRef?: AnyRef<number>;
   handleNavRef?: AnyRef<((key: string) => void) | null>;
+  isRunning?: (id?: string | null) => boolean;
+  requestClose?: (app: App) => void;
 }
 
 export interface GamepadNavigationResult {
@@ -136,6 +138,7 @@ export interface GamepadNavigationResult {
   tabRef: AnyRef<string>;
   focusSection: string;
   focusSectionRef: AnyRef<string>;
+  navRepeatingRef: AnyRef<boolean>;
   focusIndex: number;
   focusIndexRef: AnyRef<number>;
   heroIndex: number;
@@ -152,6 +155,8 @@ export interface GamepadNavigationResult {
   homeColFocusRowRef: AnyRef<number>;
   homeColFocusCol: number;
   homeColFocusColRef: AnyRef<number>;
+  heroActionIndex: number;
+  heroActionIndexRef: AnyRef<number>;
 
   launchingApp: App | null;
   launchingAppRef: AnyRef<App | null>;
@@ -169,6 +174,7 @@ export interface GamepadNavigationResult {
   setSubtabFocusIndex: Dispatch<SetStateAction<number>>;
   setHomeColFocusRow: Dispatch<SetStateAction<number>>;
   setHomeColFocusCol: Dispatch<SetStateAction<number>>;
+  setHeroActionIndex: Dispatch<SetStateAction<number>>;
 
   switchTab: (newTab: string) => void;
   triggerLaunch: (app: App, rec: App[]) => void;
@@ -197,6 +203,7 @@ export function useGamepadNavigation(
   const [subtabFocusIndex, setSubtabFocusIndex] = useState(0);
   const [homeColFocusRow, setHomeColFocusRow] = useState(0);
   const [homeColFocusCol, setHomeColFocusCol] = useState(0);
+  const [heroActionIndex, setHeroActionIndex] = useState(0);
   const [launchingApp, setLaunchingApp] = useState<App | null>(null);
   const [windowFocused, setWindowFocused] = useState(true);
 
@@ -210,6 +217,7 @@ export function useGamepadNavigation(
   const subtabFocusIndexRef = useRef(0);
   const homeColFocusRowRef = useRef(0);
   const homeColFocusColRef = useRef(0);
+  const heroActionIndexRef = useRef(0);
   const launchingAppRef = useRef<App | null>(null);
   const heroVideoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const lastBtn = useRef<ButtonStateMap>({});
@@ -296,6 +304,8 @@ export function useGamepadNavigation(
     toggleHomeCollection = noop as (colName: string) => void,
     autoScaleRef,
     handleNavRef,
+    isRunning = (() => false) as (id?: string | null) => boolean,
+    requestClose = noop as (app: App) => void,
     t = ((key: string) => key) as unknown as TFunction,
     COLS = DEFAULT_COLS,
     GAME_COLS = DEFAULT_GAME_COLS,
@@ -312,6 +322,15 @@ export function useGamepadNavigation(
   }, [initialTab]);
 
   const _triggerLaunchImpl = (app, rec) => {
+    if (app?.app_type === "game" && isRunning(app.id)) {
+      invoke("try_focus_launched_app", {
+        name: app.name,
+        launchPath: app.launch_path,
+        source: app.source ?? "",
+      }).catch(() => {});
+      return;
+    }
+
     const now = Date.now();
     console.warn(`triggerLaunch @ ${new Date().toISOString()}`, app?.name, `(${now - lastLaunchTime.current}ms since last)`);
     if (now < launchReturnCooldownUntil.current) {
@@ -737,17 +756,17 @@ export function useGamepadNavigation(
             const releasesUrl = (currentSettings.update_channel ?? "stable") === "prerelease"
               ? `https://github.com/${GITHUB_REPO}/releases`
               : `https://github.com/${GITHUB_REPO}/releases/latest`;
-            invoke("launch_app", { path: releasesUrl, id: "releases", name: "LiftOff Releases", appType: "app", runAsAdmin: false }).catch(() => {});
+            invoke("launch_app", { path: releasesUrl, id: "releases", name: "LiftOff Releases", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
           }
           else checkForUpdates();
         }
         else if (item.type === "link") {
-          if (item.key === "coffee")  invoke("launch_app", { path: "https://buymeacoffee.com/liftoff_handheld_launcher", id: "coffee", name: "Buy Me a Coffee", appType: "app", runAsAdmin: false }).catch(() => {});
-          if (item.key === "github")  invoke("launch_app", { path: "https://github.com/PixelateWizard/LiftOff", id: "github", name: "GitHub", appType: "app", runAsAdmin: false }).catch(() => {});
-          if (item.key === "discord") invoke("launch_app", { path: "https://discord.gg/F5ncP75WtD", id: "discord", name: "Discord", appType: "app", runAsAdmin: false }).catch(() => {});
+          if (item.key === "coffee")  invoke("launch_app", { path: "https://buymeacoffee.com/liftoff_handheld_launcher", id: "coffee", name: "Buy Me a Coffee", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
+          if (item.key === "github")  invoke("launch_app", { path: "https://github.com/PixelateWizard/LiftOff", id: "github", name: "GitHub", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
+          if (item.key === "discord") invoke("launch_app", { path: "https://discord.gg/F5ncP75WtD", id: "discord", name: "Discord", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
         }
         else if (item.type === "attribution") {
-          if (item.url) invoke("launch_app", { path: item.url, id: item.key, name: item.label, appType: "app", runAsAdmin: false }).catch(() => {});
+          if (item.url) invoke("launch_app", { path: item.url, id: item.key, name: item.label, appType: "app", source: "", runAsAdmin: false }).catch(() => {});
         }
         else if (item.type === "custom_folders") {
           setShowFolderManager(true); showFolderManagerRef.current = true;
@@ -823,11 +842,21 @@ export function useGamepadNavigation(
 
       // ─── HERO ───────────────────────────────────────────────────────────────
       if (section === "hero") {
-        if (key === "ArrowLeft")  { const ni = Math.max(heroIndexRef.current - 1, 0); setHeroIndex(ni); heroIndexRef.current = ni; }
-        if (key === "ArrowRight") { const ni = Math.min(heroIndexRef.current + 1, Math.min(fRecentGames.length, 6) - 1); setHeroIndex(ni); heroIndexRef.current = ni; }
+        const heroApp = fRecentGames[heroIndexRef.current];
+        const heroRunning = !!heroApp && isRunning(heroApp.id);
+        if (heroRunning) {
+          if (key === "ArrowLeft")  { setHeroActionIndex(0); heroActionIndexRef.current = 0; }
+          if (key === "ArrowRight") { setHeroActionIndex(1); heroActionIndexRef.current = 1; }
+        } else {
+          if (key === "ArrowLeft")  { const ni = Math.max(heroIndexRef.current - 1, 0); setHeroIndex(ni); heroIndexRef.current = ni; setHeroActionIndex(0); heroActionIndexRef.current = 0; }
+          if (key === "ArrowRight") { const ni = Math.min(heroIndexRef.current + 1, Math.min(fRecentGames.length, 6) - 1); setHeroIndex(ni); heroIndexRef.current = ni; setHeroActionIndex(0); heroActionIndexRef.current = 0; }
+        }
         if (key === "ArrowUp"   && chainPrev) goTo(chainPrev);
         if (key === "ArrowDown" && chainNext) goTo(chainNext);
-        if (key === "Enter" && fRecentGames[heroIndexRef.current]) triggerLaunch(fRecentGames[heroIndexRef.current], rec);
+        if (key === "Enter" && heroApp) {
+          if (heroRunning && heroActionIndexRef.current === 1) requestClose(heroApp);
+          else triggerLaunch(heroApp, rec);
+        }
         return;
       }
 
@@ -1034,6 +1063,9 @@ export function useGamepadNavigation(
   useEffect(() => {
     settingsFocusIndexRef.current = settingsFocusIndex;
     heroIndexRef.current = heroIndex;
+    if (heroActionIndexRef.current !== heroActionIndex) {
+      heroActionIndexRef.current = heroActionIndex;
+    }
   });
 
   useEffect(() => {
@@ -1258,6 +1290,8 @@ export function useGamepadNavigation(
     homeColFocusRowRef,
     homeColFocusCol,
     homeColFocusColRef,
+    heroActionIndex,
+    heroActionIndexRef,
     launchingApp,
     launchingAppRef,
     windowFocused,
@@ -1272,6 +1306,7 @@ export function useGamepadNavigation(
     setSubtabFocusIndex,
     setHomeColFocusRow,
     setHomeColFocusCol,
+    setHeroActionIndex,
     switchTab,
     triggerLaunch,
     closeLaunchOverlay,

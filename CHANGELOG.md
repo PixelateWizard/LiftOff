@@ -4,6 +4,9 @@
 
 ## [2.0.0-alpha.4.1] - Alpha 4.1
 
+### Added
+- **Running app lifecycle controls** - LiftOff now tracks apps and games launched during the current session, shows Running badges, changes the Home hero CTA to Resume for running games, focuses an already-running game instead of launching a second copy, reclaims LiftOff focus after launched games exit, and adds confirmed Close / Force close controls from the hero and card context menu.
+
 ### Changed
 - **Games source tabs** - the Other source tab now hides when there are no visible games outside the built-in and custom game sources, matching the existing empty-source behavior for Steam, Xbox, and Battle.net.
 

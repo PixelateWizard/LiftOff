@@ -54,6 +54,8 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
     materialRaisedShadow,
     AppIcon,
     PinBadge,
+    RunningBadge,
+    isRunning,
     filteredApps,
     effectiveGameCols,
     isFocused,
@@ -138,6 +140,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                       const focused = focusSection === "pinned" && focusIndex === i;
                       const isPinned = true;
                       return <GameCard key={app.id} app={app} focused={focused} isPinned={isPinned}
+                        isRunning={isRunning?.(app.id)}
                         cardRef={focused ? focusedCardRef : null}
                         onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
                         onDoubleClick={() => triggerLaunch(app, recent)}
@@ -163,6 +166,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                           onDoubleClick={() => triggerLaunch(app, recent)}
                           onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
                         >
+                          <RunningBadge show={isRunning?.(app.id)} small inline />
                           <PinBadge isPinned={true} small />
                         </AppListItem>
                       );
@@ -221,6 +225,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                               </>
                             )}
                             <PinBadge isPinned={true} small />
+                            <RunningBadge show={isRunning?.(app.id)} small />
                           </CyberpunkCard>
                           {/* Ring — outside overflow:hidden, with gap */}
                           <FocusRing focused={focused} variant="spin" elementRadius={appCardRadius} />
@@ -244,6 +249,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                   const focused = isFocused("grid", i);
                   const isPinned = pins.includes(app.id);
                   return <GameCard key={app.id} app={app} focused={focused} isPinned={isPinned}
+                    isRunning={isRunning?.(app.id)}
                     cardRef={focused ? focusedCardRef : null}
                     onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
                     onDoubleClick={() => triggerLaunch(app, recent)}
@@ -270,6 +276,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                       onDoubleClick={() => triggerLaunch(app, recent)}
                       onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
                     >
+                      <RunningBadge show={isRunning?.(app.id)} small inline />
                       {isPinned && <PinBadge isPinned={true} small />}
                     </AppListItem>
                   );
@@ -329,6 +336,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                           </>
                         )}
                         <PinBadge isPinned={isPinned} small />
+                        <RunningBadge show={isRunning?.(app.id)} small />
                       </CyberpunkCard>
                       {/* Ring — outside overflow:hidden, with gap */}
                       <FocusRing focused={focused} variant="spin" elementRadius={appGridCardRadius} />

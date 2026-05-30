@@ -11,9 +11,10 @@ use windows::{
         DestroyIcon, DrawIconEx, GetForegroundWindow, DI_NORMAL, SW_SHOWNORMAL,
         EnumWindows, IsWindowVisible, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
         SetForegroundWindow, ShowWindow, SW_SHOW,
+        PostMessageW, WM_CLOSE,
         GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN,
     },
-    Win32::Foundation::{BOOL, CloseHandle, LPARAM},
+    Win32::Foundation::{BOOL, CloseHandle, LPARAM, WPARAM},
     Win32::Graphics::Gdi::{
         GetDC, ReleaseDC, GetDIBits, CreateCompatibleDC, CreateCompatibleBitmap, SelectObject,
         DeleteDC, DeleteObject, PatBlt, BLACKNESS,
@@ -22,11 +23,12 @@ use windows::{
     Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS},
     Win32::System::Threading::{
         OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
-        PROCESS_QUERY_LIMITED_INFORMATION,
+        PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE, TerminateProcess,
     },
 };
 use windows::core::PWSTR;
 use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
+use std::sync::Mutex;
 use std::collections::HashMap;
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_autostart::ManagerExt;
@@ -46,6 +48,24 @@ const SHGFI_JUMBOICON: SHGFI_FLAGS = SHGFI_FLAGS(0x40000);
 static GAMEPAD_READY: AtomicBool = AtomicBool::new(false);
 static OUR_HWND: AtomicIsize = AtomicIsize::new(0);
 static FRONTEND_HAS_CONTROL: AtomicBool = AtomicBool::new(false);
+
+struct LaunchedTarget {
+    name: String,
+    launch_path: String,
+    source: String,
+    pid: Option<u32>,
+    launched_at: u64,
+}
+
+static LAUNCHED: Mutex<Option<HashMap<String, LaunchedTarget>>> = Mutex::new(None);
+
+fn launched_store() -> std::sync::MutexGuard<'static, Option<HashMap<String, LaunchedTarget>>> {
+    let mut guard = LAUNCHED.lock().unwrap();
+    if guard.is_none() {
+        *guard = Some(HashMap::new());
+    }
+    guard
+}
 
 #[tauri::command]
 fn set_frontend_active(active: bool) {
@@ -1922,6 +1942,19 @@ struct LaunchFocusResult {
     confidence: String,
 }
 
+#[derive(Serialize)]
+struct RunningEntry {
+    id: String,
+    focused: bool,
+    confidence: String,
+}
+
+#[derive(Serialize)]
+struct CloseResult {
+    attempted: bool,
+    closed_now: bool,
+}
+
 #[derive(Clone)]
 struct LaunchWindowCandidate {
     hwnd: isize,
@@ -2179,14 +2212,150 @@ fn try_focus_launched_app(name: String, launch_path: String, source: String) -> 
 }
 
 #[tauri::command]
+fn get_running_launched() -> Vec<RunningEntry> {
+    let foreground_hwnd = unsafe { GetForegroundWindow().0 as isize };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+    let entries: Vec<(String, String, String, String, Option<u32>, u64)> = {
+        let store = launched_store();
+        store
+            .as_ref()
+            .map(|map| {
+                map.iter()
+                    .map(|(id, target)| (
+                        id.clone(),
+                        target.name.clone(),
+                        target.launch_path.clone(),
+                        target.source.clone(),
+                        target.pid,
+                        target.launched_at,
+                    ))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let windows = collect_launch_windows();
+    let mut running = Vec::new();
+    let mut dead_ids = Vec::new();
+
+    for (id, name, launch_path, source, pid, launched_at) in entries {
+        let mut focused = false;
+        let mut confidence = "low".to_string();
+        let mut is_running = false;
+
+        if let Some(process_id) = pid {
+            if process_exe_path(process_id).is_some() {
+                is_running = true;
+                confidence = "high".to_string();
+                focused = windows.iter().any(|w| w.pid == process_id && w.hwnd == foreground_hwnd);
+            }
+        } else {
+            let mut best_score = 0u32;
+            for window in &windows {
+                let score = match_launch_window_score(window, &name, &launch_path, &source);
+                if score == 0 { continue; }
+                best_score = best_score.max(score);
+                if window.hwnd == foreground_hwnd {
+                    focused = true;
+                }
+            }
+            if best_score > 0 {
+                is_running = true;
+                confidence = confidence_for_score(best_score);
+            }
+        }
+
+        if is_running {
+            running.push(RunningEntry { id, focused, confidence });
+        } else if now.saturating_sub(launched_at) > 60 {
+            dead_ids.push(id);
+        }
+    }
+
+    if !dead_ids.is_empty() {
+        let mut store = launched_store();
+        if let Some(map) = store.as_mut() {
+            for id in dead_ids {
+                map.remove(&id);
+            }
+        }
+    }
+
+    running
+}
+
+#[tauri::command]
+fn focus_self() -> bool {
+    let hwnd = OUR_HWND.load(Ordering::Relaxed);
+    if hwnd == 0 { return false; }
+    unsafe {
+        let window = windows::Win32::Foundation::HWND(hwnd as _);
+        let _ = ShowWindow(window, SW_SHOW);
+        SetForegroundWindow(window).as_bool()
+    }
+}
+
+#[tauri::command]
+fn close_launched(name: String, launch_path: String, source: String) -> CloseResult {
+    let Some((window, _)) = best_launch_window(&name, &launch_path, &source) else {
+        return CloseResult { attempted: false, closed_now: false };
+    };
+
+    unsafe {
+        let hwnd = windows::Win32::Foundation::HWND(window.hwnd as _);
+        let _ = PostMessageW(hwnd, WM_CLOSE, WPARAM(0), LPARAM(0));
+    }
+
+    let closed_now = best_launch_window(&name, &launch_path, &source).is_none();
+    CloseResult { attempted: true, closed_now }
+}
+
+#[tauri::command]
+fn force_close_launched(name: String, launch_path: String, source: String) -> CloseResult {
+    let tracked_pid = {
+        let store = launched_store();
+        store.as_ref().and_then(|map| {
+            map.values()
+                .find(|target| target.name == name && target.launch_path == launch_path && target.source == source)
+                .and_then(|target| target.pid)
+        })
+    };
+    let pid = tracked_pid.or_else(|| {
+        best_launch_window(&name, &launch_path, &source).map(|(window, _)| window.pid)
+    });
+
+    let Some(pid) = pid.filter(|value| *value != 0) else {
+        return CloseResult { attempted: false, closed_now: false };
+    };
+
+    unsafe {
+        if let Ok(process) = OpenProcess(PROCESS_TERMINATE, false, pid) {
+            let _ = TerminateProcess(process, 1);
+            let _ = CloseHandle(process);
+        }
+    }
+
+    let closed_now = best_launch_window(&name, &launch_path, &source).is_none()
+        && process_exe_path(pid).is_none();
+    CloseResult { attempted: true, closed_now }
+}
+
+#[tauri::command]
 async fn launch_app(
     path: String,
     id: String,
     name: String,
     app_type: String,
+    source: String,
     run_as_admin: Option<bool>,
     app_handle: tauri::AppHandle
 ) -> Result<(), String> {
+    let id_for_tracking = id.clone();
+    let name_for_tracking = name.clone();
+    let path_for_tracking = path.clone();
+    let source_for_tracking = source.clone();
     let mut recents = load_recents();
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -2310,6 +2479,23 @@ async fn launch_app(
         }
     }
 
+    {
+        let pid = if child_pid != 0 { Some(child_pid) } else { None };
+        let mut store = launched_store();
+        if let Some(map) = store.as_mut() {
+            map.insert(
+                id_for_tracking,
+                LaunchedTarget {
+                    name: name_for_tracking,
+                    launch_path: path_for_tracking,
+                    source: source_for_tracking,
+                    pid,
+                    launched_at: now,
+                },
+            );
+        }
+    }
+
     // Watch for the launched window in a background thread, then notify the frontend.
     //
     // For .lnk shortcuts and shell:/URI launches (child_pid == 0 and no reliable
@@ -2384,7 +2570,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec![])))
         .invoke_handler(tauri::generate_handler![
-            get_apps, get_all_apps, launch_app, check_launch_focus, try_focus_launched_app, fetch_game_art, get_cached_art_bulk, get_recents, get_recent_games, get_battery,
+            get_apps, get_all_apps, launch_app, check_launch_focus, try_focus_launched_app, get_running_launched, focus_self, close_launched, force_close_launched,
+            fetch_game_art, get_cached_art_bulk, get_recents, get_recent_games, get_battery,
             set_gamepad_ready, get_settings, save_settings, clear_recents,
             exit_app, restart_app,
             clear_art_cache, set_frontend_active, open_osk,

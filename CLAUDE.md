@@ -3,19 +3,23 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Update app version labels to Alpha 4.1.
+**Task:** Implement running-app lifecycle detection, resume/focus, focus reclaim, and close controls from `currently-running-detection (1).md`.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- Started the Alpha 4.1 version-label sweep.
-- Updated `APP_VERSION`, npm metadata, Tauri config, Cargo metadata/lockfile, docs page badge, and handoff version references to `2.0.0-alpha.4.1`.
-- Updated `CHANGELOG.md` under Alpha 4.1 Changed.
-- Verified no stale `2.0.0-alpha.4` current-version surfaces remain outside historical changelog text.
+- Read the running-app lifecycle proposal from Downloads.
+- Added session-scoped Rust launch tracking with hybrid PID/window running detection.
+- Added `get_running_launched`, `focus_self`, `close_launched`, and `force_close_launched` commands.
+- Threaded launch `source` through real app/game launches and direct URL launch call sites.
+- Added `useRunningApps` polling, focus reclaim after launched-game exit, and shared graceful/force close helpers.
+- Added Running badges, Home hero Launch-to-Resume labeling, already-running focus behavior, hero Close, and context-menu Close.
+- Added English/French strings and updated `CHANGELOG.md` under Alpha 4.1.
 - Verified `npm run build` passes; Vite still reports the existing large chunk warning.
-- Verified `git diff --check` passes, with only existing line-ending warnings.
+- Verified `cargo check` passes with only existing unused-function warnings.
+- Verified `npx.cmd tsc --noEmit` only fails with the existing TS1261 `Gamepad.tsx` / `gamepad.tsx` casing warning.
 
 **Current implementation target:**
-- Ready for release verification: app and installer metadata should now present `2.0.0-alpha.4.1` instead of `2.0.0-alpha.4`.
+- Ready for runtime validation on Windows with real launched games: direct `.exe`, Steam, Battle.net/Xbox/UWP, Resume focus, exit focus reclaim, graceful Close, and confirmed Force close.
 
 ---
 
@@ -732,6 +736,7 @@ Notable merged PRs from Moi that affect current architecture and settings:
 - LaunchOverlay: shows "Launching…" then transitions to success (dismiss) or "Failed to launch" + Dismiss button based on `EnumWindows` window detection
 - Power modal: pressing B at the Home root opens controller-navigable Restart LiftOff / Exit LiftOff actions backed by Tauri `restart_app` and `exit_app` commands.
 - Launch window watcher: detects game window via PID (direct exe) or snapshot diff (Steam/BNet/UWP); brings window to front on success
+- Running-app lifecycle: launched apps/games are tracked for the current session via direct child PID when available and existing window/exe matching for launcher-mediated paths. Home/Games/Apps show Running badges, running hero games show Resume + Close, launching an already-running game focuses it via `try_focus_launched_app`, exited launched games can pull LiftOff back to the foreground via `focus_self`, and Close uses confirmed graceful `WM_CLOSE` before a second confirmed force-terminate path.
 - Splash screen: no flash before CSS loads (inline opacity on all animated elements); localized status text below the dots reassures during longer startup scans without claiming real progress.
 - Recent cards show correct icons (looked up from allAppsRef)
 - Settings scroll margin accounts for sticky nav bar (80px top margin); last item not cut off (160px bottom padding)
