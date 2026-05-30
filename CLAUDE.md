@@ -3,21 +3,20 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Eliminate static hero banner flash when entering/leaving Home for video heroes.
+**Task:** Fix animated-image (WebP/GIF) hero flash on tab-switch and launch return.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- Implemented `hero-static-flash-fix.md` design doc in `src/views/HomeView.tsx`:
-  - Added `heroVideoPlaying` state (`Record<string, boolean>`) to track per-id actual playback.
-  - Replaced hard `visibility` toggle on `<video>` with opacity gated on `onPlaying`; video only reaches `opacity: 1` after the `playing` event fires, so the static banner beneath is never exposed during the decode gap.
-  - Added `onPause`/`onEmptied` handlers that clear the playing flag (video fades to 0 on pause).
-  - Cleaned up stale entry from `heroVideoPlaying` in the ref unmount path.
-  - Switched animated-image (GIF/WebP) `<img>` from `visibility` to `opacity + transition` for consistency.
-  - Added entry to `CHANGELOG.md` Unreleased → Fixed section.
+- Added debug tints + console logging to identify what was flashing — confirmed Stray's hero is an animated WebP, not a video. All prior fixes touched the video path and had no effect on it.
+- Root cause: the animated-image `<img>` had its `src` set to `undefined` on pause, forcing a re-decode on return and briefly exposing the static banner beneath.
+- Fix (Change A in `hero-flash-animated-image-fix.md`): `src` is now always `primaryHeroMedia` (never unloaded); `opacity` is a constant `1`. The off-tab Home wrapper being hidden already prevents compositing cost on other tabs.
+- Structural video-path work from prior sessions (intendedVideo gate, heroVideoPlaying hold-last-frame) remains in place and is correct for true `.webm`/`.mp4` heroes.
+- Removed debug console.log and magenta tints.
+- Updated CHANGELOG.md with two separate fix entries (animated-image path and video path).
 - Verified `npm run build` passes; Vite still reports the existing large chunk warning.
 
 **Current implementation target:**
-- Ready for user verification: navigate to Home for a video hero, navigate away, navigate back — no static banner flash should appear at any point.
+- Ready for user verification: Stray (animated WebP) should show no flash on tab-switch-to-Home or post-launch-return.
 
 ---
 
@@ -565,7 +564,7 @@ Both `glassEnabled` and `surfaceStyle` are threaded via `ThemeContext`; any comp
 - **Image rendering:** static `<img>` (base layer) is only rendered for `heroIndex ±1`; all other slots render a plain empty `<div>` to reduce GPU texture memory pressure. Navigation is instant because ±1 neighbors are pre-rendered.
 - **Video DOM:** `<video>` elements stay in the DOM for video-backed animated heroes (WebM/MP4). All hero frames stay mounted at `opacity: 0.001`; active at `opacity: 1` with 0.35s ease. Keeping videos mounted prevents remount/re-decode stalls during navigation.
 - `preload="auto"` unconditionally on hero videos — browser buffers freely; play/pause is managed entirely via JS refs so autoplay policy is not a concern.
-- **Animated image handling:** GIF/WebP hero art can be cached or selected through the static-looking image path. Home treats `.gif` and `.webp` hero URLs as animated media and removes their `src` while `appPaused` or local hero pause state is true so they stop animating on launch/focus loss.
+- **Animated image handling:** GIF/WebP hero art can be cached or selected through the static-looking image path. Home keeps their `src` loaded at all times — removing it on pause forced a re-decode on return that briefly exposed the static banner. Off-tab animation cost is avoided by the hidden Home wrapper, not by unloading the image.
 - **Playback ownership:** `HomeView` owns hero media playback against the `heroGames`/`heroIdx` list it actually renders. Only the active video hero calls `play()`; inactive videos explicitly `pause()`. Animated image heroes are displayed only while media is not paused.
 - **Focus/blur handling:** Home listens to window blur/focus, Tauri focus changes, visibility changes, and Alt key transitions to set local hero pause state. `appPaused` also gates hero media. This prevents background decode when LiftOff loses focus or an app/game is launching.
 - Video ref cleanup: `el => { if (el) heroVideoRefs.current[game.id] = el; else delete heroVideoRefs.current[game.id]; }` — stale refs removed on unmount.

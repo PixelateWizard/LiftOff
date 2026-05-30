@@ -127,7 +127,8 @@ export function HomeView(props: HomeViewProps) {
   const activeHeroStaticUrl = activeHeroGame
     ? customHeroArt[activeHeroGame.id] || heroStatic[activeHeroGame.id] || null
     : null;
-  const activeIsVideo = !!activeHeroAnimatedUrl && !isAnimatedImageUrl(activeHeroAnimatedUrl);
+  const activeHeroIsAnimatedImage = activeHeroType === "animated" && isAnimatedImageUrl(heroAnimated[activeHeroGame?.id]);
+  const activeIsVideo = activeHeroType === "animated" && !activeHeroIsAnimatedImage;
   const playActiveHeroVideo = useCallback((video: HTMLVideoElement | null, gameId: string) => {
     if (!video || !active || appPaused || heroMediaPaused) return;
     const activeGame = heroGames[heroIdx];
@@ -571,12 +572,16 @@ export function HomeView(props: HomeViewProps) {
               const staticBanner = rawStaticBanner;
               const mediaPaused = appPaused || heroMediaPaused || !active;
               const mediaVisible = !mediaPaused;
+              // True when this hero is *meant* to be a video, even if the URL hasn't loaded yet.
+              // Prevents the static banner from showing through the transparent video during decode.
+              const animatedImageByType = heroType === "animated" && isAnimatedImageUrl(heroAnimated[game.id]);
+              const intendedVideo = heroType === "animated" && !animatedImageByType;
 
               const coverStyle: any = { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" };
               return (
                 <div key={game.id} style={{ position: "absolute", inset: 0, opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
                   {/* Base layer: render images only for active ±1 to reduce GPU texture pressure */}
-                  {isNearby && showHeroArtwork && !showVideo
+                  {isNearby && showHeroArtwork && !intendedVideo
                     ? (staticBanner
                         ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
                         : fallback
@@ -586,7 +591,7 @@ export function HomeView(props: HomeViewProps) {
                   }
                   {showHeroArtwork && showAnimatedImage && (
                     <img
-                      src={mediaVisible ? primaryHeroMedia : undefined}
+                      src={primaryHeroMedia}
                       alt=""
                       decoding="async"
                       loading="eager"
@@ -596,8 +601,10 @@ export function HomeView(props: HomeViewProps) {
                         top: 0,
                         left: 0,
                         transform: "translateZ(0)",
-                        opacity: mediaVisible ? 1 : 0,
-                        transition: "opacity 0.25s ease",
+                        // Always keep src loaded. Removing src on pause forced a re-decode on
+                        // return, exposing the static banner for the re-decode beat. The off-tab
+                        // Home wrapper is hidden anyway, so leaving it mounted costs nothing.
+                        opacity: 1,
                       }}
                     />
                   )}
@@ -620,8 +627,6 @@ export function HomeView(props: HomeViewProps) {
                       onCanPlay={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
                       onLoadedData={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
                       onPlaying={() => setHeroVideoPlaying(prev => prev[game.id] ? prev : { ...prev, [game.id]: true })}
-                      onPause={() => setHeroVideoPlaying(prev => prev[game.id] ? { ...prev, [game.id]: false } : prev)}
-                      onEmptied={() => setHeroVideoPlaying(prev => prev[game.id] ? { ...prev, [game.id]: false } : prev)}
                       loop muted playsInline preload={isNearby ? "auto" : "none"}
                       style={{
                         position: "absolute",
@@ -631,8 +636,9 @@ export function HomeView(props: HomeViewProps) {
                         objectFit: "cover",
                         objectPosition: "center top",
                         transform: "translateZ(0)",
-                        // Only fully visible once actually playing — prevents static banner showing through during decode.
-                        opacity: (mediaVisible && heroVideoPlaying[game.id]) ? 1 : 0,
+                        // Fades in on first paint; holds last frame across pauses so there is no
+                        // transparent window when returning to Home or after launch.
+                        opacity: (isActive && showHeroArtwork && heroVideoPlaying[game.id]) ? 1 : 0,
                         transition: "opacity 0.25s ease",
                         pointerEvents: "none",
                       }}
