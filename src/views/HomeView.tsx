@@ -127,11 +127,11 @@ export function HomeView(props: HomeViewProps) {
     ? customHeroArt[activeHeroGame.id] || heroStatic[activeHeroGame.id] || null
     : null;
   const playActiveHeroVideo = useCallback((video: HTMLVideoElement | null, gameId: string) => {
-    if (!video || !active || appPaused || heroMediaPaused) return;
+    if (!video || appPaused || heroMediaPaused) return;
     const activeGame = heroGames[heroIdx];
     if (!activeGame || activeGame.id !== gameId) return;
     video.play().catch(() => {});
-  }, [active, appPaused, heroGames, heroIdx, heroMediaPaused]);
+  }, [appPaused, heroGames, heroIdx, heroMediaPaused]);
 
   useEffect(() => {
     if (!appPaused && !heroMediaPaused) return;
@@ -172,7 +172,7 @@ export function HomeView(props: HomeViewProps) {
   }, [heroVideoRefs]);
 
   useEffect(() => {
-    const shouldPlayHero = active && !appPaused && !heroMediaPaused;
+    const shouldPlayHero = !appPaused && !heroMediaPaused;
     if (!shouldPlayHero) {
       Object.values(heroVideoRefs.current).forEach((video: HTMLVideoElement | null) => {
         if (video) video.pause();
@@ -234,7 +234,7 @@ export function HomeView(props: HomeViewProps) {
         document.removeEventListener("visibilitychange", playActiveVideoWhenVisible);
       }
     };
-  }, [active, activeHeroAnimatedUrl, appPaused, heroGames, heroIdx, heroMediaPaused, heroVideoRefs, playActiveHeroVideo]);
+  }, [activeHeroAnimatedUrl, appPaused, heroGames, heroIdx, heroMediaPaused, heroVideoRefs, playActiveHeroVideo]);
 
   const homeFilteredRecent = recent.filter((a: any) => !settings.show_recent_games_only || a.app_type === "game").slice(0, 8);
   const homePinnedApps = pins.map((id: string) => apps.find((a: any) => a.id === id)).filter(Boolean);
@@ -592,13 +592,21 @@ export function HomeView(props: HomeViewProps) {
                           : <img src={`/assets/liftoff_hero_${settings.accent}.svg`} alt="" style={{ ...coverStyle }} />)
                     : <div style={{ width: "100%", height: "100%" }} />
                   }
-                  {showHeroArtwork && showAnimatedImage && !mediaPaused && (
+                  {showHeroArtwork && showAnimatedImage && (
                     <img
                       src={primaryHeroMedia}
                       alt=""
                       decoding="async"
                       loading="eager"
-                      style={{ ...coverStyle, position: "absolute", top: 0, left: 0, transform: "translateZ(0)", willChange: "opacity" }}
+                      style={{
+                        ...coverStyle,
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        transform: "translateZ(0)",
+                        willChange: "opacity",
+                        visibility: mediaPaused ? "hidden" : "visible",
+                      }}
                     />
                   )}
                   {showHeroArtwork && showVideo && (

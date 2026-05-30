@@ -3,22 +3,23 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Fix residual Home/Game tab switch hitch from animated hero video re-decode churn.
+**Task:** Keep animated hero video decoders warm across in-app Home/Games tab switches.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- Read `C:\Users\taylo\Downloads\home-tab-switch-perf-followup.md`.
-- Started implementation of the follow-up Home tab switch performance proposal.
-- Updated `HomeView` so `heroGames` preserves its array identity when the displayed hero game ids are unchanged.
-- Guarded active and neighbor hero video `load()` calls so they only run for never-loaded, non-loading media elements.
-- Updated the hero video retry timer to stop polling once the active video is playing with enough buffered data.
+- Read `C:\Users\taylo\Downloads\animated-hero-warm-decode.md`.
+- Confirmed the live `HomeView` playback effect still uses `const shouldPlayHero = active && !appPaused && !heroMediaPaused;`, so the proposal anchor is current.
+- Started implementation of the animated hero warm-decoder follow-up.
+- Updated `playActiveHeroVideo` so it no longer refuses playback solely because Home is not the active tab.
+- Updated the main hero playback effect so in-app tab switches do not pause hero videos; launch, blur, alt-tab, and hidden-document pauses still flow through `appPaused` / `heroMediaPaused`.
+- Kept animated GIF/WebP hero media mounted across pause toggles by hiding it with `visibility` instead of unmounting it.
 - Updated `CHANGELOG.md` Unreleased notes.
 - Verified `npm run build` passes; Vite still reports the existing large chunk warning.
 
 **Current implementation target:**
-- Stabilize `HomeView` hero game list identity when the rendered game ids are unchanged.
-- Guard hero video `load()` calls so already-buffering or buffered media is not reset on tab return.
-- Stop the 500ms hero play retry interval once playback is confirmed.
+- Decouple hero video playback from the Home tab `active` flag so in-app tab switches do not cold-pause the active decoder.
+- Keep legitimate pause triggers (`appPaused`, `heroMediaPaused`) intact for launch, blur, alt-tab, and hidden-document cases.
+- Keep animated image hero media mounted across pause toggles where applicable.
 - Ready for user verification in the built app.
 
 ---
