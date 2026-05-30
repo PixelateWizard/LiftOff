@@ -3,7 +3,10 @@
 ## Unreleased
 
 ### Changed
-- **Home tab switch performance** - Home, Games, and Apps now stay mounted across tab switches; inactive Games/Apps panes use `content-visibility: hidden`, Home uses an instant visibility toggle that also hides immersive fixed hero layers off-tab, and animated hero videos stay decoder-warm across in-app tab switches while still pausing for launch, blur, alt-tab, and hidden-window cases.
+- **Home tab switch performance** - Home, Games, and Apps now stay mounted across tab switches; inactive Games/Apps panes use `content-visibility: hidden`, inactive Home stays mounted at near-transparent opacity so theme effects can keep showing behind translucent tabs, and animated hero videos stay decoder-warm across in-app tab switches while still pausing for launch, blur, alt-tab, and hidden-window cases.
+
+### Fixed
+- **Settings stick-repeat scrolling** - repeated stick navigation in Settings now uses the active tab scroller directly and avoids stacking smooth scroll requests at list edges.
 
 ## [2.0.0-alpha.4] - Alpha 4
 

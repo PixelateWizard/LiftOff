@@ -698,14 +698,15 @@ export function useGamepadNavigation(
       const item    = navigableSettings[sfIndex];
       if (key === "ArrowDown") {
         const ni = Math.min(sfIndex + 1, navigableSettings.length - 1);
-        setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni;
-        if (sfIndex === navigableSettings.length - 1 && tabScrollRef.current) {
-          tabScrollRef.current.scrollTo({ top: tabScrollRef.current.scrollHeight, behavior: "smooth" });
+        if (ni !== sfIndex) {
+          setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni;
         }
       }
       if (key === "ArrowUp") {
-        const ni = Math.max(sfIndex - 1, 0); setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni;
-        if (sfIndex === 0 && tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+        const ni = Math.max(sfIndex - 1, 0);
+        if (ni !== sfIndex) {
+          setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni;
+        }
       }
       if (key === "ArrowRight" || key === "Enter") {
         if (!item) return;

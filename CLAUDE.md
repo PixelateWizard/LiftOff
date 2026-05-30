@@ -3,20 +3,29 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Fix animated/immersive Home hero visibly bleeding onto non-Home tabs.
+**Task:** Fix inactive Home layering side effects and repeat stick scrolling.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- User provided a screenshot showing the animated Home hero still visible on Settings, so the root visibility gate is insufficient in the live WebView path.
-- Started implementation of explicit off-tab visual hiding for fixed/hero HomeView output while preserving warm decoder playback.
-- Found the root cause: hero media elements set their own `visibility: "visible"` when not paused, overriding the hidden Home root while the warm-decoder video kept playing off-tab.
-- Updated animated image/video visibility to require `active && !mediaPaused`, so media pixels hide off-tab while playback remains decoupled from tab activity.
+- User confirmed the Home-tab switch lag is gone with animated heroes.
+- User reported the cover workaround lets the hero video show behind the nav area and blocks animated theme effects on non-Home tabs.
+- User also provided a recording showing a repeat stick scrolling glitch.
+- Removed the non-Home cover layer from `App.jsx`.
+- Changed inactive `HomeView` to remain mounted, in place, and decoder-warm at `opacity: 0.001` instead of using an opaque cover, transform, or `visibility: hidden`.
+- Kept hero video/animated-image visibility tied to pause state only, so tab switches do not force media teardown.
+- Replaced Settings `scrollIntoView` focus scrolling with explicit active-scroller math and instant scrolling during rapid repeats.
+- Stopped repeated Settings edge input from continuously reissuing smooth top/bottom scrolls.
+- Updated `CHANGELOG.md` Unreleased notes.
 - Verified `npm run build` passes; Vite still reports the existing large chunk warning.
+- Verified `git diff --check` passes; Git still reports the existing CRLF normalization warnings for touched files.
 
 **Current implementation target:**
-- Keep the warm-decoder behavior intact while explicitly hiding animated/immersive Home visuals on non-Home tabs.
+- Preserve warm decoding by avoiding off-tab `visibility: hidden` on active hero media.
+- Hide inactive Home without an opaque cover, so active theme effects remain visible behind translucent tabs.
+- Keep inactive Home mounted and composited to preserve the no-lag Games/Settings-to-Home switch.
+- Stabilize repeated Settings stick scrolling by avoiding stacked smooth scroll requests.
 - Avoid touching shared Games/Apps `content-visibility` tab pane behavior.
-- Ready for user verification in the built app.
+- Ready for user verification in the built app; if lag returns, capture measured video `readyState` / `currentTime` during Games-to-Home before further guessing.
 
 ---
 

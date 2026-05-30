@@ -97,6 +97,7 @@ export default function App() {
   const handleClearRecentsRef = useRef(null);
   const toggleHomeCollectionRef = useRef(null);
   const scrollFocusRef = useRef({ tab: null, focusSection: null, focusIndex: 0, gameSourceTab: null, appCollectionTab: null, cols: 0 });
+  const settingsScrollTimeRef = useRef(0);
 
   const {
     searchOpen, searchQuery, searchMode, searchFocusIndex,
@@ -395,12 +396,44 @@ export default function App() {
 
   useEffect(() => {
     if (tab !== "Settings") return;
-    if (settingsFocusedRef.current) {
-      settingsFocusedRef.current.style.scrollMarginTop    = "80px";
-      settingsFocusedRef.current.style.scrollMarginBottom = "80px";
-      settingsFocusedRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const scroller = tabScrollRef.current;
+    const row = settingsFocusedRef.current;
+    if (!scroller || !row) return;
+
+    const now = performance.now();
+    const rapidRepeat = now - settingsScrollTimeRef.current < 180;
+    settingsScrollTimeRef.current = now;
+
+    const scale = settings.ui_scale ?? 1;
+    const sr = scroller.getBoundingClientRect();
+    const rr = row.getBoundingClientRect();
+    const topClearance = 80;
+    const bottomClearance = 80;
+    let rowTop = (rr.top - sr.top) / scale;
+    let rowBottom = (rr.bottom - sr.top) / scale;
+    let layoutTop = 0;
+    let node = row;
+    while (node && node !== scroller && node instanceof HTMLElement) {
+      layoutTop += node.offsetTop;
+      node = node.offsetParent;
     }
-  }, [settingsFocusIndex, tab]);
+    if (node === scroller) {
+      rowTop = layoutTop - scroller.scrollTop;
+      rowBottom = rowTop + row.offsetHeight;
+    }
+
+    let newTop = scroller.scrollTop;
+    if (rowTop < topClearance) {
+      newTop = scroller.scrollTop + rowTop - topClearance;
+    } else if (rowBottom > scroller.clientHeight - bottomClearance) {
+      newTop = scroller.scrollTop + rowBottom - (scroller.clientHeight - bottomClearance);
+    }
+    newTop = Math.max(0, newTop);
+    if (Math.abs(newTop - scroller.scrollTop) > 1) {
+      scroller.scrollTo({ top: newTop, behavior: rapidRepeat ? "auto" : "smooth" });
+    }
+    if (outerRef.current) outerRef.current.scrollTop = 0;
+  }, [settingsFocusIndex, settingsSection, tab, settings.ui_scale]);
 
   // Global styles
   useEffect(() => {

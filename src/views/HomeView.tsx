@@ -579,7 +579,7 @@ export function HomeView(props: HomeViewProps) {
               const showAnimatedImage = isAnimatedImageUrl(primaryHeroMedia);
               const staticBanner = rawStaticBanner;
               const mediaPaused = appPaused || heroMediaPaused;
-              const mediaVisible = active && !mediaPaused;
+              const mediaVisible = !mediaPaused;
 
               const coverStyle: any = { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" };
               return (
@@ -1325,9 +1325,10 @@ export function HomeView(props: HomeViewProps) {
         position: "absolute",
         inset: 0,
         overflowY: cinematicHome ? "visible" : semiHome ? "hidden" : "auto",
-        zIndex: 2,
+        zIndex: active ? 2 : 0,
+        opacity: active ? 1 : 0.001,
         pointerEvents: active ? "auto" : "none",
-        visibility: active ? "visible" : "hidden",
+        transition: active ? "none" : "opacity 80ms ease",
       }}
     >
       {content}
