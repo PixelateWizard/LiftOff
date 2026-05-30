@@ -3,29 +3,26 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Fix inactive Home layering side effects and repeat stick scrolling.
+**Task:** Pause animated Home hero media while off-tab to fix non-Home scroll stutter.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- User confirmed the Home-tab switch lag is gone with animated heroes.
-- User reported the cover workaround lets the hero video show behind the nav area and blocks animated theme effects on non-Home tabs.
-- User also provided a recording showing a repeat stick scrolling glitch.
-- Removed the non-Home cover layer from `App.jsx`.
-- Changed inactive `HomeView` to remain mounted, in place, and decoder-warm at `opacity: 0.001` instead of using an opaque cover, transform, or `visibility: hidden`.
-- Kept hero video/animated-image visibility tied to pause state only, so tab switches do not force media teardown.
-- Replaced Settings `scrollIntoView` focus scrolling with explicit active-scroller math and instant scrolling during rapid repeats.
-- Stopped repeated Settings edge input from continuously reissuing smooth top/bottom scrolls.
+- Read `hero-offtab-pause-fix.md`.
+- Confirmed the proposal supersedes the prior off-tab warm-decode approach for the reported non-Home repeat-scroll stutter.
+- Updated `HomeView` so `active` gates `playActiveHeroVideo`, the all-video pause effect, and the active-video retry/playback effect.
+- Folded `!active` into `mediaPaused`, so hero videos and animated image media are hidden while Home is off-tab.
+- Removed animated GIF/WebP `src` while media is paused, covering app pause, focus/visibility pause, and off-tab pause.
+- Left Home mounted and left video `src` intact so tab switches do not remount the video elements.
 - Updated `CHANGELOG.md` Unreleased notes.
 - Verified `npm run build` passes; Vite still reports the existing large chunk warning.
 - Verified `git diff --check` passes; Git still reports the existing CRLF normalization warnings for touched files.
 
 **Current implementation target:**
-- Preserve warm decoding by avoiding off-tab `visibility: hidden` on active hero media.
-- Hide inactive Home without an opaque cover, so active theme effects remain visible behind translucent tabs.
-- Keep inactive Home mounted and composited to preserve the no-lag Games/Settings-to-Home switch.
-- Stabilize repeated Settings stick scrolling by avoiding stacked smooth scroll requests.
-- Avoid touching shared Games/Apps `content-visibility` tab pane behavior.
-- Ready for user verification in the built app; if lag returns, capture measured video `readyState` / `currentTime` during Games-to-Home before further guessing.
+- Keep Home mounted off-tab, but pause every hero video and hide animated hero media whenever `active` is false.
+- Resume the active Home hero promptly when returning to Home.
+- Keep launch/focus pause behavior intact through the existing `appPaused` and `heroMediaPaused` gates.
+- Avoid remounting or clearing video sources unless pausing alone proves insufficient.
+- Ready for user verification in the built app; if non-Home scroll stutter remains, measure whether a paused hero video still retains too much GPU/decoder memory before considering source removal on tab leave.
 
 ---
 

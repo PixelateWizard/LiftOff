@@ -127,18 +127,18 @@ export function HomeView(props: HomeViewProps) {
     ? customHeroArt[activeHeroGame.id] || heroStatic[activeHeroGame.id] || null
     : null;
   const playActiveHeroVideo = useCallback((video: HTMLVideoElement | null, gameId: string) => {
-    if (!video || appPaused || heroMediaPaused) return;
+    if (!video || !active || appPaused || heroMediaPaused) return;
     const activeGame = heroGames[heroIdx];
     if (!activeGame || activeGame.id !== gameId) return;
     video.play().catch(() => {});
-  }, [appPaused, heroGames, heroIdx, heroMediaPaused]);
+  }, [active, appPaused, heroGames, heroIdx, heroMediaPaused]);
 
   useEffect(() => {
-    if (!appPaused && !heroMediaPaused) return;
+    if (active && !appPaused && !heroMediaPaused) return;
     Object.values(heroVideoRefs.current).forEach((video: HTMLVideoElement | null) => {
       if (video) video.pause();
     });
-  }, [appPaused, heroMediaPaused, heroVideoRefs]);
+  }, [active, appPaused, heroMediaPaused, heroVideoRefs]);
 
   useEffect(() => {
     const pauseHeroMedia = () => {
@@ -172,7 +172,7 @@ export function HomeView(props: HomeViewProps) {
   }, [heroVideoRefs]);
 
   useEffect(() => {
-    const shouldPlayHero = !appPaused && !heroMediaPaused;
+    const shouldPlayHero = active && !appPaused && !heroMediaPaused;
     if (!shouldPlayHero) {
       Object.values(heroVideoRefs.current).forEach((video: HTMLVideoElement | null) => {
         if (video) video.pause();
@@ -234,7 +234,7 @@ export function HomeView(props: HomeViewProps) {
         document.removeEventListener("visibilitychange", playActiveVideoWhenVisible);
       }
     };
-  }, [activeHeroAnimatedUrl, appPaused, heroGames, heroIdx, heroMediaPaused, heroVideoRefs, playActiveHeroVideo]);
+  }, [active, activeHeroAnimatedUrl, appPaused, heroGames, heroIdx, heroMediaPaused, heroVideoRefs, playActiveHeroVideo]);
 
   const homeFilteredRecent = recent.filter((a: any) => !settings.show_recent_games_only || a.app_type === "game").slice(0, 8);
   const homePinnedApps = pins.map((id: string) => apps.find((a: any) => a.id === id)).filter(Boolean);
@@ -578,7 +578,7 @@ export function HomeView(props: HomeViewProps) {
               const showVideo = isHeroVideoUrl(primaryHeroMedia);
               const showAnimatedImage = isAnimatedImageUrl(primaryHeroMedia);
               const staticBanner = rawStaticBanner;
-              const mediaPaused = appPaused || heroMediaPaused;
+              const mediaPaused = appPaused || heroMediaPaused || !active;
               const mediaVisible = !mediaPaused;
 
               const coverStyle: any = { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" };
@@ -595,7 +595,7 @@ export function HomeView(props: HomeViewProps) {
                   }
                   {showHeroArtwork && showAnimatedImage && (
                     <img
-                      src={primaryHeroMedia}
+                      src={mediaVisible ? primaryHeroMedia : undefined}
                       alt=""
                       decoding="async"
                       loading="eager"
