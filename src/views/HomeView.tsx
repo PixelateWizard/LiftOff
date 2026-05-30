@@ -1296,7 +1296,7 @@ export function HomeView(props: HomeViewProps) {
         overflowY: cinematicHome ? "visible" : semiHome ? "hidden" : "auto",
         zIndex: 2,
         pointerEvents: active ? "auto" : "none",
-        contentVisibility: active ? "visible" : "hidden",
+        visibility: active ? "visible" : "hidden",
       }}
     >
       {content}

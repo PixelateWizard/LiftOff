@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-No changes yet.
+### Changed
+- **Home tab switch performance** - Home, Games, and Apps now stay mounted across tab switches; inactive Games/Apps panes use `content-visibility: hidden`, and Home uses an instant visibility toggle so returning from large library grids avoids synchronous teardown/reveal lag.
 
 ## [2.0.0-alpha.4] - Alpha 4
 

@@ -1339,7 +1339,7 @@ export default function App() {
   };
   const tabPaneStyle = (active) => active
     ? { position: "absolute", inset: 0, zIndex: 2 }
-    : { position: "absolute", inset: 0, zIndex: 1, contentVisibility: "hidden", pointerEvents: "none" };
+    : { position: "absolute", inset: 0, zIndex: 2, contentVisibility: "hidden", pointerEvents: "none" };
 
   return (
     <ThemeProvider value={themeValue}>
@@ -1832,8 +1832,7 @@ export default function App() {
           headerOnSelect={headerOnSelect}
           headerRightActions={headerRightActions}
         />
-        {/* Tab content area — Home always mounted; cover layer hides it when elsewhere;
-             clouds sit above cover, below all tab UI. */}
+        {/* Tab content area: Home, Games, and Apps stay mounted so tab switches do not rebuild large views. */}
         <AppMainContent>
         <div style={{ position: "relative", flex: 1, overflow: (!(settings.topbar_background ?? true) && tab === "Home") || ((settings.cinematic_home || settings.home_mode === "semi") && tab === "Home") ? "auto" : "hidden" }}>
 

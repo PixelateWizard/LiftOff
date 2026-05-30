@@ -3,21 +3,20 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Fix Home animated hero startup fallback and adjust splash long-wait timing.
+**Task:** Fix Home tab switch lag by keeping Games/Apps panes mounted and making the Home reveal instant.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- User reported Home animated heroes still fail on app load: they appear blurry, switch to animated hero briefly, then become blurry again.
-- User also asked for the splash long-wait message to appear 8 seconds after the last regular status label appears, not 8 seconds after splash mount.
-- Updated `useGamepadNavigation` so startup/background pause checks trust `document.hasFocus()` before accepting a native false-focus result; this prevents `appPaused` from flipping on while the app is visibly focused.
-- Updated `HomeView` so active hero videos retry playback every 500ms while active, and animated hero media uses the real static hero banner underneath when available instead of immediately exposing a blurred cover fallback.
-- Updated `SplashScreen` so the long-wait timeout starts only after the final normal status label is displayed.
-- Updated Alpha 4 release notes in `CHANGELOG.md`.
+- Read `C:\Users\taylo\Downloads\home-tab-switch-perf (1).md`.
+- Started implementation of the Home tab switch performance proposal.
+- Updated inactive Games/Apps tab panes to stay on the same z-layer while using `content-visibility: hidden` and `pointer-events: none`.
+- Updated `HomeView` to keep Home mounted with an instant `visibility` toggle instead of hiding it with `content-visibility`.
+- Updated `CHANGELOG.md` Unreleased notes.
 - Verified `npm run build` passes; Vite still reports the existing large chunk warning.
-- Verified `npm.cmd run tauri -- build` passes with normal filesystem access and rebuilt the NSIS installer; Rust still reports the existing unused helper warnings.
-- Verified `git diff --check` passes with only existing LF-to-CRLF normalization warnings.
 
 **Current implementation target:**
+- Keep Games and Apps mounted behind `content-visibility: hidden` so switching back to Home no longer synchronously tears down large library grids.
+- Keep Home mounted and reveal it instantly when returning from Games/Apps.
 - Ready for user verification in the built app.
 
 ---
