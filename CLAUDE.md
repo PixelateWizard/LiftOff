@@ -3,20 +3,22 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Fix Home tab switch lag by keeping Games/Apps panes mounted and making the Home reveal instant.
+**Task:** Fix residual Home/Game tab switch hitch from animated hero video re-decode churn.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- Read `C:\Users\taylo\Downloads\home-tab-switch-perf (1).md`.
-- Started implementation of the Home tab switch performance proposal.
-- Updated inactive Games/Apps tab panes to stay on the same z-layer while using `content-visibility: hidden` and `pointer-events: none`.
-- Updated `HomeView` to keep Home mounted with an instant `visibility` toggle instead of hiding it with `content-visibility`.
+- Read `C:\Users\taylo\Downloads\home-tab-switch-perf-followup.md`.
+- Started implementation of the follow-up Home tab switch performance proposal.
+- Updated `HomeView` so `heroGames` preserves its array identity when the displayed hero game ids are unchanged.
+- Guarded active and neighbor hero video `load()` calls so they only run for never-loaded, non-loading media elements.
+- Updated the hero video retry timer to stop polling once the active video is playing with enough buffered data.
 - Updated `CHANGELOG.md` Unreleased notes.
 - Verified `npm run build` passes; Vite still reports the existing large chunk warning.
 
 **Current implementation target:**
-- Keep Games and Apps mounted behind `content-visibility: hidden` so switching back to Home no longer synchronously tears down large library grids.
-- Keep Home mounted and reveal it instantly when returning from Games/Apps.
+- Stabilize `HomeView` hero game list identity when the rendered game ids are unchanged.
+- Guard hero video `load()` calls so already-buffering or buffered media is not reset on tab return.
+- Stop the 500ms hero play retry interval once playback is confirmed.
 - Ready for user verification in the built app.
 
 ---

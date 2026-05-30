@@ -96,9 +96,20 @@ export function HomeView(props: HomeViewProps) {
   const semiHeroHeight = `calc(${semiViewportH} - ${SEMI_SLOT_H}px)`;
   const semiCardW = `${semiHomeBase}px`;
   const semiCardH = `${CARD_H}px`;
+  const heroGamesRef = useRef<any[]>([]);
   const heroGames = useMemo(() => {
-    const filteredRecentGames = recentGames.filter(g => apps.some(a => a.id === g.id));
-    return filteredRecentGames.length > 0 ? filteredRecentGames : apps.filter(a => a.app_type === "game").slice(0, 6);
+    const appIds = new Set(apps.map((a: any) => a.id));
+    const filteredRecentGames = recentGames.filter((g: any) => appIds.has(g.id));
+    const next = filteredRecentGames.length > 0
+      ? filteredRecentGames
+      : apps.filter((a: any) => a.app_type === "game").slice(0, 6);
+
+    const prev = heroGamesRef.current;
+    const sameLength = prev.length === next.length;
+    const sameIds = sameLength && next.every((g: any, i: number) => prev[i]?.id === g.id);
+    if (sameIds) return prev;
+    heroGamesRef.current = next;
+    return next;
   }, [apps, recentGames]);
   const heroIdx = Math.min(heroIndex, Math.max(0, heroGames.length - 1));
   const activeHeroGame = heroGames[heroIdx];
@@ -183,7 +194,9 @@ export function HomeView(props: HomeViewProps) {
     });
     if (activeVideo) {
       activeVideo.preload = "auto";
-      if (activeVideo.readyState < 2) activeVideo.load();
+      if (activeVideo.readyState === 0 && activeVideo.networkState !== HTMLMediaElement.NETWORK_LOADING) {
+        activeVideo.load();
+      }
       activeVideo.addEventListener("loadeddata", playActiveVideo);
       activeVideo.addEventListener("canplay", playActiveVideo);
       activeVideo.addEventListener("canplaythrough", playActiveVideo);
@@ -197,10 +210,18 @@ export function HomeView(props: HomeViewProps) {
         const game = heroGames[i];
         if (!game) return;
         const video = heroVideoRefs.current[game.id];
-        if (video && video.readyState < 3) video.load();
+        if (video && video.readyState === 0 && video.networkState !== HTMLMediaElement.NETWORK_LOADING) {
+          video.load();
+        }
       });
     });
-    const retryId = window.setInterval(playActiveVideo, 500);
+    const retryId = window.setInterval(() => {
+      if (activeVideo && !activeVideo.paused && activeVideo.readyState >= 3) {
+        window.clearInterval(retryId);
+        return;
+      }
+      playActiveVideo();
+    }, 500);
 
     return () => {
       cancelAnimationFrame(rafId);
