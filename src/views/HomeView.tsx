@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject, type CSSProperties } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../theme/surfaces";
 import { AppListItem, CyberpunkCard, FocusRing } from "../components/ui";
@@ -293,6 +293,20 @@ export function HomeView(props: HomeViewProps) {
       ? "0 14px 36px rgba(0,0,0,0.40), 0 32px 72px rgba(0,0,0,0.28)"
       : "0 13px 36px rgba(18,18,20,0.13), 0 30px 72px rgba(18,18,20,0.09)";
     const surfaceCardRadius = resolvedTheme === "cyberpunk" ? 0 : webcoreHero ? 0 : surfaceStyle === "material" ? 8 : 16;
+    const isCyber = resolvedTheme === "cyberpunk";
+    // Normal (non-immersive, non-semi) home hero gets a corner-cut + neon border in cyberpunk.
+    const cyberNormalHero = isCyber && !settings.cinematic_home && !semiHome;
+    const HERO_CLIP = "polygon(0 0, 100% 0, 100% calc(100% - 28px), calc(100% - 28px) 100%, 0 100%)";
+    // Immersive (cinematic) cyberpunk hero uses a filter-free two-layer padding frame.
+    const cyberImmersive = isCyber && settings.cinematic_home;
+    const HERO_CLIP_BIG = "polygon(0 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%)";
+    const cyberHeroInnerFill: CSSProperties = {
+      display: "inline-flex", alignItems: "center", gap: 22, padding: "22px 30px", boxSizing: "border-box",
+      background: "rgba(0,6,14,0.88)",
+      backdropFilter: "blur(6px)",
+      WebkitBackdropFilter: "blur(6px)",
+      clipPath: HERO_CLIP_BIG, WebkitClipPath: HERO_CLIP_BIG,
+    };
     const modalSurfaceRadius = resolvedTheme === "cyberpunk" ? 0 : webcoreHero ? 0 : surfaceStyle === "material" ? 16 : 24;
     const launchRadius = resolvedTheme === "cyberpunk" ? 0 : webcoreHero ? 0 : surfaceStyle === "material" ? 8 : 999;
     const heroTextColor = isDark ? theme.text : "rgba(34,24,18,0.96)";
@@ -570,8 +584,12 @@ export function HomeView(props: HomeViewProps) {
           boxShadow: (settings.cinematic_home || semiHome) ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
           transition: "border-color 0.2s ease, box-shadow 0.2s ease",
           background: (settings.cinematic_home && !showHeroArtwork) || (showHeroArtwork && activeIsVideo) ? "transparent" : materialHero ? appBg : isDark ? "#0a0502" : appBg,
+          // Cyberpunk normal hero: corner-cut shape + a neon "border" drawn as the
+          // padding frame (the cover art inset by padding reveals the accent edge,
+          // which follows the diagonal cut because both layers are clipped).
+          ...(cyberNormalHero ? { clipPath: HERO_CLIP, WebkitClipPath: HERO_CLIP, padding: heroFocused ? 3 : 2, background: heroFocused ? accent.primary : `${accent.glow}0.75)`, border: "none", boxShadow: heroFocused ? `0 0 24px ${accent.glow}0.3)` : "none" } : {}),
         }}>
-          <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: settings.cinematic_home ? 0 : surfaceCardRadius, overflow: "hidden" }}>
+          <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: settings.cinematic_home ? 0 : surfaceCardRadius, overflow: "hidden", ...(cyberNormalHero ? { clipPath: HERO_CLIP, WebkitClipPath: HERO_CLIP } : {}) }}>
             {heroGames.map((game, idx) => {
               const isActive = idx === heroIdx;
               const isNearby = Math.abs(idx - heroIdx) <= 1;
@@ -744,12 +762,25 @@ export function HomeView(props: HomeViewProps) {
                 maxWidth: 480,
                 pointerEvents: "auto",
               }
+            : cyberImmersive
+            ? {
+                // Outer = the neon border frame; the inner fill wrapper (below) sits
+                // inside the padding and both are clipped, so the edge wraps the cut.
+                position: "fixed", left: 32, bottom: cinematicHeroBottom, zIndex: 2, pointerEvents: "auto",
+                display: "inline-block", padding: 1,
+                maxWidth: "min(660px, calc(100% - 64px))",
+                background: `${accent.glow}0.62)`,
+                clipPath: HERO_CLIP_BIG,
+                WebkitClipPath: HERO_CLIP_BIG,
+                filter: `drop-shadow(0 10px 24px rgba(0,0,0,0.40))`,
+              }
             : settings.cinematic_home
             ? { position: "fixed", left: 0, right: 0, bottom: cinematicHeroAtBottom ? 0 : cinematicPinnedAtBottom ? "84px" : cinematicHeroNearChevron ? "68px" : "120px", zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
             : { position: "relative", zIndex: 1, flex: 1, display: "flex",
                 alignItems: "flex-end",
                 padding: semiHome ? "0 20px 56px" : "0 20px 20px",
                 order: 1 }}>
+            <div style={cyberImmersive ? cyberHeroInnerFill : { display: "contents" }}>
             {webcoreHero && materialCinematicHero && (
               <div style={{ position: "absolute", left: 2, right: 2, top: 2, height: 22, background: surface.titleBarBg, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 5px 0 7px", boxSizing: "border-box" }}>
                 <span style={{ color: "white", fontSize: 11, fontFamily: "Tahoma, Arial, sans-serif", fontWeight: 700 }}>{heroGame?.name || "LiftOff"}</span>
@@ -862,6 +893,7 @@ export function HomeView(props: HomeViewProps) {
             ) : (
               <div style={{ fontSize: 14, color: theme.textFaint }}>{t('home.noGames')}</div>
             )}
+            </div>
           </div>
           {heroFocused && !settings.cinematic_home && !semiHome && <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 3, background: surfaceStyle === "material" ? accent.primary : `linear-gradient(to right, ${accent.primary}, ${accent.glow}0))`, pointerEvents: "none", zIndex: 3 }} />}
         </div>
@@ -1240,6 +1272,12 @@ export function HomeView(props: HomeViewProps) {
                     background: "var(--material-elevation-3)",
                     borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)"}`,
                     boxShadow: isDark ? "inset 0 1px 0 rgba(255,255,255,0.04)" : "inset 0 1px 0 rgba(255,255,255,0.35)",
+                  } : resolvedTheme === "cyberpunk" ? {
+                    background: `linear-gradient(180deg, color-mix(in srgb, ${accent.primary} 12%, #04060d 88%) 0%, color-mix(in srgb, ${accent.primary} 7%, #02040a 93%) 100%)`,
+                    backdropFilter: "blur(10px) saturate(130%)",
+                    WebkitBackdropFilter: "blur(10px) saturate(130%)",
+                    borderTop: `1px solid ${accent.glow}0.45)`,
+                    boxShadow: `0 -8px 40px rgba(0,0,0,0.6), 0 -1px 0 ${accent.glow}0.50), inset 0 1px 0 ${accent.glow}0.12)`,
                   } : glassEnabled ? {
                     background: isDark
                       ? (surfaceStyle === "aero"

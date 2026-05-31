@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { IoDocumentTextOutline, IoHomeOutline, IoHomeSharp, IoGameController, IoApps, IoSearchOutline, IoSettings } from "react-icons/io5";
+import { IoHomeOutline, IoHomeSharp, IoGameController, IoGameControllerOutline, IoApps, IoAppsOutline, IoSettings, IoSettingsOutline } from "react-icons/io5";
 import { GamepadBtn } from "../GamepadBtn";
 import { SectionTabHeader } from "../SectionTabHeader";
 import type { TabItem } from "../SectionTabBar";
@@ -16,25 +16,11 @@ const TAB_ICONS: Record<string, (size: number, color: string) => ReactNode> = {
   Settings: (s, c) => <IoSettings      size={s} color={c} />,
 };
 
-const CYBER_TAB_LABELS: Record<string, string> = {
-  Home: "HOME",
-  Games: "EXPLORE",
-  Apps: "DOCS",
-  Settings: "ACCOUNT",
-};
-
 const CYBER_TAB_ICONS: Record<string, (size: number, color: string) => ReactNode> = {
-  Home:     (s, c) => <IoHomeOutline size={s} color={c} />,
-  Games:    (s, c) => <IoSearchOutline size={s} color={c} />,
-  Apps:     (s, c) => <IoDocumentTextOutline size={s} color={c} />,
-  Settings: (s, c) => (
-    <span style={{
-      width: s + 12, height: s + 12, borderRadius: "50%",
-      border: `1px solid ${c}`, color: c, display: "inline-flex",
-      alignItems: "center", justifyContent: "center", fontSize: 11,
-      fontWeight: 800, lineHeight: 1,
-    }}>N</span>
-  ),
+  Home:     (s, c) => <IoHomeOutline           size={s} color={c} />,
+  Games:    (s, c) => <IoGameControllerOutline size={s} color={c} />,
+  Apps:     (s, c) => <IoAppsOutline           size={s} color={c} />,
+  Settings: (s, c) => <IoSettingsOutline       size={s} color={c} />,
 };
 
 interface Props {
@@ -137,6 +123,26 @@ export function AppHeader({
     </div>
   ) : null;
 
+  // Hologram corner brackets framing the whole nav bar (cyberpunk only).
+  const cyberNavFrame = isCyberpunk
+    ? (["tl", "tr", "bl", "br"] as const).map((c) => {
+        const isTop = c[0] === "t";
+        const isLeft = c[1] === "l";
+        return (
+          <span key={c} aria-hidden="true" style={{
+            position: "absolute", width: 11, height: 11, pointerEvents: "none", zIndex: 3,
+            [isTop ? "top" : "bottom"]: -1,
+            [isLeft ? "left" : "right"]: -1,
+            borderTop: isTop ? `2px solid ${accent.primary}` : undefined,
+            borderBottom: !isTop ? `2px solid ${accent.primary}` : undefined,
+            borderLeft: isLeft ? `2px solid ${accent.primary}` : undefined,
+            borderRight: !isLeft ? `2px solid ${accent.primary}` : undefined,
+            filter: `drop-shadow(0 0 5px ${accent.glow}0.90))`,
+          }} />
+        );
+      })
+    : null;
+
   const navContent = (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
@@ -171,16 +177,15 @@ export function AppHeader({
           {tabs.map((tabName) => {
             const isActive = tab === tabName;
             const iconMode = settings.tabbar_icon_mode ?? "text";
-            const color = isActive ? (resolvedTheme === "onyx" ? accent.primary : activeTextColor) : theme.textDim;
+            const color = isActive ? ((resolvedTheme === "onyx" || isCyberpunk) ? accent.primary : activeTextColor) : theme.textDim;
             const iconNode = (isCyberpunk ? CYBER_TAB_ICONS : TAB_ICONS)[tabName]?.(isCyberpunk && tabName === "Settings" ? 14 : 16, color);
             const showIcon = iconMode === "icons" || iconMode === "both";
             const showText = iconMode === "text"  || iconMode === "both";
-            const label = isCyberpunk ? CYBER_TAB_LABELS[tabName] : t(`tabs.${tabName.toLowerCase()}`);
+            const label = t(`tabs.${tabName.toLowerCase()}`);
             return (
               <div key={tabName} data-tab-pill="" className={isActive ? "active" : ""} onClick={() => switchTab(tabName)} style={{
                 fontSize: isCyberpunk ? 9 : 11, fontWeight: isCyberpunk ? 500 : 600, letterSpacing: isCyberpunk ? "0.10em" : "0.08em", textTransform: "uppercase",
-                padding: isCyberpunk ? "6px 14px" : showIcon && !showText ? "6px 10px" : "6px 16px",
-                minWidth: isCyberpunk ? 58 : undefined,
+                padding: showIcon && !showText ? "6px 10px" : "6px 16px",
                 borderRadius: isPixel || isCyberpunk ? 0 : 8, cursor: "pointer",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 gap: showIcon && showText ? 2 : 0,
@@ -198,6 +203,8 @@ export function AppHeader({
                         ? "var(--material-shadow-medium)"
                         : `0 4px 24px ${accent.glow}0.5)`,
                       color: resolvedTheme === "onyx" || isCyberpunk ? accent.primary : activeTextColor,
+                      // Cyberpunk active tab: no chrome — just a neon glow on the icon/label + the dot.
+                      ...(isCyberpunk ? { filter: `drop-shadow(0 0 7px ${accent.glow}0.85))`, textShadow: `0 0 10px ${accent.glow}0.90)` } : {}),
                     }
                   : {
                       background: "transparent",
@@ -208,7 +215,7 @@ export function AppHeader({
                 {showIcon && iconNode}
                 {showText && <span style={{ lineHeight: 1 }}>{label}</span>}
                 {isCyberpunk && isActive && <span style={{ position: "absolute", bottom: 0, width: 4, height: 4, borderRadius: "50%", background: accent.primary, boxShadow: `0 0 8px ${accent.primary}` }} />}
-                <FocusRing focused={isActive} variant="spin" elementRadius={isPixel ? 0 : 8} />
+                <FocusRing focused={isActive && !isCyberpunk} variant="spin" elementRadius={isPixel ? 0 : 8} />
               </div>
             );
           })}
@@ -267,7 +274,9 @@ export function AppHeader({
           ...pixelFullBleedNav,
           ...glassBar, borderRadius: navRadius,
           display: "flex", flexDirection: "column",
+          position: "relative",
         }}>
+          {cyberNavFrame}
           {pixelTitleBar}
           <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "10px 20px" }}>
             {navContent}
@@ -288,7 +297,9 @@ export function AppHeader({
         ...widthConstraints(wideLayout, transparentNav, true, uiScale),
         ...pixelFullBleedNav,
         ...(transparentNav ? {} : { ...glassBar, borderRadius: navRadius }),
+        position: "relative",
       }}>
+        {cyberNavFrame}
         {!transparentNav && pixelTitleBar}
         <div style={{ display: "flex", alignItems: "center", gap: 16, padding: isPixel ? "10px 20px" : 0, width: "100%", flex: 1, boxSizing: "border-box" }}>
           {navContent}

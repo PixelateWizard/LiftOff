@@ -197,8 +197,10 @@ export const GlitchText: React.FC<GlitchTextProps> = ({
       }
       {...props}
     >
-      {mounted ? children : <span className="invisible">{children}</span>}
-      {!mounted && <span className="absolute inset-0">{children}</span>}
+      {mounted ? children : <span style={{ visibility: "hidden" }}>{children}</span>}
+      {!mounted && (
+        <span style={{ position: "absolute", inset: 0 }}>{children}</span>
+      )}
     </span>
   );
 };

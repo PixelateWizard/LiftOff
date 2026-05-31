@@ -525,18 +525,18 @@ export default function App() {
       ".theme-cyberpunk-hud-3 { animation:cyberHudFade 13s ease-in-out infinite; animation-delay:-7.5s; }",
       ".theme-cyberpunk-hud-4 { animation:cyberHudFade 13s ease-in-out infinite; animation-delay:-10s; }",
       ".theme-cyberpunk-rain { display:none !important; }",
-      `[data-theme="cyberpunk"] { --cyber-primary: ${accent.primary}; --cyber-glow: ${accent.glow}; --cyber-panel: rgba(0,10,22,0.72); --cyber-panel-bar: rgba(0,8,18,0.82); --cyber-border: ${accent.glow}0.55); --cyber-border-idle: ${accent.glow}0.22); --cyber-neon-shadow: 0 0 0 1px ${accent.glow}0.55), 0 0 8px ${accent.glow}0.38), 0 0 22px ${accent.glow}0.18), 0 0 44px ${accent.glow}0.08); --cyber-neon-shadow-idle: 0 0 0 1px ${accent.glow}0.22), 0 0 6px ${accent.glow}0.12); }`,
+      `[data-theme="cyberpunk"] { --cyber-primary: ${accent.primary}; --cyber-glow: ${accent.glow}; --cyber-panel: rgba(0,10,22,0.72); --cyber-panel-bar: rgba(0,8,18,0.72); --cyber-border: ${accent.glow}0.55); --cyber-border-idle: ${accent.glow}0.22); --cyber-neon-shadow: 0 0 0 1px ${accent.glow}0.55), 0 0 8px ${accent.glow}0.38), 0 0 22px ${accent.glow}0.18), 0 0 44px ${accent.glow}0.08); --cyber-neon-shadow-idle: 0 0 0 1px ${accent.glow}0.22), 0 0 6px ${accent.glow}0.12); }`,
       `[data-theme="cyberpunk"] [data-card] { border-radius: 0 !important; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%); }`,
-      `[data-theme="cyberpunk"] [data-card].focused > div, [data-theme="cyberpunk"] [data-card]:focus-visible > div { border: 1px solid var(--cyber-border) !important; box-shadow: var(--cyber-neon-shadow) !important; }`,
-      `[data-theme="cyberpunk"] [data-card]:not(.focused) > div { border: 1px solid var(--cyber-border-idle) !important; box-shadow: var(--cyber-neon-shadow-idle) !important; }`,
+      `[data-theme="cyberpunk"] [data-card].focused > div:not([data-cyberpunk-card-frame]), [data-theme="cyberpunk"] [data-card]:focus-visible > div:not([data-cyberpunk-card-frame]) { border: 1px solid var(--cyber-border) !important; box-shadow: var(--cyber-neon-shadow) !important; }`,
+      `[data-theme="cyberpunk"] [data-card]:not(.focused) > div:not([data-cyberpunk-card-frame]) { border: 1px solid var(--cyber-border-idle) !important; box-shadow: var(--cyber-neon-shadow-idle) !important; }`,
       `[data-theme="cyberpunk"] [data-launch-btn] { border-radius: 0 !important; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%); box-shadow: 0 0 0 1px ${accent.glow}0.70), 0 0 12px ${accent.glow}0.45), 0 0 32px ${accent.glow}0.22) !important; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.78em; }`,
       `[data-theme="cyberpunk"] [data-launch-btn]:active { box-shadow: 0 0 0 1px ${accent.glow}0.90), 0 0 20px ${accent.glow}0.65), 0 0 50px ${accent.glow}0.30) !important; transform: scale(0.97) !important; }`,
       `[data-theme="cyberpunk"] [data-top-bar] { background: var(--cyber-panel-bar) !important; backdrop-filter: blur(8px) !important; -webkit-backdrop-filter: blur(8px) !important; border-bottom: 1px solid var(--cyber-border-idle) !important; box-shadow: 0 2px 14px ${accent.glow}0.10) !important; border-radius: 0 !important; }`,
       `[data-theme="cyberpunk"] [data-bottom-bar] { background: var(--cyber-panel-bar) !important; backdrop-filter: blur(8px) !important; -webkit-backdrop-filter: blur(8px) !important; border-top: 1px solid var(--cyber-border-idle) !important; box-shadow: 0 -2px 14px ${accent.glow}0.10) !important; border-radius: 0 !important; }`,
       `[data-theme="cyberpunk"] [data-tab-pill] { border-radius: 0 !important; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%); }`,
       `[data-theme="cyberpunk"] [data-tab-pill].active { box-shadow: 0 0 0 1px ${accent.glow}0.60), 0 0 10px ${accent.glow}0.30) !important; }`,
-      `[data-theme="cyberpunk"] [data-settings-row] { border-radius: 0 !important; border-left: 2px solid transparent !important; transition: border-color 0.15s, background 0.15s !important; }`,
-      `[data-theme="cyberpunk"] [data-settings-row].focused { border-left: 2px solid var(--cyber-primary) !important; background: rgba(0,229,255,0.04) !important; box-shadow: inset 0 0 12px ${accent.glow}0.06) !important; }`,
+      `[data-theme="cyberpunk"] [data-settings-row] { border-radius: 0 !important; transition: border-color 0.15s, background 0.15s !important; }`,
+      `[data-theme="cyberpunk"] [data-settings-row].focused { background: linear-gradient(180deg, color-mix(in srgb, var(--cyber-primary) 18%, #05080f 82%) 0%, color-mix(in srgb, var(--cyber-primary) 11%, #03050b 89%) 100%) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border-color: var(--cyber-primary) !important; box-shadow: inset 0 1px 0 ${accent.glow}0.14), 0 0 14px ${accent.glow}0.12) !important; }`,
       `[data-theme="cyberpunk"] [data-modal] { border-radius: 0 !important; clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%); background: rgba(0,8,20,0.88) !important; backdrop-filter: blur(10px) saturate(130%) !important; -webkit-backdrop-filter: blur(10px) saturate(130%) !important; border: 1px solid var(--cyber-border) !important; box-shadow: var(--cyber-neon-shadow) !important; }`,
       `[data-theme="cyberpunk"] [data-toggle-track] { border-radius: 0 !important; border: 1px solid var(--cyber-border-idle) !important; }`,
       `[data-theme="cyberpunk"] [data-toggle-track].on { border-color: var(--cyber-border) !important; box-shadow: 0 0 8px ${accent.glow}0.35) !important; }`,
@@ -1162,7 +1162,7 @@ export default function App() {
           </div>
           <RunningBadge show={cardRunning} />
           <PinBadge isPinned={isPinned} />
-          {focused && !isOnyx && (
+          {focused && !isOnyx && resolvedTheme !== "cyberpunk" && (
             <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, pointerEvents: "none" }} />
           )}
         </CyberpunkCard>

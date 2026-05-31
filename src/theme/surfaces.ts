@@ -185,12 +185,14 @@ function neonSurface(accent: AccentColors): CSSProperties {
 }
 
 function cyberpunkSurface(accent: AccentColors): CSSProperties {
+  // Opaque HUD panel — a very dark tint of the accent so the animated background
+  // never bleeds into content. Neon edge + faint outer glow.
   return {
-    background: "rgba(0,10,22,0.72)",
-    backdropFilter: "blur(6px) saturate(120%)",
-    WebkitBackdropFilter: "blur(6px) saturate(120%)",
-    border: `1px solid ${accent.glow}0.22)`,
-    boxShadow: `0 0 0 1px ${accent.glow}0.22), 0 0 6px ${accent.glow}0.12)`,
+    background: `linear-gradient(180deg, color-mix(in srgb, ${accent.primary} 16%, #05080f 84%) 0%, color-mix(in srgb, ${accent.primary} 9%, #03050b 91%) 100%)`,
+    backdropFilter: "blur(6px) saturate(135%)",
+    WebkitBackdropFilter: "blur(6px) saturate(135%)",
+    border: `1px solid ${accent.glow}0.38)`,
+    boxShadow: `0 0 0 1px ${accent.glow}0.16), 0 0 12px ${accent.glow}0.10), inset 0 1px 0 ${accent.glow}0.12)`,
   };
 }
 
@@ -254,11 +256,11 @@ function buildGlassBarSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, fl
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.32)",
   };
   if (resolvedTheme === "cyberpunk") return {
-    background: "rgba(0,8,18,0.82)",
-    backdropFilter: "blur(8px)",
-    WebkitBackdropFilter: "blur(8px)",
-    border: `1px solid ${accent.glow}0.28)`,
-    boxShadow: `0 0 0 1px ${accent.glow}0.28), 0 2px 14px ${accent.glow}0.10)`,
+    background: `linear-gradient(180deg, color-mix(in srgb, ${accent.primary} 12%, #04060d 88%) 0%, color-mix(in srgb, ${accent.primary} 7%, #02040a 93%) 100%)`,
+    backdropFilter: "blur(10px) saturate(130%)",
+    WebkitBackdropFilter: "blur(10px) saturate(130%)",
+    border: `1px solid ${accent.glow}0.30)`,
+    boxShadow: `0 0 0 1px ${accent.glow}0.26), 0 2px 16px ${accent.glow}0.10), inset 0 1px 0 ${accent.glow}0.10)`,
   };
   if (surfaceStyle === "material") return {
     background: `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-3)`,
@@ -311,11 +313,12 @@ function buildSettingsRowSurface(args: SurfaceThemeArgs, surface: SurfaceTokens,
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 6px rgba(0,0,0,0.20)",
   };
   if (resolvedTheme === "cyberpunk") return {
-    background: "rgba(0,229,255,0.03)",
+    // Opaque squared HUD row (dark accent tint) — readable, thin neon edge, no rail.
+    background: `linear-gradient(180deg, color-mix(in srgb, ${accent.primary} 14%, #05080f 86%) 0%, color-mix(in srgb, ${accent.primary} 8%, #03050b 92%) 100%)`,
     backdropFilter: undefined,
     WebkitBackdropFilter: undefined,
-    border: "1px solid transparent",
-    boxShadow: "none",
+    border: `1px solid ${accent.glow}0.20)`,
+    boxShadow: `inset 0 1px 0 ${accent.glow}0.08), 0 2px 10px rgba(0,0,0,0.45)`,
   };
   if (surfaceStyle === "material") return {
     background: `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, var(--material-elevation-2)`,
@@ -376,7 +379,7 @@ export function useSurfaceTheme(args: SurfaceThemeArgs) {
     : resolvedTheme === "space"     ? "#070910"
     : resolvedTheme === "aurora"    ? "#020b14"
     : resolvedTheme === "synthwave" ? "#07020e"
-    : resolvedTheme === "cyberpunk" ? "#01060f"
+    : resolvedTheme === "cyberpunk" ? `color-mix(in srgb, ${accent.primary} 6%, #01040a 94%)`
     : resolvedTheme === "lofi"      ? "#1e1108"
     : resolvedTheme === "forest"    ? "#010a04"
     : resolvedTheme === "webcore"   ? surface.panelBg

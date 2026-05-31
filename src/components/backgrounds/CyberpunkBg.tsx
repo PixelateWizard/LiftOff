@@ -1,15 +1,8 @@
 import React from "react";
 import type { AccentColors } from "../../types";
-import { CyberCircuit, GlyphCity } from "./neonblade";
+import { AsciiRain } from "../neonblade-ui/ascii-rain";
 
 interface Props { accent: AccentColors; effectsEnabled?: boolean; }
-
-function hexPath(cx: number, cy: number, r: number): string {
-  return Array.from({ length: 6 }, (_, i) => {
-    const a = (Math.PI / 3) * i - Math.PI / 6;
-    return `${i === 0 ? "M" : "L"}${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
-  }).join("") + "Z";
-}
 
 const HUD_NODES = [
   { text: "SYS:OK", left: "5.5%", top: "87.5%", cls: "theme-cyberpunk-hud-0" },
@@ -21,58 +14,35 @@ const HUD_NODES = [
 
 export default function CyberpunkBg({ accent, effectsEnabled = true }: Props) {
   const primary = accent.primary || "#00e5ff";
-  const magenta = "rgba(255,20,140,1)";
   const bs = 16;
 
   return (
     <>
-      <div style={{ position: "fixed", inset: 0, zIndex: -2, pointerEvents: "none", background: "linear-gradient(180deg,#01060f 0%,#010a14 50%,#020812 100%)" }} />
+      {/* Base gradient — a very dark tint of the chosen accent */}
+      <div style={{ position: "fixed", inset: 0, zIndex: -2, pointerEvents: "none", background: `linear-gradient(180deg, color-mix(in srgb, ${primary} 8%, #03040b 92%) 0%, color-mix(in srgb, ${primary} 5%, #02030a 95%) 52%, color-mix(in srgb, ${primary} 3%, #010207 97%) 100%)` }} />
 
-      <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none", mixBlendMode: "screen" }}>
-        <CyberCircuit
-          color={primary}
-          glowColor={primary}
-          opacity={0.18}
-          lineThickness={1.2}
-          dotSize={2.5}
-          dotType="outline"
-          glowIntensity="soft"
+      {/* ASCII matrix rain — the primary backdrop */}
+      <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none" }}>
+        <AsciiRain
+          textColor={primary}
+          bgColor={`color-mix(in srgb, ${primary} 5%, rgba(2,4,11,0.15) 95%)`}
+          fontSize={16}
+          speed={effectsEnabled ? 0.5 : 0}
+          opacity={0.5}
         />
       </div>
 
-      <div className="theme-cyberpunk-glow" style={{ position: "fixed", inset: "-12%", zIndex: -1, pointerEvents: "none", background: `radial-gradient(ellipse 50% 26% at 14% 82%, color-mix(in srgb, ${primary} 55%, rgba(0,200,255,0.28) 45%) 0%, transparent 64%)`, filter: "blur(40px)", mixBlendMode: "screen", opacity: 0.38 }} />
-      <div className="theme-cyberpunk-glow-2" style={{ position: "fixed", inset: "-12%", zIndex: -1, pointerEvents: "none", background: "radial-gradient(ellipse 44% 24% at 86% 78%, rgba(255,20,140,0.38) 0%, transparent 60%)", filter: "blur(44px)", mixBlendMode: "screen", opacity: 0.35 }} />
+      {/* Faint alignment grid for depth */}
+      <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none", backgroundImage: "linear-gradient(rgba(0,229,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.035) 1px, transparent 1px)", backgroundSize: "46px 46px" }} />
 
-      <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none", backgroundImage: "linear-gradient(rgba(0,229,255,0.042) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.042) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
+      {/* Readability vignette — darken edges/center band so foreground panels read cleanly */}
+      <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none", background: "radial-gradient(ellipse 120% 90% at 50% 45%, transparent 38%, rgba(1,6,15,0.55) 100%)" }} />
+      <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none", background: "linear-gradient(180deg, rgba(1,6,15,0.45) 0%, transparent 22%, transparent 72%, rgba(1,6,15,0.55) 100%)" }} />
 
-      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, height: "38vh", zIndex: 0, pointerEvents: "none", mixBlendMode: "screen" }}>
-        <GlyphCity
-          cityType="solid"
-          variant="megacity"
-          colorPrimary={primary}
-          colorSecondary={magenta}
-          colorTertiary="rgba(255,220,30,0.85)"
-          bgColor="rgba(0,0,0,0)"
-          fontSize={11}
-          speed={effectsEnabled ? 90 : 0}
-          showVehicles={effectsEnabled}
-          blinkingLights={effectsEnabled}
-          opacity={58}
-        />
-      </div>
-
+      {/* Top scan line accent */}
       <div className="theme-cyberpunk-scan" style={{ position: "fixed", left: 0, right: 0, top: 0, height: 2, zIndex: 1, pointerEvents: "none", background: `linear-gradient(90deg, transparent, rgba(0,229,255,0.50) 20%, color-mix(in srgb, ${primary} 55%, rgba(0,229,255,1) 45%) 50%, rgba(0,229,255,0.50) 80%, transparent)`, filter: "blur(1px)", boxShadow: "0 0 10px rgba(0,229,255,0.30)" }} />
 
-      <div className="theme-cyberpunk-horizon" style={{ position: "fixed", left: 0, right: 0, bottom: "22%", height: 1, zIndex: 1, pointerEvents: "none", background: `linear-gradient(90deg, transparent, ${primary}77 22%, rgba(0,229,255,0.55) 50%, ${primary}77 78%, transparent)`, filter: "blur(1px)" }} />
-
-      <svg style={{ position: "fixed", inset: 0, width: "100%", height: "100%", zIndex: 0, pointerEvents: "none", overflow: "visible" }} aria-hidden="true">
-        <path className="theme-cyberpunk-hex-0" d={hexPath(120, 200, 42)} fill="none" stroke={primary} strokeWidth="0.7" />
-        <path className="theme-cyberpunk-hex-1" d={hexPath(1780, 310, 30)} fill="none" stroke="rgba(0,229,255,1)" strokeWidth="0.6" />
-        <path className="theme-cyberpunk-hex-2" d={hexPath(920, 610, 24)} fill="none" stroke={magenta} strokeWidth="0.5" />
-        <path className="theme-cyberpunk-hex-3" d={hexPath(270, 590, 18)} fill="none" stroke={primary} strokeWidth="0.5" />
-        <path className="theme-cyberpunk-hex-0" d={hexPath(1560, 155, 22)} fill="none" stroke="rgba(0,229,255,1)" strokeWidth="0.5" />
-      </svg>
-
+      {/* Corner HUD brackets */}
       {(["tl", "tr", "bl", "br"] as const).map((corner) => {
         const il = corner.endsWith("l");
         const it = corner.startsWith("t");
@@ -98,16 +68,15 @@ export default function CyberpunkBg({ accent, effectsEnabled = true }: Props) {
         );
       })}
 
+      {/* HUD telemetry text */}
       {HUD_NODES.map(({ text, left, top, cls }) => (
         <div key={text} className={cls} style={{ position: "fixed", left, top, zIndex: 1, pointerEvents: "none", fontFamily: "monospace", fontSize: 9, letterSpacing: "0.12em", color: `color-mix(in srgb, ${primary} 65%, rgba(0,229,255,1) 35%)`, opacity: 0.35 }}>
           {text}
         </div>
       ))}
 
+      {/* Scanline overlay */}
       <div style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", backgroundImage: "repeating-linear-gradient(180deg,transparent 0px,transparent 3px,rgba(0,0,0,0.05) 3px,rgba(0,0,0,0.05) 4px)", opacity: 0.45 }} />
-
-      <div className="theme-cyberpunk-flicker-1" style={{ position: "fixed", top: "11%", left: "5%", width: 2, height: 28, zIndex: 1, pointerEvents: "none", background: `linear-gradient(180deg,transparent,${primary},transparent)`, filter: `blur(1px) drop-shadow(0 0 4px ${primary})` }} />
-      <div className="theme-cyberpunk-flicker-2" style={{ position: "fixed", top: "17%", right: "7%", width: 2, height: 20, zIndex: 1, pointerEvents: "none", background: "linear-gradient(180deg,transparent,rgba(255,20,160,0.9),transparent)", filter: "blur(1px) drop-shadow(0 0 4px rgba(255,20,160,0.9))" }} />
     </>
   );
 }

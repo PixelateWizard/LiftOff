@@ -265,6 +265,7 @@ export function SettingsScreen({
   const isMaterial = surfaceStyle === "material";
   const isPixel = surfaceStyle === "win9x";
   const isOnyx = resolvedTheme === "onyx";
+  const isCyber = resolvedTheme === "cyberpunk";
   const materialFocusStyle = isMaterial ? {
     border: `2px solid ${accent.primary}`,
     background: isDark
@@ -315,7 +316,7 @@ export function SettingsScreen({
     }
     return {
       ...settingsRowGlass,
-      borderRadius: isPixel ? 0 : isMaterial ? 8 : 16,
+      borderRadius: isPixel || isCyber ? 0 : isMaterial ? 8 : 16,
       padding: "12px 20px",
       marginBottom: sub ? 6 : 8,
       marginLeft: indent ? 24 : 0,
@@ -328,8 +329,8 @@ export function SettingsScreen({
       ...(focused && !sub
         ? {
             border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + (surfaceStyle === "aero" ? "0.50)" : "0.45)")}`,
-            backdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
-            WebkitBackdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
+            backdropFilter: isCyber || surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
+            WebkitBackdropFilter: isCyber || surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
             boxShadow: surfaceStyle === "aero"
               ? `inset 0 1px 0 rgba(255,255,255,0.38), inset 0 2px 5px rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.10), 0 0 0 1px ${accent.glow}0.16), 0 6px 20px ${accent.glow}0.14)`
               : surfaceStyle === "material"
@@ -367,7 +368,7 @@ export function SettingsScreen({
         ? (item.lockedValue ? t("settings.values.on", "On") : t("settings.values.off", "Off"))
         : String(t(`settings.values.${item.lockedValue}`, String(item.lockedValue ?? "")));
       return (
-        <div key={item.key} data-settings-row="" style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8, marginLeft: item.indent ? 24 : 0, display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0.42, cursor: "not-allowed", pointerEvents: "none" }}>
+        <div key={item.key} data-settings-row="" style={{ ...settingsRowGlass, borderRadius: isPixel || isCyber ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8, marginLeft: item.indent ? 24 : 0, display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0.42, cursor: "not-allowed", pointerEvents: "none" }}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <span style={{ fontSize: 12, color: theme.textDim }}>{forced}</span>
         </div>
@@ -378,7 +379,7 @@ export function SettingsScreen({
     const focused = settingsFocusIndex === navIdx && navIdx !== -1;
     const rowRef = focused ? settingsFocusedRef : null;
     const rowStyle = makeRowStyle(focused, false, !!item.indent);
-    const onyxRing = <FocusRing focused={focused} variant="spin" wide elementRadius={flatSettings ? onyxSettingsFocusRadius : isPixel ? 0 : isMaterial ? 8 : 16} />;
+    const onyxRing = <FocusRing focused={focused} variant="spin" wide elementRadius={flatSettings ? onyxSettingsFocusRadius : isPixel || isCyber ? 0 : isMaterial ? 8 : 16} />;
 
     if (item.type === "info")
       return (
@@ -400,11 +401,11 @@ export function SettingsScreen({
         const subContainerStyle = {
           marginBottom: 8,
           padding: isMaterial ? "5px 6px 6px" : undefined,
-          background: isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
-          borderRadius: isPixel ? 0 : isMaterial ? "0 0 8px 8px" : "0 0 16px 16px",
+          background: isCyber ? `color-mix(in srgb, ${accent.primary} 10%, #04060d 90%)` : isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+          borderRadius: isPixel || isCyber ? 0 : isMaterial ? "0 0 8px 8px" : "0 0 16px 16px",
           border: isPixel ? "2px solid" : "none",
           borderColor: isPixel ? surface.borderSunken : undefined,
-          borderTop: isPixel ? undefined : isMaterial ? "1px solid var(--material-inset-top-edge)" : `1px solid ${isDark ? "rgba(255,255,255,0.045)" : "rgba(0,0,0,0.05)"}`,
+          borderTop: isPixel ? undefined : isCyber ? `1px solid ${accent.glow}0.14)` : isMaterial ? "1px solid var(--material-inset-top-edge)" : `1px solid ${isDark ? "rgba(255,255,255,0.045)" : "rgba(0,0,0,0.05)"}`,
           boxShadow: isMaterial
             ? isDark
               ? "inset 0 9px 18px rgba(0,0,0,0.18), inset 0 1px 0 var(--material-inset-top-edge), inset 0 -1px 0 var(--material-inset-bottom-edge)"
@@ -414,7 +415,7 @@ export function SettingsScreen({
         };
         const parentStyle = {
           ...settingsRowGlass,
-          borderRadius: isPixel ? 0 : val ? (isMaterial ? "8px 8px 0 0" : "16px 16px 0 0") : isMaterial ? 8 : 16,
+          borderRadius: isPixel || isCyber ? 0 : val ? (isMaterial ? "8px 8px 0 0" : "16px 16px 0 0") : isMaterial ? 8 : 16,
           padding: "12px 20px",
           marginBottom: val ? 0 : 8,
           display: "flex",
@@ -764,14 +765,14 @@ export function SettingsScreen({
 
     if (item.type === "icon_preview")
       return (
-        <div key={item.key} data-settings-row="" style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "14px 20px", marginBottom: 8 }}>
+        <div key={item.key} data-settings-row="" style={{ ...settingsRowGlass, borderRadius: isPixel || isCyber ? 0 : isMaterial ? 8 : 16, padding: "14px 20px", marginBottom: 8 }}>
           <GamepadIconPreview />
         </div>
       );
 
     if (item.type === "controller_test")
       return (
-        <div key={item.key} data-settings-row="" style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8 }}>
+        <div key={item.key} data-settings-row="" style={{ ...settingsRowGlass, borderRadius: isPixel || isCyber ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8 }}>
           <ControllerTestWidget />
         </div>
       );
@@ -802,10 +803,10 @@ export function SettingsScreen({
         );
 
       return (
-        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={{ ...settingsRowGlass, borderRadius: isPixel ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8, ...(focused ? {
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={{ ...settingsRowGlass, borderRadius: isPixel || isCyber ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8, ...(focused ? {
           border: `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + (surfaceStyle === "aero" ? "0.50)" : "0.45)")}`,
-          backdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
-          WebkitBackdropFilter: surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
+          backdropFilter: isCyber || surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
+          WebkitBackdropFilter: isCyber || surfaceStyle === "material" ? undefined : surfaceStyle === "aero" ? "blur(8px) saturate(120%) brightness(1.04)" : "blur(12px) saturate(115%) brightness(1.02)",
           boxShadow: surfaceStyle === "aero"
             ? `inset 0 1px 0 rgba(255,255,255,0.38), inset 0 2px 5px rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.10), 0 0 0 1px ${accent.glow}0.16), 0 6px 20px ${accent.glow}0.14)`
             : surfaceStyle === "material"

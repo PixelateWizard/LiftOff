@@ -61,6 +61,7 @@ export function CollapsibleGroup({
   const isMaterial = surfaceStyle === "material";
   const isPixel = surfaceStyle === "win9x";
   const isOnyx = resolvedTheme === "onyx";
+  const isCyber = resolvedTheme === "cyberpunk";
   const flatSettings = isOnyx && (settings.onyx_flat_settings ?? true);
   const onyxSettingsFocusRadius = 10;
   const materialFocusStyle: CSSProperties = isMaterial ? {
@@ -102,7 +103,7 @@ export function CollapsibleGroup({
     zIndex: focused ? 2 : undefined,
   } : {
     ...glass,
-    borderRadius: isPixel ? 0 : value ? (isMaterial ? "8px 8px 0 0" : "16px 16px 0 0") : isMaterial ? 8 : 16,
+    borderRadius: isPixel || isCyber ? 0 : value ? (isMaterial ? "8px 8px 0 0" : "16px 16px 0 0") : isMaterial ? 8 : 16,
     padding: "14px 20px",
     marginBottom: value ? 0 : 8,
     display: "flex",
@@ -128,11 +129,11 @@ export function CollapsibleGroup({
   } : {
     marginBottom: 8,
     padding: isMaterial ? "5px 6px 6px" : undefined,
-    background: isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
-    borderRadius: isPixel ? 0 : isMaterial ? "0 0 8px 8px" : "0 0 16px 16px",
+    background: isCyber ? `color-mix(in srgb, ${accent.primary} 10%, #04060d 90%)` : isPixel ? surface.insetBg : isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)",
+    borderRadius: isPixel || isCyber ? 0 : isMaterial ? "0 0 8px 8px" : "0 0 16px 16px",
     border: isPixel ? "2px solid" : "none",
     borderColor: isPixel ? surface.borderSunken : undefined,
-    borderTop: isPixel ? undefined : isMaterial ? "1px solid var(--material-inset-top-edge)" : `1px solid ${isDark ? "rgba(255,255,255,0.045)" : "rgba(0,0,0,0.05)"}`,
+    borderTop: isPixel ? undefined : isCyber ? `1px solid ${accent.glow}0.14)` : isMaterial ? "1px solid var(--material-inset-top-edge)" : `1px solid ${isDark ? "rgba(255,255,255,0.045)" : "rgba(0,0,0,0.05)"}`,
     boxShadow: isMaterial
       ? isDark
         ? "inset 0 9px 18px rgba(0,0,0,0.18), inset 0 1px 0 var(--material-inset-top-edge), inset 0 -1px 0 var(--material-inset-bottom-edge)"
@@ -146,7 +147,7 @@ export function CollapsibleGroup({
       <div data-settings-row="" className={focused ? "focused" : ""} ref={focusedRef} style={parentStyle} onClick={() => onChange(!value)}>
         <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{label}</span>
         <ToggleKnob value={value} />
-        <FocusRing focused={!!focused} variant="spin" wide elementRadius={flatSettings ? onyxSettingsFocusRadius : isPixel ? 0 : isMaterial ? 8 : 16} />
+        <FocusRing focused={!!focused} variant="spin" wide elementRadius={flatSettings ? onyxSettingsFocusRadius : isPixel || isCyber ? 0 : isMaterial ? 8 : 16} />
       </div>
 
       {value && (

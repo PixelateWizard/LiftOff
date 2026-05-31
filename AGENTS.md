@@ -1,9 +1,9 @@
-# LiftOff — Claude Code Handoff
+# LiftOff — Codex Handoff
 
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Make focused Cyberpunk Settings rows solid HUD panels instead of glassy translucent rows, while preserving clear focus emphasis and squared Cyberpunk styling.
+**Task:** Align Cyberpunk header nav button spacing and location with the other themes without changing the Cyberpunk button styling.
 
 **Completed this session (prior task — picker re-enable):**
 - Re-added `"cyberpunk"` to `THEME_OPTIONS` in `constants.ts` (it had been dropped from the picker list while all downstream wiring still referenced it). Logged in CHANGELOG Added.
@@ -20,24 +20,8 @@
 - `AppHeader.tsx`: removed the Cyberpunk-only tab padding and forced minimum width so the Cyberpunk top tabs use the same geometry as the other themes. Preserved the Cyberpunk fonts, outline icons, glow, active dot, square corners, and FocusRing suppression.
 - `npm run build` passes (only the pre-existing >500 kB chunk-size warning); `git diff --check` reports no whitespace errors.
 
-**Completed (hologram polish follow-up):**
-- `CyberpunkCard.tsx`: absolute inner layers now inset by the frame width instead of covering the outer clipped frame; Games and Apps cards show the complete bottom-right diagonal stroke.
-- `App.jsx`: legacy direct-child cyberpunk card CSS now skips the new clipped frame wrapper, the extra rectangular focused-game overlay is suppressed for Cyberpunk, and the Cyberpunk top bar alpha is lowered slightly for a hologram feel.
-- `HomeView.tsx`: immersive Cyberpunk hero frame reduced from 2px solid accent to a 1px softer glow edge with a lighter shadow; its inner HUD fill is subtly translucent with backdrop blur.
-- `npm run build` passes (only the pre-existing >500 kB chunk-size warning); `git diff --check` reports no whitespace errors.
-
-**Completed (immersive/nav reconciliation):**
-- `HomeView.tsx`: replaced the immersive Cyberpunk card's warm accent-heavy fill with the nav's translucent navy-black HUD base. Removed the accent bloom and saturation boost after runtime validation showed they pulled warm hero-art colors back into the panel.
-- `HomeView.tsx`: runtime-calibrated the larger immersive panel slightly darker (`rgba(0,6,14,0.88)`) with less blur so its perceived darkness matches the nav over bright hero artwork.
-- `npm run build` passes (only the pre-existing >500 kB chunk-size warning); `git diff --check` reports no whitespace errors.
-
-**Completed (Settings focus follow-up):**
-- `App.jsx`: replaced the Cyberpunk focused Settings row's translucent cyan wash and left rail with an opaque accent-tinted HUD gradient, full accent border, restrained glow, and an explicit no-blur CSS backstop.
-- `settings.tsx` / `surfaces.ts`: disabled backdrop filtering for Cyberpunk Settings rows, including both focused-row constructors and the base row surface, so Settings panels no longer composite as glass.
-- `npm run build` passes (only the pre-existing >500 kB chunk-size warning); `git diff --check` reports no whitespace errors.
-
 **Current implementation target:**
-- Runtime validation on Cyberpunk: focused Settings row solid-HUD treatment, immersive Home/nav visual cohesion, Games cover cut-edge stroke, and Apps normal-view card borders. Known deliberate calls to confirm with Taylor: ascii-rain is hand-written (not the official CLI artifact); beam reserved to focused card; grid cards still also render the outer `FocusRing` (could be removed for cyberpunk if the beam alone is enough). All new branches gated on `resolvedTheme === "cyberpunk"`/`isCyber` so other themes are untouched.
+- Runtime validation on Cyberpunk + Immersive home. Known deliberate calls to confirm with Taylor: ascii-rain is hand-written (not the official CLI artifact); beam reserved to focused card; grid cards still also render the outer `FocusRing` (could be removed for cyberpunk if the beam alone is enough). All new branches gated on `resolvedTheme === "cyberpunk"`/`isCyber` so other themes are untouched.
 
 ---
 

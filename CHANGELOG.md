@@ -5,11 +5,20 @@
 ## [2.0.0-alpha.5] - Alpha 5
 
 ### Added
+- **Cyberpunk theme** - the Cyberpunk theme is selectable again in Settings → Theme, now that its rendering and navigation issues are fixed.
 - **Running app lifecycle controls** - LiftOff now tracks apps and games launched during the current session, shows Running badges, changes the Home hero CTA to Resume for running games, focuses an already-running game instead of launching a second copy, reclaims LiftOff focus after launched games exit, and adds confirmed Close / Force close controls from the hero and card context menu.
+
+### Changed
+- **Cyberpunk theme redesign** - the Cyberpunk theme now reads as a distinctive neon "HUD". The background is a gentle falling ASCII matrix rain (replacing the dense glyph-city skyline that bled through content), and every surface is a very dark tint of the chosen accent rather than flat navy. App/game cards, both home heroes, settings rows and their sub-sections are solid corner-cut panels built from two clipped layers so the neon edge wraps the full shape including the diagonal cut, with no per-card filters (keeping scrolling smooth) and layout identical to the other themes (fixing mis-sized cards and off-center icons). The focused card is highlighted with a thick bright accent edge. The whole top navigation bar is framed by small holographic neon corner brackets, with the active tab shown as a glowing icon/label + dot, and the immersive collections drawer matches the theme instead of frosted glass.
 
 ### Bug Fixes
 - **Steam launch false "could not confirm" message** - the launch watcher now confirms a game on the window that actually matches its name/executable/source instead of the first new window, which was usually Steam's own launching popup. Steam launches show a "Launching Steam..." phase only when Steam was not already running, then switch to the game, and a game that goes straight to fullscreen-exclusive (never presenting a pollable window) now dismisses quietly as launched rather than surfacing an error. Quitting the game still pulls focus back to LiftOff.
 - **Steam post-exit focus reclaim** - launcher-owned windows such as Steam's client can no longer false-match a launcher-mediated game after it exits, clearing stale Running badges reliably. LiftOff now retries its focus reclaim briefly after an exit so Steam cannot immediately pull the foreground back.
+- **Cyberpunk theme rendering** - the Cyberpunk theme's hero Launch button now shows its neon edge frame and keeps the play icon and label centered with proper spacing, and the glitchy "LiftOff" wordmark no longer briefly flashes doubled text on first paint. These elements previously depended on utility classes that aren't part of LiftOff's styling, so they now carry explicit styles and render correctly on every load.
+- **Cyberpunk nav tabs** - the Cyberpunk theme's top tabs read Home / Games / Apps / Settings again (and localize properly) instead of Explore / Docs / Account, and their icons are the correct outline home / game-controller / apps / settings glyphs rather than a magnifier, document, and circled "N". The intended filled-to-outline icon styling is preserved.
+- **Cyberpunk nav alignment** - the Cyberpunk theme's top tabs now use the same spacing and placement as the other themes while preserving their neon HUD styling.
+- **Cyberpunk hologram polish** - the immersive Home card and top navigation now share a subtler translucent navy-black HUD treatment without warm artwork bleed, the immersive card edge is less dominant, and Games / Apps cards consistently show their full corner-cut border stroke.
+- **Cyberpunk Settings focus** - Settings rows now use solid HUD panels without backdrop blur, and focused rows use an opaque accent-tinted selection with a full neon edge instead of a translucent glass wash and left-side rail.
 
 ## [2.0.0-alpha.4.1] - Alpha 4.1
 

@@ -248,7 +248,16 @@ export const CornerCutButton: React.FC<CornerCutButtonProps> = ({
           .filter(Boolean)
           .join(" ")}
         aria-hidden="true"
-        style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 0 }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 0,
+          background:
+            variant === "outline"
+              ? "var(--ccb-color)"
+              : "rgba(255,255,255,0.08)",
+        }}
       />
 
       <button
@@ -308,7 +317,16 @@ export const CornerCutButton: React.FC<CornerCutButtonProps> = ({
         )}
 
         {/* Content sits above decorative layers */}
-        <span className="relative z-10 flex items-center gap-2">
+        <span
+          className="relative z-10 flex items-center gap-2"
+          style={{
+            position: "relative",
+            zIndex: 10,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
           {children}
           {showArrow && (
             <span

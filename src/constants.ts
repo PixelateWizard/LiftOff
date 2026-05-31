@@ -44,7 +44,7 @@ export const THEMES: Record<string, { text: string; textDim: string; textFaint: 
 
 export const THEME_OPTIONS = [
   "space", "sky", "plasma", "cinder", "wash",
-  "aurora", "synthwave", "lofi", "forest", "webcore", "onyx",
+  "aurora", "synthwave", "cyberpunk", "lofi", "forest", "webcore", "onyx",
 ] as const;
 
 export const THEME_SURFACE_DEFAULTS: Record<string, string> = {
