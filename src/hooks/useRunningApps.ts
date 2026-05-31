@@ -23,6 +23,38 @@ export function useRunningApps(appPaused: boolean, reclaimOnExit = true): Runnin
   const [runningIds, setRunningIds] = useState<Set<string>>(new Set());
   const prevRunning = useRef<Set<string>>(new Set());
   const inFlight = useRef(false);
+  const reclaiming = useRef(false);
+
+  const reclaimFocusPersistently = useCallback(() => {
+    if (reclaiming.current) return;
+    reclaiming.current = true;
+
+    // Steam and some launchers re-grab the foreground several times shortly
+    // after a game exits, so keep reasserting focus for a brief bounded window.
+    let attempts = 0;
+    const MAX_ATTEMPTS = 6;
+    const SPACING_MS = 400;
+
+    const tick = async () => {
+      attempts += 1;
+      let focused = false;
+      try {
+        focused = await getCurrentWindow().isFocused();
+      } catch {
+        focused = false;
+      }
+      if (!focused) {
+        invoke("focus_self").catch(() => {});
+      }
+      if (focused || attempts >= MAX_ATTEMPTS) {
+        reclaiming.current = false;
+        return;
+      }
+      window.setTimeout(tick, SPACING_MS);
+    };
+
+    tick();
+  }, []);
 
   const refreshRunning = useCallback(() => {
     if (inFlight.current) return;
@@ -39,19 +71,14 @@ export function useRunningApps(appPaused: boolean, reclaimOnExit = true): Runnin
         });
 
         if (reclaimOnExit && someExited) {
-          try {
-            const focused = await getCurrentWindow().isFocused();
-            if (!focused) invoke("focus_self").catch(() => {});
-          } catch {
-            invoke("focus_self").catch(() => {});
-          }
+          reclaimFocusPersistently();
         }
       })
       .catch(() => {})
       .finally(() => {
         inFlight.current = false;
       });
-  }, [reclaimOnExit]);
+  }, [reclaimFocusPersistently, reclaimOnExit]);
 
   useEffect(() => {
     refreshRunning();

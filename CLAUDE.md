@@ -3,21 +3,18 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Implement the Steam launch confirmation fix (smart window match + two-phase status) from `steam-launch-confirmation-fix.md`.
+**Task:** Implement the Steam post-exit refocus fix from `steam-refocus-after-exit-fix.md`: reject launcher-owned windows when matching launcher-mediated games and persistently reclaim LiftOff focus for a short bounded window after exit.
 
 **Completed this session:**
 - Read `CLAUDE.md` before starting, per repo instruction.
-- Added `is_process_running("steam.exe")` via a ToolHelp process snapshot (new `Win32_System_Diagnostics_ToolHelp` Cargo feature) and `poll_for_matched_window` reusing the existing `best_launch_window` scorer.
-- Rewrote the `launch_app` watcher thread so games confirm on the best-scoring window matching their name/exe/source (score >= 45) instead of "any new window"; direct-exe PID match kept as a fallback.
-- Added honest two-phase `launch-phase` events (`"steam"` then `"game"`) emitted only when Steam was not already running, advancing to the game phase once a matching window appears or after a 2s grace.
-- Made the watcher emit `launch-success` whether or not a window was confirmed (Decision 2A) so fullscreen-exclusive games dismiss softly.
-- Updated `LaunchOverlay.tsx`: added `phase` state + `launch-phase` listener, phase-aware launching copy, and softened the verify branch so `running`/unconfirmed/verify-error outcomes auto-focus (Decision 3C) and dismiss instead of dead-ending on a scary message. `running_unfocused`/`unconfirmed` states and the manual retry UI are left intact for rare edge cases.
-- Added `launch.launchingSteam` / `launch.launchingGame` and neutralized `launch.unconfirmed` in `en.json` + `fr.json`.
-- Updated `CHANGELOG.md` under the current Alpha 5 block.
-- Verified `cargo check` passes (only pre-existing unused-function warnings), `npm run build` passes (only the pre-existing large-chunk warning), and `npx.cmd tsc --noEmit` only fails with the pre-existing TS1261 `Gamepad.tsx` / `gamepad.tsx` casing warning.
+- Read `steam-refocus-after-exit-fix.md` and confirmed the existing running-app lifecycle is the implementation target.
+- Added `is_launcher_exe` in `src-tauri/src/lib.rs` and reject launcher/client-owned windows before scoring matches for Steam, Xbox/UWP, and Battle.net game sources. This prevents Steam's own client window from keeping exited games falsely marked as running while leaving the desktop-sourced Steam app tile unaffected.
+- Replaced the one-shot post-exit `focus_self` request in `src/hooks/useRunningApps.ts` with a guarded bounded retry: up to 6 checks at 400ms spacing, stopping as soon as LiftOff holds focus.
+- Updated `CHANGELOG.md` under the current Alpha 5 bug-fix block.
+- Verified `cargo check`, `npm.cmd run build`, `git diff --check`, and `npm.cmd run tauri -- build` pass. The NSIS installer was produced at `src-tauri/target/release/bundle/nsis/LiftOff_2.0.0-alpha.4.1_x64-setup.exe`. `npx.cmd tsc --noEmit` still fails only with the pre-existing TS1261 `Gamepad.tsx` / `gamepad.tsx` casing warning.
 
 **Current implementation target:**
-- Ready for runtime validation on Windows: Steam game with Steam closed (expect "Launching Steam..." then the game, focused, no error), Steam already running (no Steam phase), fullscreen-exclusive Steam game (soft dismiss), direct-exe / Xbox / UWP / Battle.net games (confirm via match, no false error), genuine bad-path spawn error (still shows `failed`), and exit reclaim (still returns focus to LiftOff).
+- Ready for runtime validation on Windows: quit a Steam game and confirm LiftOff reclaims and holds focus, the Running badge clears within one poll, genuinely running Steam games still show Running, the Steam app tile still launches normally, and direct-exe / Xbox / UWP / Battle.net lifecycle behavior remains intact.
 
 ---
 

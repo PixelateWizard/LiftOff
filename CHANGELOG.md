@@ -9,6 +9,7 @@
 
 ### Bug Fixes
 - **Steam launch false "could not confirm" message** - the launch watcher now confirms a game on the window that actually matches its name/executable/source instead of the first new window, which was usually Steam's own launching popup. Steam launches show a "Launching Steam..." phase only when Steam was not already running, then switch to the game, and a game that goes straight to fullscreen-exclusive (never presenting a pollable window) now dismisses quietly as launched rather than surfacing an error. Quitting the game still pulls focus back to LiftOff.
+- **Steam post-exit focus reclaim** - launcher-owned windows such as Steam's client can no longer false-match a launcher-mediated game after it exits, clearing stale Running badges reliably. LiftOff now retries its focus reclaim briefly after an exit so Steam cannot immediately pull the foreground back.
 
 ## [2.0.0-alpha.4.1] - Alpha 4.1
 

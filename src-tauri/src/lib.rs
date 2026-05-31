@@ -2112,12 +2112,41 @@ fn file_name_lower(path: &str) -> Option<String> {
         .map(|s| s.to_lowercase())
 }
 
+// Launcher/client windows must not be treated as a launched game's own window.
+fn is_launcher_exe(exe_path: &Option<String>) -> bool {
+    let Some(path) = exe_path else { return false; };
+    let lower = path.to_lowercase();
+    const LAUNCHER_EXES: &[&str] = &[
+        "\\steam.exe",
+        "\\steamwebhelper.exe",
+        "\\battle.net.exe",
+        "\\battle.net launcher.exe",
+        "\\epicgameslauncher.exe",
+        "\\galaxyclient.exe",
+        "\\eadesktop.exe",
+        "\\origin.exe",
+        "\\xboxapp.exe",
+        "\\gamingservices.exe",
+    ];
+    LAUNCHER_EXES
+        .iter()
+        .any(|needle| lower.ends_with(needle) || lower.contains(needle))
+}
+
 fn match_launch_window_score(
     candidate: &LaunchWindowCandidate,
     name: &str,
     launch_path: &str,
     source: &str,
 ) -> u32 {
+    let source_lower = source.to_lowercase();
+    let is_launcher_source = ["steam", "xbox", "uwp", "battle.net", "battlenet"]
+        .iter()
+        .any(|s| source_lower.contains(s));
+    if is_launcher_source && is_launcher_exe(&candidate.exe_path) {
+        return 0;
+    }
+
     let name_norm = normalize_match_text(name);
     let title_norm = normalize_match_text(&candidate.title);
     let launch_exe = launch_exe_path(launch_path);
@@ -2152,7 +2181,6 @@ fn match_launch_window_score(
         }
     }
 
-    let source_lower = source.to_lowercase();
     if score == 0 && ["steam", "xbox", "uwp", "battle.net", "battlenet"]
         .iter()
         .any(|s| source_lower.contains(s))
