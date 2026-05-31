@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## [2.0.0-alpha.4.1] - Alpha 5
+## [2.0.0-alpha.5] - Alpha 5
 
 ### Added
 - **Running app lifecycle controls** - LiftOff now tracks apps and games launched during the current session, shows Running badges, changes the Home hero CTA to Resume for running games, focuses an already-running game instead of launching a second copy, reclaims LiftOff focus after launched games exit, and adds confirmed Close / Force close controls from the hero and card context menu.
