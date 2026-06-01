@@ -390,6 +390,34 @@ fn save_custom_names(names: &std::collections::HashMap<String, String>) {
     }
 }
 
+// ── Recategorization overrides (move between Games/Apps + force source) ──
+// Keyed by app/game id. app_type: Some("game") | Some("app") | None (no override).
+// source: Some("xbox"|"steam"|"<custom>") | None (no override).
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct CategoryOverride {
+    #[serde(default)]
+    pub app_type: Option<String>,
+    #[serde(default)]
+    pub source: Option<String>,
+}
+
+fn custom_categories_path() -> std::path::PathBuf { liftoff_dir().join("custom_categories.json") }
+
+fn load_custom_categories() -> std::collections::HashMap<String, CategoryOverride> {
+    let path = custom_categories_path();
+    std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+fn save_custom_categories(map: &std::collections::HashMap<String, CategoryOverride>) {
+    let path = custom_categories_path();
+    if let Ok(json) = serde_json::to_string_pretty(map) {
+        let _ = std::fs::write(path, json);
+    }
+}
+
 fn art_dir() -> std::path::PathBuf { liftoff_dir().join("art") }
 fn grid_art_dir() -> std::path::PathBuf { art_dir().join("grid") }
 fn hero_static_art_dir() -> std::path::PathBuf { art_dir().join("hero_static") }
@@ -686,6 +714,34 @@ fn rename_app(id: String, name: String) -> Result<(), String> {
     let mut names = load_custom_names();
     names.insert(id, name);
     save_custom_names(&names);
+    Ok(())
+}
+
+#[tauri::command]
+fn get_custom_categories() -> std::collections::HashMap<String, CategoryOverride> {
+    load_custom_categories()
+}
+
+/// Set (or clear) the category override for an app/game id.
+/// Passing both fields as None removes the override entirely.
+#[tauri::command]
+fn set_app_category(
+    id: String,
+    app_type: Option<String>,
+    source: Option<String>,
+) -> Result<(), String> {
+    // Validate app_type: only "game" or "app" are accepted; anything else is dropped.
+    let app_type = app_type.filter(|t| t == "game" || t == "app");
+    // Validate source: must be non-empty when present.
+    let source = source.filter(|s| !s.trim().is_empty());
+
+    let mut map = load_custom_categories();
+    if app_type.is_none() && source.is_none() {
+        map.remove(&id);
+    } else {
+        map.insert(id, CategoryOverride { app_type, source });
+    }
+    save_custom_categories(&map);
     Ok(())
 }
 
@@ -1761,6 +1817,18 @@ fn get_apps() -> Vec<AppEntry> {
     let mut seen = std::collections::HashSet::new();
     // Use the ID for de-duplication instead of just the name to be safer
     apps.retain(|a| seen.insert(a.id.clone()) && !hidden.contains(&a.id));
+
+    // Apply user category overrides (move between Games/Apps and/or force source).
+    let categories = load_custom_categories();
+    if !categories.is_empty() {
+        for app in &mut apps {
+            if let Some(ov) = categories.get(&app.id) {
+                if let Some(t) = &ov.app_type { app.app_type = t.clone(); }
+                if let Some(s) = &ov.source   { app.source   = s.clone(); }
+            }
+        }
+    }
+
     apps
 }
 
@@ -1845,6 +1913,18 @@ fn get_all_apps() -> Vec<AppEntry> {
         for app in &mut apps {
             if let Some(name) = custom_names.get(&app.id) {
                 app.name = name.clone();
+            }
+        }
+    }
+
+    // Apply user category overrides (move between Games/Apps and/or force source).
+    // Runs after dedup and naming; mutates app_type/source in place only — never id or launch_path.
+    let categories = load_custom_categories();
+    if !categories.is_empty() {
+        for app in &mut apps {
+            if let Some(ov) = categories.get(&app.id) {
+                if let Some(t) = &ov.app_type { app.app_type = t.clone(); }
+                if let Some(s) = &ov.source   { app.source   = s.clone(); }
             }
         }
     }
@@ -2708,6 +2788,7 @@ pub fn run() {
             search_sgdb_art, download_sgdb_art,
             list_dir, get_drives,
             get_custom_data, add_custom_app, remove_custom_app, rename_custom_app, rename_app, remove_custom_source,
+            get_custom_categories, set_app_category,
             add_custom_folder, remove_custom_folder, toggle_custom_folder,
             get_app_collections, create_app_collection, delete_app_collection, rename_app_collection,
             get_app_memberships, set_app_memberships,

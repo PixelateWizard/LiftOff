@@ -65,6 +65,7 @@ export default function App() {
   const { t } = useTranslation();
   const [addAppType, setAddAppType]                 = useState("game"); // "game" | "app"
   const [adminPrefsVersion, setAdminPrefsVersion]   = useState(0);
+  const [categoryOverrides, setCategoryOverrides]   = useState({}); // { [id]: { app_type, source } } recategorization overrides
   const [heroCustomType, setHeroCustomType]         = usePersistentJson("liftoff_heroCustomType", {});
   const [cacheClearLoading, setCacheClearLoading]   = useState(false);
   const [cacheClearStatus, setCacheClearStatus]     = useState({ line1: "", line2: "" });
@@ -449,6 +450,20 @@ export default function App() {
     }
     if (outerRef.current) outerRef.current.scrollTop = 0;
   }, [settingsFocusIndex, settingsSection, tab, settings.ui_scale]);
+
+  // Load recategorization overrides on mount (used to offer "Reset to detected category").
+  useEffect(() => {
+    invoke("get_custom_categories").then(setCategoryOverrides).catch(() => {});
+  }, []);
+
+  // Set or clear a recategorization override, then refresh the library so the
+  // backend reapplies it and the item jumps to the correct tab/source.
+  const applyCategoryOverride = (id, appType, source) => {
+    invoke("set_app_category", { id, appType: appType ?? null, source: source ?? null })
+      .then(() => invoke("get_custom_categories"))
+      .then((map) => { setCategoryOverrides(map); refreshLibrary(); })
+      .catch(() => {});
+  };
 
   // Global styles
   useEffect(() => {
@@ -2060,6 +2075,14 @@ export default function App() {
             : []),
           { label: t('contextMenu.collections'), action: () => { setColPickerApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
           { label: t('contextMenu.rename'), action: () => { setEditNameApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
+          // Recategorize: move between Games/Apps. Moving a UWP title to Games defaults
+          // its source to "xbox" (the common Spiritfarer-type case); moving to Apps clears the source override.
+          (contextMenu.app.app_type === "game"
+            ? { label: t('contextMenu.moveToApps'), action: () => { applyCategoryOverride(contextMenu.app.id, "app", null); setContextMenu(null); contextMenuRef.current = null; } }
+            : { label: t('contextMenu.moveToGames'), action: () => { applyCategoryOverride(contextMenu.app.id, "game", contextMenu.app.source === "uwp" ? "xbox" : null); setContextMenu(null); contextMenuRef.current = null; } }),
+          ...(categoryOverrides[contextMenu.app.id]
+            ? [{ label: t('contextMenu.resetCategory'), action: () => { applyCategoryOverride(contextMenu.app.id, null, null); setContextMenu(null); contextMenuRef.current = null; } }]
+            : []),
           ...(isRunning(contextMenu.app.id)
             ? [{ label: t('home.close'), danger: true, action: () => { requestClose(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } }]
             : []),

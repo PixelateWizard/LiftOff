@@ -336,7 +336,10 @@
     "hide": "Masquer",
     "show": "Afficher",
     "delete": "Supprimer",
-    "rename": "Renommer"
+    "rename": "Renommer",
+    "moveToGames": "Déplacer vers Jeux",
+    "moveToApps": "Déplacer vers Applis",
+    "resetCategory": "Rétablir la catégorie détectée"
   },
   "running": {
     "badge": "En cours"

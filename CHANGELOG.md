@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- **Move titles between Games and Apps** - some installed titles are detected but land in the wrong tab (for example certain Game Pass games whose package looks identical to a regular app). Right-clicking any card now offers "Move to Games" or "Move to Apps" so you can put a title where it belongs; moving a Microsoft Store game to Games also files it under the Xbox source automatically. The choice is remembered and reapplied every time the library rescans, and "Reset to detected category" undoes it. This only changes where a title appears — it never affects how it launches.
+
 ## [2.0.0-alpha.5] - Alpha 5
 
 ### Added

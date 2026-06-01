@@ -3,9 +3,9 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Align Cyberpunk header nav button spacing and location with the other themes without changing the Cyberpunk button styling.
+**Task:** Recategorize Override — let the user move titles between Games/Apps (and force a source) via the existing context menu, persisted in `custom_categories.json` and reapplied on every scan. Pure override layer on top of scan output; launch behavior untouched. Test case: Spiritfarer (AppX Game Pass title with `App Id = "App"` and no `MicrosoftGame.config`, misclassified as an app).
 
-**Completed this session (prior task — picker re-enable):**
+**Prior task — Cyberpunk header nav alignment (completed this session — picker re-enable):**
 - Re-added `"cyberpunk"` to `THEME_OPTIONS` in `constants.ts` (it had been dropped from the picker list while all downstream wiring still referenced it). Logged in CHANGELOG Added.
 
 **Completed (round 2 — design feedback pass):**
@@ -209,6 +209,7 @@ All animated theme backgrounds live in `src/components/backgrounds/` and are bar
 - `recents.json` — Vec<RecentEntry> (all recent launches — drives the Home tab recents shelf)
 - `recent_games.json` — Vec<RecentEntry> (games only — drives the hero on Home; capped at 20)
 - `custom_names.json` — HashMap<String, String> of user-defined name overrides for any app/game ID. `rename_app` updates this file and `get_all_apps` applies overrides after scanning.
+- `custom_categories.json` — HashMap<String, CategoryOverride> of user recategorization overrides keyed by app/game ID. `CategoryOverride { app_type: Option<String>, source: Option<String> }` (both `#[serde(default)]`). `set_app_category` writes it; `get_all_apps`/`get_apps` apply it after scanning + dedup + name overrides, mutating `app_type`/`source` in place only (never `id` or `launch_path`). Lets the user move titles between Games/Apps and/or force a source tag, persisted and reapplied on every scan (same pattern as `rename_app`).
 - `art_cache.json` — HashMap<String, String> (game name → local disk path for grid art, or remote URL fallback)
 - `hero_cache.json` — HashMap<String, String> (game name → local disk path for static hero, or remote URL fallback)
 - `hero_animated_cache.json` — HashMap<String, String> (game name → local disk path for animated hero .webm, or remote URL fallback)
@@ -225,6 +226,8 @@ All animated theme backgrounds live in `src/components/backgrounds/` and are bar
 - `get_recents` / `clear_recents`
 - `get_recent_games` — returns `Vec<RecentEntry>` from `recent_games.json`
 - `rename_app(id, name)` — persists display-name overrides for all app/game types in `custom_names.json`; for `custom_` entries it also updates `custom_data.json`. Use this for current rename UI instead of only `rename_custom_app`.
+- `get_custom_categories` — returns `HashMap<String, CategoryOverride>` of recategorization overrides.
+- `set_app_category(id, app_type, source)` — upserts (or, when both `None`, removes) a recategorization override in `custom_categories.json`. `app_type` is validated to `"game"`/`"app"` (other values dropped); `source` must be non-empty. Reapplied after every scan; never touches `launch_path`.
 - `get_pins` / `toggle_pin(app_id)`
 - `get_hidden` / `toggle_hidden(app_id)`
 - `fetch_game_art(game_name)` — returns `GameArtBundle { grid: Option<String>, hero_static: Option<String>, hero_animated: Option<String> }`. Makes one SGDB search call, then separately fetches `types=static` and `types=animated` heroes. Each image/video is **downloaded to disk** (`art/grid/`, `art/hero_static/`, `art/hero_animated/`) via `download_file()` and the local path is returned. Falls back to remote URL if download fails. Cache entries = local path; empty string = checked/none; absent = uncached.
@@ -363,6 +366,7 @@ Two parallel input paths:
 ### Context Menu
 - Right-clicking any card (game or non-game) shows a floating context menu at cursor position
 - Items: **Open** (launches the app), **Pin / Unpin** (toggles pin), **Change Art** (opens `ArtPickerModal` — all app types)
+- **Recategorize:** the menu shows **Move to Games** (when the item is an app) or **Move to Apps** (when it's a game), plus **Reset to detected category** when an override already exists for that id. Moving a `uwp`-source title to Games defaults its source to `"xbox"` (the common Spiritfarer-type case); moving to Apps clears the source override. Handler is `applyCategoryOverride(id, appType, source)` in `App.jsx` → `invoke("set_app_category", { id, appType, source })` then reloads `get_custom_categories` and calls `refreshLibrary()`. `categoryOverrides` state (loaded on mount via `get_custom_categories`) gates the Reset item. Launch behavior is never changed — categorization only.
 - Non-game app cards in the Apps tab have `onContextMenu` wired directly on their `<div>` (not via GameCard)
 - `contextMenu` state: `{ x, y, app }` — clicking the backdrop or any item closes it
 - Menu position is clamped to `window.innerWidth - 180` / `window.innerHeight - 100` to stay on-screen
