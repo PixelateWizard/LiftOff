@@ -138,6 +138,8 @@ interface SettingsItemBase {
   key: string;
   section: number;
   label: string;
+  /** Appearance section sub-group used by the second-level Appearance pill strip */
+  group?: number;
   /** Visual indentation — rendered as a child of the preceding parent row */
   indent?: boolean;
   /** Set by buildSettingsItems when the active theme forces this setting's value */
@@ -185,6 +187,16 @@ export interface SettingsCycleItem extends SettingsItemBase {
   key: keyof Settings;
   type: "cycle";
   options: readonly string[];
+}
+
+export interface SettingsThemePickerItem extends SettingsItemBase {
+  key: "theme";
+  type: "theme_picker";
+}
+
+export interface SettingsSurfacePickerItem extends SettingsItemBase {
+  key: "surface_style";
+  type: "surface_picker";
 }
 
 export interface SettingsSliderItem extends SettingsItemBase {
@@ -239,6 +251,13 @@ export interface SettingsCustomFoldersItem extends SettingsItemBase {
   type: "custom_folders";
 }
 
+export interface SettingsAppearanceGroupNavItem {
+  key: "appearance_group_nav";
+  section: 0;
+  label: string;
+  type: "appearance_group_nav";
+}
+
 export interface SettingsHomeCollectionItem {
   key: string;
   section: number;
@@ -254,6 +273,8 @@ export type SettingsItem =
   | SettingsDividerItem
   | SettingsToggleItem
   | SettingsCycleItem
+  | SettingsThemePickerItem
+  | SettingsSurfacePickerItem
   | SettingsSliderItem
   | SettingsAccentItem
   | SettingsActionItem
@@ -265,4 +286,5 @@ export type SettingsItem =
   | SettingsControllerTestItem
   | SettingsInfoItem
   | SettingsCustomFoldersItem
+  | SettingsAppearanceGroupNavItem
   | SettingsHomeCollectionItem;

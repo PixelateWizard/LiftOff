@@ -5,7 +5,9 @@ import { CollapsibleGroup, ToggleKnob, GamepadIconPreview, FocusRing } from "../
 import { ControllerTestWidget } from "../components/ControllerTestWidget";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
-import { ACCENTS, APP_VERSION, GITHUB_REPO, THEME_OPTIONS, THEME_LOCKED_SETTINGS, normalizeThemeKey } from "../constants";
+import { ACCENTS, APP_VERSION, GITHUB_REPO, THEME_LOCKED_SETTINGS, normalizeThemeKey } from "../constants";
+import { ThemePickerModal } from "../components/ThemePickerModal";
+import { SurfacePickerModal, SURFACE_METADATA, getMockRowStyle } from "../components/SurfacePickerModal";
 import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem } from "../types";
 
 // ── Section definitions ────────────────────────────────────────
@@ -18,9 +20,16 @@ export const SETTINGS_SECTIONS = [
   { key: "about",      labelKey: "settings.sections.about"      },
 ] as const;
 
+export const APPEARANCE_GROUPS = [
+  { key: "style", labelKey: "settings.appearanceGroups.style" },
+  { key: "home", labelKey: "settings.appearanceGroups.home" },
+  { key: "layout", labelKey: "settings.appearanceGroups.layout" },
+  { key: "nav", labelKey: "settings.appearanceGroups.nav" },
+] as const;
+
 /** Build full SETTINGS_ITEMS array with translated labels, annotated with section index. */
 export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsItem[] {
-  const D = (key: string, section: number): SettingsDividerItem => ({ key: `div_${key}`, section, type: "divider", label: t(`settings.dividers.${key}`) as string });
+  const D = (key: string, section: number, group?: number): SettingsDividerItem => ({ key: `div_${key}`, section, group, type: "divider", label: t(`settings.dividers.${key}`) as string });
   const bgLabel =
     activeTheme === "space"     ? t("settings.backgroundStars")     :
     activeTheme === "sky"       ? t("settings.backgroundClouds")    :
@@ -36,61 +45,61 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     t("settings.backgroundEffects");
   const items: SettingsItem[] = [
     // ── Appearance ───────────────────────────────────────────────
-    D("theme", 0),
-    { key: "theme",         section: 0, label: t("settings.theme"),         type: "cycle",  options: [...THEME_OPTIONS] },
-    { key: "accent",        section: 0, label: t("settings.accentColor"),   type: "accent",  indent: true },
-    { key: "stars_enabled", section: 0, label: bgLabel, type: "toggle", indent: true, subItems: activeTheme === "lofi" ? [
+    D("theme", 0, 0),
+    { key: "theme",         section: 0, group: 0, label: t("settings.theme"),         type: "theme_picker" },
+    { key: "accent",        section: 0, group: 0, label: t("settings.accentColor"),   type: "accent",  indent: true },
+    { key: "stars_enabled", section: 0, group: 0, label: bgLabel, type: "toggle", indent: true, subItems: activeTheme === "lofi" ? [
       { key: "lofi_music_enabled", label: t("settings.lofiMusic"), type: "toggle" },
     ] : undefined },
-    { key: "surface_style", section: 0, label: t("settings.surfaceStyle"),  type: "cycle", options: ["glass", "aero", "material", "clear", "obsidian", "neon", "win9x"], indent: true },
+    { key: "surface_style", section: 0, group: 0, label: t("settings.surfaceStyle"),  type: "surface_picker", indent: true },
 
-    D("home", 0),
-    { key: "home_mode",              section: 0, label: t("settings.homeMode"),            type: "cycle", options: ["normal", "semi", "immersive"] },
-    { key: "show_immersive_hero_art",section: 0, label: t("settings.showImmersiveHeroArt"),type: "toggle" },
-    { key: "show_hero_cover",        section: 0, label: t("settings.showHeroCover"),        type: "toggle" },
-    { key: "home_pinned_pos",        section: 0, label: t("settings.homePinnedPos"),         type: "cycle", options: ["none", "top", "bottom"] },
-    { key: "show_home_recents",      section: 0, label: t("settings.showHomeRecents"),      type: "toggle" },
-    { key: "show_recent_games_only", section: 0, label: t("settings.showRecentGamesOnly"),  type: "toggle" },
-    { key: "home_section_title_size",section: 0, label: t("settings.homeSectionTitleSize"), type: "cycle", options: ["small", "medium", "large"] },
-    { key: "show_home_collections",  section: 0, label: t("settings.showHomeCollections"),  type: "toggle", subItems: [
+    D("home", 0, 1),
+    { key: "home_mode",              section: 0, group: 1, label: t("settings.homeMode"),            type: "cycle", options: ["normal", "semi", "immersive"] },
+    { key: "show_immersive_hero_art",section: 0, group: 1, label: t("settings.showImmersiveHeroArt"),type: "toggle" },
+    { key: "show_hero_cover",        section: 0, group: 1, label: t("settings.showHeroCover"),        type: "toggle" },
+    { key: "home_pinned_pos",        section: 0, group: 1, label: t("settings.homePinnedPos"),         type: "cycle", options: ["none", "top", "bottom"] },
+    { key: "show_home_recents",      section: 0, group: 1, label: t("settings.showHomeRecents"),      type: "toggle" },
+    { key: "show_recent_games_only", section: 0, group: 1, label: t("settings.showRecentGamesOnly"),  type: "toggle" },
+    { key: "home_section_title_size",section: 0, group: 1, label: t("settings.homeSectionTitleSize"), type: "cycle", options: ["small", "medium", "large"] },
+    { key: "show_home_collections",  section: 0, group: 1, label: t("settings.showHomeCollections"),  type: "toggle", subItems: [
       { key: "show_home_collection_names", label: t("settings.showHomeCollectionNames"), type: "toggle" },
     ]},
 
-    D("layout", 0),
-    { key: "wide_layout",       section: 0, label: t("settings.wideLayout"),     type: "toggle", subItems: [
+    D("layout", 0, 2),
+    { key: "wide_layout",       section: 0, group: 2, label: t("settings.wideLayout"),     type: "toggle", subItems: [
       { key: "wide_topbar",    label: t("settings.wideTopbar"),    type: "toggle" },
       { key: "wide_games",     label: t("settings.wideGames"),     type: "toggle" },
       { key: "wide_apps",      label: t("settings.wideApps"),      type: "toggle" },
       { key: "wide_settings",  label: t("settings.wideSettings"),  type: "toggle" },
       { key: "wide_bottombar", label: t("settings.wideBottombar"), type: "toggle" },
     ]},
-    { key: "ui_scale",          section: 0, label: t("settings.uiScale"),         type: "slider", min: 0.75, max: 2.0, step: 0.05 },
-    { key: "reset_scale",       section: 0, label: t("settings.resetScale"),      type: "action" },
-    { key: "home_cover_scale",  section: 0, label: t("settings.homeCoverScale"),  type: "slider", min: 0.5, max: 2.0, step: 0.05 },
-    { key: "game_cover_scale",  section: 0, label: t("settings.gameCoverScale"),  type: "slider", min: 0.5, max: 2.0, step: 0.05 },
-    { key: "app_cover_scale",   section: 0, label: t("settings.appCoverScale"),   type: "slider", min: 0.5, max: 2.0, step: 0.05 },
-    { key: "app_list_view",     section: 0, label: t("settings.appListView"),     type: "toggle", subItems: [
+    { key: "ui_scale",          section: 0, group: 2, label: t("settings.uiScale"),         type: "slider", min: 0.75, max: 2.0, step: 0.05 },
+    { key: "reset_scale",       section: 0, group: 2, label: t("settings.resetScale"),      type: "action" },
+    { key: "home_cover_scale",  section: 0, group: 2, label: t("settings.homeCoverScale"),  type: "slider", min: 0.5, max: 2.0, step: 0.05 },
+    { key: "game_cover_scale",  section: 0, group: 2, label: t("settings.gameCoverScale"),  type: "slider", min: 0.5, max: 2.0, step: 0.05 },
+    { key: "app_cover_scale",   section: 0, group: 2, label: t("settings.appCoverScale"),   type: "slider", min: 0.5, max: 2.0, step: 0.05 },
+    { key: "app_list_view",     section: 0, group: 2, label: t("settings.appListView"),     type: "toggle", subItems: [
       { key: "app_list_cols", label: t("settings.appListCols"), type: "slider", min: 1, max: 6, step: 1, integer: true },
     ]},
 
-    D("navbar", 0),
-    { key: "hide_bottom_bar",     section: 0, label: t("settings.hideBottomBar"),      type: "toggle" },
-    { key: "topbar_background",   section: 0, label: t("settings.topbarBackground"),   type: "toggle" },
-    { key: "tabbar_with_background", section: 0, label: t("settings.tabbarBackground"), type: "toggle", subItems: [
+    D("navbar", 0, 3),
+    { key: "hide_bottom_bar",     section: 0, group: 3, label: t("settings.hideBottomBar"),      type: "toggle" },
+    { key: "topbar_background",   section: 0, group: 3, label: t("settings.topbarBackground"),   type: "toggle" },
+    { key: "tabbar_with_background", section: 0, group: 3, label: t("settings.tabbarBackground"), type: "toggle", subItems: [
       { key: "tabbar_background_compact", label: t("settings.tabbarBackgroundCompact"), type: "toggle" },
     ]},
-    { key: "bottombar_background", section: 0, label: t("settings.bottombarBackground"), type: "toggle", subItems: [
+    { key: "bottombar_background", section: 0, group: 3, label: t("settings.bottombarBackground"), type: "toggle", subItems: [
       { key: "bottombar_compact",   label: t("settings.bottombarCompact"),   type: "cycle", options: ["off", "home", "always", "except_home"] },
       { key: "bottombar_alignment", label: t("settings.bottombarAlignment"), type: "cycle", options: ["left", "center", "right"] },
     ]},
-    { key: "nav_bumpers_pos",     section: 0, label: t("settings.navBumpersPos"),      type: "cycle",  options: ["header", "bottom", "hidden"] },
-    D("tabbar", 0),
-    { key: "tabbar_show_buttons", section: 0, label: t("settings.tabbarBadges"),       type: "cycle",  options: ["tabbar", "bottom", "hidden"] },
-    { key: "tabbar_label_case",   section: 0, label: t("settings.tabbarLabelCase"),    type: "cycle",  options: ["default", "ucfirst", "uppercase"] },
-    { key: "tabbar_text_tabs",    section: 0, label: t("settings.tabbarTextTabs"),     type: "toggle", subItems: [
+    { key: "nav_bumpers_pos",     section: 0, group: 3, label: t("settings.navBumpersPos"),      type: "cycle",  options: ["header", "bottom", "hidden"] },
+    D("tabbar", 0, 3),
+    { key: "tabbar_show_buttons", section: 0, group: 3, label: t("settings.tabbarBadges"),       type: "cycle",  options: ["tabbar", "bottom", "hidden"] },
+    { key: "tabbar_label_case",   section: 0, group: 3, label: t("settings.tabbarLabelCase"),    type: "cycle",  options: ["default", "ucfirst", "uppercase"] },
+    { key: "tabbar_text_tabs",    section: 0, group: 3, label: t("settings.tabbarTextTabs"),     type: "toggle", subItems: [
       { key: "tabbar_font_weight", label: t("settings.tabbarFontWeight"), type: "cycle", options: ["thin", "medium", "bold"] },
     ]},
-    { key: "tabbar_icon_mode",    section: 0, label: t("settings.tabbarIconMode"),     type: "cycle",  options: ["text", "icons", "both"] },
+    { key: "tabbar_icon_mode",    section: 0, group: 3, label: t("settings.tabbarIconMode"),     type: "cycle",  options: ["text", "icons", "both"] },
 
     // ── Library ──────────────────────────────────────────────────
     D("sources", 1),
@@ -156,8 +165,8 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
   if (activeTheme === "onyx") {
     const starsIdx = items.findIndex(i => i.key === "stars_enabled");
     if (starsIdx !== -1) items.splice(starsIdx + 1, 0,
-      { key: "onyx_top_light", section: 0, label: t("settings.onyxTopLight"), type: "toggle", indent: true },
-      { key: "onyx_flat_settings", section: 0, label: t("settings.onyxFlatSettings"), type: "toggle", indent: true },
+      { key: "onyx_top_light", section: 0, group: 0, label: t("settings.onyxTopLight"), type: "toggle", indent: true },
+      { key: "onyx_flat_settings", section: 0, group: 0, label: t("settings.onyxFlatSettings"), type: "toggle", indent: true },
     );
   }
 
@@ -176,10 +185,12 @@ export function getSectionNavigableItems(
   sectionIndex: number,
   allItems: SettingsItem[],
   settings: Settings,
-  collections?: { gameCollections: { id: string; name: string }[]; appCollections: { id: string; name: string }[] }
+  collections?: { gameCollections: { id: string; name: string }[]; appCollections: { id: string; name: string }[] },
+  appearanceGroup = 0
 ): (SettingsItem | SettingsSubItem | SettingsHomeCollectionItem)[] {
-  return allItems
+  const visibleItems = allItems
     .filter((i) => i.section === sectionIndex)
+    .filter((i) => sectionIndex !== 0 || i.group === appearanceGroup)
     .flatMap((i): (SettingsItem | SettingsSubItem | SettingsHomeCollectionItem)[] => {
       if (i.type === "toggle" && i.key === "show_home_collections" && settings[i.key]) {
         const colItems: SettingsHomeCollectionItem[] = [
@@ -204,12 +215,17 @@ export function getSectionNavigableItems(
         i.type !== "controller_test" &&
         !('locked' in i && i.locked)
     );
+  return sectionIndex === 0
+    ? [{ key: "appearance_group_nav", section: 0, label: "Appearance groups", type: "appearance_group_nav" }, ...visibleItems]
+    : visibleItems;
 }
 
 // ── SettingsScreen props ───────────────────────────────────────
 export interface SettingsScreenProps {
   settingsFocusIndex: number;
   settingsSection: number;
+  appearanceGroup: number;
+  onAppearanceGroupChange: (group: number) => void;
   settingsFocusedRef: React.RefObject<any>;
   settingsBottomRef: React.RefObject<any>;
   customFolders: CustomFolder[];
@@ -229,11 +245,23 @@ export interface SettingsScreenProps {
   appCollections?: { id: string; name: string }[];
   homeHiddenCollections?: string[];
   onToggleHomeCollection?: (colName: string) => void;
+  showThemePicker: boolean;
+  showSurfacePicker: boolean;
+  themePickerFocusIndex: number;
+  surfacePickerFocusIndex: number;
+  setThemePickerFocusIndex: (n: number) => void;
+  setSurfacePickerFocusIndex: (n: number) => void;
+  onOpenThemePicker: () => void;
+  onCloseThemePicker: () => void;
+  onOpenSurfacePicker: () => void;
+  onCloseSurfacePicker: () => void;
 }
 
 export function SettingsScreen({
   settingsFocusIndex,
   settingsSection,
+  appearanceGroup,
+  onAppearanceGroupChange,
   settingsFocusedRef,
   settingsBottomRef,
   customFolders,
@@ -253,6 +281,16 @@ export function SettingsScreen({
   appCollections = [],
   homeHiddenCollections = [],
   onToggleHomeCollection,
+  showThemePicker,
+  showSurfacePicker,
+  themePickerFocusIndex,
+  surfacePickerFocusIndex,
+  setThemePickerFocusIndex,
+  setSurfacePickerFocusIndex,
+  onOpenThemePicker,
+  onCloseThemePicker,
+  onOpenSurfacePicker,
+  onCloseSurfacePicker,
 }: SettingsScreenProps) {
   const { t } = useTranslation();
   const { settingsRowGlass, accent, theme, isDark, glassEnabled, surfaceStyle, surface, resolvedTheme } = useTheme();
@@ -260,8 +298,10 @@ export function SettingsScreen({
   const wideLayout = settings.wide_settings ?? false;
 
   const ALL_ITEMS = buildSettingsItems(t, normalizeThemeKey(String(settings.theme)));
-  const sectionItems = ALL_ITEMS.filter((i) => i.section === settingsSection);
-  const navigableItems = getSectionNavigableItems(settingsSection, ALL_ITEMS, settings, { gameCollections, appCollections });
+  const sectionItems = ALL_ITEMS
+    .filter((i) => i.section === settingsSection)
+    .filter((i) => settingsSection !== 0 || i.group === appearanceGroup);
+  const navigableItems = getSectionNavigableItems(settingsSection, ALL_ITEMS, settings, { gameCollections, appCollections }, appearanceGroup);
   const isMaterial = surfaceStyle === "material";
   const isPixel = surfaceStyle === "win9x";
   const isOnyx = resolvedTheme === "onyx";
@@ -350,6 +390,58 @@ export function SettingsScreen({
     };
   };
 
+  const renderAppearanceGroupNav = () => {
+    if (settingsSection !== 0) return null;
+    const focused = navigableItems[settingsFocusIndex]?.type === "appearance_group_nav";
+    const groupRowStyle = {
+      ...makeRowStyle(focused),
+      position: "sticky" as const,
+      top: 0,
+      zIndex: focused ? 8 : 6,
+      gap: 8,
+      padding: isMaterial ? "10px 12px" : "10px 14px",
+      marginBottom: 12,
+      backdropFilter: surfaceStyle === "material" || isCyber ? undefined : "blur(18px) saturate(120%)",
+      WebkitBackdropFilter: surfaceStyle === "material" || isCyber ? undefined : "blur(18px) saturate(120%)",
+    };
+    return (
+      <div data-settings-row="" className={focused ? "focused" : ""} ref={focused ? settingsFocusedRef : undefined} style={groupRowStyle}>
+        <div style={{ display: "flex", width: "100%", gap: 8, alignItems: "center" }}>
+          {APPEARANCE_GROUPS.map((group, idx) => {
+            const active = appearanceGroup === idx;
+            return (
+              <button
+                key={group.key}
+                type="button"
+                onClick={() => onAppearanceGroupChange(idx)}
+                style={{
+                  flex: 1,
+                  minHeight: 32,
+                  borderRadius: isPixel || isCyber ? 0 : isMaterial ? 7 : 999,
+                  border: active ? `1px solid ${accent.primary}` : `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)"}`,
+                  background: active
+                    ? surfaceStyle === "material"
+                      ? "var(--material-elevation-3)"
+                      : `${accent.glow}0.16)`
+                    : "transparent",
+                  color: active ? accent.primary : theme.textDim,
+                  fontSize: 11,
+                  fontWeight: active ? 800 : 650,
+                  textTransform: "uppercase" as const,
+                  letterSpacing: "0.06em",
+                  cursor: "pointer",
+                  boxShadow: active && !isMaterial ? `0 0 12px ${accent.glow}0.16)` : undefined,
+                }}
+              >
+                {String(t(group.labelKey))}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const renderItem = (item: SettingsItem) => {
     if (item.type === "divider") {
       return (
@@ -363,7 +455,7 @@ export function SettingsScreen({
     }
 
     // Locked by active theme — greyed row, non-interactive, shows forced value
-    if (item.locked) {
+    if ("locked" in item && item.locked) {
       const forced = typeof item.lockedValue === "boolean"
         ? (item.lockedValue ? t("settings.values.on", "On") : t("settings.values.off", "Off"))
         : String(t(`settings.values.${item.lockedValue}`, String(item.lockedValue ?? "")));
@@ -580,6 +672,54 @@ export function SettingsScreen({
         <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={() => updateSetting(item.key, !val)}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <ToggleKnob value={val} />
+          {onyxRing}
+        </div>
+      );
+    }
+
+    if (item.type === "theme_picker") {
+      const currentTheme = normalizeThemeKey(String(settings.theme));
+      return (
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={onOpenThemePicker}>
+          <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 12, color: accent.primary, fontWeight: 700 }}>
+              {String(t(`settings.values.${currentTheme}`, currentTheme))}
+            </span>
+            <span style={{ fontSize: 12, color: theme.textDim }}>{"\u21b5"}</span>
+          </div>
+          {onyxRing}
+        </div>
+      );
+    }
+
+    if (item.type === "surface_picker") {
+      const currentSurface = String(settings.surface_style ?? "glass");
+      const mockStyle = getMockRowStyle(currentSurface, accent.primary, accent.glow);
+      return (
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={onOpenSurfacePicker}>
+          <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, color: accent.primary, fontWeight: 700 }}>
+              {String(t(`settings.values.${currentSurface}`, currentSurface))}
+            </span>
+            <div
+              style={{
+                ...mockStyle,
+                width: 38,
+                height: 20,
+                fontSize: 0,
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                padding: "0 4px",
+              }}
+              title={String(t(SURFACE_METADATA[currentSurface]?.descriptionKey ?? "settings.surfacePickerHint"))}
+            >
+              <div style={{ width: 10, height: 10, borderRadius: currentSurface === "win9x" ? 0 : "50%", background: accent.primary, boxShadow: `0 0 4px ${accent.glow}0.5)` }} />
+            </div>
+          </div>
           {onyxRing}
         </div>
       );
@@ -835,9 +975,24 @@ export function SettingsScreen({
   return (
     <div style={{ ...(wideLayout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" as const }}>
       <div style={{ padding: `${sectionItems[0]?.type !== "divider" ? "22px" : "0"} 24px 160px` }}>
+        {renderAppearanceGroupNav()}
         {sectionItems.map(renderItem)}
         <div ref={settingsBottomRef} />
       </div>
+      {showThemePicker && (
+        <ThemePickerModal
+          onClose={onCloseThemePicker}
+          focusIndex={themePickerFocusIndex}
+          setFocusIndex={setThemePickerFocusIndex}
+        />
+      )}
+      {showSurfacePicker && (
+        <SurfacePickerModal
+          onClose={onCloseSurfacePicker}
+          focusIndex={surfacePickerFocusIndex}
+          setFocusIndex={setSurfacePickerFocusIndex}
+        />
+      )}
     </div>
   );
 }

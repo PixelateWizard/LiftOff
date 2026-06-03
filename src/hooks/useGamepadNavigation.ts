@@ -6,7 +6,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { App, Settings } from "../types";
 import { launchApp } from "./useLaunchApp";
 import { getBestGamepad, getActiveGamepad, readGpState, detectPlatform } from "../utils/gamepad";
-import { buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "../views/settings";
+import { APPEARANCE_GROUPS, buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "../views/settings";
 import {
   ACCENTS as DEFAULT_ACCENTS,
   COLS as DEFAULT_COLS,
@@ -14,7 +14,9 @@ import {
   GITHUB_REPO as DEFAULT_GITHUB_REPO,
   KB_ALPHA,
   KB_NUMS,
+  SURFACE_STYLE_OPTIONS,
   TABS as DEFAULT_TABS,
+  THEME_OPTIONS,
   normalizeThemeKey,
 } from "../constants";
 
@@ -37,6 +39,8 @@ export interface UseGamepadNavigationOptions {
   settingsRef?: AnyRef<Settings>;
   updateSetting?: (key: keyof Settings, value: unknown) => void;
   resolvedTheme?: string;
+  appearanceGroupRef?: AnyRef<number>;
+  setAppearanceGroup?: (value: number) => void;
 
   appsRef?: AnyRef<App[]>;
   allAppsRef?: AnyRef<App[]>;
@@ -70,10 +74,18 @@ export interface UseGamepadNavigationOptions {
   artPickerModeRef?: AnyRef<string>;
   contextMenuRef?: AnyRef<unknown>;
   showPowerModalRef?: AnyRef<boolean>;
+  showThemePickerRef?: AnyRef<boolean>;
+  showSurfacePickerRef?: AnyRef<boolean>;
+  themePickerFocusIndexRef?: AnyRef<number>;
+  surfacePickerFocusIndexRef?: AnyRef<number>;
 
   setShowHideModal?: (value: boolean) => void;
   setShowLibraryActions?: (value: boolean) => void;
   setShowPowerModal?: (value: boolean) => void;
+  setShowThemePicker?: (value: boolean) => void;
+  setShowSurfacePicker?: (value: boolean) => void;
+  setThemePickerFocusIndex?: (value: number) => void;
+  setSurfacePickerFocusIndex?: (value: number) => void;
   setArtPickerApp?: (app: App | null) => void;
 
   playSoundGameStart?: () => void;
@@ -238,6 +250,8 @@ export function useGamepadNavigation(
     settingsRef,
     updateSetting = noop as (key: keyof Settings, value: unknown) => void,
     resolvedTheme = "space",
+    appearanceGroupRef = { current: 0 } as AnyRef<number>,
+    setAppearanceGroup = noop as (value: number) => void,
     appsRef,
     allAppsRef,
     recentRef,
@@ -267,9 +281,17 @@ export function useGamepadNavigation(
     artPickerModeRef,
     contextMenuRef,
     showPowerModalRef = { current: false } as AnyRef<boolean>,
+    showThemePickerRef = { current: false } as AnyRef<boolean>,
+    showSurfacePickerRef = { current: false } as AnyRef<boolean>,
+    themePickerFocusIndexRef = { current: 0 } as AnyRef<number>,
+    surfacePickerFocusIndexRef = { current: 0 } as AnyRef<number>,
     setShowHideModal = noop as (value: boolean) => void,
     setShowLibraryActions = noop as (value: boolean) => void,
     setShowPowerModal = noop as (value: boolean) => void,
+    setShowThemePicker = noop as (value: boolean) => void,
+    setShowSurfacePicker = noop as (value: boolean) => void,
+    setThemePickerFocusIndex = noop as (value: number) => void,
+    setSurfacePickerFocusIndex = noop as (value: number) => void,
     setArtPickerApp = noop as (app: App | null) => void,
     playSoundGameStart = noop,
     playSound = noop,
@@ -499,11 +521,91 @@ export function useGamepadNavigation(
     {
       gameCollections: gameCollectionsRef?.current ?? [],
       appCollections: appCollectionsRef?.current ?? [],
-    }
+    },
+    appearanceGroupRef.current
   );
+
+  const suppressHeldButtons = () => {
+    const gp = getBestGamepad();
+    if (!gp) return;
+    const s = readGpState(gp);
+    suppressUntilRelease.current = {
+      Enter: s.Enter,
+      Escape: s.Escape,
+      Select: s.Select,
+      ButtonX: s.ButtonX,
+      ButtonY: s.ButtonY,
+      BumperLeft: s.BumperLeft,
+      BumperRight: s.BumperRight,
+      Start: s.Start,
+    };
+  };
+
+  const closeThemePicker = () => {
+    suppressHeldButtons();
+    setShowThemePicker(false);
+    showThemePickerRef.current = false;
+  };
+
+  const closeSurfacePicker = () => {
+    suppressHeldButtons();
+    setShowSurfacePicker(false);
+    showSurfacePickerRef.current = false;
+  };
 
   // ── handleNav ─────────────────────────────────────────────────
   const handleNav = (key) => {
+    if (showThemePickerRef.current) {
+      const cur = themePickerFocusIndexRef.current;
+      const cols = 3;
+      const max = THEME_OPTIONS.length - 1;
+      const moveTo = (idx: number) => {
+        const ni = Math.max(0, Math.min(max, idx));
+        if (ni === themePickerFocusIndexRef.current) return;
+        setThemePickerFocusIndex(ni);
+        themePickerFocusIndexRef.current = ni;
+        playSound();
+      };
+      if (key === "ArrowRight") moveTo(cur + 1);
+      else if (key === "ArrowLeft") moveTo(cur - 1);
+      else if (key === "ArrowDown") moveTo(cur + cols);
+      else if (key === "ArrowUp") moveTo(cur - cols);
+      else if (key === "Escape") {
+        closeThemePicker();
+        playSoundAlt();
+      } else if (key === "Enter") {
+        updateSetting("theme", THEME_OPTIONS[cur]);
+        closeThemePicker();
+        playSoundAlt();
+      }
+      return;
+    }
+
+    if (showSurfacePickerRef.current) {
+      const cur = surfacePickerFocusIndexRef.current;
+      const cols = 3;
+      const max = SURFACE_STYLE_OPTIONS.length - 1;
+      const moveTo = (idx: number) => {
+        const ni = Math.max(0, Math.min(max, idx));
+        if (ni === surfacePickerFocusIndexRef.current) return;
+        setSurfacePickerFocusIndex(ni);
+        surfacePickerFocusIndexRef.current = ni;
+        playSound();
+      };
+      if (key === "ArrowRight") moveTo(cur + 1);
+      else if (key === "ArrowLeft") moveTo(cur - 1);
+      else if (key === "ArrowDown") moveTo(cur + cols);
+      else if (key === "ArrowUp") moveTo(cur - cols);
+      else if (key === "Escape") {
+        closeSurfacePicker();
+        playSoundAlt();
+      } else if (key === "Enter") {
+        updateSetting("surface_style", SURFACE_STYLE_OPTIONS[cur]);
+        closeSurfacePicker();
+        playSoundAlt();
+      }
+      return;
+    }
     // Modal intercepts all input via its own poll — main nav must not run
     if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current) return;
 
@@ -724,6 +826,29 @@ export function useGamepadNavigation(
       }
       const sfIndex = settingsFocusIndexRef.current;
       const item    = navigableSettings[sfIndex];
+      if (settingsSectionRef.current === 0 && item?.type === "appearance_group_nav") {
+        if (key === "ArrowRight") {
+          const ni = Math.min(APPEARANCE_GROUPS.length - 1, appearanceGroupRef.current + 1);
+          if (ni !== appearanceGroupRef.current) {
+            setAppearanceGroup(ni);
+            appearanceGroupRef.current = ni;
+            playSound();
+          }
+        } else if (key === "ArrowLeft") {
+          const ni = Math.max(0, appearanceGroupRef.current - 1);
+          if (ni !== appearanceGroupRef.current) {
+            setAppearanceGroup(ni);
+            appearanceGroupRef.current = ni;
+            playSound();
+          }
+        } else if (key === "ArrowDown" || key === "Enter") {
+          const ni = Math.min(1, navigableSettings.length - 1);
+          setSettingsFocusIndex(ni);
+          settingsFocusIndexRef.current = ni;
+          playSound();
+        }
+        return;
+      }
       if (key === "ArrowDown") {
         const ni = Math.min(sfIndex + 1, navigableSettings.length - 1);
         if (ni !== sfIndex) {
@@ -740,6 +865,20 @@ export function useGamepadNavigation(
         if (!item) return;
         if (item.type === "toggle")  updateSetting(item.key, !currentSettings[item.key]);
         else if (item.type === "cycle")  { const opts = item.options; const curVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur + 1) % opts.length]); }
+        else if (item.type === "theme_picker") {
+          const idx = Math.max(0, THEME_OPTIONS.indexOf(normalizeThemeKey(String(currentSettings.theme))));
+          setThemePickerFocusIndex(idx);
+          themePickerFocusIndexRef.current = idx;
+          setShowThemePicker(true);
+          showThemePickerRef.current = true;
+        }
+        else if (item.type === "surface_picker") {
+          const idx = Math.max(0, SURFACE_STYLE_OPTIONS.indexOf(String(currentSettings.surface_style ?? "glass") as any));
+          setSurfacePickerFocusIndex(idx);
+          surfacePickerFocusIndexRef.current = idx;
+          setShowSurfacePicker(true);
+          showSurfacePickerRef.current = true;
+        }
         else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur + 1) % keys.length]); }
         else if (item.type === "slider") {
           const cur = (currentSettings[item.key] as number | undefined) ?? 1.0;

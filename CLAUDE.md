@@ -3,7 +3,7 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Add Aqua, Sage, and Copper accent colors from `add-aqua-sage-copper-accents.md`, keeping the change additive to accent constants, locale labels, and release notes.
+**Task:** Implement `appearance-rework-proposal.md`: Appearance group navigation plus visual Theme and Surface picker modals.
 
 **Completed (this session — visual consistency PR1 foundation):**
 - Added a shared `focusGlow` token in `useSurfaceTheme()` and threaded it through `ThemeProvider` so later PRs can migrate focus states onto one accent ring + bloom token without changing current visuals yet.
@@ -68,8 +68,10 @@
 - `settings.tsx` / `surfaces.ts`: disabled backdrop filtering for Cyberpunk Settings rows, including both focused-row constructors and the base row surface, so Settings panels no longer composite as glass.
 - `npm run build` passes (only the pre-existing >500 kB chunk-size warning); `git diff --check` reports no whitespace errors.
 
-**Current implementation target:**
-- Add only the three proposed accent palettes after Atomic, wire their English/French setting labels, and record the shipped palette addition in the Unreleased changelog.
+**Completed (this session - Appearance settings rework):**
+- Split Settings -> Appearance into Style, Home Screen, Layout, and Navigation groups, with a focused pill strip at the top of the Appearance section.
+- Replaced the Theme and Surface Style cycle rows with visual picker modals that support mouse, keyboard, and gamepad navigation; locked theme-forced surface rows remain disabled.
+- Added English/French locale keys, recorded the shipped change in `CHANGELOG.md`, and validated with `npm run build` plus `git diff --check`.
 
 ---
 

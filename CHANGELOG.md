@@ -10,6 +10,7 @@
 
 ### Changed
 - **Single handoff source** - `CLAUDE.md` is now the single source of truth for project context and active-task updates. `AGENTS.md` is a short pointer so agent instructions no longer need to be maintained in two places.
+- **Appearance settings rework** - Appearance is now split into Style, Home Screen, Layout, and Navigation groups, with visual picker modals for Theme and Surface Style. Theme cards render live background previews, and surface cards preview each UI material before selection.
 - Gamepad/hover focus highlight on nav tabs now applies consistently across all surface styles (previously only Aero and Material showed a hover state).
 - **Shared active tab-pill styling** - consolidated main-nav and subtab active visuals into `src/theme/tabStyle.ts`, removing drifting copies before the next surface-style pass. Subtab glow now matches the main nav's strength, and Neon active tabs use the wirey accent-label treatment with no border or fill.
 - **Frosted Glass surface** - Glass cards, bars, frames, and Settings rows now use a softer frosted material with heavier blur, a subtle luminous inner rim, and gentler body highlights. Glass active tabs use a translucent accent frost instead of a solid block.

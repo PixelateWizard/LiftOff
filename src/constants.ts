@@ -51,6 +51,8 @@ export const THEME_OPTIONS = [
   "aurora", "synthwave", "cyberpunk", "lofi", "forest", "webcore", "onyx",
 ] as const;
 
+export const SURFACE_STYLE_OPTIONS = ["glass", "aero", "material", "clear", "obsidian", "neon", "win9x"] as const;
+
 export const THEME_SURFACE_DEFAULTS: Record<string, string> = {
   space: "clear",
   sky: "aero",

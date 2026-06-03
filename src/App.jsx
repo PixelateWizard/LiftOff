@@ -55,7 +55,7 @@ import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO,
   ACCENTS, THEMES, CLOUD_SHAPES, CLOUD_CONFIGS, KB_ALPHA, KB_NUMS,
   normalizeThemeKey, isDarkThemeKey,
-  THEME_LOCKED_SETTINGS, THEME_BG_COLORS,
+  SURFACE_STYLE_OPTIONS, THEME_LOCKED_SETTINGS, THEME_BG_COLORS, THEME_OPTIONS,
   getRunAsAdmin, setRunAsAdmin,
 } from "./constants";
 import { CyberpunkCard, FocusRing } from "./components/ui";
@@ -72,6 +72,36 @@ export default function App() {
   const [closeRequest, setCloseRequest]             = useState(null);
   const [sliderDraft, setSliderDraft] = useState({ key: null, value: null });
   const sliderDraftRef = useRef({ key: null, value: null });
+  const [appearanceGroupState, setAppearanceGroupState] = useState(0);
+  const appearanceGroupRef = useRef(0);
+  const setAppearanceGroup = (value) => {
+    appearanceGroupRef.current = value;
+    setAppearanceGroupState(value);
+  };
+  const [showThemePicker, setShowThemePickerState] = useState(false);
+  const showThemePickerRef = useRef(false);
+  const setShowThemePicker = (value) => {
+    showThemePickerRef.current = value;
+    setShowThemePickerState(value);
+  };
+  const [showSurfacePicker, setShowSurfacePickerState] = useState(false);
+  const showSurfacePickerRef = useRef(false);
+  const setShowSurfacePicker = (value) => {
+    showSurfacePickerRef.current = value;
+    setShowSurfacePickerState(value);
+  };
+  const [themePickerFocusIndex, setThemePickerFocusIndexState] = useState(0);
+  const themePickerFocusIndexRef = useRef(0);
+  const setThemePickerFocusIndex = (value) => {
+    themePickerFocusIndexRef.current = value;
+    setThemePickerFocusIndexState(value);
+  };
+  const [surfacePickerFocusIndex, setSurfacePickerFocusIndexState] = useState(0);
+  const surfacePickerFocusIndexRef = useRef(0);
+  const setSurfacePickerFocusIndex = (value) => {
+    surfacePickerFocusIndexRef.current = value;
+    setSurfacePickerFocusIndexState(value);
+  };
   const [homeHiddenCollections, setHomeHiddenCollections] = useState(() => {
     try { return JSON.parse(localStorage.getItem("homeHiddenCollections") || "[]"); } catch { return []; }
   });
@@ -270,6 +300,8 @@ export default function App() {
     settingsRef,
     updateSetting,
     resolvedTheme,
+    appearanceGroupRef,
+    setAppearanceGroup,
     appsRef,
     allAppsRef,
     recentRef,
@@ -296,12 +328,20 @@ export default function App() {
     colPickerAppRef,
     editNameAppRef,
     showPowerModalRef,
+    showThemePickerRef,
+    showSurfacePickerRef,
+    themePickerFocusIndexRef,
+    surfacePickerFocusIndexRef,
     artPickerAppRef,
     artPickerModeRef,
     contextMenuRef,
     setShowHideModal,
     setShowLibraryActions,
     setShowPowerModal,
+    setShowThemePicker,
+    setShowSurfacePicker,
+    setThemePickerFocusIndex,
+    setSurfacePickerFocusIndex,
     setArtPickerApp,
     playSoundGameStart,
     playSound,
@@ -1291,10 +1331,27 @@ export default function App() {
 
     if (loading) return <SplashScreen exiting={splashExiting} />;
 
+  const openThemePicker = () => {
+    const idx = Math.max(0, THEME_OPTIONS.indexOf(normalizeThemeKey(String(settings.theme))));
+    setThemePickerFocusIndex(idx);
+    setShowThemePicker(true);
+  };
+  const openSurfacePicker = () => {
+    const idx = Math.max(0, SURFACE_STYLE_OPTIONS.indexOf(String(settings.surface_style ?? "glass")));
+    setSurfacePickerFocusIndex(idx);
+    setShowSurfacePicker(true);
+  };
+
   const SettingsScreenWrapper = () => (
     <SettingsScreen
       settingsFocusIndex={settingsFocusIndex}
       settingsSection={settingsSection}
+      appearanceGroup={appearanceGroupState}
+      onAppearanceGroupChange={(group) => {
+        setAppearanceGroup(group);
+        setSettingsFocusIndex(0);
+        settingsFocusIndexRef.current = 0;
+      }}
       settingsFocusedRef={settingsFocusedRef}
       settingsBottomRef={settingsBottomRef}
       customFolders={customFolders}
@@ -1314,6 +1371,16 @@ export default function App() {
       appCollections={appCollections}
       homeHiddenCollections={homeHiddenCollections}
       onToggleHomeCollection={toggleHomeCollection}
+      showThemePicker={showThemePicker}
+      showSurfacePicker={showSurfacePicker}
+      themePickerFocusIndex={themePickerFocusIndex}
+      surfacePickerFocusIndex={surfacePickerFocusIndex}
+      setThemePickerFocusIndex={setThemePickerFocusIndex}
+      setSurfacePickerFocusIndex={setSurfacePickerFocusIndex}
+      onOpenThemePicker={openThemePicker}
+      onCloseThemePicker={() => setShowThemePicker(false)}
+      onOpenSurfacePicker={openSurfacePicker}
+      onCloseSurfacePicker={() => setShowSurfacePicker(false)}
     />
   );
 
