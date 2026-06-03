@@ -362,6 +362,7 @@ export default function App() {
     appBg: _appBg,
     bgGlow1,
     bgGlow2,
+    focusGlow,
     cardBackdropFilter,
     materialFocusShadow,
     materialRaisedShadow,
@@ -1370,7 +1371,7 @@ export default function App() {
   ) : undefined;
 
   // ── Render ────────────────────────────────────────────────────
-  const themeValue = { isDark, resolvedTheme, theme, accent, glass, glassBar, settingsRowGlass, glassEnabled, surfaceStyle, appBg, bgGlow1, bgGlow2, surface };
+  const themeValue = { isDark, resolvedTheme, theme, accent, glass, glassBar, settingsRowGlass, glassEnabled, surfaceStyle, appBg, bgGlow1, bgGlow2, focusGlow, surface };
   const settingsValue = { settings, settingsRef, updateSetting, updateSettingsBatch };
   const libraryViewProps = {
     scrollRef: tabScrollRef,
@@ -1381,6 +1382,7 @@ export default function App() {
     accent,
     isDark,
     theme,
+    settings,
     surfaceStyle,
     t,
     gameSourceTab,

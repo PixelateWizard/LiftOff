@@ -54,9 +54,8 @@ export function useAppSettings({
       // ui_scale is null when never saved; substitute the auto-detected value.
       const updated = { ...settingsRef.current, ...s, ui_scale: s.ui_scale ?? auto };
       if (updated.surface_style === "pixel") updated.surface_style = "win9x";
-      // Migrate: if wide_layout was true but sub-settings were never saved, enable all.
+      // Migrate: if wide_layout was true but sub-settings were never saved, enable content/bottom areas.
       if (updated.wide_layout && !updated.wide_topbar && !updated.wide_games && !updated.wide_apps && !updated.wide_settings && !updated.wide_bottombar) {
-        updated.wide_topbar = true;
         updated.wide_games = true;
         updated.wide_apps = true;
         updated.wide_settings = true;
@@ -82,7 +81,6 @@ export function useAppSettings({
     setSettings(prev => {
       const updated = { ...prev, [key]: value };
       if (key === "wide_layout") {
-        updated.wide_topbar = value as boolean;
         updated.wide_games = value as boolean;
         updated.wide_apps = value as boolean;
         updated.wide_settings = value as boolean;

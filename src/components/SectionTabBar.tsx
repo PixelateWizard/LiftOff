@@ -5,6 +5,7 @@ import { FocusRing } from "./ui/FocusRing";
 import type { GamepadPlatform } from "./ui/Gamepad";
 import { XboxLT, XboxRT, PsL2, PsR2, SwZL, SwZR } from "./ui/Gamepad";
 import type { GamepadIconProps } from "./ui/Gamepad";
+import { getTabPillStyle } from "../theme/tabStyle";
 
 export interface TabItem {
   label: string;
@@ -72,35 +73,46 @@ export function SectionTabBar({
     bold:   { base: 700, active: 700 },
   } as const;
 
-  const makePillTabStyle = (active: boolean, isDashed?: boolean, hovered = false): CSSProperties => ({
-    fontSize: 11,
-    fontWeight: PILL_W[fontWeight],
-    letterSpacing: "0.06em",
-    padding: "5px 14px",
-    lineHeight: 1,
-    display: "flex",
-    alignItems: "center",
-    borderRadius: isPixel ? 0 : 20,
-    cursor: "pointer",
-    transition: "background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease",
-    userSelect: "none",
-    textTransform,
-    background: active
-      ? (resolvedTheme === "onyx" ? "transparent" : accent.primary)
-      : surfaceStyle === "material"
+  const makePillTabStyle = (active: boolean, isDashed?: boolean, hovered = false): CSSProperties => {
+    const sharedStyle = getTabPillStyle({
+      active,
+      hovered,
+      surfaceStyle,
+      resolvedTheme,
+      accent,
+      isDark,
+      activeTextColor,
+      textDim: theme.textDim,
+      glassEnabled,
+    });
+
+    return {
+      fontSize: 11,
+      fontWeight: PILL_W[fontWeight],
+      letterSpacing: "0.06em",
+      padding: "5px 14px",
+      lineHeight: 1,
+      display: "flex",
+      alignItems: "center",
+      borderRadius: isPixel ? 0 : 20,
+      cursor: "pointer",
+      transition: "background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease",
+      userSelect: "none",
+      textTransform,
+      background: surfaceStyle === "material"
       ? hovered ? "var(--material-elevation-3)" : "var(--material-elevation-2)"
       : surfaceStyle === "aero"
       ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.10) 30%, rgba(255,255,255,0.08) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.90) 0%, rgba(255,255,255,0.68) 25%, rgba(255,255,255,0.60) 100%)")
       : glassEnabled
-      ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)")
+      ? (hovered
+          ? (isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.68)")
+          : (isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.55)"))
       : isDark
-      ? "rgba(255,255,255,0.06)"
-      : "rgba(0,0,0,0.06)",
-    color: active ? (resolvedTheme === "onyx" ? accent.primary : activeTextColor) : theme.textDim,
-    border: `1px ${isDashed && !active ? "dashed" : "solid"} ${
-      active
-        ? (resolvedTheme === "onyx" ? "transparent" : accent.primary)
-        : surfaceStyle === "material"
+      ? (hovered ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.06)")
+      : (hovered ? "rgba(0,0,0,0.10)" : "rgba(0,0,0,0.06)"),
+      color: theme.textDim,
+      border: `1px ${isDashed && !active ? "dashed" : "solid"} ${
+        surfaceStyle === "material"
         ? "var(--material-border-subtle)"
         : surfaceStyle === "aero"
         ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)")
@@ -109,17 +121,9 @@ export function SectionTabBar({
         : isDark
         ? "rgba(255,255,255,0.1)"
         : "rgba(0,0,0,0.1)"
-    }`,
-    backdropFilter: !active && glassEnabled && surfaceStyle !== "material" ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(12px) saturate(150%)") : undefined,
-    boxShadow: active
-      ? resolvedTheme === "onyx"
-        ? "none"
-        : surfaceStyle === "aero"
-        ? `inset 0 1px 0 rgba(255,255,255,0.80), inset 0 2px 10px rgba(255,255,255,0.24), inset 0 -1px 0 rgba(0,0,0,0.28), 0 4px 16px ${accent.glow}0.55)`
-        : surfaceStyle === "material"
-        ? "var(--material-shadow-medium)"
-        : `0 2px 10px ${accent.glow}0.35)`
-      : surfaceStyle === "aero"
+      }`,
+      backdropFilter: !active && glassEnabled && surfaceStyle !== "material" ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(12px) saturate(150%)") : undefined,
+      boxShadow: surfaceStyle === "aero"
       ? (isDark
           ? `inset 0 1px 0 rgba(255,255,255,${hovered ? "0.52" : "0.42"}), inset 0 -1px 0 rgba(0,0,0,0.10), 0 0 0 1px ${accent.glow}${hovered ? "0.18)" : "0.12)"}`
           : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 0 0 1px ${accent.glow}${hovered ? "0.14)" : "0.10)"}`)
@@ -129,10 +133,12 @@ export function SectionTabBar({
       : glassEnabled
       ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)")
       : "none",
-    flexShrink: 0,
-    whiteSpace: "nowrap",
-    transform: surfaceStyle === "material" && hovered && !active ? "translateY(-1px)" : "translateY(0)",
-  });
+      flexShrink: 0,
+      whiteSpace: "nowrap",
+      transform: surfaceStyle === "material" && hovered && !active ? "translateY(-1px)" : "translateY(0)",
+      ...sharedStyle,
+    };
+  };
 
   const makeTextTabStyle = (active: boolean): CSSProperties => ({
     fontSize: 12,
@@ -163,7 +169,7 @@ export function SectionTabBar({
             </div>
           );
         }
-        const hovered = (surfaceStyle === "aero" || surfaceStyle === "material") && !active && hoveredIndex === i;
+        const hovered = !active && hoveredIndex === i;
         const baseStyle = makePillTabStyle(active, item.isDashed, hovered);
         return (
           <div key={i}

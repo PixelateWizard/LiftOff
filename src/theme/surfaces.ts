@@ -232,15 +232,15 @@ function buildGlassSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, flat:
   if (surfaceStyle === "win9x") return win9xSurface(surface);
   return {
     background: isDark
-      ? "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.06) 100%)"
+      ? "linear-gradient(180deg, rgba(255,255,255,0.075) 0%, rgba(255,255,255,0.035) 100%)"
       : cinematicLight
         ? "linear-gradient(180deg, rgba(255,255,255,0.50) 0%, rgba(255,255,255,0.26) 100%)"
         : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
-    backdropFilter: isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)",
-    WebkitBackdropFilter: isDark ? "blur(22px) saturate(180%) brightness(1.08)" : "blur(28px) saturate(160%) brightness(1.02)",
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.55)"}`,
+    backdropFilter: isDark ? "blur(30px) saturate(150%) brightness(1.05)" : "blur(30px) saturate(160%) brightness(1.02)",
+    WebkitBackdropFilter: isDark ? "blur(30px) saturate(150%) brightness(1.05)" : "blur(30px) saturate(160%) brightness(1.02)",
+    border: `1px solid ${isDark ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.55)"}`,
     boxShadow: isDark
-      ? "inset 0 1px 0 rgba(255,255,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.22), 0 10px 32px rgba(0,0,0,0.35)"
+      ? "inset 0 0 0 0.5px rgba(255,255,255,0.20), inset 0 1px 2px rgba(255,255,255,0.32), inset 0 -14px 36px rgba(255,255,255,0.04), 0 8px 26px rgba(0,0,0,0.30)"
       : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
   };
 }
@@ -291,11 +291,11 @@ function buildGlassBarSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, fl
       : cinematicLight
         ? "linear-gradient(180deg, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.28) 100%)"
         : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
-    backdropFilter: isDark ? "blur(28px) saturate(115%) brightness(0.88)" : "blur(28px) saturate(160%) brightness(1.02)",
-    WebkitBackdropFilter: isDark ? "blur(28px) saturate(115%) brightness(0.88)" : "blur(28px) saturate(160%) brightness(1.02)",
+    backdropFilter: isDark ? "blur(30px) saturate(120%) brightness(0.88)" : "blur(30px) saturate(160%) brightness(1.02)",
+    WebkitBackdropFilter: isDark ? "blur(30px) saturate(120%) brightness(0.88)" : "blur(30px) saturate(160%) brightness(1.02)",
     border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)"}`,
     boxShadow: isDark
-      ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.16), 0 6px 20px rgba(0,0,0,0.25)"
+      ? "inset 0 0 0 0.5px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.16), 0 6px 20px rgba(0,0,0,0.25)"
       : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
   };
 }
@@ -343,13 +343,13 @@ function buildSettingsRowSurface(args: SurfaceThemeArgs, surface: SurfaceTokens,
   if (surfaceStyle === "win9x") return win9xSurface(surface);
   return {
     background: isDark
-      ? `linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.022)), linear-gradient(180deg, ${tintTop}, ${tintBot})`
+      ? `linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025)), linear-gradient(180deg, ${tintTop}, ${tintBot})`
       : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
-    backdropFilter: isDark ? "blur(8px) saturate(105%) brightness(0.92)" : "blur(28px) saturate(160%) brightness(1.02)",
-    WebkitBackdropFilter: isDark ? "blur(8px) saturate(105%) brightness(0.92)" : "blur(28px) saturate(160%) brightness(1.02)",
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"}`,
+    backdropFilter: isDark ? "blur(20px) saturate(140%) brightness(0.95)" : "blur(28px) saturate(160%) brightness(1.02)",
+    WebkitBackdropFilter: isDark ? "blur(20px) saturate(140%) brightness(0.95)" : "blur(28px) saturate(160%) brightness(1.02)",
+    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)"}`,
     boxShadow: isDark
-      ? "inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 6px rgba(0,0,0,0.12)"
+      ? "inset 0 0 0 0.5px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.10), 0 2px 6px rgba(0,0,0,0.12)"
       : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 8px 28px rgba(0,0,0,0.16)",
   };
 }
@@ -387,6 +387,9 @@ export function useSurfaceTheme(args: SurfaceThemeArgs) {
     : accent.lightBg;
   const bgGlow1 = isMaterial || hasStandaloneBackground ? "transparent" : `${accent.glow}${isDark ? "0.07)" : "0.08)"}`;
   const bgGlow2 = isMaterial || hasStandaloneBackground ? "transparent" : `${accent.glow}${isDark ? "0.05)" : "0.06)"}`;
+  // Unified focus / active indicator used app-wide: accent ring + soft accent bloom.
+  // 2px solid ring keeps the edge crisp at 1280x800; the 18px bloom reads across the room.
+  const focusGlow = `0 0 0 2px ${accent.glow}1), 0 0 18px ${accent.glow}0.6)`;
   const cardBackdropFilter = !glassEnabled
     ? (isDark ? "blur(16px)" : "blur(28px)")
     : surfaceStyle === "material"
@@ -409,5 +412,6 @@ export function useSurfaceTheme(args: SurfaceThemeArgs) {
     cardBackdropFilter,
     materialFocusShadow: "var(--material-shadow-medium)",
     materialRaisedShadow: "var(--material-shadow-high)",
+    focusGlow,
   };
 }

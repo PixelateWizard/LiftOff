@@ -8,6 +8,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import { FocusRing } from "../ui/FocusRing";
 import { GlitchText } from "../neonblade-ui/glitch-text";
+import { getTabPillStyle } from "../../theme/tabStyle";
 
 const TAB_ICONS: Record<string, (size: number, color: string) => ReactNode> = {
   Home:     (s, c) => <IoHomeSharp     size={s} color={c} />,
@@ -90,13 +91,20 @@ export function AppHeader({
   const transparentNav    = !(settings.topbar_background ?? true);
   const tabbarBg          = settings.tabbar_with_background ?? false;
   const tabbarBgCompact   = tabbarBg && (settings.tabbar_background_compact ?? false);
-  const wideLayout        = settings.wide_topbar ?? false;
+  const wideLayout        = (settings.wide_layout ?? false) && (settings.wide_topbar ?? false);
   const isHome         = tab === "Home";
   const uiScale        = settings.ui_scale ?? 1;
   const subtabGap      = Math.round(16 / uiScale);
   const isPixel        = surfaceStyle === "win9x";
   const navRadius      = resolvedTheme === "cyberpunk" ? 0 : isPixel ? 0 : surfaceStyle === "material" ? 8 : 16;
   const isCyberpunk = resolvedTheme === "cyberpunk";
+  const constrainHomeNav = isHome && !isPixel;
+  const homeNavBoundaryStyle: CSSProperties = constrainHomeNav
+    ? widthConstraints(wideLayout, transparentNav, true, uiScale)
+    : {};
+  const homeTopBarFillStyle: CSSProperties = constrainHomeNav
+    ? { width: "100%", maxWidth: "none", margin: 0 }
+    : {};
   const pixelFullBleedNav: CSSProperties = isPixel ? {
     width: "100%",
     maxWidth: "none",
@@ -177,7 +185,17 @@ export function AppHeader({
           {tabs.map((tabName) => {
             const isActive = tab === tabName;
             const iconMode = settings.tabbar_icon_mode ?? "text";
-            const color = isActive ? ((resolvedTheme === "onyx" || isCyberpunk) ? accent.primary : activeTextColor) : theme.textDim;
+            const tabPillStyle = getTabPillStyle({
+              active: isActive,
+              surfaceStyle,
+              resolvedTheme,
+              accent,
+              isDark,
+              activeTextColor,
+              textDim: theme.textDim,
+              glassEnabled,
+            });
+            const color = tabPillStyle.color ?? theme.textDim;
             const iconNode = (isCyberpunk ? CYBER_TAB_ICONS : TAB_ICONS)[tabName]?.(isCyberpunk && tabName === "Settings" ? 14 : 16, color);
             const showIcon = iconMode === "icons" || iconMode === "both";
             const showText = iconMode === "text"  || iconMode === "both";
@@ -191,26 +209,9 @@ export function AppHeader({
                 gap: showIcon && showText ? 2 : 0,
                 position: "relative",
                 transition: "background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease",
-                ...(isActive
-                  ? {
-                      background: resolvedTheme === "onyx" || isCyberpunk ? "transparent" : accent.primary,
-                      border: `1px solid ${resolvedTheme === "onyx" || isCyberpunk ? "transparent" : accent.primary}`,
-                      boxShadow: resolvedTheme === "onyx" || isCyberpunk
-                        ? "none"
-                        : surfaceStyle === "aero"
-                        ? `inset 0 1px 0 rgba(255,255,255,0.80), inset 0 2px 10px rgba(255,255,255,0.24), inset 0 -1px 0 rgba(0,0,0,0.28), 0 4px 16px ${accent.glow}0.55)`
-                        : surfaceStyle === "material"
-                        ? "var(--material-shadow-medium)"
-                        : `0 4px 24px ${accent.glow}0.5)`,
-                      color: resolvedTheme === "onyx" || isCyberpunk ? accent.primary : activeTextColor,
-                      // Cyberpunk active tab: no chrome — just a neon glow on the icon/label + the dot.
-                      ...(isCyberpunk ? { filter: `drop-shadow(0 0 7px ${accent.glow}0.85))`, textShadow: `0 0 10px ${accent.glow}0.90)` } : {}),
-                    }
-                  : {
-                      background: "transparent",
-                      border: "1px solid transparent",
-                      color: theme.textDim,
-                    }),
+                background: "transparent",
+                border: "1px solid transparent",
+                ...tabPillStyle,
               }}>
                 {showIcon && iconNode}
                 {showText && <span style={{ lineHeight: 1 }}>{label}</span>}
@@ -266,7 +267,7 @@ export function AppHeader({
   );
 
   // ── Case: nav + subtab share a single glass container ──────────
-  if (!transparentNav && tabbarBg && !tabbarBgCompact && !isHome) {
+  if (!transparentNav && tabbarBg && !tabbarBgCompact) {
     return (
       <div data-liftoff-nav-boundary style={{ position: "sticky", top: 0, zIndex: 100 }}>
         <div data-top-bar="" style={{
@@ -281,7 +282,7 @@ export function AppHeader({
           <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "10px 20px" }}>
             {navContent}
           </div>
-          {subtab}
+          {!isHome && subtab}
         </div>
       </div>
     );
@@ -289,12 +290,13 @@ export function AppHeader({
 
   // ── Cases: independent nav / subtab backgrounds ────────────────
   return (
-    <div data-liftoff-nav-boundary style={{ position: "sticky", top: 0, zIndex: 100 }}>
+    <div data-liftoff-nav-boundary style={{ position: "sticky", top: 0, zIndex: 100, ...homeNavBoundaryStyle }}>
 
       {/* Nav row */}
       <div data-top-bar="" style={{
         display: "flex", flexDirection: isPixel ? "column" : "row", alignItems: isPixel ? "stretch" : "center", gap: isPixel ? 0 : 16, padding: isPixel ? 0 : "10px 20px",
         ...widthConstraints(wideLayout, transparentNav, true, uiScale),
+        ...homeTopBarFillStyle,
         ...pixelFullBleedNav,
         ...(transparentNav ? {} : { ...glassBar, borderRadius: navRadius }),
         position: "relative",

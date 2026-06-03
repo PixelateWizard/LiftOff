@@ -19,6 +19,7 @@ export interface ThemeValue {
   appBg: string;
   bgGlow1: string;
   bgGlow2: string;
+  focusGlow: string;
   surface: SurfaceTokens;
 }
 

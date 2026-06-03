@@ -3,7 +3,39 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Recategorize Override — let the user move titles between Games/Apps (and force a source) via the existing context menu, persisted in `custom_categories.json` and reapplied on every scan. Pure override layer on top of scan output; launch behavior untouched. Test case: Spiritfarer (AppX Game Pass title with `App Id = "App"` and no `MicrosoftGame.config`, misclassified as an app).
+**Task:** Remove the framed content feature entirely: delete the setting/toggle, unwrap Games/Apps/Settings content, and remove the unused `ContentFrame` helper.
+
+**Completed (this session — visual consistency PR1 foundation):**
+- Added a shared `focusGlow` token in `useSurfaceTheme()` and threaded it through `ThemeProvider` so later PRs can migrate focus states onto one accent ring + bloom token without changing current visuals yet.
+- Logged the invisible groundwork in `CHANGELOG.md`. No card, row, tab, or modal rendering was intentionally changed in this PR.
+
+**Completed (this session — visual consistency PR2 revised):**
+- Reverted the earlier header-level active-tab treatment experiment so top-nav active visuals stay owned by their existing per-surface styling until the later material rework PR.
+- Generalized the non-active pill-tab hover/focus highlight in `SectionTabBar` so every surface style now shows the same subtle focused-state feedback instead of limiting that behavior to Aero and Material.
+- Left text-tab mode and the existing `FocusRing` behavior intact, and did not change the active pill fill/border/glow rules in this PR.
+
+**Completed (this session — visual consistency PR2.5 tab helper extraction):**
+- Added `src/theme/tabStyle.ts` as the single edit point for active tab-pill visual styling and wired both `AppHeader` and `SectionTabBar` through it while leaving layout, dots, focus rings, and inactive surface styling local.
+- Aligned the subtab active glow strength to the main nav's canonical glow and moved Neon active tabs onto the shared wirey accent-label treatment.
+- Reviewed `App.jsx`; its local `activeTextColor` usage is shared with broader content and CTA styling rather than a third tab renderer, so it remains intentionally untouched.
+
+**Completed (this session — visual consistency PR3.5 surface material rework):**
+- Reworked only the default Glass fall-through surfaces: cards/modals and bars now use a softer luminous inner rim with heavier `blur(30px)` frost, while dense Settings rows move from `blur(8px)` to `blur(20px)` with a restrained rim.
+- Updated the shared tab-pill helper so Glass active tabs use a translucent frosted accent fill, Clear active tabs use a flat translucent accent fill with border and no blur, and Obsidian active tabs use a soft dark slab with an accent label.
+- Protected-branch diff review confirmed Material, Onyx, Win9X, Clear surfaces, Cyberpunk, Neon surfaces, and all non-tab Obsidian surfaces were unchanged. Aero also remains unchanged.
+
+**Completed (this session — Clear dark active tab contrast):**
+- Fixed the shared Clear active-tab branch so dark-mode active/focused top tabs render white icons and labels, avoiding dark text on the translucent accent fill while leaving light-mode contrast behavior unchanged.
+
+**Completed (this session — Glass active tab glow tune):**
+- Raised the shared Glass active tab fill from `0.50` to `0.65` opacity and added a soft accent glow to the focused/active tab treatment while keeping the existing frosted blur and inner rim.
+
+**Completed (this session — Home header width / frame gap bugfix):**
+- Decoupled global Wide Layout updates and legacy migration from `wide_topbar`, and made the rendered nav header require both Wide Layout and the Top Bar subsetting so stale hidden `wide_topbar` values cannot stretch Home. Win9X remains intentionally full-bleed.
+- Constrained the Home nav boundary itself, then let the inner top bar fill that boundary, so Home-only header styling cannot draw the Cyberpunk/Lofi bar out to the full viewport.
+
+**Completed (this session — framed content removal):**
+- Removed the experimental framed-content setting, Appearance toggle, locale strings, wrappers, and `ContentFrame` helper so Games, Apps, and Settings return to their original full content surfaces.
 
 **Prior task — Cyberpunk Settings rows (completed this session — picker re-enable):**
 - Re-added `"cyberpunk"` to `THEME_OPTIONS` in `constants.ts` (it had been dropped from the picker list while all downstream wiring still referenced it). Logged in CHANGELOG Added.
@@ -533,7 +565,7 @@ Both `glassEnabled` and `surfaceStyle` are threaded via `ThemeContext`; any comp
 - **Bottom bar shadow direction** — `AppBottomBar` computes a `barGlass` object that spreads `glassBar` then overrides `boxShadow` to cast the drop shadow upward (`0 -4px 16px` / `0 -6px 20px`) in Aero and Glass modes. Inset highlights stay identical to the top bar. `AppBottomBar` reads `surfaceStyle` and `accent` from `useTheme()` for this override.
 - **Focused settings row** (dark): `rgba(255,255,255,0.07→0.032)` gradient (glass) / `rgba(255,255,255,0.14→0.08→0.05)` knee (aero, no accent fill), `accent 0.45–0.50` border, layered shadow `inset highlight + 1px accent ring + glow`.
 - **glassBar dark** layers a `rgba(0,0,0,0.22→0.10)` scrim over the white tint to suppress colour bleed from bright wallpapers. Header text gets `textShadow: 0 1px 2px rgba(0,0,0,0.55)` when glass is on.
-- **Active nav tab pill / focused pinned items (both shelves) / Launch CTA / section filter pills**: solid `accent.primary` fill + `border: 1px solid accent.primary`. Box-shadow is material-dependent — Aero: triple-inset gloss (`inset 0 1px 0 rgba(255,255,255,0.80)` hard specular + `inset 0 2px 10px rgba(255,255,255,0.24)` bloom + `inset 0 -1px 0 rgba(0,0,0,0.28)` bottom rim + outer accent glow); Material: flat accent with material shadows only, no accent glow; Glass/Clear: plain outer glow `0 4px 24px accent(0.5)`. Text color: `activeTextColor = isDark ? (accent.darkText ? activePillText : "white") : (accent.lightDarkText ? activePillText : "white")` where `activePillText = "rgba(20,14,10,0.90)"`. Computed locally in `App.jsx`, `AppHeader.tsx`, and `SectionTabBar.tsx`.
+- **Active nav tab pills / section filter pills**: active tab visuals are centralized in `src/theme/tabStyle.ts`. Aero uses the triple-inset gloss (`inset 0 1px 0 rgba(255,255,255,0.80)` hard specular + `inset 0 2px 10px rgba(255,255,255,0.24)` bloom + `inset 0 -1px 0 rgba(0,0,0,0.28)` bottom rim + outer accent glow); Material uses flat accent with material shadows only; Glass/Clear use outer glow `0 4px 24px accent(0.5)`; Neon and Cyberpunk use a wirey accent-label treatment with no fill; Onyx stays transparent so `FocusRing` does the work. Each caller still computes accessible `activeTextColor` from `darkText` / `lightDarkText`. Focused pinned items and the Launch CTA remain bespoke `App.jsx` styling.
 - **Inactive pills / unfocused pinned items / unfocused Launch CTA** (when `glassEnabled`): Aero — directional gradient fill, thin neutral border + `accent.glow` outer ring (10–12%), `inset 0 1px 0` top highlight + `inset 0 -1px 0` bottom rim. Glass — flat `rgba(255,255,255,0.08)` + `blur(12–14px) saturate(150%)`. Clear — flat translucent fallback.
 - **Home pinned shelf label color:** focused labels use `activeTextColor`. Unfocused Material labels use warm paper text (`rgba(255,250,245,0.84)` dark / `rgba(31,22,15,0.82)` light). Other surfaces use `rgba(245,237,232,0.88)` only in dark mode and `theme.text` in light mode so Clear/Glass/Aero light shelves remain readable.
 - **Immersive home drawer** follows the selected surface in both modes. Material: opaque `--material-elevation-3`, no blur, subtle inset top highlight; avoid heavy upward cast shadows because they create a visible band at the drawer top. Dark Aero: `blur(18px) saturate(130%) brightness(0.88)` + `rgba(255,255,255,0.16→0.08)` background. Dark Glass: `blur(32px) saturate(140%) brightness(0.85)` + `rgba(255,255,255,0.08→0.04)`. Light Aero: brighter acrylic `rgba(255,255,255,0.74→0.52)`, tighter blur, strong top highlight. Light Glass: more transparent `rgba(255,255,255,0.58→0.38)` with heavier blur. Clear: light mode uses a warm translucent sheet; dark mode uses `appBg`.
@@ -764,7 +796,7 @@ Notable merged PRs from Moi that affect current architecture and settings:
 - Settings scroll margin accounts for sticky nav bar (80px top margin); last item not cut off (160px bottom padding)
 - Settings rows: Clear mode uses the same row padding/height as other surface modes. Material focused rows are opaque, slightly accent-tinted solid surfaces with a single 2px accent border and higher elevation; avoid transparency, double borders, or left accent bars in Material focus states.
 - i18n: English + French; auto-detects OS locale; language override in settings; all UI strings via `t()` keys
-- Wide layout: removes maxWidth constraint on Home and Settings screens
+- Wide Layout: removes maxWidth constraints on content containers only by default. The nav header widens only when both Wide Layout and `wide_topbar` are enabled; Win9X remains intentionally full-bleed.
 - Transparent bars: independent top/bottom toggles via SettingsSubGroup collapsible; bottom bar can also be completely hidden via `hide_bottom_bar` setting
 - Cover scale: independent sliders for Home recents (`home_cover_scale`) and Games grid (`game_cover_scale`)
 - Collections system: create/delete named collections per app type; assign apps via ColPickerModal; `custom_data.json` stores all collections + memberships

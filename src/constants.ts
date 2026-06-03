@@ -25,6 +25,7 @@ export const ACCENTS: Record<string, AccentConfig> = {
   nova:      { primary: "#e03030", light: "#ff6060", dark: "#b01010", glow: "rgba(224,48,48,",   lightBg: "#fde8e8", },
   steel:   { primary: "#909090", lightPrimary: "#747474", light: "#c0c0c0", dark: "#606060", glow: "rgba(144,144,144,", lightBg: "#f0f0f0", darkText: true },
   lunar:    { primary: "#dcdcdc", lightPrimary: "#1c1c1c", light: "#f5f5f5", dark: "#a8a8a8", glow: "rgba(220,220,220,", lightGlow: "rgba(28,28,28,", lightBg: "#ececec", darkText: true, lightDarkText: false, },
+  atomic:   { primary: "#e8c53a", lightPrimary: "#8a6e00", light: "#f5dc6e", dark: "#c4a020", glow: "rgba(232,197,58,",  lightBg: "#f5f0d0", darkText: true, lightDarkText: false },
 };
 
 export const THEMES: Record<string, { text: string; textDim: string; textFaint: string }> = {

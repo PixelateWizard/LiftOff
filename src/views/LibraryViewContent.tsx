@@ -62,6 +62,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
     pins,
     appListView,
     appListCols,
+    settings,
   } = props;
   const { surface, resolvedTheme } = useTheme();
   const isPixel = surfaceStyle === "win9x";

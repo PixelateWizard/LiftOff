@@ -4,6 +4,22 @@
 
 ### Added
 - **Move titles between Games and Apps** - some installed titles are detected but land in the wrong tab (for example certain Game Pass games whose package looks identical to a regular app). Right-clicking any card now offers "Move to Games" or "Move to Apps" so you can put a title where it belongs; moving a Microsoft Store game to Games also files it under the Xbox source automatically. The choice is remembered and reapplied every time the library rescans, and "Reset to detected category" undoes it. This only changes where a title appears — it never affects how it launches.
+- **Atomic accent color** - new golden-yellow accent palette. Warm, energetic, retro-nuclear vibe. Uses `darkText: true` for legibility on filled surfaces.
+- Internal `focusGlow` surface token (unified accent ring + bloom) — groundwork for app-wide consistent focus/selection indicator.
+
+### Changed
+- **Single handoff source** - `CLAUDE.md` is now the single source of truth for project context and active-task updates. `AGENTS.md` is a short pointer so agent instructions no longer need to be maintained in two places.
+- Gamepad/hover focus highlight on nav tabs now applies consistently across all surface styles (previously only Aero and Material showed a hover state).
+- **Shared active tab-pill styling** - consolidated main-nav and subtab active visuals into `src/theme/tabStyle.ts`, removing drifting copies before the next surface-style pass. Subtab glow now matches the main nav's strength, and Neon active tabs use the wirey accent-label treatment with no border or fill.
+- **Frosted Glass surface** - Glass cards, bars, frames, and Settings rows now use a softer frosted material with heavier blur, a subtle luminous inner rim, and gentler body highlights. Glass active tabs use a translucent accent frost instead of a solid block.
+- **Glass active tab glow** - Glass active tabs now use a stronger translucent accent fill plus a soft accent glow, making the focused tab read more clearly against frosted bars.
+- **Clear active tabs** - Clear keeps its flat surface material, while active tabs now use a flat translucent accent fill with an accent border and no blur. Onyx retains its own active-tab treatment.
+- **Obsidian active tabs** - Obsidian active tabs now use a soft dark slab with an accent label instead of a solid accent block and border. Other Obsidian surfaces are unchanged.
+- **Framed content removal** - removed the experimental Framed Content setting and wrapper, returning Games, Apps, and Settings to their normal full content layout.
+
+### Fixed
+- **Home nav header width** - the nav header no longer renders wider on Home than on other tabs. Header width now requires both Wide Layout and the Top Bar wide-layout subsetting, so stale hidden Top Bar values cannot stretch Home; Win9X remains intentionally full-bleed.
+- **Clear dark active tab contrast** - dark-mode Clear active tabs now keep white icons and labels on the translucent accent fill, so the focused Home tab remains readable with dark-text accent palettes.
 
 ## [2.0.0-alpha.5] - Alpha 5
 

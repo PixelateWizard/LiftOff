@@ -1,21 +1,21 @@
 ---
 name: repo-workflow
-description: Project repo task discipline — keeping AGENTS.md and CHANGELOG.md current on every task. Use this skill whenever starting, working on, or finishing ANY task inside this project repo, even if the user doesn't mention AGENTS.md or the changelog. Trigger it at the start of every new task (to read context and log the current task), at the end of every task (to record changes in the changelog), and whenever the user sends a bare .md file with little or no other instruction (treat that file as a project proposal to execute). When in doubt about whether a request counts as a "task" in this repo, assume it does and use this skill.
+description: Project repo task discipline — keeping CLAUDE.md and CHANGELOG.md current on every task. Use this skill whenever starting, working on, or finishing ANY task inside this project repo, even if the user doesn't mention CLAUDE.md or the changelog. Trigger it at the start of every new task (to read context and log the current task), at the end of every task (to record changes in the changelog), and whenever the user sends a bare .md file with little or no other instruction (treat that file as a project proposal to execute). When in doubt about whether a request counts as a "task" in this repo, assume it does and use this skill.
 ---
 
 # Repo Workflow
 
-This skill enforces a consistent task discipline for this project repo. Follow it on every task so that `AGENTS.md` always reflects what's currently being worked on and `CHANGELOG.md` always reflects what's been done.
+This skill enforces a consistent task discipline for this project repo. Follow it on every task so that `CLAUDE.md` always reflects what's currently being worked on and `CHANGELOG.md` always reflects what's been done. `AGENTS.md` is only a bootstrap pointer to `CLAUDE.md`; do not duplicate handoff state there.
 
 ## At the start of every task
 
 Do these two things before writing any code or making changes:
 
-1. **Read `AGENTS.md` fully.** It holds project context, conventions, and the current task state. Read it even if you think you already know the project — it may have changed since your last task. If there's no `AGENTS.md` at the repo root, create one (see structure below).
+1. **Read `CLAUDE.md` fully.** It holds project context, conventions, and the current task state. Read it even if you think you already know the project — it may have changed since your last task.
 
-2. **Update the "Current Task" section of `AGENTS.md`** to describe what you're about to do. Replace the previous current task — this section reflects the active task, not a history (history lives in the changelog). Keep it short: what the task is and any relevant scope or constraints.
+2. **Update the "Active Task" section of `CLAUDE.md`** to describe what you're about to do. Replace the previous current task — this section reflects the active task, not a history (history lives in the changelog). Keep it short: what the task is and any relevant scope or constraints.
 
-If `AGENTS.md` has no "Current Task" section yet, add one near the top.
+If `CLAUDE.md` has no "Active Task" section yet, add one near the top.
 
 ## At the end of every task
 
@@ -25,18 +25,18 @@ Write changelog entries from the reader's perspective — what changed and why i
 
 ## Bare .md file = project proposal
 
-If the user sends **just a `.md` file** (or a `.md` file with little or no accompanying instruction), treat the contents of that file as a **project proposal**: read it, and do what it describes. Apply all the best practices and instructions in this skill while doing so — read and update `AGENTS.md` at the start, update `CHANGELOG.md` at the end.
+If the user sends **just a `.md` file** (or a `.md` file with little or no accompanying instruction), treat the contents of that file as a **project proposal**: read it, and do what it describes. Apply all the best practices and instructions in this skill while doing so — read and update `CLAUDE.md` at the start, update `CHANGELOG.md` at the end.
 
 ## File structure references
 
-### AGENTS.md
+### CLAUDE.md
 
 Expected shape (adapt to what already exists — don't clobber existing content):
 
 ```markdown
 # [Project Name]
 
-## Current Task
+## Active Task
 [What's being worked on right now. Updated at the start of each task.]
 
 ## Overview
@@ -70,14 +70,14 @@ Follow Keep a Changelog conventions. Newest release at the top:
 ## Order of operations recap
 
 **Example — normal task:**
-1. Read `AGENTS.md`
-2. Update `AGENTS.md` → Current Task
+1. Read `CLAUDE.md`
+2. Update `CLAUDE.md` → Active Task
 3. Do the work
 4. Update `CHANGELOG.md` under the latest release
 
 **Example — user sends just `feature-x.md`:**
-1. Read `AGENTS.md`
+1. Read `CLAUDE.md`
 2. Read `feature-x.md` as the project proposal
-3. Update `AGENTS.md` → Current Task to reflect the proposal
+3. Update `CLAUDE.md` → Active Task to reflect the proposal
 4. Execute the proposal
 5. Update `CHANGELOG.md` under the latest release

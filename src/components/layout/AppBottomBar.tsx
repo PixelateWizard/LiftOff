@@ -53,7 +53,7 @@ export function AppBottomBar({ tab, appCollectionsCount }: Props) {
         : "0 -10px 30px rgba(46,34,22,0.12), 0 -24px 60px rgba(46,34,22,0.08)",
     } : surfaceStyle === "glass" ? {
       boxShadow: isDark
-        ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.16), 0 -6px 20px rgba(0,0,0,0.25)"
+        ? "inset 0 0 0 0.5px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.16), 0 -6px 20px rgba(0,0,0,0.25)"
         : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 -8px 28px rgba(0,0,0,0.16)",
     } : {}),
   };
