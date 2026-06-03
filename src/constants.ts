@@ -26,6 +26,9 @@ export const ACCENTS: Record<string, AccentConfig> = {
   steel:   { primary: "#909090", lightPrimary: "#747474", light: "#c0c0c0", dark: "#606060", glow: "rgba(144,144,144,", lightBg: "#f0f0f0", darkText: true },
   lunar:    { primary: "#dcdcdc", lightPrimary: "#1c1c1c", light: "#f5f5f5", dark: "#a8a8a8", glow: "rgba(220,220,220,", lightGlow: "rgba(28,28,28,", lightBg: "#ececec", darkText: true, lightDarkText: false, },
   atomic:   { primary: "#e8c53a", lightPrimary: "#8a6e00", light: "#f5dc6e", dark: "#c4a020", glow: "rgba(232,197,58,",  lightBg: "#f5f0d0", darkText: true, lightDarkText: false },
+  aqua:     { primary: "#2ecfcf", lightPrimary: "#0a8a8a", light: "#6ee8e8", dark: "#18a8a8", glow: "rgba(46,207,207,",  lightBg: "#d6f5f5", darkText: true, lightDarkText: false },
+  sage:     { primary: "#5ec97a", lightPrimary: "#2a7a42", light: "#8ee8a4", dark: "#38a858", glow: "rgba(94,201,122,",  lightBg: "#dff2e6", darkText: true, lightDarkText: false },
+  copper:   { primary: "#a86030", lightPrimary: "#6e3a10", light: "#c87840", dark: "#884820", glow: "rgba(168,96,48,",   lightBg: "#f0e8dc", darkText: true, lightDarkText: false },
 };
 
 export const THEMES: Record<string, { text: string; textDim: string; textFaint: string }> = {

@@ -3,7 +3,7 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Remove the framed content feature entirely: delete the setting/toggle, unwrap Games/Apps/Settings content, and remove the unused `ContentFrame` helper.
+**Task:** Add Aqua, Sage, and Copper accent colors from `add-aqua-sage-copper-accents.md`, keeping the change additive to accent constants, locale labels, and release notes.
 
 **Completed (this session — visual consistency PR1 foundation):**
 - Added a shared `focusGlow` token in `useSurfaceTheme()` and threaded it through `ThemeProvider` so later PRs can migrate focus states onto one accent ring + bloom token without changing current visuals yet.
@@ -69,7 +69,7 @@
 - `npm run build` passes (only the pre-existing >500 kB chunk-size warning); `git diff --check` reports no whitespace errors.
 
 **Current implementation target:**
-- Runtime validation on Cyberpunk: focused Settings row solid-HUD treatment, immersive Home/nav visual cohesion, Games cover cut-edge stroke, and Apps normal-view card borders. Known deliberate calls to confirm with Taylor: ascii-rain is hand-written (not the official CLI artifact); beam reserved to focused card; grid cards still also render the outer `FocusRing` (could be removed for cyberpunk if the beam alone is enough). All new branches gated on `resolvedTheme === "cyberpunk"`/`isCyber` so other themes are untouched.
+- Add only the three proposed accent palettes after Atomic, wire their English/French setting labels, and record the shipped palette addition in the Unreleased changelog.
 
 ---
 

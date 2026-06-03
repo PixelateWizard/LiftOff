@@ -5,6 +5,7 @@
 ### Added
 - **Move titles between Games and Apps** - some installed titles are detected but land in the wrong tab (for example certain Game Pass games whose package looks identical to a regular app). Right-clicking any card now offers "Move to Games" or "Move to Apps" so you can put a title where it belongs; moving a Microsoft Store game to Games also files it under the Xbox source automatically. The choice is remembered and reapplied every time the library rescans, and "Reset to detected category" undoes it. This only changes where a title appears — it never affects how it launches.
 - **Atomic accent color** - new golden-yellow accent palette. Warm, energetic, retro-nuclear vibe. Uses `darkText: true` for legibility on filled surfaces.
+- **Aqua, Sage, and Copper accent colors** - three new palettes filling gaps in the hue wheel. Aqua is a cyan-teal, Sage is a soft muted green, and Copper is a warm metallic orange-brown. All three use `darkText: true` for legibility on filled surfaces.
 - Internal `focusGlow` surface token (unified accent ring + bloom) — groundwork for app-wide consistent focus/selection indicator.
 
 ### Changed
