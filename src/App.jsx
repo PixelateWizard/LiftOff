@@ -54,7 +54,6 @@ import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { useAppFocusPause } from "./hooks/useAppFocusPause";
 import { useRunningApps } from "./hooks/useRunningApps";
 import { useSpotify } from "./hooks/useSpotify";
-import { useSpotifyWebPlayer } from "./hooks/useSpotifyWebPlayer";
 import { SpotifyConnectGuide } from "./components/spotify/SpotifyConnectGuide";
 import { SpotifyMiniBar } from "./components/spotify/SpotifyMiniBar";
 import { SpotifyOverlay } from "./components/spotify/SpotifyOverlay";
@@ -247,7 +246,6 @@ export default function App() {
     settingsRef,
   });
   const spotify = useSpotify();
-  const spotifyWebPlayer = useSpotifyWebPlayer(spotify.status.connected && !spotify.requiresPremium);
   useEffect(() => {
     spotifyConnectedRef.current = !!spotify.status.connected;
   }, [spotify.status.connected]);
@@ -298,6 +296,7 @@ export default function App() {
     launchingApp,
     launchingAppRef,
     windowFocused,
+    spotifyHoldProgress,
     heroVideoRefs,
     setTab,
     setFocusSection,
@@ -1455,7 +1454,9 @@ export default function App() {
 
   // ── Header right actions (Manage button inline with subtab pills) ─
   const _hdrManageIdx = tab === "Games" ? _hdrSources.length : _hdrAppCols.length;
-  const headerRightActions = tab === "Home" && spotify.status.connected ? (
+  // Spotify chip for mouse users on Home/Settings; Games/Apps keep their
+  // header clean (gamepad users hold MENU anywhere, mouse users have the pill).
+  const spotifyHeaderBtn = spotify.status.connected && tab !== "Games" && tab !== "Apps" ? (
     <button
       type="button"
       onClick={() => setShowSpotifyOverlay(true)}
@@ -1479,7 +1480,8 @@ export default function App() {
       <IoMusicalNotesOutline size={15} color={accent.primary} />
       {t("spotify.title")}
     </button>
-  ) : (tab === "Games" || tab === "Apps") ? (
+  ) : null;
+  const headerManageBtn = (tab === "Games" || tab === "Apps") ? (
     <div
       onClick={openLibraryActionsModal}
       style={{
@@ -1501,6 +1503,12 @@ export default function App() {
     >
       {t('grid.manage')}
     </div>
+  ) : null;
+  const headerRightActions = (spotifyHeaderBtn || headerManageBtn) ? (
+    <>
+      {headerManageBtn}
+      {spotifyHeaderBtn}
+    </>
   ) : undefined;
 
   // ── Render ────────────────────────────────────────────────────
@@ -1690,7 +1698,7 @@ export default function App() {
       <SpotifyOverlay
         open={showSpotifyOverlay}
         spotify={spotify}
-        webPlayer={spotifyWebPlayer}
+        repeatSpeed={settings.repeat_speed}
         onClose={() => setShowSpotifyOverlay(false)}
       />
       {showFileBrowser && (
@@ -2180,6 +2188,7 @@ export default function App() {
             setHeroIndex={setHeroIndex}
             heroIndexRef={heroIndexRef}
             iconColors={iconColors}
+            spotifyPillLift={settings.hide_bottom_bar && spotify.status.connected && spotify.track ? 80 : 0}
           />
           <div aria-hidden={tab !== "Games"} data-tab-pane="games" style={tabPaneStyle(tab === "Games")}>
             <GamesView {...gamesLibraryViewProps} wideLayout={settings.wide_games} />
@@ -2194,8 +2203,10 @@ export default function App() {
         <AppBottomBar
           tab={tab}
           appCollectionsCount={appCollections.length}
-          spotifyMiniBar={<SpotifyMiniBar spotify={spotify} webPlayer={spotifyWebPlayer} onOpenPanel={() => setShowSpotifyOverlay(true)} />}
+          spotifyMiniBar={<SpotifyMiniBar spotify={spotify} holdProgress={spotifyHoldProgress} onOpenPanel={() => setShowSpotifyOverlay(true)} />}
           spotifyConnected={spotify.status.connected}
+          spotifyHasTrack={spotify.status.connected && !!spotify.track}
+          spotifyHoldProgress={spotifyHoldProgress}
         />
       </div>
 

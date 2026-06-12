@@ -224,6 +224,11 @@ export function useGamepadNavigation(
   const [heroActionIndex, setHeroActionIndex] = useState(0);
   const [launchingApp, setLaunchingApp] = useState<App | null>(null);
   const [windowFocused, setWindowFocused] = useState(true);
+  // 0..1 charge level while MENU (Start) is held to open the Spotify overlay.
+  // Drives the mini-player "gaining energy" micro-interaction.
+  const [spotifyHoldProgress, setSpotifyHoldProgress] = useState(0);
+  const spotifyHoldProgressRef = useRef(0);
+  const startHoldRef = useRef<{ since: number; fired: boolean } | null>(null);
 
   const tabRef = useRef(options.initialTab ?? "Home");
   const focusSectionRef = useRef("hero");
@@ -1312,6 +1317,45 @@ export function useGamepadNavigation(
             && !showSpotifyGuideRef.current
             && !showSpotifyOverlayRef.current;
 
+          // MENU (Start) gains a hold gesture when Spotify is connected:
+          // hold to charge up and open the Spotify overlay (any tab); a tap
+          // still performs the regular Start action, dispatched on release.
+          if (key === "Start" && spotifyConnectedRef.current) {
+            const SPOTIFY_HOLD_MS = 850;
+            const setHoldProgress = (value: number) => {
+              if (spotifyHoldProgressRef.current === value) return;
+              spotifyHoldProgressRef.current = value;
+              setSpotifyHoldProgress(value);
+            };
+            if (pressed && !wasPressed) {
+              startHoldRef.current = canNavigate ? { since: now, fired: false } : null;
+            } else if (pressed && wasPressed && startHoldRef.current && !startHoldRef.current.fired) {
+              if (!canNavigate) {
+                // A modal opened mid-hold; abandon the gesture.
+                startHoldRef.current = null;
+                setHoldProgress(0);
+              } else {
+                const progress = Math.min(1, (now - startHoldRef.current.since) / SPOTIFY_HOLD_MS);
+                setHoldProgress(progress);
+                if (progress >= 1) {
+                  startHoldRef.current.fired = true;
+                  setHoldProgress(0);
+                  suppressUntilRelease.current[key] = true;
+                  playSoundAlt();
+                  onOpenSpotifyOverlay();
+                }
+              }
+            } else if (!pressed && wasPressed) {
+              const hold = startHoldRef.current;
+              startHoldRef.current = null;
+              setHoldProgress(0);
+              // Released before the charge completed: run the normal tap action.
+              if (hold && !hold.fired && canNavigate) handleNavRef?.current?.(key);
+            }
+            lastBtn.current[key] = pressed;
+            return;
+          }
+
           if (pressed && !wasPressed) {
             if (canNavigate) handleNavRef?.current?.(key);
             btnPressTime.current[key] = now;
@@ -1485,6 +1529,7 @@ export function useGamepadNavigation(
     launchingApp,
     launchingAppRef,
     windowFocused,
+    spotifyHoldProgress,
     heroVideoRefs,
     setTab,
     setFocusSection,

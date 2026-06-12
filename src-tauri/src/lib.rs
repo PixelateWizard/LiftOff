@@ -693,8 +693,38 @@ fn wait_for_callback(listener: TcpListener) -> Result<(String, String), String> 
 
 struct SpotifyTokens { access_token: String, refresh_token: String, expires_in: u64 }
 
+// One pooled HTTP client for all Spotify traffic. Connection reuse avoids a
+// fresh TLS handshake on every poll/control call, and the timeouts keep a
+// flaky request from hanging a control press indefinitely.
+static SPOTIFY_HTTP: std::sync::OnceLock<reqwest::blocking::Client> = std::sync::OnceLock::new();
+
+fn spotify_http() -> reqwest::blocking::Client {
+    SPOTIFY_HTTP
+        .get_or_init(|| {
+            reqwest::blocking::Client::builder()
+                .connect_timeout(Duration::from_secs(6))
+                .timeout(Duration::from_secs(12))
+                .build()
+                .unwrap_or_else(|_| reqwest::blocking::Client::new())
+        })
+        .clone()
+}
+
+// All Spotify Web API work is blocking (reqwest::blocking + keyring), so it
+// must never run on the main thread where it would serialize with every other
+// Tauri command and stall control presses behind in-flight polls.
+async fn run_spotify_blocking<T, F>(task: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(task)
+        .await
+        .map_err(|e| format!("Spotify task failed: {e}"))?
+}
+
 fn spotify_exchange_code(client_id: &str, code: &str, verifier: &str, redirect_uri: &str) -> Result<SpotifyTokens, String> {
-    let client = reqwest::blocking::Client::new();
+    let client = spotify_http();
     let resp = client.post("https://accounts.spotify.com/api/token")
         .form(&[
             ("grant_type", "authorization_code"),
@@ -717,7 +747,7 @@ fn spotify_exchange_code(client_id: &str, code: &str, verifier: &str, redirect_u
 }
 
 fn spotify_fetch_product(access_token: &str) -> Option<String> {
-    let client = reqwest::blocking::Client::new();
+    let client = spotify_http();
     let resp = client.get("https://api.spotify.com/v1/me")
         .bearer_auth(access_token)
         .send().ok()?;
@@ -748,7 +778,7 @@ fn refresh_access_token() -> Result<String, String> {
     if cfg.client_id.is_empty() { return Err("Not connected".into()); }
     let refresh = load_refresh_token().ok_or("No refresh token stored")?;
 
-    let client = reqwest::blocking::Client::new();
+    let client = spotify_http();
     let resp = client.post("https://accounts.spotify.com/api/token")
         .form(&[
             ("grant_type", "refresh_token"),
@@ -771,40 +801,52 @@ fn refresh_access_token() -> Result<String, String> {
     Ok(access)
 }
 
-#[tauri::command]
-fn spotify_access_token() -> Result<String, String> {
+fn spotify_access_token_blocking() -> Result<String, String> {
     if let Some(token) = cached_access_token() { return Ok(token); }
     refresh_access_token()
+}
+
+#[tauri::command]
+async fn spotify_access_token() -> Result<String, String> {
+    run_spotify_blocking(spotify_access_token_blocking).await
 }
 
 #[derive(Serialize)]
 struct SpotifyStatus { connected: bool, client_id_set: bool, product: String }
 
 #[tauri::command]
-fn spotify_status() -> SpotifyStatus {
-    let cfg = load_spotify_config();
-    SpotifyStatus {
-        connected: cfg.connected && load_refresh_token().is_some(),
-        client_id_set: !cfg.client_id.is_empty(),
-        product: cfg.product,
-    }
+async fn spotify_status() -> SpotifyStatus {
+    // Keyring + file reads are blocking; keep them off the main thread.
+    run_spotify_blocking(|| {
+        let cfg = load_spotify_config();
+        Ok(SpotifyStatus {
+            connected: cfg.connected && load_refresh_token().is_some(),
+            client_id_set: !cfg.client_id.is_empty(),
+            product: cfg.product,
+        })
+    })
+    .await
+    .unwrap_or(SpotifyStatus { connected: false, client_id_set: false, product: String::new() })
 }
 
 #[tauri::command]
-fn spotify_disconnect() -> Result<(), String> {
-    clear_refresh_token();
-    if let Ok(mut guard) = SPOTIFY_TOKEN.lock() { *guard = None; }
+async fn spotify_disconnect() -> Result<(), String> {
+    run_spotify_blocking(|| {
+        clear_refresh_token();
+        if let Ok(mut guard) = SPOTIFY_TOKEN.lock() { *guard = None; }
 
-    let mut cfg = load_spotify_config();
-    cfg.connected = false;
-    cfg.product = String::new();
-    save_spotify_config(&cfg);
-    Ok(())
+        let mut cfg = load_spotify_config();
+        cfg.connected = false;
+        cfg.product = String::new();
+        save_spotify_config(&cfg);
+        Ok(())
+    })
+    .await
 }
 
 fn spotify_api(method: &str, path: &str, body: Option<serde_json::Value>) -> Result<serde_json::Value, String> {
     fn once(token: &str, method: &str, url: &str, body: &Option<serde_json::Value>) -> Result<reqwest::blocking::Response, String> {
-        let client = reqwest::blocking::Client::new();
+        let client = spotify_http();
         let mut req = match method {
             "GET" => client.get(url),
             "PUT" => client.put(url),
@@ -820,7 +862,7 @@ fn spotify_api(method: &str, path: &str, body: Option<serde_json::Value>) -> Res
     }
 
     let url = format!("https://api.spotify.com/v1{path}");
-    let token = spotify_access_token()?;
+    let token = spotify_access_token_blocking()?;
     let mut resp = once(&token, method, &url, &body)?;
 
     if resp.status().as_u16() == 401 {
@@ -868,40 +910,77 @@ fn spotify_api_error(status: reqwest::StatusCode, body: &str) -> String {
 }
 
 #[tauri::command]
-fn spotify_playback_state() -> Result<serde_json::Value, String> {
-    spotify_api("GET", "/me/player", None)
+async fn spotify_playback_state() -> Result<serde_json::Value, String> {
+    run_spotify_blocking(|| spotify_api("GET", "/me/player", None)).await
 }
 
 #[tauri::command]
-fn spotify_playlists() -> Result<serde_json::Value, String> {
-    spotify_api("GET", "/me/playlists?limit=50", None)
+async fn spotify_playlists() -> Result<serde_json::Value, String> {
+    run_spotify_blocking(|| spotify_api("GET", "/me/playlists?limit=50", None)).await
 }
 
 #[tauri::command]
-fn spotify_devices() -> Result<serde_json::Value, String> {
+async fn spotify_devices() -> Result<serde_json::Value, String> {
+    run_spotify_blocking(spotify_devices_blocking).await
+}
+
+fn spotify_devices_blocking() -> Result<serde_json::Value, String> {
     spotify_api("GET", "/me/player/devices", None)
 }
 
 fn spotify_available_device_id() -> Result<Option<String>, String> {
-    let payload = spotify_devices()?;
+    let payload = spotify_devices_blocking()?;
     let devices = payload
         .get("devices")
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default();
+
+    let device_id = |device: &serde_json::Value| {
+        device
+            .get("id")
+            .and_then(|v| v.as_str())
+            .filter(|id| !id.trim().is_empty())
+            .map(|id| id.to_string())
+    };
+    let device_type = |device: &serde_json::Value| {
+        device
+            .get("type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_ascii_lowercase()
+    };
+
+    if let Some(computer) = devices
+        .iter()
+        .find(|device| device_type(device) == "computer")
+        .and_then(device_id)
+    {
+        return Ok(Some(computer));
+    }
+
     let active = devices
         .iter()
         .find(|device| device.get("is_active").and_then(|v| v.as_bool()).unwrap_or(false))
-        .and_then(|device| device.get("id").and_then(|v| v.as_str()))
-        .map(|id| id.to_string());
+        .and_then(device_id);
     if active.is_some() {
         return Ok(active);
     }
+
+    if let Some(non_phone) = devices
+        .iter()
+        .find(|device| {
+            let kind = device_type(device);
+            kind != "smartphone" && kind != "tablet"
+        })
+        .and_then(device_id)
+    {
+        return Ok(Some(non_phone));
+    }
+
     Ok(devices
         .iter()
-        .filter_map(|device| device.get("id").and_then(|v| v.as_str()))
-        .find(|id| !id.is_empty())
-        .map(|id| id.to_string()))
+        .find_map(device_id))
 }
 
 fn spotify_play_path(device_id: Option<&str>) -> String {
@@ -912,10 +991,14 @@ fn spotify_play_path(device_id: Option<&str>) -> String {
 }
 
 fn spotify_play_with_device_retry(body: Option<serde_json::Value>, device_id: Option<String>) -> Result<(), String> {
-    let path = spotify_play_path(device_id.as_deref());
+    let preferred_device_id = match device_id.filter(|id| !id.trim().is_empty()) {
+        Some(id) => Some(id),
+        None => spotify_available_device_id()?,
+    };
+    let path = spotify_play_path(preferred_device_id.as_deref());
     match spotify_api("PUT", &path, body.clone()) {
         Ok(_) => Ok(()),
-        Err(err) if err.contains("NO_ACTIVE_DEVICE") && device_id.is_none() => {
+        Err(err) if err.contains("NO_ACTIVE_DEVICE") && preferred_device_id.is_none() => {
             let Some(device_id) = spotify_available_device_id()? else {
                 return Err(err);
             };
@@ -927,58 +1010,73 @@ fn spotify_play_with_device_retry(body: Option<serde_json::Value>, device_id: Op
 }
 
 #[tauri::command]
-fn spotify_play(device_id: Option<String>) -> Result<(), String> {
-    spotify_play_with_device_retry(None, device_id)
+async fn spotify_play(device_id: Option<String>) -> Result<(), String> {
+    run_spotify_blocking(move || spotify_play_with_device_retry(None, device_id)).await
 }
 
 #[tauri::command]
-fn spotify_pause() -> Result<(), String> {
-    spotify_api("PUT", "/me/player/pause", None).map(|_| ())
+async fn spotify_pause() -> Result<(), String> {
+    run_spotify_blocking(|| spotify_api("PUT", "/me/player/pause", None).map(|_| ())).await
 }
 
 #[tauri::command]
-fn spotify_next() -> Result<(), String> {
-    spotify_api("POST", "/me/player/next", None).map(|_| ())
+async fn spotify_next() -> Result<(), String> {
+    run_spotify_blocking(|| spotify_api("POST", "/me/player/next", None).map(|_| ())).await
 }
 
 #[tauri::command]
-fn spotify_previous() -> Result<(), String> {
-    spotify_api("POST", "/me/player/previous", None).map(|_| ())
+async fn spotify_previous() -> Result<(), String> {
+    run_spotify_blocking(|| spotify_api("POST", "/me/player/previous", None).map(|_| ())).await
 }
 
 #[tauri::command]
-fn spotify_seek(position_ms: u64) -> Result<(), String> {
-    spotify_api("PUT", &format!("/me/player/seek?position_ms={position_ms}"), None).map(|_| ())
+async fn spotify_seek(position_ms: u64) -> Result<(), String> {
+    run_spotify_blocking(move || {
+        spotify_api("PUT", &format!("/me/player/seek?position_ms={position_ms}"), None).map(|_| ())
+    })
+    .await
 }
 
 #[tauri::command]
-fn spotify_set_shuffle(state: bool) -> Result<(), String> {
-    spotify_api("PUT", &format!("/me/player/shuffle?state={state}"), None).map(|_| ())
+async fn spotify_set_shuffle(state: bool) -> Result<(), String> {
+    run_spotify_blocking(move || {
+        spotify_api("PUT", &format!("/me/player/shuffle?state={state}"), None).map(|_| ())
+    })
+    .await
 }
 
 #[tauri::command]
-fn spotify_set_repeat(mode: String) -> Result<(), String> {
-    let mode = match mode.as_str() {
-        "off" | "context" | "track" => mode.as_str(),
-        _ => "off",
-    };
-    spotify_api("PUT", &format!("/me/player/repeat?state={mode}"), None).map(|_| ())
+async fn spotify_set_repeat(mode: String) -> Result<(), String> {
+    run_spotify_blocking(move || {
+        let mode = match mode.as_str() {
+            "off" | "context" | "track" => mode.as_str(),
+            _ => "off",
+        };
+        spotify_api("PUT", &format!("/me/player/repeat?state={mode}"), None).map(|_| ())
+    })
+    .await
 }
 
 #[tauri::command]
-fn spotify_play_context(context_uri: String, device_id: Option<String>) -> Result<(), String> {
-    let body = serde_json::json!({
-        "context_uri": context_uri,
-        "offset": { "position": 0 },
-        "position_ms": 0,
-    });
-    spotify_play_with_device_retry(Some(body), device_id)
+async fn spotify_play_context(context_uri: String, device_id: Option<String>) -> Result<(), String> {
+    run_spotify_blocking(move || {
+        let body = serde_json::json!({
+            "context_uri": context_uri,
+            "offset": { "position": 0 },
+            "position_ms": 0,
+        });
+        spotify_play_with_device_retry(Some(body), device_id)
+    })
+    .await
 }
 
 #[tauri::command]
-fn spotify_transfer(device_id: String) -> Result<(), String> {
-    let body = serde_json::json!({ "device_ids": [device_id], "play": true });
-    spotify_api("PUT", "/me/player", Some(body)).map(|_| ())
+async fn spotify_transfer(device_id: String) -> Result<(), String> {
+    run_spotify_blocking(move || {
+        let body = serde_json::json!({ "device_ids": [device_id], "play": true });
+        spotify_api("PUT", "/me/player", Some(body)).map(|_| ())
+    })
+    .await
 }
 
 fn load_pins_inner() -> Vec<String> {

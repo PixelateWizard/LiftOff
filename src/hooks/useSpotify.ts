@@ -42,6 +42,14 @@ export interface SpotifyUiError {
   message?: string;
 }
 
+interface PlaybackOverride {
+  until: number;
+  trackId?: string;
+  staleTrackId?: string;
+  progressMs?: number;
+  isPlaying?: boolean;
+}
+
 const defaultStatus: SpotifyStatus = {
   connected: false,
   client_id_set: false,
@@ -119,10 +127,53 @@ export function useSpotify() {
   const [loading, setLoading] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const statusRef = useRef(status);
+  const trackRef = useRef<SpotifyTrack | null>(track);
+  const playbackOverrideRef = useRef<PlaybackOverride | null>(null);
 
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
+
+  useEffect(() => {
+    trackRef.current = track;
+  }, [track]);
+
+  const holdPlaybackOverride = useCallback((override: Omit<PlaybackOverride, "until">, durationMs = 2500) => {
+    playbackOverrideRef.current = {
+      ...override,
+      until: Date.now() + durationMs,
+    };
+  }, []);
+
+  const applyPlaybackOverride = useCallback((nextTrack: SpotifyTrack | null) => {
+    const override = playbackOverrideRef.current;
+    if (!override) return nextTrack;
+    if (Date.now() > override.until) {
+      playbackOverrideRef.current = null;
+      return nextTrack;
+    }
+
+    if (!nextTrack) return nextTrack;
+
+    if (override.staleTrackId && nextTrack.id === override.staleTrackId) {
+      return null;
+    }
+    if (override.staleTrackId && nextTrack.id !== override.staleTrackId) {
+      playbackOverrideRef.current = null;
+      return nextTrack;
+    }
+
+    if (override.trackId && nextTrack.id && nextTrack.id !== override.trackId) {
+      playbackOverrideRef.current = null;
+      return nextTrack;
+    }
+
+    return {
+      ...nextTrack,
+      progressMs: override.progressMs ?? nextTrack.progressMs,
+      isPlaying: override.isPlaying ?? nextTrack.isPlaying,
+    };
+  }, []);
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -143,6 +194,37 @@ export function useSpotify() {
     }
   }, []);
 
+  // Lightweight poll: playback state only. Playlists and devices are fetched
+  // separately so the 3s cadence and post-command bursts stay one request each
+  // instead of three, which kept tripping Spotify rate limits and returning
+  // stale snapshots.
+  const refreshPlaybackState = useCallback(async () => {
+    if (!statusRef.current.connected) return;
+    try {
+      const playback = await invoke<any>("spotify_playback_state").catch((err) => {
+        if (String(err).includes("NO_ACTIVE_DEVICE")) return null;
+        throw err;
+      });
+      setTrack(applyPlaybackOverride(mapPlayback(playback)));
+      setError(null);
+    } catch (err) {
+      const mapped = mapError(err);
+      setError(mapped);
+      if (mapped.key === "noDevice") setTrack(null);
+    }
+  }, [applyPlaybackOverride]);
+
+  const refreshDevices = useCallback(async () => {
+    if (!statusRef.current.connected) return;
+    try {
+      setDevices(mapDevices(await invoke<any>("spotify_devices")));
+    } catch {
+      // Keep the last known device list; the next full refresh recovers it.
+    }
+  }, []);
+
+  // Full refresh: playback + playlists + devices. Used on connect and when
+  // the overlay opens, not on the polling cadence.
   const refreshPlayback = useCallback(async () => {
     if (!statusRef.current.connected) return;
     setLoading(true);
@@ -155,7 +237,7 @@ export function useSpotify() {
         invoke<any>("spotify_playlists"),
         invoke<any>("spotify_devices"),
       ]);
-      setTrack(mapPlayback(playback));
+      setTrack(applyPlaybackOverride(mapPlayback(playback)));
       setPlaylists(mapPlaylists(playlistPayload));
       setDevices(mapDevices(devicePayload));
       setError(null);
@@ -166,7 +248,7 @@ export function useSpotify() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyPlaybackOverride]);
 
   useEffect(() => {
     refreshStatus();
@@ -175,9 +257,35 @@ export function useSpotify() {
   useEffect(() => {
     if (!status.connected) return;
     refreshPlayback();
-    const id = window.setInterval(refreshPlayback, 10000);
+    let tick = 0;
+    const id = window.setInterval(() => {
+      tick += 1;
+      refreshPlaybackState();
+      // Devices change rarely; refresh them every fifth tick (~15s).
+      if (tick % 5 === 0) refreshDevices();
+    }, 3000);
     return () => window.clearInterval(id);
-  }, [status.connected, refreshPlayback]);
+  }, [status.connected, refreshPlayback, refreshPlaybackState, refreshDevices]);
+
+  useEffect(() => {
+    if (!track?.isPlaying) return;
+    // Advance by elapsed wall time rather than a fixed 1000ms so late timer
+    // fires do not make the scrubber drift between API refreshes.
+    let lastTick = Date.now();
+    const id = window.setInterval(() => {
+      const now = Date.now();
+      const elapsed = now - lastTick;
+      lastTick = now;
+      setTrack((current) => {
+        if (!current?.isPlaying) return current;
+        return {
+          ...current,
+          progressMs: Math.min(current.durationMs, current.progressMs + elapsed),
+        };
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [track?.id, track?.isPlaying]);
 
   const connect = useCallback(async (clientId: string) => {
     setConnecting(true);
@@ -206,15 +314,91 @@ export function useSpotify() {
     await refreshStatus();
   }, [refreshStatus]);
 
-  const runControl = useCallback(async (command: string, args?: Record<string, unknown>) => {
+  const refreshPlaybackBurst = useCallback((delays = [350, 900, 1800]) => {
+    delays.forEach((delay) => {
+      window.setTimeout(() => {
+        refreshPlaybackState();
+      }, delay);
+    });
+  }, [refreshPlaybackState]);
+
+  const runControl = useCallback(async (
+    command: string,
+    args?: Record<string, unknown>,
+    options?: {
+      optimistic?: () => void;
+      immediateRefresh?: boolean;
+      refreshDelays?: number[];
+      refreshDevicesAfter?: boolean;
+    },
+  ) => {
     setError(null);
+    options?.optimistic?.();
     try {
       await invoke(command, args);
-      await refreshPlayback();
+      if (options?.immediateRefresh !== false) await refreshPlaybackState();
+      refreshPlaybackBurst(options?.refreshDelays);
+      if (options?.refreshDevicesAfter) {
+        window.setTimeout(() => {
+          refreshDevices();
+        }, 600);
+      }
     } catch (err) {
       setError(mapError(err));
     }
-  }, [refreshPlayback]);
+  }, [refreshDevices, refreshPlaybackBurst, refreshPlaybackState]);
+
+  const seek = useCallback(async (positionMs: number) => {
+    const safePosition = Math.max(0, Math.round(positionMs));
+    await runControl("spotify_seek", { positionMs: safePosition }, {
+      optimistic: () => {
+        const current = trackRef.current;
+        if (current) {
+          holdPlaybackOverride({ trackId: current.id, progressMs: Math.min(current.durationMs, safePosition) }, 3000);
+        }
+        setTrack((current) => {
+          const next = current ? { ...current, progressMs: Math.min(current.durationMs, safePosition) } : current;
+          trackRef.current = next;
+          return next;
+        });
+      },
+      immediateRefresh: false,
+      refreshDelays: [900, 1800, 3000],
+    });
+  }, [holdPlaybackOverride, runControl]);
+
+  const previous = useCallback(async () => {
+    const current = trackRef.current;
+    if (current && current.progressMs > 3000) {
+      await seek(0);
+      return;
+    }
+
+    setError(null);
+    if (current?.id) {
+      holdPlaybackOverride({ staleTrackId: current.id }, 4500);
+    }
+    setTrack(null);
+    trackRef.current = null;
+    try {
+      await invoke("spotify_previous");
+      refreshPlaybackBurst([350, 900, 1800, 3000]);
+    } catch (err) {
+      const message = String(err ?? "");
+      if (message.includes("Restriction violated") || message.includes("HTTP 403")) {
+        if (current) {
+          holdPlaybackOverride({ trackId: current.id, progressMs: 0 }, 3000);
+          const restarted = { ...current, progressMs: 0 };
+          setTrack(restarted);
+          trackRef.current = restarted;
+        }
+        await invoke("spotify_seek", { positionMs: 0 });
+        refreshPlaybackBurst([900, 1800, 3000]);
+        return;
+      }
+      setError(mapError(err));
+    }
+  }, [holdPlaybackOverride, refreshPlaybackBurst, seek]);
 
   const normalizedProduct = status.product.trim().toLowerCase();
   const isPremium = normalizedProduct === "premium";
@@ -236,15 +420,58 @@ export function useSpotify() {
     refreshPlayback,
     connect,
     disconnect,
-    play: (deviceId?: string | null) => runControl("spotify_play", deviceId ? { deviceId } : undefined),
-    pause: () => runControl("spotify_pause"),
-    next: () => runControl("spotify_next"),
-    previous: () => runControl("spotify_previous"),
-    seek: (positionMs: number) => runControl("spotify_seek", { positionMs: Math.max(0, Math.round(positionMs)) }),
+    play: (deviceId?: string | null) => runControl("spotify_play", deviceId ? { deviceId } : undefined, {
+      optimistic: () => {
+        const current = trackRef.current;
+        if (current) holdPlaybackOverride({ trackId: current.id, isPlaying: true }, 2200);
+        setTrack((current) => {
+          const next = current ? { ...current, isPlaying: true } : current;
+          trackRef.current = next;
+          return next;
+        });
+      },
+      immediateRefresh: false,
+      refreshDelays: [350, 900, 1800],
+    }),
+    pause: () => runControl("spotify_pause", undefined, {
+      optimistic: () => {
+        const current = trackRef.current;
+        if (current) holdPlaybackOverride({ trackId: current.id, isPlaying: false }, 2600);
+        setTrack((current) => {
+          const next = current ? { ...current, isPlaying: false } : current;
+          trackRef.current = next;
+          return next;
+        });
+      },
+      immediateRefresh: false,
+      refreshDelays: [900, 1800, 3000],
+    }),
+    next: () => runControl("spotify_next", undefined, {
+      optimistic: () => {
+        const current = trackRef.current;
+        if (current?.id) holdPlaybackOverride({ staleTrackId: current.id }, 4500);
+        setTrack(null);
+        trackRef.current = null;
+      },
+      immediateRefresh: false,
+      refreshDelays: [350, 900, 1800, 3000],
+    }),
+    previous,
+    seek,
     setShuffle: (state: boolean) => runControl("spotify_set_shuffle", { state }),
     setRepeat: (mode: "off" | "context" | "track") => runControl("spotify_set_repeat", { mode }),
-    playContext: (contextUri: string, deviceId?: string | null) => runControl("spotify_play_context", deviceId ? { contextUri, deviceId } : { contextUri }),
-    transfer: (deviceId: string) => runControl("spotify_transfer", { deviceId }),
+    playContext: (contextUri: string, deviceId?: string | null) => runControl("spotify_play_context", deviceId ? { contextUri, deviceId } : { contextUri }, {
+      optimistic: () => {
+        const current = trackRef.current;
+        if (current?.id) holdPlaybackOverride({ staleTrackId: current.id }, 4500);
+        setTrack(null);
+        trackRef.current = null;
+      },
+      immediateRefresh: false,
+      refreshDelays: [350, 900, 1800, 3000],
+      refreshDevicesAfter: true,
+    }),
+    transfer: (deviceId: string) => runControl("spotify_transfer", { deviceId }, { refreshDevicesAfter: true }),
   };
 }
 

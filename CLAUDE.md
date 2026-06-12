@@ -3,7 +3,71 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Fix Spotify Web Playback SDK 10-second stop/progress drift and duplicate scrubber/play starts.
+**Task:** Optimize Spotify Connect transport so controls are less sluggish and snapshots less stale.
+
+**Scope:**
+- Move all blocking Spotify Web API Tauri commands off the main thread (async commands + `spawn_blocking`) so polling and control presses no longer serialize behind each other.
+- Reuse one pooled HTTP client with timeouts for all Spotify requests instead of a fresh TLS handshake per call.
+- Stop fetching playlists + devices on every 3s poll tick and every post-command burst; poll playback state only, refresh devices on a slow cadence, fetch playlists on connect/overlay open.
+- Make local progress ticking use elapsed wall time so the scrubber does not drift between API refreshes.
+
+**Completed (this session - Spotify overlay expand animation + immersive lane):**
+- Spotify overlay opens with a FLIP expand animation from the mini-player: `useLayoutEffect` measures `[data-spotify-minibar]` and the `[data-modal]` panel, starts the panel translated/scaled at the mini-player's rect (translate deltas divided by the app-root UI scale), forces a reflow, then transitions to identity over 0.3s. Skips gracefully when no mini-player is mounted.
+- Overlay gamepad focus scrolling now uses `scroller.scrollTo({ behavior: "smooth" })` to match Games/Apps grid scrolling.
+- Mini-player shows a permanent MENU badge (third grid column: `46px / 1fr / 30px`) as the hold-gesture affordance; the accent progress ring and brighter icon appear only while charging.
+- Immersive Home no longer docks the pill bottom-right: the pill keeps the standard alignment lane on all screens, and `HomeView` accepts `spotifyPillLift` (80 when the hidden-bar pill is visible) which raises `cinematicHeroBottom`, the cinematic hero content lane, and the bottom pinned shelf above the pill.
+- Removed the Spotify header chip from Games/Apps (kept on Home/Settings); gamepad path everywhere is hold-MENU.
+- Validated with `npm run build`; only the existing chunk-size warning remains.
+
+**Completed (this session - Spotify hold-MENU gesture + floating pill):**
+- Replaced the short-lived Spotify subtab item with a global hold-MENU gesture: in `useGamepadNavigation`'s RAF poll, Start is special-cased when `spotifyConnectedRef.current` — press starts a charge timer (850ms), full charge opens the overlay (`onOpenSpotifyOverlay` + `playSoundAlt` + Start suppressed until release), and releasing early dispatches the regular Start tap action via `handleNavRef` (so the Games/Apps card options menu now fires on release, not press). Charge level is exported as `spotifyHoldProgress` (0..1) from the hook.
+- `SpotifyMiniBar` accepts `holdProgress` and renders a MENU-icon badge with a filling SVG progress ring on its right side while charging; `AppBottomBar` accepts `spotifyHoldProgress` and ramps an accent border + glow on the hidden-bar pill.
+- The hidden-bar mini-player pill wrapper changed from `position: sticky` (which reserved a full-width layout row — the "band" behind the pill) to `position: fixed` with `pointerEvents: none` on the wrapper and `auto` on the pill, so it truly floats over content on all tabs; Immersive Home keeps the bottom-right docking.
+- Header Spotify chip reverted to plain (non-focusable) styling on all tabs; Manage chip behavior unchanged.
+- Validated with `npm run build`; only the existing chunk-size warning remains.
+
+**Completed (this session - Spotify mini-bar/bottom-bar layout pass):**
+- `SpotifyMiniBar` now has a fixed 360px width (`flex: 0 0 auto`) so it reads consistently across tabs, and the trailing expand icon was removed; the whole bar remains one click target.
+- `AppBottomBar` wide mode is now gated by `wide_layout && wide_bottombar` (mirroring the header's `wide_layout && wide_topbar` rule) so stale `wide_bottombar` values cannot stretch the bar full-width while the header is inset.
+- When `hide_bottom_bar` is on, `AppBottomBar` renders a compact floating pill containing just the mini-player (solid bar surface, follows `bottombar_alignment`) whenever Spotify is connected with a track; new `spotifyHasTrack` prop from `App.jsx` gates it.
+- The header Spotify chip now renders on all tabs: `headerRightActions` composes `spotifyHeaderBtn` + the Games/Apps Manage button instead of being Home-only.
+- Validated with `npm run build`; only the existing chunk-size warning remains.
+
+**Completed (this session - Spotify overlay nav + mini-bar polish):**
+- Spotify overlay gamepad navigation now uses the app-wide `repeat_speed` setting (600/200ms normal) instead of the helper's 350/100ms defaults, threaded via a new `repeatSpeed` prop from `App.jsx`; only one direction key is handled per poll frame so hard diagonal stick pushes cannot double-move.
+- Reordered overlay focus indices to match the visual layout: transport 0-4, close = 5 (top row), scrubber = 6, devices from 7, playlists after. Down from the transport row lands on the scrubber, down again reaches devices/playlists; up from the scrubber returns to Play. Close is no longer the last focus index after all playlists.
+- `SpotifyMiniBar` is now display-only: removed the unreachable prev/play/next transport buttons and made the whole bar a single button that opens the Spotify overlay (artwork, title/artist, progress, expand hint retained).
+- Stabilized the overlay input effect: navigation logic moved to a render-scope `navigate` function read through `navigateRef`, so the keydown/RAF-poll effect depends only on `[open, repeatSpeed]`. Re-renders from progress ticks, device refreshes, and play-state flips no longer reset `last`/`pressTime`/`repeating`/release guards mid-press (the remaining source of skipped/phantom moves).
+- Overlay hover focus switched from `onMouseEnter` to `onMouseMove` on all controls, so gamepad-driven modal scrolling cannot steal focus when content slides under the stationary mouse cursor.
+- Validated with `npm run build`; only the existing chunk-size warning remains.
+
+**Completed (this session - Spotify transport optimization):**
+- Converted every Spotify Web API Tauri command (status, disconnect, access token, playback state, playlists, devices, all transport controls, context play, transfer) to `async` commands that run their blocking work through `run_spotify_blocking` / `spawn_blocking`, so Spotify HTTP no longer executes on the main thread and control presses stop serializing behind the 3s poll. Internal blocking callers use `spotify_access_token_blocking` / `spotify_devices_blocking`.
+- Added a shared pooled `reqwest::blocking::Client` (`spotify_http()`, 6s connect / 12s request timeouts) reused by all Spotify auth and API calls, eliminating the per-request TLS handshake.
+- Split frontend polling in `useSpotify`: the 3s tick and post-command bursts now call playback-state-only `refreshPlaybackState`; devices refresh every fifth tick (~15s) and after transfer/playlist starts; playlists+devices full `refreshPlayback` runs only on connect and overlay open. This drops per-button traffic from ~12 requests to ~4 and avoids Spotify 429s.
+- Progress ticking now advances by elapsed wall time instead of a fixed 1000ms, removing scrubber drift between API refreshes.
+- Validated with `cargo check`, `npm run build`, and `git diff --check`; only existing warnings/CRLF notices remain.
+
+**Completed (this session - Spotify Connect latency polish):**
+- Added short-lived local playback overrides so stale Spotify Connect snapshots cannot bounce pause/play state or scrubber progress backward immediately after controls.
+- Made next/playlist starts suppress the previous track until Spotify reports a different active track, avoiding stale song details during Connect handoff.
+- Reduced the overlay action lock now that the Web Playback SDK is no longer the active path, so controls feel less like they need repeated presses.
+- Improved Spotify overlay scroll anchoring: transport focus snaps the modal body to the top, device focus reveals the device section, and the first playlist row reveals the playlist header.
+- Validated with `cargo check`, `npm run build`, and `git diff --check`; only existing warnings/CRLF notices remain.
+
+**Completed (this session - Spotify Connect overlay responsiveness):**
+- Added focused-element refs in the Spotify overlay so gamepad focus keeps device chips, playlist cards, transport controls, and the scrubber inside the modal viewport without scrolling the scaled app root.
+- Changed Spotify Connect control refreshes to use short post-command burst polling, so next/previous/playlist starts stop showing stale track details and scrubber state for as long.
+- Made scrubber seeks optimistic and committed on pointer/keyboard release, with stale drag state cleared whenever the active track changes.
+- Made Previous restart the current track after a few seconds, and fall back to `seek(0)` when Spotify returns the first-track `Restriction violated` 403.
+- Validated with `cargo check`, `npm run build`, and `git diff --check`; only existing warnings/CRLF notices remain.
+
+**Completed (this session - Spotify Connect playback pivot):**
+- Stopped loading and targeting the embedded Web Playback SDK from the normal app path, avoiding the WebView2 DRM/license failures that caused 10-second stalls and skipped playlist tracks.
+- Added a gamepad-reachable Spotify Connect device picker to the overlay and routes playlist/play starts to the selected or preferred Connect device.
+- Updated backend playback startup to prefer `Computer` Spotify Connect devices before phones/tablets, so Spotify Desktop on the Ally wins when it is available.
+- Restored smooth Connect progress interpolation between Web API refreshes and kept the duplicate scrubber removed.
+- Validated with `cargo check`, `npm run build`, and `git diff --check`; only existing warnings/CRLF notices remain.
 
 **Completed (this session - Spotify SDK state sync):**
 - Replaced optimistic progress ticking with SDK `getCurrentState()` polling so the scrubber reflects real playback instead of drifting past a stopped player.

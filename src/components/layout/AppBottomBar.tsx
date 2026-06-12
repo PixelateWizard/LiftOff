@@ -9,14 +9,15 @@ interface Props {
   appCollectionsCount: number;
   spotifyMiniBar?: ReactNode;
   spotifyConnected?: boolean;
+  spotifyHasTrack?: boolean;
+  /** 0..1 charge level while MENU is held to open the Spotify overlay. */
+  spotifyHoldProgress?: number;
 }
 
-export function AppBottomBar({ tab, appCollectionsCount, spotifyMiniBar, spotifyConnected = false }: Props) {
+export function AppBottomBar({ tab, appCollectionsCount, spotifyMiniBar, spotifyConnected = false, spotifyHasTrack = false, spotifyHoldProgress = 0 }: Props) {
   const { t } = useTranslation();
   const { glassBar, theme, isDark, surfaceStyle, accent, resolvedTheme } = useTheme();
   const { settings } = useSettings();
-
-  if (settings.hide_bottom_bar) return null;
 
   const Btn = ({ label }: { label: string }) => (
     <GamepadBtn btn={label[0]} label={label.slice(2)} />
@@ -39,10 +40,14 @@ export function AppBottomBar({ tab, appCollectionsCount, spotifyMiniBar, spotify
   // support old boolean value (true → was "tabbar")
   const showTriggersInBottom = settings.tabbar_show_buttons === "bottom";
   const isPixel = surfaceStyle === "win9x";
+  // Match the nav header: the bar only goes wide when Wide Layout itself is
+  // enabled, so a stale hidden wide_bottombar value cannot stretch it
+  // full-width while the header stays inset.
+  const wideBar = (settings.wide_layout ?? false) && (settings.wide_bottombar ?? false);
 
   // Bottom bar casts its shadow upward onto content above it — override the downward drop shadow
   // from glassBar (which is designed for the top nav). Inset highlights stay the same.
-  const barGlass: CSSProperties = isTransparent ? {} : {
+  const solidBarGlass: CSSProperties = {
     ...glassBar,
     borderRadius: resolvedTheme === "cyberpunk" ? 0 : isPixel ? 0 : surfaceStyle === "material" ? 8 : 16,
     ...(surfaceStyle === "aero" ? {
@@ -59,6 +64,41 @@ export function AppBottomBar({ tab, appCollectionsCount, spotifyMiniBar, spotify
         : "inset 0 1px 0 rgba(255,255,255,0.75), inset 0 -1px 0 rgba(0,0,0,0.08), 0 -8px 28px rgba(0,0,0,0.16)",
     } : {}),
   };
+  const barGlass: CSSProperties = isTransparent ? {} : solidBarGlass;
+
+  if (settings.hide_bottom_bar) {
+    // The bar itself is hidden, but keep Spotify reachable: float the
+    // mini-player as a compact pill in the bottom-bar lane while a track
+    // is loaded. It always gets the solid bar surface for readability.
+    if (!spotifyMiniBar || !spotifyHasTrack) return null;
+    // Same placement on every screen; Immersive Home lifts its hero content
+    // above this lane via spotifyPillLift in HomeView.
+    const pillMargin =
+      settings.bottombar_alignment === "right" ? "0 16px 14px auto" :
+      settings.bottombar_alignment === "center" ? "0 auto 14px" : "0 auto 14px 16px";
+    const charge = Math.max(0, Math.min(1, spotifyHoldProgress));
+    // Fixed wrapper so the pill truly floats over content instead of
+    // reserving a full-width layout row at the bottom of every tab.
+    return (
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, pointerEvents: "none" }}>
+        <div data-bottom-bar="" style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "8px 14px",
+          width: "fit-content",
+          margin: pillMargin,
+          pointerEvents: "auto",
+          ...solidBarGlass,
+          ...(charge > 0 ? {
+            border: `1px solid ${accent.glow}${(0.30 + 0.70 * charge).toFixed(2)})`,
+            boxShadow: `0 0 ${Math.round(8 + 26 * charge)}px ${accent.glow}${(0.18 + 0.45 * charge).toFixed(2)})`,
+          } : {}),
+        } as CSSProperties}>
+          {spotifyMiniBar}
+        </div>
+      </div>
+    );
+  }
 
   const bumpersHint = showBumpersInBottom && (
     <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: theme.textDim }}>
@@ -90,7 +130,7 @@ export function AppBottomBar({ tab, appCollectionsCount, spotifyMiniBar, spotify
                 ? { margin: "0 auto 14px" }
                 : { margin: "0 auto 14px 16px" }),
             }
-          : settings.wide_bottombar
+          : wideBar
           ? (isTransparent
             ? { width: "100%", margin: "0 0 14px", boxSizing: "border-box" }
             : { width: "calc(100% - 16px)", margin: "0 8px 14px", boxSizing: "border-box" })

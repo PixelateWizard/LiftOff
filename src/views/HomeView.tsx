@@ -85,6 +85,7 @@ export function HomeView(props: HomeViewProps) {
     setHeroIndex,
     heroIndexRef,
     iconColors,
+    spotifyPillLift = 0,
   } = props;
   const { surface, resolvedTheme } = useTheme();
   const [heroMediaPaused, setHeroMediaPaused] = useState(false);
@@ -414,7 +415,10 @@ export function HomeView(props: HomeViewProps) {
     const cinematicPinnedAtBottom = cinematicBottomLaneFree && cinematicPinnedVisible && !pinnedAtTop;
     const cinematicHeroAtBottom = cinematicBottomLaneFree && !cinematicPinnedVisible;
     const cinematicHeroNearChevron = settings.cinematic_home && settings.hide_bottom_bar && settings.show_home_collections && !cinematicPinnedVisible;
-    const cinematicHeroBottom = cinematicHeroAtBottom ? 24 : cinematicPinnedAtBottom ? 88 : cinematicHeroNearChevron ? 72 : 122;
+    // When the floating Spotify pill occupies the bottom lane, lift the
+    // cinematic hero content and pinned shelf above it.
+    const pillLift = settings.cinematic_home ? spotifyPillLift : 0;
+    const cinematicHeroBottom = (cinematicHeroAtBottom ? 24 : cinematicPinnedAtBottom ? 88 : cinematicHeroNearChevron ? 72 : 122) + pillLift;
     const homeCollections = settings.show_home_collections ? [
       ...gameCollections.map(col => ({
         id: col.id, name: col.name, type: "game",
@@ -775,7 +779,7 @@ export function HomeView(props: HomeViewProps) {
                 filter: `drop-shadow(0 10px 24px rgba(0,0,0,0.40))`,
               }
             : settings.cinematic_home
-            ? { position: "fixed", left: 0, right: 0, bottom: cinematicHeroAtBottom ? 0 : cinematicPinnedAtBottom ? "84px" : cinematicHeroNearChevron ? "68px" : "120px", zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
+            ? { position: "fixed", left: 0, right: 0, bottom: (cinematicHeroAtBottom ? 0 : cinematicPinnedAtBottom ? 84 : cinematicHeroNearChevron ? 68 : 120) + pillLift, zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
             : { position: "relative", zIndex: 1, flex: 1, display: "flex",
                 alignItems: "flex-end",
                 padding: semiHome ? "0 20px 56px" : "0 20px 20px",
@@ -905,7 +909,7 @@ export function HomeView(props: HomeViewProps) {
             position: "fixed", left: 0, right: 0, zIndex: 2, display: "flex", gap: 8, overflowX: "auto", pointerEvents: "auto",
             ...(pinnedAtTop
               ? { top: 72, padding: "12px 24px 0" }
-              : { bottom: cinematicPinnedAtBottom ? 0 : "60px", padding: cinematicPinnedAtBottom ? "0 24px 14px" : "0 24px 12px" }),
+              : { bottom: (cinematicPinnedAtBottom ? 0 : 60) + pillLift, padding: cinematicPinnedAtBottom ? "0 24px 14px" : "0 24px 12px" }),
           }}>
               {homePinnedApps.map((app, i) => {
                 const focused = focusSec === "pinned" && focusIdx === i;
