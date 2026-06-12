@@ -10,7 +10,8 @@
 
 ### Changed
 - **Single handoff source** - `CLAUDE.md` is now the single source of truth for project context and active-task updates. `AGENTS.md` is a short pointer so agent instructions no longer need to be maintained in two places.
-- **Appearance settings rework** - Appearance is now split into Style, Home Screen, Layout, and Navigation groups, with visual picker modals for Theme and Surface Style. Theme cards render live background previews, and surface cards preview each UI material before selection.
+- **Appearance settings rework** - Appearance now opens to four drill-in category rows for Style, Home Screen, Layout, and Navigation instead of stacking an extra pill strip under the Settings tabs. Category pages now use a compact inline back chip instead of a persistent Back bar, keeping the page chrome flatter while preserving mouse and gamepad back navigation.
+- **Appearance drill-in focus** - entering an Appearance category now lands on the first real setting row instead of the inline back chip, while the chip remains reachable by pressing Up.
 - Gamepad/hover focus highlight on nav tabs now applies consistently across all surface styles (previously only Aero and Material showed a hover state).
 - **Shared active tab-pill styling** - consolidated main-nav and subtab active visuals into `src/theme/tabStyle.ts`, removing drifting copies before the next surface-style pass. Subtab glow now matches the main nav's strength, and Neon active tabs use the wirey accent-label treatment with no border or fill.
 - **Frosted Glass surface** - Glass cards, bars, frames, and Settings rows now use a softer frosted material with heavier blur, a subtle luminous inner rim, and gentler body highlights. Glass active tabs use a translucent accent frost instead of a solid block.
@@ -20,6 +21,8 @@
 - **Framed content removal** - removed the experimental Framed Content setting and wrapper, returning Games, Apps, and Settings to their normal full content layout.
 
 ### Fixed
+- **Appearance picker polish** - Theme and Surface Style pickers now render outside the scaled app root so their backdrops cover the full viewport and panels stay centered at every UI scale. Picker panels now share the app modal styling with explicit Segoe text, theme colors, `data-modal` theming, and a solid scrim; picker grids scroll instantly with top-row title reveal, Theme tiles no longer flicker when focus moves, Surface previews follow the active light/dark theme, and the Surface Style settings row no longer shows the tiny mock chip.
+- **Picker modal surface parity** - Theme and Surface Style picker panels now use the same real surface tokens as the rest of the app modals, restoring frosted Glass styling and Material paper-grain texture even though the pickers render outside the scaled app root.
 - **Home nav header width** - the nav header no longer renders wider on Home than on other tabs. Header width now requires both Wide Layout and the Top Bar wide-layout subsetting, so stale hidden Top Bar values cannot stretch Home; Win9X remains intentionally full-bleed.
 - **Clear dark active tab contrast** - dark-mode Clear active tabs now keep white icons and labels on the translucent accent fill, so the focused Home tab remains readable with dark-text accent palettes.
 

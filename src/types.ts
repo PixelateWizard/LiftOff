@@ -138,7 +138,7 @@ interface SettingsItemBase {
   key: string;
   section: number;
   label: string;
-  /** Appearance section sub-group used by the second-level Appearance pill strip */
+  /** Appearance section category page index. */
   group?: number;
   /** Visual indentation — rendered as a child of the preceding parent row */
   indent?: boolean;
@@ -199,6 +199,17 @@ export interface SettingsSurfacePickerItem extends SettingsItemBase {
   type: "surface_picker";
 }
 
+export interface SettingsAppearanceCategoryItem extends SettingsItemBase {
+  type: "appearance_category";
+  categoryIndex: number;
+  descriptionKey: string;
+}
+
+export interface SettingsAppearanceBackItem extends SettingsItemBase {
+  type: "appearance_back";
+  categoryIndex: number;
+}
+
 export interface SettingsSliderItem extends SettingsItemBase {
   key: keyof Settings;
   type: "slider";
@@ -251,13 +262,6 @@ export interface SettingsCustomFoldersItem extends SettingsItemBase {
   type: "custom_folders";
 }
 
-export interface SettingsAppearanceGroupNavItem {
-  key: "appearance_group_nav";
-  section: 0;
-  label: string;
-  type: "appearance_group_nav";
-}
-
 export interface SettingsHomeCollectionItem {
   key: string;
   section: number;
@@ -275,6 +279,7 @@ export type SettingsItem =
   | SettingsCycleItem
   | SettingsThemePickerItem
   | SettingsSurfacePickerItem
+  | SettingsAppearanceBackItem
   | SettingsSliderItem
   | SettingsAccentItem
   | SettingsActionItem
@@ -286,5 +291,5 @@ export type SettingsItem =
   | SettingsControllerTestItem
   | SettingsInfoItem
   | SettingsCustomFoldersItem
-  | SettingsAppearanceGroupNavItem
+  | SettingsAppearanceCategoryItem
   | SettingsHomeCollectionItem;

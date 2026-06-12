@@ -1,14 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { IoAlbumsOutline, IoChevronForward, IoColorPaletteOutline, IoGridOutline, IoHomeOutline } from "react-icons/io5";
 import { CollapsibleGroup, ToggleKnob, GamepadIconPreview, FocusRing } from "../components/ui";
 import { ControllerTestWidget } from "../components/ControllerTestWidget";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
 import { ACCENTS, APP_VERSION, GITHUB_REPO, THEME_LOCKED_SETTINGS, normalizeThemeKey } from "../constants";
-import { ThemePickerModal } from "../components/ThemePickerModal";
-import { SurfacePickerModal, SURFACE_METADATA, getMockRowStyle } from "../components/SurfacePickerModal";
-import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem } from "../types";
+import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem, SettingsAppearanceCategoryItem, SettingsAppearanceBackItem } from "../types";
 
 // ── Section definitions ────────────────────────────────────────
 export const SETTINGS_SECTIONS = [
@@ -27,9 +26,79 @@ export const APPEARANCE_GROUPS = [
   { key: "nav", labelKey: "settings.appearanceGroups.nav" },
 ] as const;
 
+const CATEGORY_ICONS = [IoColorPaletteOutline, IoHomeOutline, IoGridOutline, IoAlbumsOutline] as const;
+
+const categoryLabelKey = (idx: number) => APPEARANCE_GROUPS[idx]?.key ?? "style";
+
+function visibleInAppearance(item: SettingsItem, group: number | null): boolean {
+  if (item.type === "appearance_back") return group !== null && item.categoryIndex === group;
+  if (group === null) return item.type === "appearance_category";
+  if (item.type === "appearance_category") return false;
+  return item.group === undefined || item.group === group;
+}
+
+function makeAppearanceBackItem(group: number, allItems: SettingsItem[]): SettingsAppearanceBackItem {
+  const category = allItems.find((item) => item.type === "appearance_category" && item.categoryIndex === group);
+  return {
+    key: `back_${group}`,
+    section: 0,
+    type: "appearance_back",
+    categoryIndex: group,
+    label: category?.label ?? categoryLabelKey(group),
+  };
+}
+
+function getVisibleSectionItems(sectionIndex: number, allItems: SettingsItem[], appearanceGroup: number | null): SettingsItem[] {
+  if (sectionIndex !== 0) return allItems.filter((item) => item.section === sectionIndex);
+  if (appearanceGroup === null) {
+    return allItems.filter((item) => item.section === 0 && visibleInAppearance(item, null));
+  }
+  let skippedFirstDivider = false;
+  const pageItems = allItems
+    .filter((item) => item.section === 0 && visibleInAppearance(item, appearanceGroup))
+    .filter((item) => {
+      if (item.type === "divider" && !skippedFirstDivider) {
+        skippedFirstDivider = true;
+        return false;
+      }
+      return true;
+    });
+  return [makeAppearanceBackItem(appearanceGroup, allItems), ...pageItems];
+}
+
+function getCategorySummary(idx: number, settings: Settings, t: TFunction): string {
+  switch (idx) {
+    case 0: {
+      const themeLabel = String(t(`settings.values.${normalizeThemeKey(String(settings.theme))}`));
+      const surfaceLabel = String(t(`settings.values.${settings.surface_style ?? "glass"}`));
+      return `${themeLabel} · ${surfaceLabel}`;
+    }
+    case 1:
+      return String(t(`settings.values.${settings.home_mode ?? "normal"}`));
+    case 2:
+      return `${Math.round((settings.ui_scale ?? 1) * 100)}%`;
+    default:
+      return "";
+  }
+}
+
+function CategoryIcon({ index, focused }: { index: number; focused: boolean }) {
+  const { accent, theme } = useTheme();
+  const Icon = CATEGORY_ICONS[index] ?? IoColorPaletteOutline;
+  return <Icon size={20} color={focused ? accent.primary : theme.textDim} />;
+}
+
 /** Build full SETTINGS_ITEMS array with translated labels, annotated with section index. */
 export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsItem[] {
   const D = (key: string, section: number, group?: number): SettingsDividerItem => ({ key: `div_${key}`, section, group, type: "divider", label: t(`settings.dividers.${key}`) as string });
+  const C = (idx: number, key: string): SettingsAppearanceCategoryItem => ({
+    key: `cat_${key}`,
+    section: 0,
+    type: "appearance_category",
+    categoryIndex: idx,
+    label: t(`settings.appearanceGroups.${key}`),
+    descriptionKey: `settings.appearanceGroupDesc.${key}`,
+  });
   const bgLabel =
     activeTheme === "space"     ? t("settings.backgroundStars")     :
     activeTheme === "sky"       ? t("settings.backgroundClouds")    :
@@ -45,6 +114,11 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     t("settings.backgroundEffects");
   const items: SettingsItem[] = [
     // ── Appearance ───────────────────────────────────────────────
+    C(0, "style"),
+    C(1, "home"),
+    C(2, "layout"),
+    C(3, "nav"),
+
     D("theme", 0, 0),
     { key: "theme",         section: 0, group: 0, label: t("settings.theme"),         type: "theme_picker" },
     { key: "accent",        section: 0, group: 0, label: t("settings.accentColor"),   type: "accent",  indent: true },
@@ -186,11 +260,12 @@ export function getSectionNavigableItems(
   allItems: SettingsItem[],
   settings: Settings,
   collections?: { gameCollections: { id: string; name: string }[]; appCollections: { id: string; name: string }[] },
-  appearanceGroup = 0
+  appearanceGroup: number | null = null
 ): (SettingsItem | SettingsSubItem | SettingsHomeCollectionItem)[] {
   const visibleItems = allItems
     .filter((i) => i.section === sectionIndex)
-    .filter((i) => sectionIndex !== 0 || i.group === appearanceGroup)
+    .filter((i) => sectionIndex !== 0 || visibleInAppearance(i, appearanceGroup))
+    .filter((i) => !(sectionIndex === 0 && appearanceGroup !== null && i.type === "divider" && i.group === appearanceGroup))
     .flatMap((i): (SettingsItem | SettingsSubItem | SettingsHomeCollectionItem)[] => {
       if (i.type === "toggle" && i.key === "show_home_collections" && settings[i.key]) {
         const colItems: SettingsHomeCollectionItem[] = [
@@ -215,8 +290,8 @@ export function getSectionNavigableItems(
         i.type !== "controller_test" &&
         !('locked' in i && i.locked)
     );
-  return sectionIndex === 0
-    ? [{ key: "appearance_group_nav", section: 0, label: "Appearance groups", type: "appearance_group_nav" }, ...visibleItems]
+  return sectionIndex === 0 && appearanceGroup !== null
+    ? [makeAppearanceBackItem(appearanceGroup, allItems), ...visibleItems]
     : visibleItems;
 }
 
@@ -224,8 +299,9 @@ export function getSectionNavigableItems(
 export interface SettingsScreenProps {
   settingsFocusIndex: number;
   settingsSection: number;
-  appearanceGroup: number;
-  onAppearanceGroupChange: (group: number) => void;
+  appearanceGroup: number | null;
+  onEnterAppearanceCategory: (group: number) => void;
+  onExitAppearanceCategory: () => void;
   settingsFocusedRef: React.RefObject<any>;
   settingsBottomRef: React.RefObject<any>;
   customFolders: CustomFolder[];
@@ -245,23 +321,16 @@ export interface SettingsScreenProps {
   appCollections?: { id: string; name: string }[];
   homeHiddenCollections?: string[];
   onToggleHomeCollection?: (colName: string) => void;
-  showThemePicker: boolean;
-  showSurfacePicker: boolean;
-  themePickerFocusIndex: number;
-  surfacePickerFocusIndex: number;
-  setThemePickerFocusIndex: (n: number) => void;
-  setSurfacePickerFocusIndex: (n: number) => void;
   onOpenThemePicker: () => void;
-  onCloseThemePicker: () => void;
   onOpenSurfacePicker: () => void;
-  onCloseSurfacePicker: () => void;
 }
 
 export function SettingsScreen({
   settingsFocusIndex,
   settingsSection,
   appearanceGroup,
-  onAppearanceGroupChange,
+  onEnterAppearanceCategory,
+  onExitAppearanceCategory,
   settingsFocusedRef,
   settingsBottomRef,
   customFolders,
@@ -281,16 +350,8 @@ export function SettingsScreen({
   appCollections = [],
   homeHiddenCollections = [],
   onToggleHomeCollection,
-  showThemePicker,
-  showSurfacePicker,
-  themePickerFocusIndex,
-  surfacePickerFocusIndex,
-  setThemePickerFocusIndex,
-  setSurfacePickerFocusIndex,
   onOpenThemePicker,
-  onCloseThemePicker,
   onOpenSurfacePicker,
-  onCloseSurfacePicker,
 }: SettingsScreenProps) {
   const { t } = useTranslation();
   const { settingsRowGlass, accent, theme, isDark, glassEnabled, surfaceStyle, surface, resolvedTheme } = useTheme();
@@ -298,9 +359,7 @@ export function SettingsScreen({
   const wideLayout = settings.wide_settings ?? false;
 
   const ALL_ITEMS = buildSettingsItems(t, normalizeThemeKey(String(settings.theme)));
-  const sectionItems = ALL_ITEMS
-    .filter((i) => i.section === settingsSection)
-    .filter((i) => settingsSection !== 0 || i.group === appearanceGroup);
+  const sectionItems = getVisibleSectionItems(settingsSection, ALL_ITEMS, appearanceGroup);
   const navigableItems = getSectionNavigableItems(settingsSection, ALL_ITEMS, settings, { gameCollections, appCollections }, appearanceGroup);
   const isMaterial = surfaceStyle === "material";
   const isPixel = surfaceStyle === "win9x";
@@ -390,59 +449,41 @@ export function SettingsScreen({
     };
   };
 
-  const renderAppearanceGroupNav = () => {
-    if (settingsSection !== 0) return null;
-    const focused = navigableItems[settingsFocusIndex]?.type === "appearance_group_nav";
-    const groupRowStyle = {
-      ...makeRowStyle(focused),
-      position: "sticky" as const,
-      top: 0,
-      zIndex: focused ? 8 : 6,
-      gap: 8,
-      padding: isMaterial ? "10px 12px" : "10px 14px",
-      marginBottom: 12,
-      backdropFilter: surfaceStyle === "material" || isCyber ? undefined : "blur(18px) saturate(120%)",
-      WebkitBackdropFilter: surfaceStyle === "material" || isCyber ? undefined : "blur(18px) saturate(120%)",
-    };
-    return (
-      <div data-settings-row="" className={focused ? "focused" : ""} ref={focused ? settingsFocusedRef : undefined} style={groupRowStyle}>
-        <div style={{ display: "flex", width: "100%", gap: 8, alignItems: "center" }}>
-          {APPEARANCE_GROUPS.map((group, idx) => {
-            const active = appearanceGroup === idx;
-            return (
-              <button
-                key={group.key}
-                type="button"
-                onClick={() => onAppearanceGroupChange(idx)}
-                style={{
-                  flex: 1,
-                  minHeight: 32,
-                  borderRadius: isPixel || isCyber ? 0 : isMaterial ? 7 : 999,
-                  border: active ? `1px solid ${accent.primary}` : `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)"}`,
-                  background: active
-                    ? surfaceStyle === "material"
-                      ? "var(--material-elevation-3)"
-                      : `${accent.glow}0.16)`
-                    : "transparent",
-                  color: active ? accent.primary : theme.textDim,
-                  fontSize: 11,
-                  fontWeight: active ? 800 : 650,
-                  textTransform: "uppercase" as const,
-                  letterSpacing: "0.06em",
-                  cursor: "pointer",
-                  boxShadow: active && !isMaterial ? `0 0 12px ${accent.glow}0.16)` : undefined,
-                }}
-              >
-                {String(t(group.labelKey))}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   const renderItem = (item: SettingsItem) => {
+    if (item.type === "appearance_back") {
+      const isFocused = navigableItems[settingsFocusIndex]?.key === item.key;
+      return (
+        <div key={item.key} style={{ display: "flex", alignItems: "center", gap: 10, margin: "6px 0 10px" }}>
+          <div
+            ref={isFocused ? settingsFocusedRef : undefined}
+            onClick={onExitAppearanceCategory}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              fontSize: 11,
+              letterSpacing: "0.1em",
+              fontWeight: 600,
+              color: accent.primary,
+              cursor: "pointer",
+              padding: "3px 8px 3px 4px",
+              borderRadius: isPixel ? 0 : 7,
+              outline: isFocused ? `1.5px solid ${accent.glow}0.55)` : "1.5px solid transparent",
+              outlineOffset: 2,
+              transition: "outline-color 0.12s ease",
+              textTransform: "uppercase" as const,
+              whiteSpace: "nowrap",
+            }}
+          >
+            <span style={{ fontSize: 13, lineHeight: 1 }}>{"\u2039"}</span>
+            {item.label}
+          </div>
+          <div style={{ flex: 1, height: 1, background: isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)" }} />
+          <span style={{ fontSize: 10, color: theme.textFaint, whiteSpace: "nowrap" }}>{t("settings.backHint")}</span>
+        </div>
+      );
+    }
+
     if (item.type === "divider") {
       return (
         <div key={item.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "22px 4px 16px" }}>
@@ -472,6 +513,29 @@ export function SettingsScreen({
     const rowRef = focused ? settingsFocusedRef : null;
     const rowStyle = makeRowStyle(focused, false, !!item.indent);
     const onyxRing = <FocusRing focused={focused} variant="spin" wide elementRadius={flatSettings ? onyxSettingsFocusRadius : isPixel || isCyber ? 0 : isMaterial ? 8 : 16} />;
+
+    if (item.type === "appearance_category") {
+      const summary = getCategorySummary(item.categoryIndex, settings, t);
+      return (
+        <div
+          key={item.key}
+          data-settings-row=""
+          className={focused ? "focused" : ""}
+          ref={rowRef}
+          onClick={() => onEnterAppearanceCategory(item.categoryIndex)}
+          style={{ ...rowStyle, gap: 14 }}
+        >
+          <CategoryIcon index={item.categoryIndex} focused={focused} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{item.label}</div>
+            <div style={{ fontSize: 11, color: theme.textDim, marginTop: 2 }}>{t(item.descriptionKey)}</div>
+          </div>
+          {summary && <span style={{ fontSize: 12, color: focused ? accent.primary : theme.textDim, whiteSpace: "nowrap" }}>{summary}</span>}
+          <IoChevronForward size={16} color={theme.textFaint} />
+          {onyxRing}
+        </div>
+      );
+    }
 
     if (item.type === "info")
       return (
@@ -695,31 +759,12 @@ export function SettingsScreen({
 
     if (item.type === "surface_picker") {
       const currentSurface = String(settings.surface_style ?? "glass");
-      const mockStyle = getMockRowStyle(currentSurface, accent.primary, accent.glow);
       return (
         <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={onOpenSurfacePicker}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 12, color: accent.primary, fontWeight: 700 }}>
-              {String(t(`settings.values.${currentSurface}`, currentSurface))}
-            </span>
-            <div
-              style={{
-                ...mockStyle,
-                width: 38,
-                height: 20,
-                fontSize: 0,
-                flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "flex-end",
-                padding: "0 4px",
-              }}
-              title={String(t(SURFACE_METADATA[currentSurface]?.descriptionKey ?? "settings.surfacePickerHint"))}
-            >
-              <div style={{ width: 10, height: 10, borderRadius: currentSurface === "win9x" ? 0 : "50%", background: accent.primary, boxShadow: `0 0 4px ${accent.glow}0.5)` }} />
-            </div>
-          </div>
+          <span style={{ fontSize: 12, color: accent.primary, fontWeight: 700 }}>
+            {String(t(`settings.values.${currentSurface}`, currentSurface))}
+          </span>
           {onyxRing}
         </div>
       );
@@ -975,24 +1020,9 @@ export function SettingsScreen({
   return (
     <div style={{ ...(wideLayout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" as const }}>
       <div style={{ padding: `${sectionItems[0]?.type !== "divider" ? "22px" : "0"} 24px 160px` }}>
-        {renderAppearanceGroupNav()}
         {sectionItems.map(renderItem)}
         <div ref={settingsBottomRef} />
       </div>
-      {showThemePicker && (
-        <ThemePickerModal
-          onClose={onCloseThemePicker}
-          focusIndex={themePickerFocusIndex}
-          setFocusIndex={setThemePickerFocusIndex}
-        />
-      )}
-      {showSurfacePicker && (
-        <SurfacePickerModal
-          onClose={onCloseSurfacePicker}
-          focusIndex={surfacePickerFocusIndex}
-          setFocusIndex={setSurfacePickerFocusIndex}
-        />
-      )}
     </div>
   );
 }

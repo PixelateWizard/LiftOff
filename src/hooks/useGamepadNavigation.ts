@@ -6,7 +6,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { App, Settings } from "../types";
 import { launchApp } from "./useLaunchApp";
 import { getBestGamepad, getActiveGamepad, readGpState, detectPlatform } from "../utils/gamepad";
-import { APPEARANCE_GROUPS, buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "../views/settings";
+import { buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "../views/settings";
 import {
   ACCENTS as DEFAULT_ACCENTS,
   COLS as DEFAULT_COLS,
@@ -39,8 +39,8 @@ export interface UseGamepadNavigationOptions {
   settingsRef?: AnyRef<Settings>;
   updateSetting?: (key: keyof Settings, value: unknown) => void;
   resolvedTheme?: string;
-  appearanceGroupRef?: AnyRef<number>;
-  setAppearanceGroup?: (value: number) => void;
+  appearanceGroupRef?: AnyRef<number | null>;
+  setAppearanceGroup?: (value: number | null) => void;
 
   appsRef?: AnyRef<App[]>;
   allAppsRef?: AnyRef<App[]>;
@@ -250,8 +250,8 @@ export function useGamepadNavigation(
     settingsRef,
     updateSetting = noop as (key: keyof Settings, value: unknown) => void,
     resolvedTheme = "space",
-    appearanceGroupRef = { current: 0 } as AnyRef<number>,
-    setAppearanceGroup = noop as (value: number) => void,
+    appearanceGroupRef = { current: null } as AnyRef<number | null>,
+    setAppearanceGroup = noop as (value: number | null) => void,
     appsRef,
     allAppsRef,
     recentRef,
@@ -504,6 +504,10 @@ export function useGamepadNavigation(
     setHeroIndex(0); heroIndexRef.current = 0;
     setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
     setSettingsSection(0); settingsSectionRef.current = 0;
+    if (newTab !== "Settings") {
+      setAppearanceGroup(null);
+      appearanceGroupRef.current = null;
+    }
     setGameSourceTab("All"); gameSourceTabRef.current = "All";
     setSubtabFocusIndex(0); subtabFocusIndexRef.current = 0;
     if (outerRef.current) outerRef.current.scrollTop = 0;
@@ -808,6 +812,10 @@ export function useGamepadNavigation(
         const ni = Math.max(0, settingsSectionRef.current - 1);
         if (ni !== settingsSectionRef.current) {
           setSettingsSection(ni); settingsSectionRef.current = ni;
+          if (ni !== 0) {
+            setAppearanceGroup(null);
+            appearanceGroupRef.current = null;
+          }
           setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
           if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
           playSound();
@@ -818,6 +826,10 @@ export function useGamepadNavigation(
         const ni = Math.min(SETTINGS_SECTIONS.length - 1, settingsSectionRef.current + 1);
         if (ni !== settingsSectionRef.current) {
           setSettingsSection(ni); settingsSectionRef.current = ni;
+          if (ni !== 0) {
+            setAppearanceGroup(null);
+            appearanceGroupRef.current = null;
+          }
           setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
           if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
           playSound();
@@ -826,27 +838,14 @@ export function useGamepadNavigation(
       }
       const sfIndex = settingsFocusIndexRef.current;
       const item    = navigableSettings[sfIndex];
-      if (settingsSectionRef.current === 0 && item?.type === "appearance_group_nav") {
-        if (key === "ArrowRight") {
-          const ni = Math.min(APPEARANCE_GROUPS.length - 1, appearanceGroupRef.current + 1);
-          if (ni !== appearanceGroupRef.current) {
-            setAppearanceGroup(ni);
-            appearanceGroupRef.current = ni;
-            playSound();
-          }
-        } else if (key === "ArrowLeft") {
-          const ni = Math.max(0, appearanceGroupRef.current - 1);
-          if (ni !== appearanceGroupRef.current) {
-            setAppearanceGroup(ni);
-            appearanceGroupRef.current = ni;
-            playSound();
-          }
-        } else if (key === "ArrowDown" || key === "Enter") {
-          const ni = Math.min(1, navigableSettings.length - 1);
-          setSettingsFocusIndex(ni);
-          settingsFocusIndexRef.current = ni;
-          playSound();
-        }
+      if (key === "Escape" && settingsSectionRef.current === 0 && appearanceGroupRef.current !== null) {
+        const cameFrom = appearanceGroupRef.current;
+        setAppearanceGroup(null);
+        appearanceGroupRef.current = null;
+        setSettingsFocusIndex(cameFrom);
+        settingsFocusIndexRef.current = cameFrom;
+        if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "auto" });
+        playSoundAlt();
         return;
       }
       if (key === "ArrowDown") {
@@ -863,7 +862,22 @@ export function useGamepadNavigation(
       }
       if (key === "ArrowRight" || key === "Enter") {
         if (!item) return;
-        if (item.type === "toggle")  updateSetting(item.key, !currentSettings[item.key]);
+        if (item.type === "appearance_back") {
+          const cameFrom = item.categoryIndex;
+          setAppearanceGroup(null);
+          appearanceGroupRef.current = null;
+          setSettingsFocusIndex(cameFrom);
+          settingsFocusIndexRef.current = cameFrom;
+          if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "auto" });
+        }
+        else if (item.type === "appearance_category") {
+          setAppearanceGroup(item.categoryIndex);
+          appearanceGroupRef.current = item.categoryIndex;
+          setSettingsFocusIndex(1);
+          settingsFocusIndexRef.current = 1;
+          if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "auto" });
+        }
+        else if (item.type === "toggle")  updateSetting(item.key, !currentSettings[item.key]);
         else if (item.type === "cycle")  { const opts = item.options; const curVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur + 1) % opts.length]); }
         else if (item.type === "theme_picker") {
           const idx = Math.max(0, THEME_OPTIONS.indexOf(normalizeThemeKey(String(currentSettings.theme))));

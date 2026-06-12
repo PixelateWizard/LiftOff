@@ -3,7 +3,26 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Implement `appearance-rework-proposal.md`: Appearance group navigation plus visual Theme and Surface picker modals.
+**Task:** Fix Theme and Surface picker modal surfaces so they use the app's real glass/material modal styling, including frosted Glass and Material paper grain.
+
+**Completed (this session - picker modal surface parity):**
+- Threaded `materialTokens` through `ThemeContext` so unscaled overlay modals can resolve Material CSS variables outside the transformed app root.
+- Updated the shared picker modal style helper to spread the real `glass` surface tokens plus local Material variables, restoring frosted Glass/Aero/Neon/Win9X/etc. panel styling and Material paper-grain modal backgrounds.
+- Validated the frontend with `npm.cmd run build`.
+
+**Completed (this session - Appearance drill-in focus tune):**
+- Changed both mouse and gamepad category entry so Appearance drill-in pages initially focus the first real setting row (for example Style -> Theme) instead of the inline back chip; the chip remains reachable with Up and still supports A/click/B back.
+
+**Completed (this session - Appearance rework v2.1):**
+- Restyled Theme and Surface picker modals through a shared modal style helper modeled on the clear-cache modal: explicit Segoe font, theme text colors, solid scrim, real panel background, `data-modal`, and `data-theme` for Cyberpunk modal CSS.
+- Reduced picker navigation cost by using instant focused-card scrolling, revealing the title for top-row focus, removing the full-viewport backdrop blur, and adding paint containment/compositing to preview panes.
+- Replaced the category page Back bar with a synthetic focusable inline `appearance_back` chip that suppresses the first category divider, supports A/click back, and preserves B/back focus restoration.
+- Added `settings.backHint`, recorded the shipped change in `CHANGELOG.md`, and validated with `npm.cmd run build`.
+
+**Completed (this session - Appearance rework v2):**
+- Replaced the Appearance pill strip with drill-in category rows for Style, Home Screen, Layout, and Navigation, including mouse entry and gamepad B/back restoration to the originating category.
+- Moved Theme and Surface picker modals outside the scaled app root, added data-modal panels, explicit focused-card scrolling, static-on-focus Theme previews, light/dark-aware Surface previews, and removed the Surface Style row chip.
+- Added the new category description locale keys and recorded the shipped change in `CHANGELOG.md`; `npm.cmd run build` and `git diff --check` pass.
 
 **Completed (this session — visual consistency PR1 foundation):**
 - Added a shared `focusGlow` token in `useSurfaceTheme()` and threaded it through `ThemeProvider` so later PRs can migrate focus states onto one accent ring + bloom token without changing current visuals yet.

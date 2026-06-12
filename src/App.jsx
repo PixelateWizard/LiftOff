@@ -20,6 +20,8 @@ import LibraryActionsModal from "./components/modals/LibraryActionsModal";
 import EditNameModal from "./components/modals/EditNameModal";
 import PowerModal from "./components/modals/PowerModal";
 import { SettingsScreen, buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "./views/settings";
+import { ThemePickerModal } from "./components/ThemePickerModal";
+import { SurfacePickerModal } from "./components/SurfacePickerModal";
 import { HomeView } from "./views/HomeView";
 import { GamesView } from "./views/GamesView";
 import { AppsView } from "./views/AppsView";
@@ -72,8 +74,8 @@ export default function App() {
   const [closeRequest, setCloseRequest]             = useState(null);
   const [sliderDraft, setSliderDraft] = useState({ key: null, value: null });
   const sliderDraftRef = useRef({ key: null, value: null });
-  const [appearanceGroupState, setAppearanceGroupState] = useState(0);
-  const appearanceGroupRef = useRef(0);
+  const [appearanceGroupState, setAppearanceGroupState] = useState(null);
+  const appearanceGroupRef = useRef(null);
   const setAppearanceGroup = (value) => {
     appearanceGroupRef.current = value;
     setAppearanceGroupState(value);
@@ -1341,17 +1343,27 @@ export default function App() {
     setSurfacePickerFocusIndex(idx);
     setShowSurfacePicker(true);
   };
+  const enterAppearanceCategory = (group) => {
+    setAppearanceGroup(group);
+    setSettingsFocusIndex(1);
+    settingsFocusIndexRef.current = 1;
+    if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "auto" });
+  };
+  const exitAppearanceCategory = () => {
+    const cameFrom = appearanceGroupRef.current ?? 0;
+    setAppearanceGroup(null);
+    setSettingsFocusIndex(cameFrom);
+    settingsFocusIndexRef.current = cameFrom;
+    if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "auto" });
+  };
 
   const SettingsScreenWrapper = () => (
     <SettingsScreen
       settingsFocusIndex={settingsFocusIndex}
       settingsSection={settingsSection}
       appearanceGroup={appearanceGroupState}
-      onAppearanceGroupChange={(group) => {
-        setAppearanceGroup(group);
-        setSettingsFocusIndex(0);
-        settingsFocusIndexRef.current = 0;
-      }}
+      onEnterAppearanceCategory={enterAppearanceCategory}
+      onExitAppearanceCategory={exitAppearanceCategory}
       settingsFocusedRef={settingsFocusedRef}
       settingsBottomRef={settingsBottomRef}
       customFolders={customFolders}
@@ -1371,16 +1383,8 @@ export default function App() {
       appCollections={appCollections}
       homeHiddenCollections={homeHiddenCollections}
       onToggleHomeCollection={toggleHomeCollection}
-      showThemePicker={showThemePicker}
-      showSurfacePicker={showSurfacePicker}
-      themePickerFocusIndex={themePickerFocusIndex}
-      surfacePickerFocusIndex={surfacePickerFocusIndex}
-      setThemePickerFocusIndex={setThemePickerFocusIndex}
-      setSurfacePickerFocusIndex={setSurfacePickerFocusIndex}
       onOpenThemePicker={openThemePicker}
-      onCloseThemePicker={() => setShowThemePicker(false)}
       onOpenSurfacePicker={openSurfacePicker}
-      onCloseSurfacePicker={() => setShowSurfacePicker(false)}
     />
   );
 
@@ -1407,7 +1411,12 @@ export default function App() {
   const headerOnSelect = (i) => {
     if (tab === "Games") { const src = _hdrSources[i]; setGameSourceTab(src); gameSourceTabRef.current = src; }
     else if (tab === "Apps") { const col = _hdrAppCols[i]; setAppCollectionTab(col); appCollectionTabRef.current = col; }
-    else if (tab === "Settings") { setSettingsSection(i); settingsSectionRef.current = i; setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0; if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" }); }
+    else if (tab === "Settings") {
+      setSettingsSection(i); settingsSectionRef.current = i;
+      setAppearanceGroup(null);
+      setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
+      if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }
     if (tab !== "Settings") { setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(i); subtabFocusIndexRef.current = i; setFocusIndex(0); focusIndexRef.current = 0; }
   };
 
@@ -1438,7 +1447,7 @@ export default function App() {
   ) : undefined;
 
   // ── Render ────────────────────────────────────────────────────
-  const themeValue = { isDark, resolvedTheme, theme, accent, glass, glassBar, settingsRowGlass, glassEnabled, surfaceStyle, appBg, bgGlow1, bgGlow2, focusGlow, surface };
+  const themeValue = { isDark, resolvedTheme, theme, accent, materialTokens, glass, glassBar, settingsRowGlass, glassEnabled, surfaceStyle, appBg, bgGlow1, bgGlow2, focusGlow, surface };
   const settingsValue = { settings, settingsRef, updateSetting, updateSettingsBatch };
   const libraryViewProps = {
     scrollRef: tabScrollRef,
@@ -2171,6 +2180,20 @@ export default function App() {
 
       </AppOverlays>
     </div>
+    {showThemePicker && (
+      <ThemePickerModal
+        onClose={() => setShowThemePicker(false)}
+        focusIndex={themePickerFocusIndex}
+        setFocusIndex={setThemePickerFocusIndex}
+      />
+    )}
+    {showSurfacePicker && (
+      <SurfacePickerModal
+        onClose={() => setShowSurfacePicker(false)}
+        focusIndex={surfacePickerFocusIndex}
+        setFocusIndex={setSurfacePickerFocusIndex}
+      />
+    )}
     </GamepadProvider>
     </SettingsProvider>
     </ThemeProvider>

@@ -123,10 +123,17 @@
       "layout": "Disposition",
       "nav": "Navigation"
     },
+    "appearanceGroupDesc": {
+      "style": "Theme, accent, effects, surface",
+      "home": "Hero, pinned, recents, collections",
+      "layout": "Wide mode, UI scale, cover sizes",
+      "nav": "Top bar, tab bar, bottom bar"
+    },
     "themePickerTitle": "Choisir le theme",
     "surfacePickerTitle": "Style de surface",
     "surfacePickerHint": "Controle le rendu des panneaux et cartes UI. Certains themes verrouillent leur style de surface.",
     "surfacePickerSample": "Grille jeux",
+    "backHint": "B - back",
     "themeDesc": {
       "space": "Deep cosmos with a drifting star field.",
       "sky": "Sunlit clouds and an open, airy feel.",

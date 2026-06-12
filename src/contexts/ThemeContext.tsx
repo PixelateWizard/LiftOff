@@ -11,6 +11,7 @@ export interface ThemeValue {
   resolvedTheme: string;
   theme: ThemeColors;
   accent: AccentColors;
+  materialTokens: CSSProperties;
   glass: CSSProperties;
   glassBar: CSSProperties;
   settingsRowGlass: CSSProperties;

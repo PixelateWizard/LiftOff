@@ -123,10 +123,17 @@
       "layout": "Layout",
       "nav": "Navigation"
     },
+    "appearanceGroupDesc": {
+      "style": "Theme, accent, effects, surface",
+      "home": "Hero, pinned, recents, collections",
+      "layout": "Wide mode, UI scale, cover sizes",
+      "nav": "Top bar, tab bar, bottom bar"
+    },
     "themePickerTitle": "Choose Theme",
     "surfacePickerTitle": "Surface Style",
     "surfacePickerHint": "Controls how UI panels and cards are rendered. Some themes lock their surface style.",
     "surfacePickerSample": "Game Grid",
+    "backHint": "B - back",
     "themeDesc": {
       "space": "Deep cosmos with a drifting star field.",
       "sky": "Sunlit clouds and an open, airy feel.",

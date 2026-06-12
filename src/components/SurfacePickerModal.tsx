@@ -1,9 +1,11 @@
+import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
 import { SURFACE_STYLE_OPTIONS } from "../constants";
 import { FocusRing } from "./ui";
+import { modalOverlayStyle, modalPanelStyle, modalScrimStyle } from "./modals/modalStyles";
 
 export const SURFACE_KEYS = [...SURFACE_STYLE_OPTIONS];
 export const SURFACE_PICKER_COLS = 3;
@@ -18,39 +20,64 @@ export const SURFACE_METADATA: Record<string, { descriptionKey: string }> = {
   win9x: { descriptionKey: "settings.surfaceDesc.win9x" },
 };
 
-export function getMockRowStyle(surface: string, accentPrimary: string, accentGlow: string): CSSProperties {
+export function getMockRowStyle(surface: string, isDark: boolean, accentPrimary: string, accentGlow: string): CSSProperties {
   switch (surface) {
     case "glass":
-      return {
+      return isDark ? {
         background: "rgba(255,255,255,0.12)",
         backdropFilter: "blur(16px)",
         WebkitBackdropFilter: "blur(16px)",
         border: "1px solid rgba(255,255,255,0.18)",
         borderRadius: 10,
         color: "rgba(255,255,255,0.88)",
+      } : {
+        background: "rgba(255,255,255,0.62)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid rgba(255,255,255,0.75)",
+        borderRadius: 10,
+        color: "rgba(30,24,18,0.88)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.95)",
       };
     case "aero":
-      return {
+      return isDark ? {
         background: "linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.12) 100%)",
         border: "1px solid rgba(255,255,255,0.40)",
         borderRadius: 10,
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.65), inset 0 -1px 0 rgba(0,0,0,0.10)",
         color: "rgba(255,255,255,0.92)",
+      } : {
+        background: "linear-gradient(180deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.55) 100%)",
+        border: "1px solid rgba(255,255,255,0.92)",
+        borderRadius: 10,
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06)",
+        color: "rgba(30,24,18,0.90)",
       };
     case "material":
-      return {
+      return isDark ? {
+        background: "#1e1b17",
+        border: "1px solid rgba(255,255,255,0.05)",
+        borderRadius: 8,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.40)",
+        color: "rgba(255,255,255,0.86)",
+      } : {
         background: "#faf8f2",
         border: "1px solid rgba(0,0,0,0.08)",
         borderRadius: 8,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.10)",
+        boxShadow: "0 2px 8px rgba(18,18,20,0.12), 0 1px 2px rgba(18,18,20,0.08)",
         color: "#1a1614",
       };
     case "clear":
-      return {
+      return isDark ? {
         background: "transparent",
         border: "1px solid rgba(255,255,255,0.10)",
         borderRadius: 10,
         color: "rgba(255,255,255,0.80)",
+      } : {
+        background: "transparent",
+        border: "1px solid rgba(0,0,0,0.14)",
+        borderRadius: 10,
+        color: "rgba(30,24,18,0.80)",
       };
     case "obsidian":
       return {
@@ -62,14 +89,20 @@ export function getMockRowStyle(surface: string, accentPrimary: string, accentGl
       };
     case "neon":
       return {
-        background: "rgba(8,8,14,0.92)",
+        background: isDark ? "rgba(8,8,14,0.92)" : "rgba(14,12,20,0.90)",
         border: `1px solid ${accentPrimary}`,
         borderRadius: 10,
         boxShadow: `0 0 12px ${accentGlow}0.50), inset 0 0 8px ${accentGlow}0.08)`,
         color: "rgba(255,255,255,0.88)",
       };
     case "win9x":
-      return {
+      return isDark ? {
+        background: "#2f343d",
+        border: "2px solid",
+        borderColor: "#626b78 #05070a #05070a #626b78",
+        borderRadius: 0,
+        color: "#f2f4f8",
+      } : {
         background: "#c0c0c0",
         border: "2px solid",
         borderColor: "#ffffff #808080 #808080 #ffffff",
@@ -99,9 +132,33 @@ interface SurfacePickerModalProps {
 
 export function SurfacePickerModal({ onClose, focusIndex, setFocusIndex }: SurfacePickerModalProps) {
   const { t } = useTranslation();
-  const { accent, isDark, surfaceStyle } = useTheme();
+  const themeValue = useTheme();
+  const { accent, isDark, surfaceStyle, theme, resolvedTheme } = themeValue;
   const { settings, updateSetting } = useSettings();
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const focusedCardRef = useRef<HTMLDivElement | null>(null);
   const currentSurface = String(settings.surface_style ?? "glass");
+  const previewBackdrop = isDark
+    ? "linear-gradient(160deg, #080c1c 0%, #0e1428 50%, #080a16 100%)"
+    : "linear-gradient(160deg, #e8e2d6 0%, #f2ede2 50%, #e4ddd0 100%)";
+
+  useEffect(() => {
+    const card = focusedCardRef.current;
+    const panel = panelRef.current;
+    if (!card || !panel) return;
+    if (focusIndex < SURFACE_PICKER_COLS) {
+      panel.scrollTo({ top: 0, behavior: "auto" });
+      return;
+    }
+    const pad = 12;
+    const cardTop = card.offsetTop;
+    const cardBottom = cardTop + card.offsetHeight;
+    if (cardTop < panel.scrollTop + pad) {
+      panel.scrollTo({ top: cardTop - pad, behavior: "auto" });
+    } else if (cardBottom > panel.scrollTop + panel.clientHeight - pad) {
+      panel.scrollTo({ top: cardBottom - panel.clientHeight + pad, behavior: "auto" });
+    }
+  }, [focusIndex]);
 
   const handleSelect = (key: string) => {
     updateSetting("surface_style", key as any);
@@ -110,32 +167,20 @@ export function SurfacePickerModal({ onClose, focusIndex, setFocusIndex }: Surfa
 
   return (
     <div
+      data-theme={resolvedTheme}
       onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 9000,
-        background: "rgba(0,0,0,0.72)",
-        backdropFilter: "blur(8px)",
-        WebkitBackdropFilter: "blur(8px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
+      style={modalOverlayStyle()}
     >
+      <div style={modalScrimStyle} />
       <div
+        data-modal=""
+        ref={panelRef}
         onClick={(e) => e.stopPropagation()}
-        style={{
-          position: "relative",
+        style={modalPanelStyle(themeValue, {
           width: "min(720px, 92vw)",
           maxHeight: "80vh",
-          overflowY: "auto",
-          borderRadius: surfaceStyle === "win9x" ? 0 : 20,
           padding: "28px 24px 32px",
-          background: isDark ? "rgba(14,16,28,0.92)" : "rgba(240,242,250,0.94)",
-          border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"}`,
-          boxShadow: "0 32px 80px rgba(0,0,0,0.55)",
-        }}
+        })}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
           <span style={{ fontSize: 16, fontWeight: 700 }}>{t("settings.surfacePickerTitle")}</span>
@@ -144,7 +189,7 @@ export function SurfacePickerModal({ onClose, focusIndex, setFocusIndex }: Surfa
           </button>
         </div>
 
-        <p style={{ fontSize: 11, opacity: 0.5, margin: "6px 0 20px", lineHeight: 1.5 }}>
+        <p style={{ fontSize: 11, color: theme.textDim, margin: "6px 0 20px", lineHeight: 1.5 }}>
           {t("settings.surfacePickerHint")}
         </p>
 
@@ -152,10 +197,11 @@ export function SurfacePickerModal({ onClose, focusIndex, setFocusIndex }: Surfa
           {SURFACE_KEYS.map((key, idx) => {
             const isActive = currentSurface === key;
             const isFocused = focusIndex === idx;
-            const mockRowStyle = getMockRowStyle(key, accent.primary, accent.glow);
+            const mockRowStyle = getMockRowStyle(key, isDark, accent.primary, accent.glow);
             return (
               <div
                 key={key}
+                ref={isFocused ? focusedCardRef : undefined}
                 onClick={() => handleSelect(key)}
                 onMouseEnter={() => setFocusIndex(idx)}
                 style={{
@@ -166,11 +212,10 @@ export function SurfacePickerModal({ onClose, focusIndex, setFocusIndex }: Surfa
                   outline: (isFocused || isActive) ? `2px solid ${accent.primary}` : "2px solid transparent",
                   outlineOffset: isFocused ? 3 : 2,
                   boxShadow: isActive ? `0 4px 20px ${accent.glow}0.40)` : "0 2px 8px rgba(0,0,0,0.25)",
-                  transition: "outline 0.12s ease, transform 0.1s ease",
-                  transform: isFocused ? "scale(1.03)" : "scale(1)",
+                  transition: "outline 0.12s ease, box-shadow 0.12s ease",
                 }}
               >
-                <div style={{ height: 80, background: key === "material" ? "linear-gradient(135deg, #e8e0d0 0%, #d8d0c0 100%)" : "linear-gradient(160deg, #080c1c 0%, #0e1428 50%, #080a16 100%)", display: "flex", alignItems: "center", padding: "0 14px", position: "relative" }}>
+                <div style={{ height: 80, background: previewBackdrop, display: "flex", alignItems: "center", padding: "0 14px", position: "relative", contain: "strict", transform: "translateZ(0)" }}>
                   <div style={{ ...mockRowStyle, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", width: "100%", fontSize: 11, fontWeight: 600 }}>
                     <span style={{ opacity: 0.80 }}>{t("settings.surfacePickerSample")}</span>
                     <MockToggle surface={key} accent={accent.primary} />
@@ -181,9 +226,9 @@ export function SurfacePickerModal({ onClose, focusIndex, setFocusIndex }: Surfa
                     </div>
                   )}
                 </div>
-                <div style={{ padding: "10px 12px 12px", minHeight: 62, background: isDark ? "rgba(12,14,24,0.88)" : "rgba(245,246,252,0.92)" }}>
+                <div style={{ padding: "10px 12px 12px", minHeight: 62, background: isDark ? "rgba(12,14,24,0.88)" : "rgba(245,246,252,0.92)", color: theme.text }}>
                   <div style={{ fontSize: 12, fontWeight: 700 }}>{String(t(`settings.values.${key}`, key))}</div>
-                  <div style={{ fontSize: 10, lineHeight: 1.4, marginTop: 3, opacity: 0.60 }}>
+                  <div style={{ fontSize: 10, lineHeight: 1.4, marginTop: 3, color: theme.textDim }}>
                     {String(t(SURFACE_METADATA[key].descriptionKey))}
                   </div>
                 </div>

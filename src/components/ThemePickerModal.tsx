@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
 import { FocusRing } from "./ui";
+import { modalOverlayStyle, modalPanelStyle, modalScrimStyle } from "./modals/modalStyles";
 import { normalizeThemeKey, THEME_OPTIONS } from "../constants";
 import type { AccentColors } from "../types";
 import lofiBg from "../assets/themes/lofi/cozy_moonlit_study_night_scene.mp4";
@@ -73,6 +74,8 @@ function ThemePreview({ keyName, isLive, accent }: ThemePreviewProps) {
       position: "relative",
       isolation: "isolate",
       background: meta.fallbackBg,
+      contain: "strict",
+      transform: "translateZ(0)",
     }}>
       {preview && (
         <div style={{
@@ -100,43 +103,46 @@ interface ThemePickerModalProps {
 
 export function ThemePickerModal({ onClose, focusIndex, setFocusIndex }: ThemePickerModalProps) {
   const { t } = useTranslation();
-  const { accent, isDark, surfaceStyle } = useTheme();
+  const themeValue = useTheme();
+  const { accent, isDark, surfaceStyle, resolvedTheme } = themeValue;
   const { settings, updateSetting } = useSettings();
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const focusedCardRef = useRef<HTMLDivElement | null>(null);
   const currentTheme = normalizeThemeKey(String(settings.theme ?? "space"));
+
+  useEffect(() => {
+    const card = focusedCardRef.current;
+    const panel = panelRef.current;
+    if (!card || !panel) return;
+    if (focusIndex < THEME_PICKER_COLS) {
+      panel.scrollTo({ top: 0, behavior: "auto" });
+      return;
+    }
+    const pad = 12;
+    const cardTop = card.offsetTop;
+    const cardBottom = cardTop + card.offsetHeight;
+    if (cardTop < panel.scrollTop + pad) {
+      panel.scrollTo({ top: cardTop - pad, behavior: "auto" });
+    } else if (cardBottom > panel.scrollTop + panel.clientHeight - pad) {
+      panel.scrollTo({ top: cardBottom - panel.clientHeight + pad, behavior: "auto" });
+    }
+  }, [focusIndex]);
 
   const handleSelect = (key: string) => {
     updateSetting("theme", key as any);
     onClose();
   };
 
-  const backdropStyle: CSSProperties = {
-    position: "fixed",
-    inset: 0,
-    zIndex: 9000,
-    background: "rgba(0,0,0,0.72)",
-    backdropFilter: "blur(8px)",
-    WebkitBackdropFilter: "blur(8px)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  };
-
-  const panelStyle: CSSProperties = {
-    position: "relative",
+  const panelStyle: CSSProperties = modalPanelStyle(themeValue, {
     width: "min(800px, 94vw)",
     maxHeight: "84vh",
-    overflowY: "auto",
-    borderRadius: surfaceStyle === "win9x" ? 0 : 20,
     padding: "28px 24px 32px",
-    background: isDark ? "rgba(14,16,28,0.95)" : "rgba(240,242,250,0.96)",
-    border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"}`,
-    boxShadow: "0 32px 80px rgba(0,0,0,0.60)",
-  };
+  });
 
   return (
-    <div style={backdropStyle} onClick={onClose}>
-      <div style={panelStyle} onClick={(e) => e.stopPropagation()}>
+    <div data-theme={resolvedTheme} style={modalOverlayStyle()} onClick={onClose}>
+      <div style={modalScrimStyle} />
+      <div data-modal="" ref={panelRef} style={panelStyle} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <span style={{ fontSize: 16, fontWeight: 700 }}>{t("settings.themePickerTitle")}</span>
           <button onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 20, opacity: 0.5, lineHeight: 1, padding: "2px 6px", color: "inherit" }}>
@@ -149,16 +155,14 @@ export function ThemePickerModal({ onClose, focusIndex, setFocusIndex }: ThemePi
             const meta = THEME_METADATA[key];
             const isActive = currentTheme === key;
             const isFocused = focusIndex === idx;
-            const isLive = key === hoveredKey || isFocused || isActive;
             return (
               <div
                 key={key}
+                ref={isFocused ? focusedCardRef : undefined}
                 onClick={() => handleSelect(key)}
                 onMouseEnter={() => {
-                  setHoveredKey(key);
                   setFocusIndex(idx);
                 }}
-                onMouseLeave={() => setHoveredKey(null)}
                 style={{
                   position: "relative",
                   borderRadius: surfaceStyle === "win9x" ? 0 : 12,
@@ -167,11 +171,10 @@ export function ThemePickerModal({ onClose, focusIndex, setFocusIndex }: ThemePi
                   outline: (isFocused || isActive) ? `2px solid ${accent.primary}` : "2px solid transparent",
                   outlineOffset: isFocused ? 3 : 2,
                   boxShadow: isActive ? `0 4px 20px ${accent.glow}0.45)` : "0 2px 8px rgba(0,0,0,0.28)",
-                  transition: "outline 0.12s ease, box-shadow 0.12s ease, transform 0.1s ease",
-                  transform: isFocused ? "scale(1.03)" : "scale(1)",
+                  transition: "outline 0.12s ease, box-shadow 0.12s ease",
                 }}
               >
-                <ThemePreview keyName={key} isLive={isLive} accent={accent} />
+                <ThemePreview keyName={key} isLive={key === currentTheme} accent={accent} />
                 {isActive && (
                   <div style={{ position: "absolute", top: 8, right: 8, width: 22, height: 22, borderRadius: "50%", background: accent.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: accent.darkText ? "#1a1a1a" : "white", boxShadow: `0 2px 8px ${accent.glow}0.6)`, zIndex: 2 }}>
                     {"\u2713"}
@@ -188,7 +191,7 @@ export function ThemePickerModal({ onClose, focusIndex, setFocusIndex }: ThemePi
                   <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     {String(t(`settings.values.${key}`, key))}
                   </div>
-                  <div style={{ fontSize: 10, lineHeight: 1.35, marginTop: 3, opacity: 0.58 }}>
+                  <div style={{ fontSize: 10, lineHeight: 1.35, marginTop: 3, color: meta.light ? "rgba(26,22,20,0.62)" : "rgba(255,255,255,0.58)" }}>
                     {String(t(`settings.themeDesc.${key}`))}
                   </div>
                 </div>
