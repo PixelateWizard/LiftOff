@@ -3,7 +3,70 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Fix Theme and Surface picker modal surfaces so they use the app's real glass/material modal styling, including frosted Glass and Material paper grain.
+**Task:** Fix Spotify Web Playback SDK 10-second stop/progress drift and duplicate scrubber/play starts.
+
+**Completed (this session - Spotify SDK state sync):**
+- Replaced optimistic progress ticking with SDK `getCurrentState()` polling so the scrubber reflects real playback instead of drifting past a stopped player.
+- Removed the duplicate custom progress bar below the native range scrubber.
+- Debounced playlist/play actions so a single click/gamepad press cannot trigger multiple Spotify starts, and playlist starts now request offset 0 / position 0.
+- Added an SDK autoplay-failed listener so LiftOff can show when WebView2 blocks local playback from continuing.
+- Validated with `cargo check` and `npm run build`; only existing warnings remain.
+
+**Completed (this session - Spotify playback polish):**
+- Stopped parsing successful non-GET Spotify control responses so transport buttons no longer show `parse failed` when Spotify returns an empty success body.
+- Added Web Playback SDK now-playing state plus local progress ticking so the mini-bar and overlay scrubber keep moving while audio plays through LiftOff.
+- Fixed playlist grid gamepad navigation to measure the rendered playlist columns, so vertical movement changes rows instead of skipping sideways.
+- Validated with `cargo check`, `npm run build`, and `git diff --check`; only existing warnings remain.
+
+**Completed (this session - Spotify in-app playback target):**
+- Added a frontend Web Playback SDK bridge that creates a "LiftOff on Ally" Spotify Connect device when Spotify is connected.
+- Routed playlist/play requests to the LiftOff device when it is ready so audio can play through the Ally/app instead of falling back to another Spotify Connect device.
+- Added the required Spotify `streaming` and `user-read-private` scopes for new auth sessions; existing Spotify connections may need disconnect/reconnect before the in-app player authorizes.
+- Validated with `cargo check` and `npm run build`; only existing warnings remain.
+
+**Completed (this session - Spotify device playback start fix):**
+- Added explicit empty request bodies for no-payload Spotify playback control calls so Spotify does not reject them with HTTP 411 Length Required.
+- Made playlist/play actions retry against an available Spotify device when Spotify reports no currently active device, allowing LiftOff to start playback on an open Spotify client.
+- Validated with `cargo check` and `npm run build`; only existing warnings remain.
+
+**Completed (this session - Spotify playlist playback error fix):**
+- Fixed Spotify generic error rendering so localized messages receive `{ message }` interpolation data instead of showing the literal `{{message}}` token.
+- Stopped the Spotify overlay and mini-bar from blocking playback actions based on stale or unknown product metadata; playlist/control clicks now call the intended Spotify command and let the API response decide.
+- Refined backend Spotify API error mapping so 403 responses only become `PREMIUM_REQUIRED` when Spotify's error body actually mentions Premium, with other 403 messages surfaced as generic Spotify API errors.
+- Validated with `cargo check` and `npm run build`; only existing warnings remain.
+
+**Completed (this session - Spotify credential storage fix):**
+- Fixed the Windows credential readback failure by enabling `keyring`'s native Windows backend instead of compiling it with the mock in-memory backend.
+- Spotify refresh tokens now persist through Windows Credential Manager, so post-browser auth can confirm the saved token from a fresh credential entry.
+- Validated with `cargo check`; only the existing unused Rust helper warnings remain.
+
+**Completed (this session - Spotify auth status fix):**
+- Fixed the false-success Spotify auth path where the browser approval could close the guide while LiftOff still showed Spotify disconnected.
+- The backend now verifies that the refresh token can be read back from Windows Credential Manager before returning auth success.
+- The frontend now keeps the guide open and shows a localized error if `spotify_status` does not report `connected: true` after browser approval.
+- Validated with `cargo check`, `npm run build`, and `git diff --check`; only existing warnings remain.
+
+**Completed (this session - Spotify auth crash fix):**
+- Fixed the reported Tokio `blocking::shutdown` panic during Spotify authentication by moving the localhost callback wait, token exchange, keyring write, profile/product fetch, config save, and access-token cache into one blocking task.
+- Kept the fix scoped to the Spotify auth command; the frontend connect flow and playback UI remain unchanged.
+- Validated with `cargo check`; only the existing unused Rust helper warnings remain.
+
+**Completed (this session - Spotify PR3 UI):**
+- Added the user-facing Spotify connect flow in Settings with a guide modal, shared redirect URI constant, Client ID input, system-browser dashboard/auth launch, connected/disconnect state, and EN/FR locale keys.
+- Added shared frontend Spotify state/actions, a now-playing mini-bar, and the Home overlay with playback controls, playlist cards, device info, Premium/no-device hints, and accent-based focus styling.
+- Kept tokens out of logs/DOM, kept Spotify styling on the active app accent instead of Spotify green, and gated main gamepad navigation while the Spotify guide/overlay are open.
+- Validated with `npm run build`; only the existing large chunk-size warning remains.
+
+**Completed (this session - Spotify PR2 command surface):**
+- Added thin Rust Spotify Web API proxies for playback state, playlists, devices, play/pause, next/previous, seek, shuffle/repeat, playlist context playback, and device transfer.
+- Reused the PR1 access-token/keyring plumbing with one transparent refresh-and-retry on 401, plus friendly `PREMIUM_REQUIRED` and `NO_ACTIVE_DEVICE` errors for control failures.
+- Deferred the Settings connect row, guide modal, mini-bar, Home overlay, and all visual/gamepad Spotify UI to PR3.
+- Validated with `cargo check`; the only warnings are the existing unused Rust helpers.
+
+**Completed (this session - Spotify PR1 auth foundation):**
+- Added backend Spotify PKCE auth plumbing only: user-supplied Client ID config, loopback browser callback, keyring-backed refresh-token storage, access-token refresh/cache, status/access/disconnect commands, and Tauri command registration.
+- Deferred playback API wrappers, the Settings connect guide, mini-bar, Home overlay, playlists, and all frontend Spotify UI to later PRs.
+- Validated with `cargo check`; the only warnings are the existing unused Rust helpers.
 
 **Completed (this session - picker modal surface parity):**
 - Threaded `materialTokens` through `ThemeContext` so unscaled overlay modals can resolve Material CSS variables outside the transformed app root.
@@ -101,7 +164,8 @@
 2. **Serde defaults are required.** Every field added to any Rust `struct` that maps to `Settings` (or any persisted struct) MUST have `#[serde(default)]` or `#[serde(default = "fn_name")]`. Missing this causes silent reversion to defaults on app load.
 3. **No Xbox branding in binary.** Xbox color palette and aesthetic are fine for themes. The Xbox logo and the word "Xbox" must not appear in shipped UI without Microsoft trademark approval. Use custom SVG gamepad icons.
 4. **SGDB API key stays user-supplied.** Do not hardcode SteamGridDB API keys into the binary. This is a known deferred tradeoff; do not "fix" it without Taylor's direction.
-5. **`#[serde(default)]` applies to ALL new Rust settings fields.** No exceptions.
+5. **Spotify Client ID stays user-supplied.** Do not bundle a Spotify Client ID. Refresh tokens live in Windows Credential Manager via `keyring`, never on disk or in logs.
+6. **`#[serde(default)]` applies to ALL new Rust settings fields.** No exceptions.
 
 ## Code Style Rules
 

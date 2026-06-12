@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "./i18n";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { IoMusicalNotesOutline } from "react-icons/io5";
 import FileBrowser from "./components/FileBrowser";
 import GamepadKeyboard from "./components/GamepadKeyboard";
 import { GamepadBtn } from "./components/GamepadBtn";
@@ -52,6 +53,11 @@ import { useSystemStatus } from "./hooks/useSystemStatus";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { useAppFocusPause } from "./hooks/useAppFocusPause";
 import { useRunningApps } from "./hooks/useRunningApps";
+import { useSpotify } from "./hooks/useSpotify";
+import { useSpotifyWebPlayer } from "./hooks/useSpotifyWebPlayer";
+import { SpotifyConnectGuide } from "./components/spotify/SpotifyConnectGuide";
+import { SpotifyMiniBar } from "./components/spotify/SpotifyMiniBar";
+import { SpotifyOverlay } from "./components/spotify/SpotifyOverlay";
 import { detectPlatform } from "./utils/gamepad";
 import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO,
@@ -92,6 +98,19 @@ export default function App() {
     showSurfacePickerRef.current = value;
     setShowSurfacePickerState(value);
   };
+  const [showSpotifyGuide, setShowSpotifyGuideState] = useState(false);
+  const showSpotifyGuideRef = useRef(false);
+  const setShowSpotifyGuide = (value) => {
+    showSpotifyGuideRef.current = value;
+    setShowSpotifyGuideState(value);
+  };
+  const [showSpotifyOverlay, setShowSpotifyOverlayState] = useState(false);
+  const showSpotifyOverlayRef = useRef(false);
+  const setShowSpotifyOverlay = (value) => {
+    showSpotifyOverlayRef.current = value;
+    setShowSpotifyOverlayState(value);
+  };
+  const spotifyConnectedRef = useRef(false);
   const [themePickerFocusIndex, setThemePickerFocusIndexState] = useState(0);
   const themePickerFocusIndexRef = useRef(0);
   const setThemePickerFocusIndex = (value) => {
@@ -227,6 +246,11 @@ export default function App() {
     language: i18n.language,
     settingsRef,
   });
+  const spotify = useSpotify();
+  const spotifyWebPlayer = useSpotifyWebPlayer(spotify.status.connected && !spotify.requiresPremium);
+  useEffect(() => {
+    spotifyConnectedRef.current = !!spotify.status.connected;
+  }, [spotify.status.connected]);
   const requestClose = (app) => {
     if (!app) return;
     setCloseRequest({ app, force: false });
@@ -332,6 +356,8 @@ export default function App() {
     showPowerModalRef,
     showThemePickerRef,
     showSurfacePickerRef,
+    showSpotifyGuideRef,
+    showSpotifyOverlayRef,
     themePickerFocusIndexRef,
     surfacePickerFocusIndexRef,
     artPickerAppRef,
@@ -342,6 +368,10 @@ export default function App() {
     setShowPowerModal,
     setShowThemePicker,
     setShowSurfacePicker,
+    onOpenSpotifyGuide: () => setShowSpotifyGuide(true),
+    onOpenSpotifyOverlay: () => setShowSpotifyOverlay(true),
+    onSpotifyDisconnect: () => spotify.disconnect(),
+    spotifyConnectedRef,
     setThemePickerFocusIndex,
     setSurfacePickerFocusIndex,
     setArtPickerApp,
@@ -1385,6 +1415,9 @@ export default function App() {
       onToggleHomeCollection={toggleHomeCollection}
       onOpenThemePicker={openThemePicker}
       onOpenSurfacePicker={openSurfacePicker}
+      spotifyStatus={spotify.status}
+      onOpenSpotifyGuide={() => setShowSpotifyGuide(true)}
+      onSpotifyDisconnect={spotify.disconnect}
     />
   );
 
@@ -1422,7 +1455,31 @@ export default function App() {
 
   // ── Header right actions (Manage button inline with subtab pills) ─
   const _hdrManageIdx = tab === "Games" ? _hdrSources.length : _hdrAppCols.length;
-  const headerRightActions = (tab === "Games" || tab === "Apps") ? (
+  const headerRightActions = tab === "Home" && spotify.status.connected ? (
+    <button
+      type="button"
+      onClick={() => setShowSpotifyOverlay(true)}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 7,
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: "0.06em",
+        padding: "5px 12px",
+        borderRadius: resolvedTheme === "cyberpunk" ? 0 : surfaceStyle === "win9x" ? 0 : 20,
+        cursor: "pointer",
+        transition: "all 0.15s ease",
+        background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)",
+        color: theme.textDim,
+        border: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
+        boxShadow: surfaceStyle === "material" ? "var(--material-shadow-low)" : "none",
+      }}
+    >
+      <IoMusicalNotesOutline size={15} color={accent.primary} />
+      {t("spotify.title")}
+    </button>
+  ) : (tab === "Games" || tab === "Apps") ? (
     <div
       onClick={openLibraryActionsModal}
       style={{
@@ -1625,6 +1682,17 @@ export default function App() {
           onExitApp={() => { invoke("exit_app").catch(() => {}); }}
         />
       )}
+      <SpotifyConnectGuide
+        open={showSpotifyGuide}
+        spotify={spotify}
+        onClose={() => setShowSpotifyGuide(false)}
+      />
+      <SpotifyOverlay
+        open={showSpotifyOverlay}
+        spotify={spotify}
+        webPlayer={spotifyWebPlayer}
+        onClose={() => setShowSpotifyOverlay(false)}
+      />
       {showFileBrowser && (
         <FileBrowser
           mode={showFileBrowser}
@@ -2014,7 +2082,7 @@ export default function App() {
       )}
       </AppOverlays>
 
-      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal) ? "none" : "auto" }}>
+      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || showSpotifyGuide || showSpotifyOverlay) ? "none" : "auto" }}>
 
         {/* Topbar */}
         <AppHeader
@@ -2126,6 +2194,8 @@ export default function App() {
         <AppBottomBar
           tab={tab}
           appCollectionsCount={appCollections.length}
+          spotifyMiniBar={<SpotifyMiniBar spotify={spotify} webPlayer={spotifyWebPlayer} onOpenPanel={() => setShowSpotifyOverlay(true)} />}
+          spotifyConnected={spotify.status.connected}
         />
       </div>
 

@@ -227,6 +227,10 @@ export interface SettingsActionItem extends SettingsItemBase {
   type: "action";
 }
 
+export interface SettingsSpotifyItem extends SettingsItemBase {
+  type: "spotify";
+}
+
 export interface SettingsRefreshItem extends SettingsItemBase {
   type: "refresh";
 }
@@ -283,6 +287,7 @@ export type SettingsItem =
   | SettingsSliderItem
   | SettingsAccentItem
   | SettingsActionItem
+  | SettingsSpotifyItem
   | SettingsRefreshItem
   | SettingsUpdateItem
   | SettingsLinkItem

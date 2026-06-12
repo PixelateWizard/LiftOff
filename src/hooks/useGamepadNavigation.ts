@@ -76,6 +76,8 @@ export interface UseGamepadNavigationOptions {
   showPowerModalRef?: AnyRef<boolean>;
   showThemePickerRef?: AnyRef<boolean>;
   showSurfacePickerRef?: AnyRef<boolean>;
+  showSpotifyGuideRef?: AnyRef<boolean>;
+  showSpotifyOverlayRef?: AnyRef<boolean>;
   themePickerFocusIndexRef?: AnyRef<number>;
   surfacePickerFocusIndexRef?: AnyRef<number>;
 
@@ -84,6 +86,10 @@ export interface UseGamepadNavigationOptions {
   setShowPowerModal?: (value: boolean) => void;
   setShowThemePicker?: (value: boolean) => void;
   setShowSurfacePicker?: (value: boolean) => void;
+  onOpenSpotifyGuide?: () => void;
+  onOpenSpotifyOverlay?: () => void;
+  onSpotifyDisconnect?: () => void;
+  spotifyConnectedRef?: AnyRef<boolean>;
   setThemePickerFocusIndex?: (value: number) => void;
   setSurfacePickerFocusIndex?: (value: number) => void;
   setArtPickerApp?: (app: App | null) => void;
@@ -283,6 +289,8 @@ export function useGamepadNavigation(
     showPowerModalRef = { current: false } as AnyRef<boolean>,
     showThemePickerRef = { current: false } as AnyRef<boolean>,
     showSurfacePickerRef = { current: false } as AnyRef<boolean>,
+    showSpotifyGuideRef = { current: false } as AnyRef<boolean>,
+    showSpotifyOverlayRef = { current: false } as AnyRef<boolean>,
     themePickerFocusIndexRef = { current: 0 } as AnyRef<number>,
     surfacePickerFocusIndexRef = { current: 0 } as AnyRef<number>,
     setShowHideModal = noop as (value: boolean) => void,
@@ -290,6 +298,10 @@ export function useGamepadNavigation(
     setShowPowerModal = noop as (value: boolean) => void,
     setShowThemePicker = noop as (value: boolean) => void,
     setShowSurfacePicker = noop as (value: boolean) => void,
+    onOpenSpotifyGuide = noop,
+    onOpenSpotifyOverlay = noop,
+    onSpotifyDisconnect = noop,
+    spotifyConnectedRef = { current: false } as AnyRef<boolean>,
     setThemePickerFocusIndex = noop as (value: number) => void,
     setSurfacePickerFocusIndex = noop as (value: number) => void,
     setArtPickerApp = noop as (app: App | null) => void,
@@ -611,7 +623,7 @@ export function useGamepadNavigation(
       return;
     }
     // Modal intercepts all input via its own poll — main nav must not run
-    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current) return;
+    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current || showSpotifyGuideRef.current || showSpotifyOverlayRef.current) return;
 
     // Art picker open — only Escape closes it (user interacts via touch/mouse)
     if (artPickerAppRef.current) {
@@ -796,6 +808,10 @@ export function useGamepadNavigation(
     if (key === "Select" && (currentTab === "Games" || currentTab === "Apps")) {
       openLibraryActionsModal(); return;
     }
+    if (key === "Select" && currentTab === "Home" && spotifyConnectedRef.current) {
+      onOpenSpotifyOverlay();
+      return;
+    }
     if (key === "Start" && (currentTab === "Games" || currentTab === "Apps")) {
       const focusedApp = section === "pinned" ? fPinned[index] : section === "grid" ? fApps[index] : null;
       if (focusedApp) {
@@ -902,6 +918,10 @@ export function useGamepadNavigation(
           if (item.key === "clear_recents") handleClearRecents();
           if (item.key === "clear_cache")   handleClearCache();
           if (item.key === "reset_scale")   updateSetting("ui_scale", autoScaleRef.current);
+        }
+        else if (item.type === "spotify") {
+          if (spotifyConnectedRef.current) onSpotifyDisconnect();
+          else onOpenSpotifyGuide();
         }
         else if (item.type === "refresh") { refreshLibrary(); }
         else if (item.type === "update") {
@@ -1288,7 +1308,9 @@ export function useGamepadNavigation(
             && !showColModalRef?.current
             && !colPickerAppRef?.current
             && !editNameAppRef?.current
-            && !showPowerModalRef?.current;
+            && !showPowerModalRef?.current
+            && !showSpotifyGuideRef.current
+            && !showSpotifyOverlayRef.current;
 
           if (pressed && !wasPressed) {
             if (canNavigate) handleNavRef?.current?.(key);

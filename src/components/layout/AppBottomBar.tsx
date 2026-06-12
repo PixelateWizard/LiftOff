@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { GamepadBtn } from "../GamepadBtn";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -7,9 +7,11 @@ import { useSettings } from "../../contexts/SettingsContext";
 interface Props {
   tab: string;
   appCollectionsCount: number;
+  spotifyMiniBar?: ReactNode;
+  spotifyConnected?: boolean;
 }
 
-export function AppBottomBar({ tab, appCollectionsCount }: Props) {
+export function AppBottomBar({ tab, appCollectionsCount, spotifyMiniBar, spotifyConnected = false }: Props) {
   const { t } = useTranslation();
   const { glassBar, theme, isDark, surfaceStyle, accent, resolvedTheme } = useTheme();
   const { settings } = useSettings();
@@ -94,6 +96,7 @@ export function AppBottomBar({ tab, appCollectionsCount }: Props) {
             : { width: "calc(100% - 16px)", margin: "0 8px 14px", boxSizing: "border-box" })
           : { maxWidth: 1400, margin: "0 auto 14px", width: "calc(100% - 48px)" }),
       } as CSSProperties}>
+        {spotifyMiniBar}
         {tab === "Settings" ? (
           <>
             <Btn label={t('gamepad.aSelect')} />
@@ -107,6 +110,7 @@ export function AppBottomBar({ tab, appCollectionsCount }: Props) {
             <Btn label={t('gamepad.bBack')} />
             <Btn label={t('gamepad.ySearch')} />
             {tab !== "Apps" && <Btn label={t('gamepad.xPin')} />}
+            {tab === "Home" && spotifyConnected && <GamepadBtn btn="BACK" label={t('spotify.title')} />}
             {bumpersHint}
             {tab === "Games" && (
               <>

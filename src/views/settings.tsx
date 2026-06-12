@@ -8,6 +8,8 @@ import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
 import { ACCENTS, APP_VERSION, GITHUB_REPO, THEME_LOCKED_SETTINGS, normalizeThemeKey } from "../constants";
 import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem, SettingsAppearanceCategoryItem, SettingsAppearanceBackItem } from "../types";
+import type { SpotifyStatus } from "../hooks/useSpotify";
+import { SPOTIFY_REDIRECT_URI } from "../components/spotify/constants";
 
 // ── Section definitions ────────────────────────────────────────
 export const SETTINGS_SECTIONS = [
@@ -203,6 +205,9 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     D("media", 2),
     { key: "animated_heroes", section: 2, label: t("settings.heroArtMode"), type: "cycle", options: ["static","animated","custom"] },
 
+    D("spotify", 2),
+    { key: "spotify", section: 2, label: t("spotify.title"), type: "spotify" },
+
     // ── Controller ───────────────────────────────────────────────
     { key: "gamepad_platform",       section: 3, label: t("settings.gamepadPlatform"),     type: "cycle",  options: ["xbox","ps","switch"] },
     { key: "gamepad_auto_detect",    section: 3, label: t("settings.gamepadAutoDetect"),    type: "toggle" },
@@ -323,6 +328,9 @@ export interface SettingsScreenProps {
   onToggleHomeCollection?: (colName: string) => void;
   onOpenThemePicker: () => void;
   onOpenSurfacePicker: () => void;
+  spotifyStatus?: SpotifyStatus;
+  onOpenSpotifyGuide?: () => void;
+  onSpotifyDisconnect?: () => void;
 }
 
 export function SettingsScreen({
@@ -352,6 +360,9 @@ export function SettingsScreen({
   onToggleHomeCollection,
   onOpenThemePicker,
   onOpenSurfacePicker,
+  spotifyStatus,
+  onOpenSpotifyGuide,
+  onSpotifyDisconnect,
 }: SettingsScreenProps) {
   const { t } = useTranslation();
   const { settingsRowGlass, accent, theme, isDark, glassEnabled, surfaceStyle, surface, resolvedTheme } = useTheme();
@@ -895,6 +906,58 @@ export function SettingsScreen({
           {onyxRing}
         </div>
       );
+
+    if (item.type === "spotify") {
+      const connected = !!spotifyStatus?.connected;
+      const product = spotifyStatus?.product ? t("spotify.product", { product: spotifyStatus.product }) : t("spotify.notConnected");
+      return (
+        <div
+          key={item.key}
+          data-settings-row=""
+          className={focused ? "focused" : ""}
+          ref={rowRef}
+          style={{ ...rowStyle, gap: 18, alignItems: "stretch" }}
+          onClick={() => connected ? onSpotifyDisconnect?.() : onOpenSpotifyGuide?.()}
+        >
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{item.label}</div>
+            <div style={{ fontSize: 11, color: theme.textDim, lineHeight: 1.45, marginTop: 3 }}>
+              {connected ? t("spotify.connectedHint") : t("spotify.guideIntro")}
+            </div>
+            {!connected && (
+              <div style={{ fontSize: 10, color: theme.textFaint, marginTop: 5, userSelect: "text" }}>
+                {t("spotify.redirectUri")}: <code>{SPOTIFY_REDIRECT_URI}</code>
+              </div>
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <span style={{ fontSize: 12, color: connected ? accent.primary : theme.textDim, fontWeight: connected ? 800 : 500, whiteSpace: "nowrap" }}>
+              {connected ? product : t("spotify.notConnected")}
+            </span>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                connected ? onSpotifyDisconnect?.() : onOpenSpotifyGuide?.();
+              }}
+              style={{
+                border: `1px solid ${connected ? "rgba(232,74,74,0.52)" : accent.primary}`,
+                background: connected ? "rgba(232,74,74,0.12)" : accent.primary,
+                color: connected ? "#ff8d8d" : accent.darkText ? "#161616" : "#fff",
+                borderRadius: isPixel || isCyber ? 0 : isMaterial ? 8 : 10,
+                padding: "8px 12px",
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {connected ? t("spotify.disconnect") : t("spotify.connect")}
+            </button>
+          </div>
+          {onyxRing}
+        </div>
+      );
+    }
 
     if (item.type === "update") {
       const statusText =

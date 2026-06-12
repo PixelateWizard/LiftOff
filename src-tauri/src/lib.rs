@@ -2,7 +2,10 @@
 
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::process::CommandExt;
+use std::io::{Read, Write};
+use std::net::TcpListener;
 use std::path::Path;
+use std::time::{Duration, Instant};
 use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use windows::{
@@ -530,6 +533,452 @@ fn save_settings_inner(settings: &Settings) {
     let path = settings_path();
     if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
     if let Ok(json) = serde_json::to_string(settings) { let _ = std::fs::write(path, json); }
+}
+
+// Spotify integration -------------------------------------------------------
+//
+// Auth uses Authorization Code with PKCE. No client secret is ever used or
+// stored. Users provide their own Client ID because Spotify Development Mode
+// apps are capped for shared distribution, matching LiftOff's user-supplied
+// credential pattern for SteamGridDB.
+//
+// Secret handling:
+// - refresh_token: Windows Credential Manager via keyring, never on disk/logged
+// - client_id: spotify.json, not a secret
+// - access_token: returned to the frontend for the session only, never persisted
+
+const SPOTIFY_KEYRING_SERVICE: &str = "com.taylo.liftoff.spotify";
+const SPOTIFY_KEYRING_USER: &str = "refresh_token";
+// Must stay in sync with the frontend SPOTIFY_REDIRECT_URI added with the UI.
+const SPOTIFY_REDIRECT_PORT: u16 = 8888;
+const SPOTIFY_SCOPES: &str = "user-read-playback-state user-modify-playback-state \
+user-read-currently-playing user-read-private streaming playlist-read-private playlist-read-collaborative";
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct SpotifyConfig {
+    #[serde(default)]
+    pub client_id: String,
+    #[serde(default)]
+    pub connected: bool,
+    #[serde(default)]
+    pub product: String,
+}
+
+fn spotify_config_path() -> std::path::PathBuf { liftoff_dir().join("spotify.json") }
+
+fn load_spotify_config() -> SpotifyConfig {
+    let path = spotify_config_path();
+    if !path.exists() { return SpotifyConfig::default(); }
+    std::fs::read_to_string(&path).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default()
+}
+
+fn save_spotify_config(cfg: &SpotifyConfig) {
+    let path = spotify_config_path();
+    if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
+    if let Ok(json) = serde_json::to_string(cfg) { let _ = std::fs::write(path, json); }
+}
+
+fn store_refresh_token(token: &str) -> Result<(), String> {
+    let entry = keyring::Entry::new(SPOTIFY_KEYRING_SERVICE, SPOTIFY_KEYRING_USER)
+        .map_err(|e| format!("keyring init failed: {e}"))?;
+    entry.set_password(token).map_err(|e| format!("keyring store failed: {e}"))
+}
+
+fn load_refresh_token() -> Option<String> {
+    let entry = keyring::Entry::new(SPOTIFY_KEYRING_SERVICE, SPOTIFY_KEYRING_USER).ok()?;
+    entry.get_password().ok()
+}
+
+fn clear_refresh_token() {
+    if let Ok(entry) = keyring::Entry::new(SPOTIFY_KEYRING_SERVICE, SPOTIFY_KEYRING_USER) {
+        let _ = entry.delete_credential();
+    }
+}
+
+fn random_url_safe(len: usize) -> String {
+    let mut bytes = vec![0u8; len];
+    getrandom::getrandom(&mut bytes).expect("getrandom failed");
+    general_purpose::URL_SAFE_NO_PAD.encode(&bytes)
+}
+
+fn pkce_challenge(verifier: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(verifier.as_bytes());
+    general_purpose::URL_SAFE_NO_PAD.encode(digest)
+}
+
+#[derive(Serialize)]
+struct SpotifyAuthResult { ok: bool, product: String }
+
+#[tauri::command]
+async fn spotify_begin_auth(client_id: String, app_handle: tauri::AppHandle) -> Result<SpotifyAuthResult, String> {
+    let client_id = client_id.trim().to_string();
+    if client_id.is_empty() { return Err("Client ID is empty".into()); }
+
+    let verifier = random_url_safe(64);
+    let challenge = pkce_challenge(&verifier);
+    let state = random_url_safe(16);
+    let redirect_uri = format!("http://127.0.0.1:{SPOTIFY_REDIRECT_PORT}/callback");
+
+    let listener = TcpListener::bind(("127.0.0.1", SPOTIFY_REDIRECT_PORT))
+        .map_err(|e| format!("Could not bind redirect port {SPOTIFY_REDIRECT_PORT}: {e}. Make sure no other app is using it and that http://127.0.0.1:{SPOTIFY_REDIRECT_PORT}/callback is registered as a Redirect URI in your Spotify app."))?;
+
+    let auth_url = format!(
+        "https://accounts.spotify.com/authorize?response_type=code&client_id={}&scope={}&code_challenge_method=S256&code_challenge={}&redirect_uri={}&state={}",
+        urlencoding::encode(&client_id),
+        urlencoding::encode(SPOTIFY_SCOPES),
+        urlencoding::encode(&challenge),
+        urlencoding::encode(&redirect_uri),
+        urlencoding::encode(&state),
+    );
+
+    use tauri_plugin_opener::OpenerExt;
+    app_handle.opener().open_url(auth_url, None::<&str>)
+        .map_err(|e| format!("Could not open browser: {e}"))?;
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let (code, returned_state) = wait_for_callback(listener)?;
+        if returned_state != state { return Err("State mismatch; aborting Spotify authorization.".into()); }
+
+        let tokens = spotify_exchange_code(&client_id, &code, &verifier, &redirect_uri)?;
+        store_refresh_token(&tokens.refresh_token)?;
+        if load_refresh_token().is_none() {
+            return Err("Spotify connected in the browser, but LiftOff could not read the saved refresh token from Windows Credential Manager.".into());
+        }
+
+        let product = spotify_fetch_product(&tokens.access_token).unwrap_or_else(|| "unknown".to_string());
+        let mut cfg = load_spotify_config();
+        cfg.client_id = client_id;
+        cfg.connected = true;
+        cfg.product = product.clone();
+        save_spotify_config(&cfg);
+
+        cache_access_token(&tokens.access_token, tokens.expires_in);
+        Ok(SpotifyAuthResult { ok: true, product })
+    })
+    .await
+    .map_err(|e| format!("auth task panicked: {e}"))?
+}
+
+fn wait_for_callback(listener: TcpListener) -> Result<(String, String), String> {
+    listener.set_nonblocking(false).ok();
+    let (mut stream, _) = listener.accept().map_err(|e| format!("accept failed: {e}"))?;
+
+    let mut buf = [0u8; 2048];
+    let n = stream.read(&mut buf).map_err(|e| format!("read failed: {e}"))?;
+    let req = String::from_utf8_lossy(&buf[..n]);
+    let first = req.lines().next().unwrap_or("");
+    let path = first.split_whitespace().nth(1).unwrap_or("");
+
+    let body = "<html><body style='font-family:sans-serif;background:#0b110d;color:#eafff6;text-align:center;padding-top:80px'><h2>LiftOff is connected to Spotify</h2><p>You can close this tab and return to LiftOff.</p></body></html>";
+    let resp = format!("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\n\r\n{}", body.len(), body);
+    let _ = stream.write_all(resp.as_bytes());
+
+    let query = path.split('?').nth(1).unwrap_or("");
+    let mut code = String::new();
+    let mut state = String::new();
+    for pair in query.split('&') {
+        let mut it = pair.splitn(2, '=');
+        match (it.next(), it.next()) {
+            (Some("code"), Some(v)) => code = urlencoding::decode(v).unwrap_or_default().into_owned(),
+            (Some("state"), Some(v)) => state = urlencoding::decode(v).unwrap_or_default().into_owned(),
+            (Some("error"), Some(v)) => return Err(format!("Spotify returned error: {v}")),
+            _ => {}
+        }
+    }
+
+    if code.is_empty() { return Err("No authorization code in callback.".into()); }
+    Ok((code, state))
+}
+
+struct SpotifyTokens { access_token: String, refresh_token: String, expires_in: u64 }
+
+fn spotify_exchange_code(client_id: &str, code: &str, verifier: &str, redirect_uri: &str) -> Result<SpotifyTokens, String> {
+    let client = reqwest::blocking::Client::new();
+    let resp = client.post("https://accounts.spotify.com/api/token")
+        .form(&[
+            ("grant_type", "authorization_code"),
+            ("code", code),
+            ("redirect_uri", redirect_uri),
+            ("client_id", client_id),
+            ("code_verifier", verifier),
+        ])
+        .send().map_err(|e| format!("token request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("token exchange failed: HTTP {}", resp.status()));
+    }
+
+    let v: serde_json::Value = resp.json().map_err(|e| format!("token parse failed: {e}"))?;
+    let access = v["access_token"].as_str().ok_or("no access_token")?.to_string();
+    let refresh = v["refresh_token"].as_str().ok_or("no refresh_token")?.to_string();
+    let expires = v["expires_in"].as_u64().unwrap_or(3600);
+    Ok(SpotifyTokens { access_token: access, refresh_token: refresh, expires_in: expires })
+}
+
+fn spotify_fetch_product(access_token: &str) -> Option<String> {
+    let client = reqwest::blocking::Client::new();
+    let resp = client.get("https://api.spotify.com/v1/me")
+        .bearer_auth(access_token)
+        .send().ok()?;
+    if !resp.status().is_success() { return None; }
+    let v: serde_json::Value = resp.json().ok()?;
+    v["product"].as_str().map(|s| s.to_string())
+}
+
+struct CachedToken { token: String, expires_at: Instant }
+
+static SPOTIFY_TOKEN: Mutex<Option<CachedToken>> = Mutex::new(None);
+
+fn cache_access_token(token: &str, expires_in: u64) {
+    let ttl = Duration::from_secs(expires_in.saturating_sub(60).max(30));
+    if let Ok(mut guard) = SPOTIFY_TOKEN.lock() {
+        *guard = Some(CachedToken { token: token.to_string(), expires_at: Instant::now() + ttl });
+    }
+}
+
+fn cached_access_token() -> Option<String> {
+    let guard = SPOTIFY_TOKEN.lock().ok()?;
+    let cached = guard.as_ref()?;
+    if Instant::now() < cached.expires_at { Some(cached.token.clone()) } else { None }
+}
+
+fn refresh_access_token() -> Result<String, String> {
+    let cfg = load_spotify_config();
+    if cfg.client_id.is_empty() { return Err("Not connected".into()); }
+    let refresh = load_refresh_token().ok_or("No refresh token stored")?;
+
+    let client = reqwest::blocking::Client::new();
+    let resp = client.post("https://accounts.spotify.com/api/token")
+        .form(&[
+            ("grant_type", "refresh_token"),
+            ("refresh_token", refresh.as_str()),
+            ("client_id", cfg.client_id.as_str()),
+        ])
+        .send().map_err(|e| format!("refresh request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("refresh failed: HTTP {}", resp.status()));
+    }
+
+    let v: serde_json::Value = resp.json().map_err(|e| format!("refresh parse failed: {e}"))?;
+    let access = v["access_token"].as_str().ok_or("no access_token on refresh")?.to_string();
+    let expires = v["expires_in"].as_u64().unwrap_or(3600);
+    if let Some(new_refresh) = v["refresh_token"].as_str() {
+        let _ = store_refresh_token(new_refresh);
+    }
+    cache_access_token(&access, expires);
+    Ok(access)
+}
+
+#[tauri::command]
+fn spotify_access_token() -> Result<String, String> {
+    if let Some(token) = cached_access_token() { return Ok(token); }
+    refresh_access_token()
+}
+
+#[derive(Serialize)]
+struct SpotifyStatus { connected: bool, client_id_set: bool, product: String }
+
+#[tauri::command]
+fn spotify_status() -> SpotifyStatus {
+    let cfg = load_spotify_config();
+    SpotifyStatus {
+        connected: cfg.connected && load_refresh_token().is_some(),
+        client_id_set: !cfg.client_id.is_empty(),
+        product: cfg.product,
+    }
+}
+
+#[tauri::command]
+fn spotify_disconnect() -> Result<(), String> {
+    clear_refresh_token();
+    if let Ok(mut guard) = SPOTIFY_TOKEN.lock() { *guard = None; }
+
+    let mut cfg = load_spotify_config();
+    cfg.connected = false;
+    cfg.product = String::new();
+    save_spotify_config(&cfg);
+    Ok(())
+}
+
+fn spotify_api(method: &str, path: &str, body: Option<serde_json::Value>) -> Result<serde_json::Value, String> {
+    fn once(token: &str, method: &str, url: &str, body: &Option<serde_json::Value>) -> Result<reqwest::blocking::Response, String> {
+        let client = reqwest::blocking::Client::new();
+        let mut req = match method {
+            "GET" => client.get(url),
+            "PUT" => client.put(url),
+            "POST" => client.post(url),
+            other => return Err(format!("unsupported method {other}")),
+        }.bearer_auth(token);
+        if let Some(json) = body {
+            req = req.json(json);
+        } else if method == "PUT" || method == "POST" {
+            req = req.body(Vec::new());
+        }
+        req.send().map_err(|e| format!("request failed: {e}"))
+    }
+
+    let url = format!("https://api.spotify.com/v1{path}");
+    let token = spotify_access_token()?;
+    let mut resp = once(&token, method, &url, &body)?;
+
+    if resp.status().as_u16() == 401 {
+        let token = refresh_access_token()?;
+        resp = once(&token, method, &url, &body)?;
+    }
+
+    let status = resp.status();
+    if status.as_u16() == 204 { return Ok(serde_json::Value::Null); }
+
+    let text = resp.text().unwrap_or_default();
+    if !status.is_success() {
+        return Err(spotify_api_error(status, &text));
+    }
+
+    if method != "GET" { return Ok(serde_json::Value::Null); }
+    if text.trim().is_empty() { return Ok(serde_json::Value::Null); }
+    serde_json::from_str(&text).map_err(|e| format!("parse failed: {e}"))
+}
+
+fn spotify_api_error(status: reqwest::StatusCode, body: &str) -> String {
+    let parsed: Option<serde_json::Value> = serde_json::from_str(body).ok();
+    let error = parsed.as_ref().and_then(|v| v.get("error"));
+    let reason = error
+        .and_then(|v| v.get("reason"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let message = error
+        .and_then(|v| v.get("message"))
+        .and_then(|v| v.as_str())
+        .or_else(|| parsed.as_ref().and_then(|v| v.get("error_description")).and_then(|v| v.as_str()))
+        .unwrap_or("");
+    let combined = format!("{reason} {message}").to_ascii_uppercase();
+
+    if combined.contains("PREMIUM") {
+        return "PREMIUM_REQUIRED".into();
+    }
+    if status.as_u16() == 404 || combined.contains("NO ACTIVE DEVICE") {
+        return "NO_ACTIVE_DEVICE".into();
+    }
+    if !message.is_empty() {
+        return format!("Spotify API error: HTTP {status} - {message}");
+    }
+    format!("Spotify API error: HTTP {status}")
+}
+
+#[tauri::command]
+fn spotify_playback_state() -> Result<serde_json::Value, String> {
+    spotify_api("GET", "/me/player", None)
+}
+
+#[tauri::command]
+fn spotify_playlists() -> Result<serde_json::Value, String> {
+    spotify_api("GET", "/me/playlists?limit=50", None)
+}
+
+#[tauri::command]
+fn spotify_devices() -> Result<serde_json::Value, String> {
+    spotify_api("GET", "/me/player/devices", None)
+}
+
+fn spotify_available_device_id() -> Result<Option<String>, String> {
+    let payload = spotify_devices()?;
+    let devices = payload
+        .get("devices")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let active = devices
+        .iter()
+        .find(|device| device.get("is_active").and_then(|v| v.as_bool()).unwrap_or(false))
+        .and_then(|device| device.get("id").and_then(|v| v.as_str()))
+        .map(|id| id.to_string());
+    if active.is_some() {
+        return Ok(active);
+    }
+    Ok(devices
+        .iter()
+        .filter_map(|device| device.get("id").and_then(|v| v.as_str()))
+        .find(|id| !id.is_empty())
+        .map(|id| id.to_string()))
+}
+
+fn spotify_play_path(device_id: Option<&str>) -> String {
+    match device_id.filter(|id| !id.trim().is_empty()) {
+        Some(id) => format!("/me/player/play?device_id={}", urlencoding::encode(id)),
+        None => "/me/player/play".to_string(),
+    }
+}
+
+fn spotify_play_with_device_retry(body: Option<serde_json::Value>, device_id: Option<String>) -> Result<(), String> {
+    let path = spotify_play_path(device_id.as_deref());
+    match spotify_api("PUT", &path, body.clone()) {
+        Ok(_) => Ok(()),
+        Err(err) if err.contains("NO_ACTIVE_DEVICE") && device_id.is_none() => {
+            let Some(device_id) = spotify_available_device_id()? else {
+                return Err(err);
+            };
+            let path = spotify_play_path(Some(&device_id));
+            spotify_api("PUT", &path, body).map(|_| ())
+        }
+        Err(err) => Err(err),
+    }
+}
+
+#[tauri::command]
+fn spotify_play(device_id: Option<String>) -> Result<(), String> {
+    spotify_play_with_device_retry(None, device_id)
+}
+
+#[tauri::command]
+fn spotify_pause() -> Result<(), String> {
+    spotify_api("PUT", "/me/player/pause", None).map(|_| ())
+}
+
+#[tauri::command]
+fn spotify_next() -> Result<(), String> {
+    spotify_api("POST", "/me/player/next", None).map(|_| ())
+}
+
+#[tauri::command]
+fn spotify_previous() -> Result<(), String> {
+    spotify_api("POST", "/me/player/previous", None).map(|_| ())
+}
+
+#[tauri::command]
+fn spotify_seek(position_ms: u64) -> Result<(), String> {
+    spotify_api("PUT", &format!("/me/player/seek?position_ms={position_ms}"), None).map(|_| ())
+}
+
+#[tauri::command]
+fn spotify_set_shuffle(state: bool) -> Result<(), String> {
+    spotify_api("PUT", &format!("/me/player/shuffle?state={state}"), None).map(|_| ())
+}
+
+#[tauri::command]
+fn spotify_set_repeat(mode: String) -> Result<(), String> {
+    let mode = match mode.as_str() {
+        "off" | "context" | "track" => mode.as_str(),
+        _ => "off",
+    };
+    spotify_api("PUT", &format!("/me/player/repeat?state={mode}"), None).map(|_| ())
+}
+
+#[tauri::command]
+fn spotify_play_context(context_uri: String, device_id: Option<String>) -> Result<(), String> {
+    let body = serde_json::json!({
+        "context_uri": context_uri,
+        "offset": { "position": 0 },
+        "position_ms": 0,
+    });
+    spotify_play_with_device_retry(Some(body), device_id)
+}
+
+#[tauri::command]
+fn spotify_transfer(device_id: String) -> Result<(), String> {
+    let body = serde_json::json!({ "device_ids": [device_id], "play": true });
+    spotify_api("PUT", "/me/player", Some(body)).map(|_| ())
 }
 
 fn load_pins_inner() -> Vec<String> {
@@ -2781,6 +3230,10 @@ pub fn run() {
             set_gamepad_ready, get_settings, save_settings, clear_recents,
             exit_app, restart_app,
             clear_art_cache, set_frontend_active, open_osk,
+            spotify_begin_auth, spotify_access_token, spotify_status, spotify_disconnect,
+            spotify_playback_state, spotify_playlists, spotify_devices,
+            spotify_play, spotify_pause, spotify_next, spotify_previous, spotify_seek,
+            spotify_set_shuffle, spotify_set_repeat, spotify_play_context, spotify_transfer,
             get_pins, toggle_pin,
             get_hidden, toggle_hidden,
             get_custom_art, set_custom_art, clear_custom_art,

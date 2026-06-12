@@ -23,6 +23,9 @@ lodepng = "3"
 dirs = "5"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 urlencoding = "2"
+keyring = { version = "3", features = ["windows-native"] }
+sha2 = "0.10"
+getrandom = "0.2"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [
