@@ -3,19 +3,36 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Optimize Spotify Connect transport so controls are less sluggish and snapshots less stale.
+**Task:** Tune the Immersive Home Spotify hero chip so it matches Cyberpunk's angular HUD styling.
 
 **Scope:**
-- Move all blocking Spotify Web API Tauri commands off the main thread (async commands + `spawn_blocking`) so polling and control presses no longer serialize behind each other.
-- Reuse one pooled HTTP client with timeouts for all Spotify requests instead of a fresh TLS handshake per call.
-- Stop fetching playlists + devices on every 3s poll tick and every post-command burst; poll playback state only, refresh devices on a slow cadence, fetch playlists on connect/overlay open.
-- Make local progress ticking use elapsed wall time so the scrubber does not drift between API refreshes.
+- Keep the current chip placement and all non-Cyberpunk surface behavior unchanged.
+- Make the Cyberpunk chip use hard corners/corner-cut HUD styling instead of the generic rounded dark chip.
+- Preserve click/tap overlay open, hold-MENU progress feedback, and the existing global MENU handling.
+- Update `CLAUDE.md`/`CHANGELOG.md` after validation.
+
+**Completed (this session - Cyberpunk Spotify hero chip):**
+- Tuned only the Cyberpunk `heroChip` styling to use the resolved Cyberpunk theme gate, hard/corner-cut edges, squared artwork, neon accent border/glow, and a squared MENU badge.
+- Left the chip placement and all non-Cyberpunk surface styling unchanged.
+- Validated with `npm run build`; only the existing chunk-size warning remains.
+
+**Completed (this session - Spotify Immersive Home chip):**
+- Added a compact `heroChip` Spotify mini-player variant that reuses the existing display-only artwork, title, artist, progress, and MENU hold-progress affordance.
+- Hidden-bottom-bar Immersive Home now suppresses the floating puck and renders the chip below the Launch/dots row inside the hero copy/action column; non-immersive Home, Games, Apps, and Settings keep the puck.
+- The chip is inserted in the shared hero copy branch so Material, Cyberpunk/Neonblade, Win9X/Webcore, and the standard immersive surfaces all receive it.
+- The Spotify overlay still hides all mini-player surfaces, and click/tap plus global hold-MENU opening behavior is unchanged.
+- Validated with `npm run build`; only the existing chunk-size warning remains.
+
+**Completed (this session - Spotify puck immersive spacing):**
+- Removed the old hero-lift path from Immersive Home so the hero content and pinned shelf keep their normal bottom positions even while the hidden-bottom-bar Spotify puck is visible.
+- Kept Spotify puck rendering, click/tap overlay open, and global hold-MENU behavior unchanged.
+- Validated with `npm run build`; only the existing chunk-size warning remains.
 
 **Completed (this session - Spotify overlay expand animation + immersive lane):**
 - Spotify overlay opens with a FLIP expand animation from the mini-player: `useLayoutEffect` measures `[data-spotify-minibar]` and the `[data-modal]` panel, starts the panel translated/scaled at the mini-player's rect (translate deltas divided by the app-root UI scale), forces a reflow, then transitions to identity over 0.3s. Skips gracefully when no mini-player is mounted.
 - Overlay gamepad focus scrolling now uses `scroller.scrollTo({ behavior: "smooth" })` to match Games/Apps grid scrolling.
 - Mini-player shows a permanent MENU badge (third grid column: `46px / 1fr / 30px`) as the hold-gesture affordance; the accent progress ring and brighter icon appear only while charging.
-- Immersive Home no longer docks the pill bottom-right: the pill keeps the standard alignment lane on all screens, and `HomeView` accepts `spotifyPillLift` (80 when the hidden-bar pill is visible) which raises `cinematicHeroBottom`, the cinematic hero content lane, and the bottom pinned shelf above the pill.
+- Immersive Home no longer docks the pill bottom-right: the pill keeps the standard alignment lane on all screens.
 - Removed the Spotify header chip from Games/Apps (kept on Home/Settings); gamepad path everywhere is hold-MENU.
 - Validated with `npm run build`; only the existing chunk-size warning remains.
 

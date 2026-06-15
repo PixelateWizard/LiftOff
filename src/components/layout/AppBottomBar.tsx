@@ -67,32 +67,18 @@ export function AppBottomBar({ tab, appCollectionsCount, spotifyMiniBar, spotify
   const barGlass: CSSProperties = isTransparent ? {} : solidBarGlass;
 
   if (settings.hide_bottom_bar) {
-    // The bar itself is hidden, but keep Spotify reachable: float the
-    // mini-player as a compact pill in the bottom-bar lane while a track
-    // is loaded. It always gets the solid bar surface for readability.
     if (!spotifyMiniBar || !spotifyHasTrack) return null;
-    // Same placement on every screen; Immersive Home lifts its hero content
-    // above this lane via spotifyPillLift in HomeView.
     const pillMargin =
-      settings.bottombar_alignment === "right" ? "0 16px 14px auto" :
-      settings.bottombar_alignment === "center" ? "0 auto 14px" : "0 auto 14px 16px";
-    const charge = Math.max(0, Math.min(1, spotifyHoldProgress));
-    // Fixed wrapper so the pill truly floats over content instead of
-    // reserving a full-width layout row at the bottom of every tab.
+      settings.bottombar_alignment === "right" ? "0 18px 18px auto" :
+      settings.bottombar_alignment === "center" ? "0 auto 18px" :
+      "0 auto 18px 18px";
+
     return (
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, pointerEvents: "none" }}>
-        <div data-bottom-bar="" style={{
-          display: "flex",
-          alignItems: "center",
-          padding: "8px 14px",
+        <div style={{
           width: "fit-content",
           margin: pillMargin,
           pointerEvents: "auto",
-          ...solidBarGlass,
-          ...(charge > 0 ? {
-            border: `1px solid ${accent.glow}${(0.30 + 0.70 * charge).toFixed(2)})`,
-            boxShadow: `0 0 ${Math.round(8 + 26 * charge)}px ${accent.glow}${(0.18 + 0.45 * charge).toFixed(2)})`,
-          } : {}),
         } as CSSProperties}>
           {spotifyMiniBar}
         </div>

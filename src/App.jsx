@@ -1586,6 +1586,33 @@ export default function App() {
   const tabPaneStyle = (active) => active
     ? { position: "absolute", inset: 0, zIndex: 2 }
     : { position: "absolute", inset: 0, zIndex: 2, contentVisibility: "hidden", pointerEvents: "none" };
+  const spotifyHasTrack = spotify.status.connected && !!spotify.track;
+  const immersiveHomeSpotifyChipActive =
+    tab === "Home" &&
+    settings.hide_bottom_bar &&
+    spotifyHasTrack &&
+    (settings.cinematic_home || settings.home_mode === "immersive") &&
+    !showSpotifyOverlay;
+  const spotifyMiniPlayer = showSpotifyOverlay || !spotifyHasTrack
+    ? null
+    : (
+      <SpotifyMiniBar
+        spotify={spotify}
+        holdProgress={spotifyHoldProgress}
+        variant={settings.hide_bottom_bar ? "puck" : "bar"}
+        onOpenPanel={() => setShowSpotifyOverlay(true)}
+      />
+    );
+  const spotifyHeroChip = immersiveHomeSpotifyChipActive
+    ? (
+      <SpotifyMiniBar
+        spotify={spotify}
+        holdProgress={spotifyHoldProgress}
+        variant="heroChip"
+        onOpenPanel={() => setShowSpotifyOverlay(true)}
+      />
+    )
+    : null;
 
   return (
     <ThemeProvider value={themeValue}>
@@ -2188,7 +2215,7 @@ export default function App() {
             setHeroIndex={setHeroIndex}
             heroIndexRef={heroIndexRef}
             iconColors={iconColors}
-            spotifyPillLift={settings.hide_bottom_bar && spotify.status.connected && spotify.track ? 80 : 0}
+            spotifyHeroChip={spotifyHeroChip}
           />
           <div aria-hidden={tab !== "Games"} data-tab-pane="games" style={tabPaneStyle(tab === "Games")}>
             <GamesView {...gamesLibraryViewProps} wideLayout={settings.wide_games} />
@@ -2203,9 +2230,9 @@ export default function App() {
         <AppBottomBar
           tab={tab}
           appCollectionsCount={appCollections.length}
-          spotifyMiniBar={<SpotifyMiniBar spotify={spotify} holdProgress={spotifyHoldProgress} onOpenPanel={() => setShowSpotifyOverlay(true)} />}
+          spotifyMiniBar={immersiveHomeSpotifyChipActive ? null : spotifyMiniPlayer}
           spotifyConnected={spotify.status.connected}
-          spotifyHasTrack={spotify.status.connected && !!spotify.track}
+          spotifyHasTrack={spotifyHasTrack}
           spotifyHoldProgress={spotifyHoldProgress}
         />
       </div>
