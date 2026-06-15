@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- **Motion language** - added shared motion tokens and primitives for directional tab entries, modal rise/fade, settings drill push/pop entry, launch overlay timing, and a new UI Motion toggle. Motion profiles keep Win9X/Webcore instant and Material crisp while preserving the Home hero warm-mount path.
+- **Motion surface coverage** - Settings drill-ins now cross-slide with both outgoing and incoming panels, card action surfaces use a scale-in drill motion, standalone file/art picker overlays share modal fade/rise, and focused cards/rows/section tabs get a subtle non-repeat pulse that skips Onyx.
+- **Theme-aware UI audio** - navigation and launch sounds now route through per-theme audio profiles, subtly shaping pitch, tone, and gain for Material, Synthwave/Cyberpunk, Win9X/Webcore, Forest/Lo-fi/Wash, and standard themes without changing the existing sound call sites.
 - **Spotify Connect device selection** - the Spotify overlay now shows available Spotify Connect devices and lets you pick the playback target from LiftOff, with gamepad focus support and a preference for computer devices such as Spotify Desktop on the Ally.
 - **Spotify UI** - added the Settings connect row and guide modal, shared frontend Spotify hook, Home Spotify entry point, now-playing mini-bar, and Home overlay with playback controls, playlist cards, device status, Premium/no-device hints, and accent-based styling.
 - **Spotify command surface** - added backend Spotify Web API commands for playback state, playlists, devices, transport controls, seeking, shuffle/repeat, playlist context playback, and device transfer, with one transparent token refresh retry and friendly Premium/no-device error codes for the upcoming UI.
@@ -13,6 +16,9 @@
 - Internal `focusGlow` surface token (unified accent ring + bloom) — groundwork for app-wide consistent focus/selection indicator.
 
 ### Changed
+- **Spotify header chip on Home only** - the Spotify chip in the top bar now appears only on the Home tab; the Settings tab header no longer shows it. Gamepad users can still open Spotify anywhere by holding MENU, and the floating pill remains available.
+- **Games "All" sorts alphabetically across sources** - the Games tab "All" subtab now lists every game in a single A–Z order regardless of source, instead of grouping Steam, Xbox, Battle.net, etc. into separate alphabetized blocks. Source-specific subtabs remain alphabetical as well.
+- **Launch audio cues** - game/app launch attempts now use the `fantasy world UI sound` cue by 114802300, and confirmed successful launches now play Feraly_'s `Simple or Cute UI / UX / Interface Pause sound`. Settings credits include both Creative Commons 0 Freesound attributions.
 - **Spotify playback routing** - LiftOff now treats Spotify Connect as the reliable playback path instead of automatically loading the embedded Web Playback SDK device, avoiding WebView2 DRM/license failures while keeping LiftOff as the playlist, transport, and progress UI.
 - **Single handoff source** - `CLAUDE.md` is now the single source of truth for project context and active-task updates. `AGENTS.md` is a short pointer so agent instructions no longer need to be maintained in two places.
 - **Appearance settings rework** - Appearance now opens to four drill-in category rows for Style, Home Screen, Layout, and Navigation instead of stacking an extra pill strip under the Settings tabs. Category pages now use a compact inline back chip instead of a persistent Back bar, keeping the page chrome flatter while preserving mouse and gamepad back navigation.
@@ -26,6 +32,11 @@
 - **Framed content removal** - removed the experimental Framed Content setting and wrapper, returning Games, Apps, and Settings to their normal full content layout.
 
 ### Fixed
+- **Glass motion compositing polish** - tab and subtab slides now move with transform-only motion instead of fading the whole glass card tree, and Settings drill-in no longer keeps a ghosted copy of the previous menu on screen during the transition.
+- **Focused app-card surface flicker** - focus pulse now draws through an overlay ring instead of animating the card or row's own `box-shadow`, preventing glassy app cards from briefly looking transparent before their glass background settles.
+- **Subtab switch motion** - Games source tabs, Apps collection tabs, and Settings section tabs now use the same directional slide language as main tab changes for header clicks and controller navigation. Settings section switches also clear Appearance drill-in state without replaying the drill push/pop animation.
+- **Picker and Settings motion polish** - Appearance drill-in now plays only its push/pop animation instead of replaying a tab-entry animation afterward, and the Theme and Surface Style picker modals now use the shared modal fade/rise motion.
+- **Tab switch motion direction** - tab changes now choose their forward/back slide direction before the new tab paints, using the real left-to-right order `Home -> Games -> Apps -> Settings`. Settings tab entry no longer accidentally uses the Appearance drill animation, and LB/RB wrap-around now animates in the direction the bumper moved.
 - **Cyberpunk Spotify hero chip** - the Immersive Home Spotify chip now uses Cyberpunk's angular HUD styling with clipped corners, squared artwork, neon accent edging, and a matching MENU badge instead of the generic rounded chip treatment.
 - **Spotify Immersive Home chip** - when the bottom bar is hidden on Immersive Home, Spotify now renders as a compact now-playing chip below the hero Launch/dots row instead of a separate floating puck or wide rail. Hidden-bottom-bar Games, Apps, Settings, and non-immersive Home still use the album-art puck.
 - **Immersive Home Spotify puck spacing** - Immersive Home no longer adds extra bottom spacing to hero content or the pinned shelf just because the hidden-bottom-bar Spotify puck is visible, keeping the layout in the same position with or without the puck.

@@ -70,6 +70,7 @@ export default function ContextMenuModal({ app, items, onClose }: Props) {
       width={280}
       zIndex={9000}
       onOverlayClick={onClose}
+      motion="drill"
     >
       <div style={{ padding: "8px 0" }}>
         {items.map(({ label, action, danger, sublabel, checked }, i) => {

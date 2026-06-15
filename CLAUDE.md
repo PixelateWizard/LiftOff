@@ -3,13 +3,63 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Tune the Immersive Home Spotify hero chip so it matches Cyberpunk's angular HUD styling.
+**Task:** Replace launch and successful-launch sounds and add attribution.
 
 **Scope:**
-- Keep the current chip placement and all non-Cyberpunk surface behavior unchanged.
-- Make the Cyberpunk chip use hard corners/corner-cut HUD styling instead of the generic rounded dark chip.
-- Preserve click/tap overlay open, hold-MENU progress feedback, and the existing global MENU handling.
+- Replace the current game/app launch sound with the supplied fantasy world UI sound.
+- Play the supplied Feraly pause/interface sound when an app or game successfully launches.
+- Add both Creative Commons 0 attributions to the Settings attribution section.
 - Update `CLAUDE.md`/`CHANGELOG.md` after validation.
+
+**Completed (this session - launch audio swap):**
+- Replaced `gameLaunchSound.wav` with the supplied `fantasy world UI sound` file so game/app launch attempts use the new cue.
+- Replaced the loaded/success cue with the supplied Feraly pause/interface sound and wired `LaunchOverlay` to play it when the backend emits `launch-success`.
+- Updated Settings credits with both CC0 Freesound attributions while keeping the remaining active splash/UI audio credits intact.
+- Validated with `npm run build` and `git diff --check`; only the existing large chunk and CRLF warnings remain.
+
+**Completed (this session - glass/tab and drill ghosting polish):**
+- Changed tab/subtab slide keyframes to transform-only motion so glass/backdrop-filter cards no longer fade in transparent before their glass surface composites.
+- Removed the outgoing Settings panel from drill transitions; Settings drill now animates only the incoming panel, avoiding the visible ghost of the previous menu.
+- Kept the existing Settings transition guard and incoming push/pop direction behavior intact.
+- Validated with `npm run build` and `git diff --check`; only the existing large chunk and CRLF warnings remain.
+
+**Completed (this session - focus pulse surface fix):**
+- Changed `.lo-anim-pulse` so it no longer animates `box-shadow` on the focused card/row element itself.
+- The pulse now renders through a positioned `::after` overlay ring, keeping glass/aero/clear card backgrounds and focused shadows stable while the pulse plays.
+- Updated UI Motion/reduced-motion/static-effects kill-switch selectors to target the new pulse overlay.
+- Validated with `npm run build` and `git diff --check`; only the existing large chunk and CRLF warnings remain.
+
+**Completed (this session - PR2 motion surfaces):**
+- Finished the Settings drill transition as a two-panel push/pop: the outgoing settings panel stays mounted long enough to slide/dim out while the incoming panel slides in, with the existing transition input guard preserved.
+- Added a central focus-pulse effect that targets the currently focused card, settings row, or section tab, skips Onyx, skips held-repeat movement, and respects the UI Motion kill switch/reduced-motion CSS.
+- Extended modal motion coverage to standalone file/art picker overlays that bypass `ModalShell`.
+- Added a `ModalShell` drill motion variant and applied it to the card context/actions surface so card-open actions use the scale-in primitive while ordinary dialogs keep modal rise.
+- Validated with `npm run build` and `git diff --check`; only the existing large chunk and CRLF warnings remain.
+
+**Completed (this session - subtab switch motion):**
+- Added a dedicated subtab motion state/timer in `App.jsx` that reuses the same forward/back tab slide classes for source, collection, and Settings section changes.
+- Wired header clicks, Games/Apps LT/RT cycling, Settings LT/RT section changes, and focused subtab row left/right movement through the same directional motion callback.
+- Suppressed Appearance drill push/pop when a Settings section switch is what clears the drill-in state, so the section slide remains the only visible transition.
+- Validated with `npm run build` and `git diff --check`; only the existing large chunk and CRLF warnings remain.
+
+**Completed (this session - picker/drill motion follow-up):**
+- Changed tab motion into a short active-entry state so Settings drill remounts do not fall back into a second tab animation after push/pop finishes.
+- Added cleanup for the tab/drill motion timers in `App.jsx`.
+- Added `.lo-anim-overlay` and `.lo-anim-modal` to Theme and Surface picker modals, with local `data-motion` and `data-ui-motion` attributes because those pickers render outside the scaled app root.
+- Validated with `npm run build`; only the existing large chunk warning remains.
+
+**Completed (this session - tab motion direction fix):**
+- Moved tab direction selection into `useGamepadNavigation.switchTab()` so the incoming tab receives the correct forward/back class before first paint.
+- Added explicit bumper direction overrides so LB wrap-around animates backward and RB wrap-around animates forward, while direct tab selection still follows the left-to-right `Home -> Games -> Apps -> Settings` order.
+- Separated Settings tab-entry motion from Appearance drill motion so the push/pop class no longer overrides directional tab transitions when landing on Settings.
+- Validated with `npm run build`; only the existing large chunk warning remains.
+
+**Completed (this session - motion/audio language foundation):**
+- Added `src/styles/motion.css` with duration/easing tokens, tab/modal/drill/push-pop/pulse primitives, root `data-motion` profiles, `data-ui-motion` kill switch handling, and reduced-motion fallbacks.
+- Added persisted `ui_motion` settings support across Rust defaults/serde, TypeScript settings, frontend defaults, Appearance -> Style settings, and EN/FR locale labels.
+- Wired root `data-motion`/`data-ui-motion`/`--accent-pulse`, modal fade/rise classes, token-driven LaunchOverlay timings, directional Games/Apps/Settings tab enter classes, and keyed Settings drill push/pop entry classes with a short gamepad input guard.
+- Added theme-aware audio profiles in `src/audio/audioProfiles.ts` and routed `useAudioFeedback` through detune/filter/gain shaping without changing sound call sites.
+- Validated with `npm run build`, `cargo check`, and `git diff --check`; only the existing large chunk and unused Rust helper warnings remain.
 
 **Completed (this session - Cyberpunk Spotify hero chip):**
 - Tuned only the Cyberpunk `heroChip` styling to use the resolved Cyberpunk theme gate, hard/corner-cut edges, squared artwork, neon accent border/glow, and a squared MENU badge.
@@ -319,7 +369,7 @@
 - `AppBackground` owns Lofi music playback and passes `appPaused` to `LofiBg`. `LofiBg` owns the mounted video element and video retry/playback effect. Lo-fi Effects off pauses music/video playback. The Lofi poster was removed; do not use `cozy_moonlit_study_night_scene-old.png` for the theme background.
 - `LaunchOverlay` owns its internal launch status state; `launchingAppRef` in `useGamepadNavigation` gates main gamepad input while a launch overlay is active.
 - `useCustomArt` owns custom art maps/refs, custom art loading, cached art hydration, SGDB fetch batching, and clear-art reset.
-- `useAudioFeedback` owns WebAudio preload/playback for UI, alt UI, game launch, and app-loaded sounds.
+- `useAudioFeedback` owns WebAudio preload/playback for UI, alt UI, game launch, and app-loaded sounds. It accepts a profile ref and routes playback through per-theme detune/filter/gain shaping from `src/audio/audioProfiles.ts`; call sites still use `playSound`, `playSoundAlt`, `playSoundGameStart`, and `playAppLoadedSound`.
 - `usePersistentJson` owns localStorage JSON state; currently used for `liftoff_heroCustomType`.
 - `useAppSettings` owns settings state/ref bootstrap, auto UI scale resolution, save/update helpers, language sync, default tab loading, and scan-toggle refresh keys.
 - `useStartupBootstrap` owns splash loading state, splash exit timing, `isReadyRef`, the app-loaded sound trigger, `set_gamepad_ready`, and the load-error splash fallback.
@@ -637,7 +687,7 @@ Types: `accent`, `cycle`, `toggle`, `divider`, `action`, `link`, `info`, `update
 - `slider` type: `{ key, label, min, max, step }` — renders a horizontal track with thumb; left/right d-pad adjusts by `step`; displays `Math.round(val * 100)%`
 - `link` type keys: `coffee`, `github`, `discord`
 
-**Settings order (Appearance section):** THEME | Accent → Theme → Stars → Surface Style | HOME | Immersive Home → Show Cover on Home → Show Pinned on Home → Show Collections on Home (+ sub-toggles) | LAYOUT | Wide Layout → UI Scale → Reset Scale → Home Cover Scale → Game Cover Scale | NAVIGATION BAR | Hide Bottom Bar → Transparent Bars (+ sub-toggles) → Nav Bumpers Pos | SECTION TAB BAR | Tabbar Badges → Tabbar Label Case → Tabbar Text Tabs → Tabbar Background → Bottom Bar Alignment
+**Settings order (Appearance section):** THEME | Accent -> Theme -> Effects -> UI Motion -> Surface Style | HOME | Immersive Home -> Show Cover on Home -> Show Pinned on Home -> Show Collections on Home (+ sub-toggles) | LAYOUT | Wide Layout -> UI Scale -> Reset Scale -> Home Cover Scale -> Game Cover Scale | NAVIGATION BAR | Hide Bottom Bar -> Transparent Bars (+ sub-toggles) -> Nav Bumpers Pos | SECTION TAB BAR | Tabbar Badges -> Tabbar Label Case -> Tabbar Text Tabs -> Tabbar Background -> Bottom Bar Alignment
 
 **`animated_heroes` setting:**
 - Type: `cycle`, options `["static", "animated", "custom"]`, label "Hero Art Mode"
@@ -699,6 +749,17 @@ Types: `accent`, `cycle`, `toggle`, `divider`, `action`, `link`, `info`, `update
 - `stars_enabled` is still the persisted master toggle for theme effects, but effects off means "static background", not "remove background". The root gets `data-effects="static"` so CSS animations freeze; JS-driven Webcore/Cyberpunk motion receives `effectsEnabled={false}`; Lo-fi keeps the video element and overlay mounted while pausing video playback and music.
 - Settings labels change by theme. Space uses `Star Effects`, Sky uses `Cloud Effects`; the other environment themes use `* Effects`.
 - Reduced motion is handled in global CSS by collapsing/freeze-targeting animated environment classes such as `.theme-plasma-*`, `.theme-cinder-*`, `.theme-wash-static`, `.theme-wash-float`, `.theme-aurora-*`, `.theme-synthwave-*`, `.theme-cyberpunk-*`, `.theme-forest-*`, `.theme-webcore-*`, `.bg-star`, and `.bg-cloud`.
+
+### Motion Language
+- Shared UI motion tokens live in `src/styles/motion.css`, imported once from `src/main.jsx`. Keep new motion primitives out of the injected `app-global-styles` block in `App.jsx`.
+- Token names: `--dur-instant`, `--dur-fast`, `--dur-base`, `--dur-slow`, `--ease-standard`, `--ease-decel`, `--ease-accel`, `--ease-spring`, and `--accent-pulse`.
+- Primitive classes: `.lo-anim-tab`, `.lo-anim-tab-rev`, `.lo-anim-drill`, `.lo-anim-modal`, `.lo-anim-overlay`, `.lo-anim-pulse`, `.lo-anim-push-in`, `.lo-anim-push-out`, `.lo-anim-pop-in`, and `.lo-anim-pop-out`. They animate only `transform` and `opacity`.
+- Root `data-motion` profile mapping is resolved in `App.jsx`: Win9X/Webcore -> `instant`, Material -> `crisp`, Synthwave -> `playful`, everything else -> `standard`. These profiles override only duration/easing tokens; surface tokens stay unchanged.
+- Root `data-ui-motion="off"` comes from `settings.ui_motion === false` and zeroes entrance/pulse motion. `prefers-reduced-motion: reduce` collapses motion to 1ms. `data-effects="static"` only kills focus pulse, preserving the distinction between static backgrounds and UI motion.
+- Modal motion is centralized in `ModalShell` (`.lo-anim-overlay` backdrop plus `.lo-anim-modal` panel). `LaunchOverlay` keeps its bespoke keyframes but sources timing/easing from the shared motion tokens.
+- Games/Apps/Settings tab entries use directional transform-only `.lo-anim-tab` / `.lo-anim-tab-rev` so glass/backdrop-filter card surfaces do not fade through transparent while compositing. Home remains warm-mounted for hero video decode and is not keyed/remounted for tab motion.
+- Settings drill-in keys the visible settings panel and applies `.lo-anim-push-in` / `.lo-anim-pop-in` to the incoming panel with a short gamepad input guard. The outgoing panel is not kept visible during the transition because the real app made it read as a ghost menu.
+- Focus pulse is applied centrally from `App.jsx` to focused cards, settings rows, and section tabs by temporarily adding `.lo-anim-pulse`. The class renders its animated ring through `::after` so it does not override the target element's own glass background or focus shadow. It skips Onyx and held-repeat movement so it does not compete with Onyx's ring animation or strobe during long scrolls.
 
 ### Surface Style System
 Four surface options controlled by `settings.surface_style` (`"glass"` | `"aero"` | `"material"` | `"clear"`). Three CSS token objects as `useMemo`s in `App.jsx` adapt to the active style, with an additional `materialTokens` object for Material CSS custom properties:

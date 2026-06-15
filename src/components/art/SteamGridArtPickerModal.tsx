@@ -482,8 +482,8 @@ export function SteamGridArtPickerModal({ app, currentArt, hasCustomArt, cropMod
   });
 
   return (
-    <div data-modal-overlay style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 24, boxSizing: "border-box" }}>
-      <div data-modal="" style={{ ...glass, borderRadius: isPixel ? 0 : surfaceStyle === "material" ? 16 : 24, padding: isPixel ? 0 : 20, width: `calc(${scaledViewportW} - 48px)`, height: `calc(${scaledViewportH} - 48px)`, maxWidth: `calc(${scaledViewportW} - 48px)`, maxHeight: `calc(${scaledViewportH} - 48px)`, boxSizing: "border-box", display: "flex", flexDirection: "column", overflow: "hidden",
+    <div data-modal-overlay className="lo-anim-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 24, boxSizing: "border-box" }}>
+      <div data-modal="" className="lo-anim-modal" style={{ ...glass, borderRadius: isPixel ? 0 : surfaceStyle === "material" ? 16 : 24, padding: isPixel ? 0 : 20, width: `calc(${scaledViewportW} - 48px)`, height: `calc(${scaledViewportH} - 48px)`, maxWidth: `calc(${scaledViewportW} - 48px)`, maxHeight: `calc(${scaledViewportH} - 48px)`, boxSizing: "border-box", display: "flex", flexDirection: "column", overflow: "hidden",
         border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.4)`, fontFamily: "'Segoe UI', sans-serif", ...pixelShell }}>
         {isPixel && (
           <div style={{ margin: 3, height: 22, padding: "0 5px 0 7px", boxSizing: "border-box", background: surface.titleBarBg, borderBottom: surface.titleBarBorder, color: surface.titleBarText, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>

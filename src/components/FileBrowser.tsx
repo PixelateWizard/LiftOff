@@ -228,13 +228,13 @@ export default function FileBrowser({ mode = "file", repeatSpeed = "normal", onS
   const pathParts = path ? path.replace(/\\/g, "/").split("/").filter(Boolean) : [];
 
   return (
-    <div style={{
+    <div data-modal-overlay className="lo-anim-overlay" style={{
       position: "fixed", inset: 0, zIndex: 1000,
       background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)",
       display: "flex", alignItems: "center", justifyContent: "center",
       fontFamily: "'Segoe UI', sans-serif",
     }}>
-      <div data-modal="" style={{
+      <div data-modal="" className="lo-anim-modal" style={{
         ...glass, width: 560, maxHeight: "75vh", borderRadius: isPixel ? 0 : 20,
         display: "flex", flexDirection: "column", overflow: "hidden",
         border: `1px solid ${accent.glow}0.3)`,

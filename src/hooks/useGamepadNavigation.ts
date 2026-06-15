@@ -40,7 +40,10 @@ export interface UseGamepadNavigationOptions {
   updateSetting?: (key: keyof Settings, value: unknown) => void;
   resolvedTheme?: string;
   appearanceGroupRef?: AnyRef<number | null>;
-  setAppearanceGroup?: (value: number | null) => void;
+  setAppearanceGroup?: (value: number | null, options?: { animate?: boolean }) => void;
+  settingsTransitioningRef?: AnyRef<boolean>;
+  onTabMotionDirection?: (direction: "forward" | "back") => void;
+  onSubtabMotionDirection?: (direction: "forward" | "back") => void;
 
   appsRef?: AnyRef<App[]>;
   allAppsRef?: AnyRef<App[]>;
@@ -194,7 +197,7 @@ export interface GamepadNavigationResult {
   setHomeColFocusCol: Dispatch<SetStateAction<number>>;
   setHeroActionIndex: Dispatch<SetStateAction<number>>;
 
-  switchTab: (newTab: string) => void;
+  switchTab: (newTab: string, direction?: "forward" | "back") => void;
   triggerLaunch: (app: App, rec: App[]) => void;
   closeLaunchOverlay: () => void;
   closeHideModal: () => void;
@@ -262,7 +265,10 @@ export function useGamepadNavigation(
     updateSetting = noop as (key: keyof Settings, value: unknown) => void,
     resolvedTheme = "space",
     appearanceGroupRef = { current: null } as AnyRef<number | null>,
-    setAppearanceGroup = noop as (value: number | null) => void,
+    setAppearanceGroup = noop as (value: number | null, options?: { animate?: boolean }) => void,
+    settingsTransitioningRef = { current: false } as AnyRef<boolean>,
+    onTabMotionDirection = noop as (direction: "forward" | "back") => void,
+    onSubtabMotionDirection = noop as (direction: "forward" | "back") => void,
     appsRef,
     allAppsRef,
     recentRef,
@@ -507,7 +513,13 @@ export function useGamepadNavigation(
   };
 
 
-  const switchTab = (newTab: string) => {
+  const switchTab = (newTab: string, direction?: "forward" | "back") => {
+    const currentTab = tabRef.current;
+    if (newTab !== currentTab) {
+      const currentIdx = TABS.indexOf(currentTab);
+      const nextIdx = TABS.indexOf(newTab);
+      onTabMotionDirection(direction ?? (nextIdx < currentIdx ? "back" : "forward"));
+    }
     setTab(newTab); tabRef.current = newTab;
     let defaultSection;
     if (newTab === "Home") defaultSection = "hero";
@@ -522,7 +534,7 @@ export function useGamepadNavigation(
     setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
     setSettingsSection(0); settingsSectionRef.current = 0;
     if (newTab !== "Settings") {
-      setAppearanceGroup(null);
+      setAppearanceGroup(null, { animate: false });
       appearanceGroupRef.current = null;
     }
     setGameSourceTab("All"); gameSourceTabRef.current = "All";
@@ -806,8 +818,8 @@ export function useGamepadNavigation(
     }
 
     if (key === "BumperLeft" || key === "BumperRight") playSoundAlt(); else playSound();
-    if (key === "BumperLeft")  { const _tabs = TABS as string[]; const i = _tabs.indexOf(currentTab); switchTab(_tabs[(i - 1 + _tabs.length) % _tabs.length]); return; }
-    if (key === "BumperRight") { const _tabs = TABS as string[]; const i = _tabs.indexOf(currentTab); switchTab(_tabs[(i + 1) % _tabs.length]); return; }
+    if (key === "BumperLeft")  { const _tabs = TABS as string[]; const i = _tabs.indexOf(currentTab); switchTab(_tabs[(i - 1 + _tabs.length) % _tabs.length], "back"); return; }
+    if (key === "BumperRight") { const _tabs = TABS as string[]; const i = _tabs.indexOf(currentTab); switchTab(_tabs[(i + 1) % _tabs.length], "forward"); return; }
 
     // BACK (Select) opens library actions menu; MENU (Start) opens context menu for focused card
     if (key === "Select" && (currentTab === "Games" || currentTab === "Apps")) {
@@ -829,12 +841,14 @@ export function useGamepadNavigation(
     }
 
     if (currentTab === "Settings") {
+      if (settingsTransitioningRef.current) return;
       if (key === "TriggerLeft") {
         const ni = Math.max(0, settingsSectionRef.current - 1);
         if (ni !== settingsSectionRef.current) {
+          onSubtabMotionDirection("back");
           setSettingsSection(ni); settingsSectionRef.current = ni;
           if (ni !== 0) {
-            setAppearanceGroup(null);
+            setAppearanceGroup(null, { animate: false });
             appearanceGroupRef.current = null;
           }
           setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
@@ -846,9 +860,10 @@ export function useGamepadNavigation(
       if (key === "TriggerRight") {
         const ni = Math.min(SETTINGS_SECTIONS.length - 1, settingsSectionRef.current + 1);
         if (ni !== settingsSectionRef.current) {
+          onSubtabMotionDirection("forward");
           setSettingsSection(ni); settingsSectionRef.current = ni;
           if (ni !== 0) {
-            setAppearanceGroup(null);
+            setAppearanceGroup(null, { animate: false });
             appearanceGroupRef.current = null;
           }
           setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
@@ -1115,6 +1130,7 @@ export function useGamepadNavigation(
       if (key === "TriggerLeft") {
         const cur = currentSourceIndex();
         const next = SOURCES[(cur - 1 + SOURCES.length) % SOURCES.length];
+        if (next !== gameSourceTabRef.current) onSubtabMotionDirection("back");
         setGameSourceTab(next); gameSourceTabRef.current = next;
         const hasPinned = next === "All" && pinsRef.current.length > 0 && pinsRef.current.some(id => appsRef.current.find(a => a.id === id));
         setFocusSection(hasPinned ? "pinned" : "grid"); focusSectionRef.current = hasPinned ? "pinned" : "grid";
@@ -1124,6 +1140,7 @@ export function useGamepadNavigation(
       if (key === "TriggerRight") {
         const cur = currentSourceIndex();
         const next = SOURCES[(cur + 1) % SOURCES.length];
+        if (next !== gameSourceTabRef.current) onSubtabMotionDirection("forward");
         setGameSourceTab(next); gameSourceTabRef.current = next;
         const hasPinned = next === "All" && pinsRef.current.length > 0 && pinsRef.current.some(id => appsRef.current.find(a => a.id === id));
         setFocusSection(hasPinned ? "pinned" : "grid"); focusSectionRef.current = hasPinned ? "pinned" : "grid";
@@ -1136,6 +1153,7 @@ export function useGamepadNavigation(
       if (key === "TriggerLeft") {
         const cur = APP_COLS.indexOf(appCollectionTabRef.current);
         const next = APP_COLS[(cur - 1 + APP_COLS.length) % APP_COLS.length];
+        if (next !== appCollectionTabRef.current) onSubtabMotionDirection("back");
         setAppCollectionTab(next); appCollectionTabRef.current = next;
         setFocusSection("grid"); focusSectionRef.current = "grid";
         setFocusIndex(0); focusIndexRef.current = 0;
@@ -1144,6 +1162,7 @@ export function useGamepadNavigation(
       if (key === "TriggerRight") {
         const cur = APP_COLS.indexOf(appCollectionTabRef.current);
         const next = APP_COLS[(cur + 1) % APP_COLS.length];
+        if (next !== appCollectionTabRef.current) onSubtabMotionDirection("forward");
         setAppCollectionTab(next); appCollectionTabRef.current = next;
         setFocusSection("grid"); focusSectionRef.current = "grid";
         setFocusIndex(0); focusIndexRef.current = 0;
@@ -1158,10 +1177,16 @@ export function useGamepadNavigation(
       ? [...SOURCES, "manage"]
       : [...APP_COLS_NAV, "manage"];
 
-    const switchSubtabItem = (item) => {
+    const switchSubtabItem = (item, direction: "forward" | "back") => {
       if (item === "add_app" || item === "add_folder" || item === "manage" || item === "collections") return;
-      if (currentTab === "Games") { setGameSourceTab(item); gameSourceTabRef.current = item; }
-      else { setAppCollectionTab(item); appCollectionTabRef.current = item; }
+      if (currentTab === "Games") {
+        if (item !== gameSourceTabRef.current) onSubtabMotionDirection(direction);
+        setGameSourceTab(item); gameSourceTabRef.current = item;
+      }
+      else {
+        if (item !== appCollectionTabRef.current) onSubtabMotionDirection(direction);
+        setAppCollectionTab(item); appCollectionTabRef.current = item;
+      }
       setFocusIndex(0); focusIndexRef.current = 0;
     };
 
@@ -1177,13 +1202,13 @@ export function useGamepadNavigation(
       if (key === "ArrowRight") {
         const ni = Math.min(currentSubtabIndex + 1, subtabItems.length - 1);
         setSubtabFocusIndex(ni); subtabFocusIndexRef.current = ni;
-        switchSubtabItem(subtabItems[ni]);
+        switchSubtabItem(subtabItems[ni], "forward");
         playSound();
       }
       else if (key === "ArrowLeft") {
         const ni = Math.max(currentSubtabIndex - 1, 0);
         setSubtabFocusIndex(ni); subtabFocusIndexRef.current = ni;
-        switchSubtabItem(subtabItems[ni]);
+        switchSubtabItem(subtabItems[ni], "back");
         playSound();
       }
       else if (key === "ArrowDown") {

@@ -15,6 +15,7 @@ interface ModalShellProps {
   maxHeight?: string;
   zIndex?: number;
   onOverlayClick?: () => void;
+  motion?: "modal" | "drill";
 }
 
 export default function ModalShell({
@@ -25,6 +26,7 @@ export default function ModalShell({
   maxHeight,
   zIndex = 2000,
   onOverlayClick,
+  motion = "modal",
 }: ModalShellProps) {
   const { glass, accent, theme, isDark, surfaceStyle, surface, resolvedTheme } = useTheme();
   const hasBody = children != null && children !== false;
@@ -64,6 +66,7 @@ export default function ModalShell({
 
   return (
     <div
+      className="lo-anim-overlay"
       style={{
         position: "fixed", inset: 0, zIndex,
         background: "rgba(0,0,0,0.7)",
@@ -74,6 +77,7 @@ export default function ModalShell({
       onClick={onOverlayClick}
     >
       <div
+        className={motion === "drill" ? "lo-anim-drill" : "lo-anim-modal"}
         data-modal=""
         style={{
           ...glass,

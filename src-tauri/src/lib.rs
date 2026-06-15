@@ -114,6 +114,8 @@ pub struct Settings {
     pub accent: String,
     pub theme: String,
     pub stars_enabled: bool,
+    #[serde(default = "default_true")]
+    pub ui_motion: bool,
     pub onyx_top_light: bool,
     #[serde(default = "default_true")]
     pub lofi_music_enabled: bool,
@@ -266,6 +268,7 @@ impl Default for Settings {
             accent: "ember".to_string(),
             theme: "space".to_string(),
             stars_enabled: true,
+            ui_motion: true,
             lofi_music_enabled: true,
             default_tab: "Home".to_string(),
             scan_steam: true,

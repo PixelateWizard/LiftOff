@@ -109,6 +109,11 @@ export function ThemePickerModal({ onClose, focusIndex, setFocusIndex }: ThemePi
   const panelRef = useRef<HTMLDivElement | null>(null);
   const focusedCardRef = useRef<HTMLDivElement | null>(null);
   const currentTheme = normalizeThemeKey(String(settings.theme ?? "space"));
+  const motionProfile =
+    surfaceStyle === "win9x" || resolvedTheme === "webcore" ? "instant" :
+    surfaceStyle === "material" ? "crisp" :
+    resolvedTheme === "synthwave" ? "playful" :
+    "standard";
 
   useEffect(() => {
     const card = focusedCardRef.current;
@@ -140,9 +145,16 @@ export function ThemePickerModal({ onClose, focusIndex, setFocusIndex }: ThemePi
   });
 
   return (
-    <div data-theme={resolvedTheme} style={modalOverlayStyle()} onClick={onClose}>
+    <div
+      data-theme={resolvedTheme}
+      data-motion={motionProfile}
+      data-ui-motion={settings.ui_motion === false ? "off" : "on"}
+      className="lo-anim-overlay"
+      style={modalOverlayStyle()}
+      onClick={onClose}
+    >
       <div style={modalScrimStyle} />
-      <div data-modal="" ref={panelRef} style={panelStyle} onClick={(e) => e.stopPropagation()}>
+      <div data-modal="" className="lo-anim-modal" ref={panelRef} style={panelStyle} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <span style={{ fontSize: 16, fontWeight: 700 }}>{t("settings.themePickerTitle")}</span>
           <button onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: 20, opacity: 0.5, lineHeight: 1, padding: "2px 6px", color: "inherit" }}>

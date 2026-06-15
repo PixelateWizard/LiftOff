@@ -59,6 +59,7 @@ export interface Settings {
   accent: string;
   theme: ThemeMode;
   stars_enabled: boolean;
+  ui_motion: boolean;
   onyx_top_light: boolean;
   lofi_music_enabled: boolean;
   wide_layout: boolean;

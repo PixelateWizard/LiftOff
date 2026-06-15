@@ -127,6 +127,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "stars_enabled", section: 0, group: 0, label: bgLabel, type: "toggle", indent: true, subItems: activeTheme === "lofi" ? [
       { key: "lofi_music_enabled", label: t("settings.lofiMusic"), type: "toggle" },
     ] : undefined },
+    { key: "ui_motion",     section: 0, group: 0, label: t("settings.uiMotion"),      type: "toggle", indent: true },
     { key: "surface_style", section: 0, group: 0, label: t("settings.surfaceStyle"),  type: "surface_picker", indent: true },
 
     D("home", 0, 1),
@@ -235,8 +236,8 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     D("credits", 5),
     { key: "credit0", section: 5, label: "i18n, SGDB art, custom sources, controller glyphs, themes & settings", author: "moi952", license: "GitHub", url: "https://github.com/moi952", type: "attribution" },
     { key: "credit1", section: 5, label: "Mysterious Magical Bell Flourish", author: "DanaiOuranos",  license: "CC0",        url: "https://freesound.org/s/848847/",                       type: "attribution" },
-    { key: "credit2", section: 5, label: "Achievement Sparkle",              author: "DanaiOuranos",  license: "CC0",        url: "https://freesound.org/s/715067/",                       type: "attribution" },
-    { key: "credit3", section: 5, label: "Mysterious Sparkle Flourish",      author: "DanaiOuranos",  license: "CC0",        url: "https://freesound.org/s/844398/",                       type: "attribution" },
+    { key: "credit2", section: 5, label: "fantasy world UI sound",           author: "114802300",     license: "Creative Commons 0", url: "https://freesound.org/s/841346/",  type: "attribution" },
+    { key: "credit3", section: 5, label: "Simple or Cute UI / UX / Interface Pause sound", author: "Feraly_", license: "Creative Commons 0", url: "https://freesound.org/s/836452/", type: "attribution" },
     { key: "credit4", section: 5, label: "Universal UI Soundpack",           author: "Nathan Gibson", license: "CC BY 4.0",  url: "https://cyrex-studios.itch.io/universal-ui-soundpack", type: "attribution" },
   ];
 

@@ -14,9 +14,10 @@ interface LaunchOverlayProps {
   customArt: Record<string, string>;
   accent: AccentColors;
   onDone: () => void;
+  onSuccess?: () => void;
 }
 
-export function LaunchOverlay({ app, gameArt, customArt, accent, onDone }: LaunchOverlayProps) {
+export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSuccess }: LaunchOverlayProps) {
   const { t } = useTranslation();
   const art = app?.app_type === "game" ? (customArt?.[app.id] || gameArt[app.id]) : null;
   const [status, setStatus] = useState<LaunchStatus>("launching");
@@ -46,6 +47,7 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone }: Launc
     if (!app) return;
     const launchTarget = app;
     const done = onDone;
+    const success = onSuccess;
     mounted.current = true;
 
     const style = document.createElement("style");
@@ -56,13 +58,13 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone }: Launc
       @keyframes launchTextFade  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
       @keyframes launchDot       { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
       @keyframes launchGlowPulse { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.2); opacity: 1; } }
-      .launch-overlay { animation: overlayFadeIn 0.25s ease forwards; }
-      .launch-icon    { animation: launchIconPop 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-      .launch-text    { animation: launchTextFade 0.3s ease forwards; animation-delay: 0.3s; opacity: 0; }
+      .launch-overlay { animation: overlayFadeIn var(--dur-base) var(--ease-standard) forwards; }
+      .launch-icon    { animation: launchIconPop var(--dur-slow) var(--ease-spring) forwards; }
+      .launch-text    { animation: launchTextFade var(--dur-base) var(--ease-standard) forwards; animation-delay: var(--dur-base); opacity: 0; }
       .launch-dot     { animation: launchDot 1s ease-in-out infinite; }
       .launch-dot:nth-child(2) { animation-delay: 0.15s; }
       .launch-dot:nth-child(3) { animation-delay: 0.3s; }
-      .launch-glow    { animation: launchGlowPulse 1.5s ease-in-out infinite; }
+      .launch-glow    { animation: launchGlowPulse 1.5s var(--ease-standard) infinite; }
     `;
     document.head.appendChild(style);
 
@@ -77,6 +79,7 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone }: Launc
     listen("launch-success", async () => {
       if (!mounted.current) return;
 
+      success?.();
       setStatus("verifying");
 
       try {

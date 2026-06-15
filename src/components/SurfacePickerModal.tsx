@@ -138,6 +138,11 @@ export function SurfacePickerModal({ onClose, focusIndex, setFocusIndex }: Surfa
   const panelRef = useRef<HTMLDivElement | null>(null);
   const focusedCardRef = useRef<HTMLDivElement | null>(null);
   const currentSurface = String(settings.surface_style ?? "glass");
+  const motionProfile =
+    surfaceStyle === "win9x" || resolvedTheme === "webcore" ? "instant" :
+    surfaceStyle === "material" ? "crisp" :
+    resolvedTheme === "synthwave" ? "playful" :
+    "standard";
   const previewBackdrop = isDark
     ? "linear-gradient(160deg, #080c1c 0%, #0e1428 50%, #080a16 100%)"
     : "linear-gradient(160deg, #e8e2d6 0%, #f2ede2 50%, #e4ddd0 100%)";
@@ -168,12 +173,16 @@ export function SurfacePickerModal({ onClose, focusIndex, setFocusIndex }: Surfa
   return (
     <div
       data-theme={resolvedTheme}
+      data-motion={motionProfile}
+      data-ui-motion={settings.ui_motion === false ? "off" : "on"}
+      className="lo-anim-overlay"
       onClick={onClose}
       style={modalOverlayStyle()}
     >
       <div style={modalScrimStyle} />
       <div
         data-modal=""
+        className="lo-anim-modal"
         ref={panelRef}
         onClick={(e) => e.stopPropagation()}
         style={modalPanelStyle(themeValue, {

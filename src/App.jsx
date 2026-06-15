@@ -57,6 +57,7 @@ import { useSpotify } from "./hooks/useSpotify";
 import { SpotifyConnectGuide } from "./components/spotify/SpotifyConnectGuide";
 import { SpotifyMiniBar } from "./components/spotify/SpotifyMiniBar";
 import { SpotifyOverlay } from "./components/spotify/SpotifyOverlay";
+import { AUDIO_PROFILES, resolveAudioProfile } from "./audio/audioProfiles";
 import { detectPlatform } from "./utils/gamepad";
 import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO,
@@ -80,11 +81,65 @@ export default function App() {
   const [sliderDraft, setSliderDraft] = useState({ key: null, value: null });
   const sliderDraftRef = useRef({ key: null, value: null });
   const [appearanceGroupState, setAppearanceGroupState] = useState(null);
+  const [settingsDrillMotion, setSettingsDrillMotion] = useState("push");
+  const [settingsDrillActive, setSettingsDrillActive] = useState(false);
+  const [tabMotion, setTabMotion] = useState("forward");
+  const [tabMotionActive, setTabMotionActive] = useState(false);
+  const [subtabMotion, setSubtabMotion] = useState("forward");
+  const [subtabMotionActive, setSubtabMotionActive] = useState(false);
   const appearanceGroupRef = useRef(null);
-  const setAppearanceGroup = (value) => {
+  const settingsTransitioningRef = useRef(false);
+  const settingsTransitionTimerRef = useRef(null);
+  const tabMotionTimerRef = useRef(null);
+  const subtabMotionTimerRef = useRef(null);
+  const focusPulseNodeRef = useRef(null);
+  const focusPulseTimerRef = useRef(null);
+  const setTabMotionDirection = (direction) => {
+    setTabMotion(direction);
+    setTabMotionActive(true);
+    if (subtabMotionTimerRef.current) window.clearTimeout(subtabMotionTimerRef.current);
+    setSubtabMotionActive(false);
+    if (tabMotionTimerRef.current) window.clearTimeout(tabMotionTimerRef.current);
+    tabMotionTimerRef.current = window.setTimeout(() => {
+      setTabMotionActive(false);
+    }, 240);
+  };
+  const setSubtabMotionDirection = (direction) => {
+    setSubtabMotion(direction);
+    setSubtabMotionActive(true);
+    if (subtabMotionTimerRef.current) window.clearTimeout(subtabMotionTimerRef.current);
+    subtabMotionTimerRef.current = window.setTimeout(() => {
+      setSubtabMotionActive(false);
+    }, 240);
+  };
+  const setAppearanceGroup = (value, options = {}) => {
+    const previous = appearanceGroupRef.current;
+    if (previous !== value) {
+      if (options.animate === false) {
+        if (settingsTransitionTimerRef.current) window.clearTimeout(settingsTransitionTimerRef.current);
+        settingsTransitioningRef.current = false;
+        setSettingsDrillActive(false);
+      } else {
+        const motion = previous !== null && value === null ? "pop" : "push";
+        setSettingsDrillMotion(motion);
+        setSettingsDrillActive(true);
+        settingsTransitioningRef.current = true;
+        if (settingsTransitionTimerRef.current) window.clearTimeout(settingsTransitionTimerRef.current);
+        settingsTransitionTimerRef.current = window.setTimeout(() => {
+          settingsTransitioningRef.current = false;
+          setSettingsDrillActive(false);
+        }, 240);
+      }
+    }
     appearanceGroupRef.current = value;
     setAppearanceGroupState(value);
   };
+  useEffect(() => () => {
+    if (settingsTransitionTimerRef.current) window.clearTimeout(settingsTransitionTimerRef.current);
+    if (tabMotionTimerRef.current) window.clearTimeout(tabMotionTimerRef.current);
+    if (subtabMotionTimerRef.current) window.clearTimeout(subtabMotionTimerRef.current);
+    if (focusPulseTimerRef.current) window.clearTimeout(focusPulseTimerRef.current);
+  }, []);
   const [showThemePicker, setShowThemePickerState] = useState(false);
   const showThemePickerRef = useRef(false);
   const setShowThemePicker = (value) => {
@@ -181,6 +236,7 @@ export default function App() {
     gameCollections, setGameCollections, gameCollectionsRef,
     gameMemberships, setGameMemberships, gameMembershipsRef,
   } = useCollections();
+  const audioProfileRef = useRef(AUDIO_PROFILES.standard);
   const {
     customSources,
     setCustomSources,
@@ -188,7 +244,7 @@ export default function App() {
     customFolders,
     setCustomFolders,
   } = useCustomSources();
-  const { playSound, playSoundAlt, playSoundGameStart, playAppLoadedSound } = useAudioFeedback();
+  const { playSound, playSoundAlt, playSoundGameStart, playAppLoadedSound } = useAudioFeedback(audioProfileRef);
   const {
     gameArt,
     setGameArt,
@@ -327,6 +383,9 @@ export default function App() {
     resolvedTheme,
     appearanceGroupRef,
     setAppearanceGroup,
+    settingsTransitioningRef,
+    onTabMotionDirection: setTabMotionDirection,
+    onSubtabMotionDirection: setSubtabMotionDirection,
     appsRef,
     allAppsRef,
     recentRef,
@@ -419,6 +478,14 @@ export default function App() {
   const surfaceStyle = (THEME_LOCKED_SETTINGS[resolvedTheme]?.surface_style ?? settings.surface_style) ?? "glass";
   const glassEnabled = surfaceStyle !== "clear";
   const isMaterial = surfaceStyle === "material";
+  const motionProfile =
+    surfaceStyle === "win9x" || resolvedTheme === "webcore" ? "instant" :
+    surfaceStyle === "material" ? "crisp" :
+    resolvedTheme === "synthwave" ? "playful" :
+    "standard";
+  useEffect(() => {
+    audioProfileRef.current = resolveAudioProfile(resolvedTheme, surfaceStyle);
+  }, [resolvedTheme, surfaceStyle]);
   const appPaused = !!launchingApp || !windowFocused;
   const { runningIds, isRunning, refreshRunning, gracefulClose, forceClose } = useRunningApps(appPaused);
   runningIdsRef.current = runningIds;
@@ -522,6 +589,46 @@ export default function App() {
     }
     if (outerRef.current) outerRef.current.scrollTop = 0;
   }, [settingsFocusIndex, settingsSection, tab, settings.ui_scale]);
+
+  useEffect(() => {
+    if (resolvedTheme === "onyx" || settings.ui_motion === false || navRepeatingRef.current) return;
+    let target = null;
+    if (tab === "Settings") {
+      target = settingsFocusedRef.current;
+    } else if (focusSection === "subtabs") {
+      target = document.querySelector(`[data-section-tab-index="${subtabFocusIndex}"]`);
+    } else {
+      target = focusedCardRef.current || focusedRowRef.current;
+    }
+    if (!(target instanceof HTMLElement)) return;
+    if (focusPulseNodeRef.current && focusPulseNodeRef.current !== target) {
+      focusPulseNodeRef.current.classList.remove("lo-anim-pulse");
+    }
+    target.classList.remove("lo-anim-pulse");
+    // Restart the pulse when focus moves to a node that was already mounted.
+    void target.offsetWidth;
+    target.classList.add("lo-anim-pulse");
+    focusPulseNodeRef.current = target;
+    if (focusPulseTimerRef.current) window.clearTimeout(focusPulseTimerRef.current);
+    focusPulseTimerRef.current = window.setTimeout(() => {
+      target.classList.remove("lo-anim-pulse");
+      if (focusPulseNodeRef.current === target) focusPulseNodeRef.current = null;
+    }, 440);
+  }, [
+    tab,
+    focusSection,
+    focusIndex,
+    settingsFocusIndex,
+    settingsSection,
+    appearanceGroupState,
+    subtabFocusIndex,
+    homeColFocusRow,
+    homeColFocusCol,
+    gameSourceTab,
+    appCollectionTab,
+    resolvedTheme,
+    settings.ui_motion,
+  ]);
 
   // Load recategorization overrides on mount (used to offer "Reset to detected category").
   useEffect(() => {
@@ -886,7 +993,7 @@ export default function App() {
     const gameCol = gameCollections.find(c => c.name === gameSourceTab);
     if (gameCol) return (gameMemberships[a.id] || []).includes(gameCol.id);
     return true;
-  }), [apps, customSources, gameCollections, gameMemberships, gameSourceTab]);
+  }).sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })), [apps, customSources, gameCollections, gameMemberships, gameSourceTab]);
   const libraryAppsFilteredApps = useMemo(() => apps.filter((a) => {
     if (a.app_type !== "app") return false;
     if (appCollectionTab === "All") return true;
@@ -1386,14 +1493,19 @@ export default function App() {
     if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "auto" });
   };
 
-  const SettingsScreenWrapper = () => (
+  const SettingsScreenWrapper = ({
+    section = settingsSection,
+    appearanceGroup = appearanceGroupState,
+    focusIndexOverride = settingsFocusIndex,
+    focusedRef = settingsFocusedRef,
+  } = {}) => (
     <SettingsScreen
-      settingsFocusIndex={settingsFocusIndex}
-      settingsSection={settingsSection}
-      appearanceGroup={appearanceGroupState}
+      settingsFocusIndex={focusIndexOverride}
+      settingsSection={section}
+      appearanceGroup={appearanceGroup}
       onEnterAppearanceCategory={enterAppearanceCategory}
       onExitAppearanceCategory={exitAppearanceCategory}
-      settingsFocusedRef={settingsFocusedRef}
+      settingsFocusedRef={focusedRef}
       settingsBottomRef={settingsBottomRef}
       customFolders={customFolders}
       onOpenFolderManager={() => { setShowFolderManager(true); showFolderManagerRef.current = true; }}
@@ -1441,11 +1553,14 @@ export default function App() {
     : tab === "Apps"    ? _hdrAppCols.indexOf(appCollectionTab)
     : tab === "Settings" ? settingsSection : 0;
   const headerOnSelect = (i) => {
+    if (i !== headerActiveIndex) {
+      setSubtabMotionDirection(i < headerActiveIndex ? "back" : "forward");
+    }
     if (tab === "Games") { const src = _hdrSources[i]; setGameSourceTab(src); gameSourceTabRef.current = src; }
     else if (tab === "Apps") { const col = _hdrAppCols[i]; setAppCollectionTab(col); appCollectionTabRef.current = col; }
     else if (tab === "Settings") {
       setSettingsSection(i); settingsSectionRef.current = i;
-      setAppearanceGroup(null);
+      setAppearanceGroup(null, { animate: false });
       setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
       if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -1454,9 +1569,9 @@ export default function App() {
 
   // ── Header right actions (Manage button inline with subtab pills) ─
   const _hdrManageIdx = tab === "Games" ? _hdrSources.length : _hdrAppCols.length;
-  // Spotify chip for mouse users on Home/Settings; Games/Apps keep their
-  // header clean (gamepad users hold MENU anywhere, mouse users have the pill).
-  const spotifyHeaderBtn = spotify.status.connected && tab !== "Games" && tab !== "Apps" ? (
+  // Spotify chip for mouse users on Home only; other tabs keep their header
+  // clean (gamepad users hold MENU anywhere, mouse users have the pill).
+  const spotifyHeaderBtn = spotify.status.connected && tab === "Home" ? (
     <button
       type="button"
       onClick={() => setShowSpotifyOverlay(true)}
@@ -1586,6 +1701,12 @@ export default function App() {
   const tabPaneStyle = (active) => active
     ? { position: "absolute", inset: 0, zIndex: 2 }
     : { position: "absolute", inset: 0, zIndex: 2, contentVisibility: "hidden", pointerEvents: "none" };
+  const tabMotionClass = tabMotion === "back" ? "lo-anim-tab-rev" : "lo-anim-tab";
+  const subtabMotionClass = subtabMotion === "back" ? "lo-anim-tab-rev" : "lo-anim-tab";
+  const libraryMotionClass = subtabMotionActive ? subtabMotionClass : tabMotionActive ? tabMotionClass : undefined;
+  const settingsDrillClass = settingsDrillMotion === "pop" ? "lo-anim-pop-in" : "lo-anim-push-in";
+  const settingsMotionClass = subtabMotionActive ? subtabMotionClass : settingsDrillActive ? settingsDrillClass : tabMotionActive ? tabMotionClass : undefined;
+  const settingsPanelKey = `settings-${settingsSection}-${appearanceGroupState ?? "root"}`;
   const spotifyHasTrack = spotify.status.connected && !!spotify.track;
   const immersiveHomeSpotifyChipActive =
     tab === "Home" &&
@@ -1618,11 +1739,11 @@ export default function App() {
     <ThemeProvider value={themeValue}>
     <SettingsProvider value={settingsValue}>
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
-    <div data-theme={resolvedTheme} data-effects={settings.stars_enabled === false ? "static" : "animated"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
+    <div data-theme={resolvedTheme} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} data-effects={settings.stars_enabled === false ? "static" : "animated"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, "--accent-pulse": `${accent.glow}0.22)`, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
 
       <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} />
       <AppOverlays>
-      {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={closeLaunchOverlay} />}
+      {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={closeLaunchOverlay} onSuccess={playAppLoadedSound} />}
       {closeRequest && (
         <ConfirmModal
           message={closeRequest.force
@@ -2144,8 +2265,10 @@ export default function App() {
         <div style={{ position: "relative", flex: 1, overflow: (!(settings.topbar_background ?? true) && tab === "Home") || ((settings.cinematic_home || settings.home_mode === "semi") && tab === "Home") ? "auto" : "hidden" }}>
 
           {tab === "Settings" && (
-            <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
-              <SettingsScreenWrapper />
+            <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", zIndex: 2 }}>
+              <div key={settingsPanelKey} className={settingsMotionClass} style={{ position: "relative", minHeight: "100%", zIndex: 2 }}>
+                <SettingsScreenWrapper />
+              </div>
             </div>
           )}
           <HomeView
@@ -2217,10 +2340,10 @@ export default function App() {
             iconColors={iconColors}
             spotifyHeroChip={spotifyHeroChip}
           />
-          <div aria-hidden={tab !== "Games"} data-tab-pane="games" style={tabPaneStyle(tab === "Games")}>
+          <div aria-hidden={tab !== "Games"} data-tab-pane="games" className={tab === "Games" ? libraryMotionClass : undefined} style={tabPaneStyle(tab === "Games")}>
             <GamesView {...gamesLibraryViewProps} wideLayout={settings.wide_games} />
           </div>
-          <div aria-hidden={tab !== "Apps"} data-tab-pane="apps" style={tabPaneStyle(tab === "Apps")}>
+          <div aria-hidden={tab !== "Apps"} data-tab-pane="apps" className={tab === "Apps" ? libraryMotionClass : undefined} style={tabPaneStyle(tab === "Apps")}>
             <AppsView {...appsLibraryViewProps} wideLayout={settings.wide_apps} />
           </div>
         </div>
