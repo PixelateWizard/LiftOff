@@ -705,6 +705,11 @@ export function useGamepadNavigation(
       if (!col) return true;
       return (appMembershipsRef.current[a.id] || []).includes(col.id);
     });
+    // Match the alphabetical ordering the Games grid renders so focus index,
+    // launch, art picker, and context actions resolve to the visible card.
+    if (currentTab === "Games") {
+      fApps.sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
+    }
     const fRecent = rec.filter(a => {
       if (currentTab === "Home") {
         // Treat recents as absent when the section is hidden — prevents navigating into invisible UI
