@@ -3,7 +3,8 @@
 ## Unreleased
 
 ### Added
-- **Store source badges** - game cover cards now show a small optional monochrome Steam, Xbox, or Battle.net badge in the bottom-right corner across Games and Home card views. The new `show_store_badges` setting defaults on, persists across restart, and can be disabled from Appearance layout settings.
+- **GOG and Epic Games Store integrations** - installed GOG and Epic games now scan into their own Games source tabs, respect new default-on `scan_gog` and `scan_epic` Library settings, show store badges, and avoid being grouped under Other. GOG launches directly through its game executable, while Epic launches through the Epic Games Launcher protocol so auth/overlay setup stays launcher-owned.
+- **Store source badges** - game cover cards now show a small optional monochrome Steam, Xbox, Battle.net, GOG, or Epic badge in the bottom-right corner across Games and Home card views. The new `show_store_badges` setting defaults on, persists across restart, and can be disabled from Appearance layout settings.
 - **Motion language** - added shared motion tokens and primitives for directional tab entries, modal rise/fade, settings drill push/pop entry, launch overlay timing, and a new UI Motion toggle. Motion profiles keep Win9X/Webcore instant and Material crisp while preserving the Home hero warm-mount path.
 - **Motion surface coverage** - Settings drill-ins now cross-slide with both outgoing and incoming panels, card action surfaces use a scale-in drill motion, standalone file/art picker overlays share modal fade/rise, and focused cards/rows/section tabs get a subtle non-repeat pulse that skips Onyx.
 - **Theme-aware UI audio** - navigation and launch sounds now route through per-theme audio profiles, subtly shaping pitch, tone, and gain for Material, Synthwave/Cyberpunk, Win9X/Webcore, Forest/Lo-fi/Wash, and standard themes without changing the existing sound call sites.
@@ -33,6 +34,7 @@
 - **Framed content removal** - removed the experimental Framed Content setting and wrapper, returning Games, Apps, and Settings to their normal full content layout.
 
 ### Fixed
+- **Epic game launch dispatch** - Epic Games Store titles now open through Epic's registered URL protocol handler instead of passing the protocol URL to File Explorer, preventing Documents from opening and preventing the Epic launcher window from being mistaken for the game.
 - **Glass motion compositing polish** - tab and subtab slides now move with transform-only motion instead of fading the whole glass card tree, and Settings drill-in no longer keeps a ghosted copy of the previous menu on screen during the transition.
 - **Focused app-card surface flicker** - focus pulse now draws through an overlay ring instead of animating the card or row's own `box-shadow`, preventing glassy app cards from briefly looking transparent before their glass background settles.
 - **Subtab switch motion** - Games source tabs, Apps collection tabs, and Settings section tabs now use the same directional slide language as main tab changes for header clicks and controller navigation. Settings section switches also clear Appearance drill-in state without replaying the drill push/pop animation.

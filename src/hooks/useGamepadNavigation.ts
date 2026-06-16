@@ -670,6 +670,8 @@ export function useGamepadNavigation(
       && app.source !== "steam"
       && app.source !== "xbox"
       && app.source !== "battlenet"
+      && app.source !== "gog"
+      && app.source !== "epic"
       && !customSourcesRef.current.includes(app.source);
     const getGameSourceTabs = () => {
       const hasSource = (source: string) => appsRef.current.some(a => a.app_type === "game" && a.source === source);
@@ -678,6 +680,8 @@ export function useGamepadNavigation(
         ...(currentSettings.scan_steam !== false && hasSource("steam") ? ["Steam"] : []),
         ...(currentSettings.scan_xbox !== false && hasSource("xbox") ? ["Xbox"] : []),
         ...(currentSettings.scan_battlenet !== false && hasSource("battlenet") ? ["Battle.net"] : []),
+        ...(currentSettings.scan_gog !== false && hasSource("gog") ? ["GOG"] : []),
+        ...(currentSettings.scan_epic !== false && hasSource("epic") ? ["Epic"] : []),
         ...(appsRef.current.some(isOtherGameSource) ? ["Other"] : []),
         ...customSourcesRef.current,
         ...gameCollectionsRef.current.map(c => c.name),
@@ -692,6 +696,8 @@ export function useGamepadNavigation(
         if (src === "Steam") return a.source === "steam";
         if (src === "Xbox")  return a.source === "xbox";
         if (src === "Battle.net")  return a.source === "battlenet";
+        if (src === "GOG")  return a.source === "gog";
+        if (src === "Epic") return a.source === "epic";
         if (src === "Other") return isOtherGameSource(a);
         if (customSourcesRef.current.includes(src)) return a.source === src;
         const gameCol = gameCollectionsRef.current.find(c => c.name === src);

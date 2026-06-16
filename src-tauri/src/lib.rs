@@ -125,6 +125,10 @@ pub struct Settings {
     pub scan_uwp: bool,
     pub scan_desktop: bool,
     pub scan_battlenet: bool,
+    #[serde(default = "default_true")]
+    pub scan_gog: bool,
+    #[serde(default = "default_true")]
+    pub scan_epic: bool,
     pub repeat_speed: String,
     pub launch_at_startup: bool,
     #[serde(deserialize_with = "deser_animated_heroes", default = "default_animated_heroes")]
@@ -278,6 +282,8 @@ impl Default for Settings {
             scan_uwp: true,
             scan_desktop: true,
             scan_battlenet: true,
+            scan_gog: true,
+            scan_epic: true,
             repeat_speed: "normal".to_string(),
             launch_at_startup: false,
             animated_heroes: "animated".to_string(),
@@ -2183,6 +2189,135 @@ fn scan_battlenet_games() -> Vec<AppEntry> {
     games
 }
 
+fn scan_gog_games() -> Vec<AppEntry> {
+    let output = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", r#"
+            $roots = @("HKLM:\SOFTWARE\WOW6432Node\GOG.com\Games", "HKLM:\SOFTWARE\GOG.com\Games")
+            foreach ($root in $roots) {
+                if (-not (Test-Path $root)) { continue }
+                Get-ChildItem $root -ErrorAction SilentlyContinue | ForEach-Object {
+                    $p = Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue
+                    $name    = $p.gameName
+                    $path    = $p.path
+                    $exe     = $p.exe
+                    $depends = $p.dependsOn
+                    if (-not $name -or -not $path) { return }
+                    Write-Output ("{0}`t{1}`t{2}`t{3}" -f $name, $path, $exe, $depends)
+                }
+            }
+        "#])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output();
+    let output = match output { Ok(o) => o, Err(_) => return vec![] };
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut games = Vec::new();
+    let mut seen_exe = std::collections::HashSet::new();
+
+    for line in stdout.lines() {
+        let parts: Vec<&str> = line.splitn(4, '\t').collect();
+        if parts.len() < 2 { continue; }
+
+        let name = parts[0].trim().to_string();
+        let install_dir = parts[1].trim();
+        let exe = parts.get(2).map(|s| s.trim()).unwrap_or("");
+        let depends = parts.get(3).map(|s| s.trim()).unwrap_or("");
+        if name.is_empty() || install_dir.is_empty() || !depends.is_empty() { continue; }
+
+        let exe_path = if exe.is_empty() {
+            None
+        } else {
+            let raw = Path::new(exe);
+            let candidate = if raw.is_absolute() { raw.to_path_buf() } else { Path::new(install_dir).join(raw) };
+            if candidate.exists() { Some(candidate.to_string_lossy().to_string()) } else { None }
+        };
+        let launch_path = exe_path
+            .or_else(|| find_main_exe_in_dir(install_dir))
+            .unwrap_or_default();
+        if launch_path.is_empty() { continue; }
+
+        if !seen_exe.insert(launch_path.to_lowercase()) { continue; }
+
+        let icon = extract_icon_base64(&launch_path);
+        let id = format!("gog:{}", name.to_lowercase().replace(' ', "_").replace([':', '\'', '"'], ""));
+        games.push(AppEntry {
+            id,
+            name,
+            icon_base64: icon,
+            launch_path,
+            app_type: "game".to_string(),
+            source: "gog".to_string(),
+        });
+    }
+
+    games
+}
+
+#[derive(Deserialize)]
+struct EpicManifest {
+    #[serde(rename = "DisplayName")]
+    display_name: Option<String>,
+    #[serde(rename = "InstallLocation")]
+    install_location: Option<String>,
+    #[serde(rename = "LaunchExecutable")]
+    launch_executable: Option<String>,
+    #[serde(rename = "AppName")]
+    app_name: Option<String>,
+    #[serde(rename = "MainGameAppName")]
+    main_game_app_name: Option<String>,
+    #[serde(rename = "bIsApplication")]
+    is_application: Option<bool>,
+}
+
+fn scan_epic_games() -> Vec<AppEntry> {
+    let program_data = std::env::var("PROGRAMDATA").unwrap_or_else(|_| "C:\\ProgramData".to_string());
+    let manifest_dir = Path::new(&program_data)
+        .join("Epic")
+        .join("EpicGamesLauncher")
+        .join("Data")
+        .join("Manifests");
+    let entries = match std::fs::read_dir(&manifest_dir) { Ok(e) => e, Err(_) => return vec![] };
+
+    let mut games = Vec::new();
+    let mut seen_ids = std::collections::HashSet::new();
+
+    for entry in entries.flatten() {
+        let p = entry.path();
+        if p.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase() != "item" { continue; }
+
+        let data = match std::fs::read_to_string(&p) { Ok(d) => d, Err(_) => continue };
+        let manifest: EpicManifest = match serde_json::from_str(&data) { Ok(m) => m, Err(_) => continue };
+
+        let name = manifest.display_name.unwrap_or_default();
+        let install = manifest.install_location.unwrap_or_default();
+        let exe_rel = manifest.launch_executable.unwrap_or_default();
+        let app_id = manifest.app_name.unwrap_or_default();
+        if name.is_empty() || install.is_empty() || exe_rel.is_empty() || app_id.is_empty() { continue; }
+        if manifest.is_application == Some(false) { continue; }
+        if let Some(main) = &manifest.main_game_app_name {
+            if !main.is_empty() && *main != app_id { continue; }
+        }
+
+        let exe_rel_path = Path::new(&exe_rel);
+        let exe_full = if exe_rel_path.is_absolute() { exe_rel_path.to_path_buf() } else { Path::new(&install).join(exe_rel_path) };
+        if !exe_full.exists() { continue; }
+        if !seen_ids.insert(app_id.to_lowercase()) { continue; }
+
+        let launch_path = format!("com.epicgames.launcher://apps/{}?action=launch&silent=true", app_id);
+        let icon = extract_icon_base64(&exe_full.to_string_lossy());
+        let id = format!("epic:{}", app_id.to_lowercase());
+        games.push(AppEntry {
+            id,
+            name,
+            icon_base64: icon,
+            launch_path,
+            app_type: "game".to_string(),
+            source: "epic".to_string(),
+        });
+    }
+
+    games
+}
+
 fn find_main_exe_in_dir(dir: &str) -> Option<String> {
     let path = Path::new(dir);
     let skip = ["unins", "crash", "update", "error", "report", "helper", "agent", "redist", "setup", "install", "vcredist"];
@@ -2366,6 +2501,12 @@ fn get_apps() -> Vec<AppEntry> {
     if settings.scan_battlenet {
         apps.extend(scan_battlenet_games());
     }
+    if settings.scan_gog {
+        apps.extend(scan_gog_games());
+    }
+    if settings.scan_epic {
+        apps.extend(scan_epic_games());
+    }
 
     let mut seen = std::collections::HashSet::new();
     // Use the ID for de-duplication instead of just the name to be safer
@@ -2434,6 +2575,12 @@ fn get_all_apps() -> Vec<AppEntry> {
 
     if settings.scan_battlenet {
         apps.extend(scan_battlenet_games());
+    }
+    if settings.scan_gog {
+        apps.extend(scan_gog_games());
+    }
+    if settings.scan_epic {
+        apps.extend(scan_epic_games());
     }
 
     // Deduplicate only — no hidden filter
@@ -2773,7 +2920,7 @@ fn match_launch_window_score(
     source: &str,
 ) -> u32 {
     let source_lower = source.to_lowercase();
-    let is_launcher_source = ["steam", "xbox", "uwp", "battle.net", "battlenet"]
+    let is_launcher_source = ["steam", "xbox", "uwp", "battle.net", "battlenet", "epic"]
         .iter()
         .any(|s| source_lower.contains(s));
     if is_launcher_source && is_launcher_exe(&candidate.exe_path) {
@@ -2814,7 +2961,7 @@ fn match_launch_window_score(
         }
     }
 
-    if score == 0 && ["steam", "xbox", "uwp", "battle.net", "battlenet"]
+    if score == 0 && ["steam", "xbox", "uwp", "battle.net", "battlenet", "epic"]
         .iter()
         .any(|s| source_lower.contains(s))
     {
@@ -3119,6 +3266,27 @@ async fn launch_app(
             .creation_flags(CREATE_NO_WINDOW)
             .spawn()
             .map_err(|e| e.to_string())?;
+        child_pid = 0;
+    } else if path.starts_with("com.epicgames.launcher://") {
+        // Epic's registered URL protocol must be opened through ShellExecute.
+        // Passing it to explorer.exe can open a File Explorer window instead,
+        // which then looks like a false launch window.
+        unsafe {
+            let op:   Vec<u16> = std::ffi::OsStr::new("open").encode_wide().chain(std::iter::once(0)).collect();
+            let file: Vec<u16> = std::ffi::OsStr::new(&path).encode_wide().chain(std::iter::once(0)).collect();
+            let result = ShellExecuteW(
+                windows::Win32::Foundation::HWND::default(),
+                windows::core::PCWSTR(op.as_ptr()),
+                windows::core::PCWSTR(file.as_ptr()),
+                windows::core::PCWSTR::null(),
+                windows::core::PCWSTR::null(),
+                SW_SHOWNORMAL,
+            );
+            let result_code = result.0 as isize;
+            if result_code <= 32 {
+                return Err(format!("Epic protocol launch failed with ShellExecute code {}", result_code));
+            }
+        }
         child_pid = 0;
     } else if path.starts_with("shell:") {
         // shell:AppsFolder\{aumid} — UWP / Xbox Game Pass titles.

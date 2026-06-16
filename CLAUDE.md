@@ -3,14 +3,26 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Restore splash-finished sound while keeping launch sounds separate.
+**Task:** Fix Epic Games Store launch dispatch.
 
 **Scope:**
-- Restore the LiftOff startup/splash-finished cue to the supplied `achievement-sparkle` file.
-- Keep the fantasy world UI sound for game/app launch attempts.
-- Keep the Feraly pause/interface sound for confirmed game/app launch success.
-- Keep Settings attributions aligned with the active audio assets.
-- Update `CLAUDE.md`/`CHANGELOG.md` after validation.
+- Preserve the working GOG scan/launch path.
+- Fix Epic launches opening File Explorer instead of handing the protocol to Epic Games Launcher.
+- Prevent the accidental Explorer window from being treated as a successful game launch.
+- Validate with the usual build/check gates and update `CLAUDE.md`/`CHANGELOG.md` after validation.
+
+**Completed (this session - Epic launch dispatch fix):**
+- Changed Epic protocol launches from `explorer.exe` dispatch to `ShellExecuteW("open")`, matching the registered `com.epicgames.launcher` URL handler instead of opening File Explorer.
+- Added `epic` to the launcher-owned source matching rules so Epic Games Launcher windows are ignored when deciding whether a game window is actually running/focusable.
+- Verified the local protocol registration points to `EpicGamesLauncher.exe`.
+- Validated with `cargo check`; only the existing unused Rust helper warning remains.
+
+**Completed (this session - GOG and Epic store integrations):**
+- Added GOG registry scanning and Epic `.item` manifest scanning with DLC/stale-manifest/duplicate guards, default-on `scan_gog` and `scan_epic` settings, and GOG/Epic scan assembly in both `get_apps` and `get_all_apps`.
+- Routed Epic protocol launches through the Epic Games Launcher registered URL handler; GOG games use direct executable launches and the existing direct-game window watcher.
+- Added GOG/Epic source tabs, LT/RT gamepad navigation support, built-in source bookkeeping, Settings toggles, EN/FR locale labels, and monochrome store badges.
+- Read-only local verification found one GOG registry game (`Aisle Survive Demo`) and one Epic manifest game (`The Ouroboros King`) with its executable present. Actual launch testing still needs a manual device check.
+- Validated with `cargo check`, `npm run build`, and `git diff --check`; only the existing unused Rust helper, chunk-size, and CRLF warnings remain.
 
 **Completed (this session - splash finished sound restore):**
 - Restored `appLoadedSound.wav` to the supplied DriftSpeira `achievement-sparkle` file so LiftOff's splash-finished cue uses the original liked sound again.
@@ -474,7 +486,7 @@ All animated theme backgrounds live in `src/components/backgrounds/` and are bar
 **Key data structures:**
 - `AppEntry` — `{ id, name, icon_base64, launch_path, app_type, source }`
   - `app_type`: `"game"` | `"app"`
-  - `source`: `"steam"` | `"xbox"` | `"uwp"` | `"desktop"` | `"battlenet"`
+  - `source`: `"steam"` | `"xbox"` | `"uwp"` | `"desktop"` | `"battlenet"` | `"gog"` | `"epic"`
 - `RecentEntry` — `{ id, name, launch_path, app_type, launched_at }` (no icon — look up via `allAppsRef` in frontend)
 - `BatteryInfo` — `{ percent: u32, charging: bool }`
 - `Settings` — accent/theme/background fields; scan toggles; launch/default-tab/repeat behavior; `animated_heroes` (`"static"` | `"animated"` | `"custom"`); `ui_scale` (Option<f32> in Rust; frontend fills auto-detected value); localization/time/status display fields; granular layout fields (`wide_layout`, `wide_topbar`, `wide_games`, `wide_apps`, `wide_settings`, `wide_bottombar`); Home fields (`home_mode`, `show_home_recents`, `show_recent_games_only`, `home_section_title_size`, `home_pinned_pos`, hero/collection/cover toggles); card scale/list fields (`home_cover_scale`, `game_cover_scale`, `app_cover_scale`, `app_list_view`, `app_list_cols`); bar/tab fields (`topbar_background`, `bottombar_background`, `hide_bottom_bar`, `nav_bumpers_pos`, `tabbar_show_buttons`, `tabbar_text_tabs`, `tabbar_with_background`, `tabbar_background_compact`, `tabbar_font_weight`, `tabbar_icon_mode`, `tabbar_label_case`, `bottombar_alignment`, `bottombar_compact`); Onyx fields (`onyx_top_light`, `onyx_flat_settings`); gamepad icon fields; `surface_style`.
@@ -522,11 +534,12 @@ All animated theme backgrounds live in `src/components/backgrounds/` and are bar
 **Launch path handling (`launch_app`):**
 Priority order of `else if` branches:
 1. `bnet-exec:` prefix → `Command::new(exe).arg("--exec=launch CODE")` + `CREATE_NO_WINDOW`; `child_pid = 0`
-2. `steam://` prefix → `cmd /C start steam://...`; `child_pid = 0`
-3. `shell:` prefix → `cmd /C start "" "shell:..."` (UWP/Xbox); `child_pid = 0`
-4. `.lnk` extension → `ShellExecuteW("open", path)` — lets Windows resolve the shortcut natively including embedded arguments (e.g. Discord's `Update.exe --processStart Discord.exe`). **Do NOT use `cmd /C start` for .lnk — it drops shortcut arguments.**; `child_pid = 0`
-5. `://` anywhere → `ShellExecuteW("open", path)` for other URI schemes; `child_pid = 0`
-6. Otherwise → direct `Command::new(&path)` + `CREATE_NO_WINDOW`; `child_pid = child.id()`
+2. `steam://` prefix → `explorer.exe steam://...` at medium integrity; `child_pid = 0`
+3. `com.epicgames.launcher://` prefix → `ShellExecuteW("open", path)` through Epic's registered URL handler; `child_pid = 0`
+4. `shell:` prefix → `cmd /C start "" "shell:..."` (UWP/Xbox); `child_pid = 0`
+5. `.lnk` extension → `ShellExecuteW("open", path)` — lets Windows resolve the shortcut natively including embedded arguments (e.g. Discord's `Update.exe --processStart Discord.exe`). **Do NOT use `cmd /C start` for .lnk — it drops shortcut arguments.**; `child_pid = 0`
+6. `://` anywhere → `ShellExecuteW("open", path)` for other URI schemes; `child_pid = 0`
+7. Otherwise → direct `Command::new(&path)` + `CREATE_NO_WINDOW`; `child_pid = child.id()`
 
 **Launch window detection (`launch_app`):**
 - On every launch, `snapshot_visible_windows()` records existing top-level visible windows via `EnumWindows` before the spawn.
@@ -538,7 +551,7 @@ Priority order of `else if` branches:
 
 **Important implementation notes:**
 - All `Command::new` spawns use `CREATE_NO_WINDOW` (`0x08000000`) flag — critical to prevent console flashes
-- URI launches (anything containing `://`) use `ShellExecuteW` with the `"open"` verb — avoids `cmd /C start` mis-parsing `//` in protocol URLs
+- URI launches (anything containing `://`) use an explicit Steam branch or `ShellExecuteW` with the `"open"` verb for registered protocol handlers such as Epic — avoids `cmd /C start` mis-parsing `//` in protocol URLs
 - `.lnk` shortcuts use `ShellExecuteW` (not `cmd /C start`) — shortcuts can embed arguments in their target (e.g. Discord), which `cmd /C start` drops
 - UWP icons extracted from disk PNG assets (not `SHGetFileInfoW` which doesn't work for UWP)
 - Xbox Game Pass games identified by `MicrosoftGame.config` presence or `app_id == "Game"`
@@ -555,7 +568,19 @@ Priority order of `else if` branches:
 - `launch_path` = result of `find_main_exe_in_dir(install_location)`, falling back to `battlenet://{uid}` if no exe found
 - `find_main_exe_in_dir` skips exes containing: `unins`, `crash`, `update`, `error`, `report`, `helper`, `agent`, `redist`, `setup`, `install`, `vcredist`; prefers exes with "launcher" in the name, then shortest name
 - IDs formatted as `battlenet:{name_slug}`
-- `source: "battlenet"` — shows in "Bnet" subtab and "All" on Games tab; excluded from "Other"
+- `source: "battlenet"` — shows in "Battle.net" subtab and "All" on Games tab; excluded from "Other"
+
+**GOG scanning (`scan_gog_games`):**
+- Scans `HKLM:\SOFTWARE\WOW6432Node\GOG.com\Games` and `HKLM:\SOFTWARE\GOG.com\Games` for installed game keys.
+- Uses `gameName`, `path`, `exe`, and `dependsOn`; entries with `dependsOn` are treated as DLC/expansion records and skipped.
+- Launches via the registry `exe` when it exists, falling back to `find_main_exe_in_dir(path)`. Duplicate entries resolving to the same executable are collapsed.
+- `source: "gog"` — shows in the "GOG" subtab and "All" on Games tab; excluded from "Other".
+
+**Epic scanning (`scan_epic_games`):**
+- Reads `.item` JSON manifests from `%PROGRAMDATA%\Epic\EpicGamesLauncher\Data\Manifests`.
+- Requires `DisplayName`, `InstallLocation`, `LaunchExecutable`, `AppName`, `bIsApplication != false`, base-game `MainGameAppName` when present, and an executable that still exists on disk.
+- Launches through `com.epicgames.launcher://apps/{AppName}?action=launch&silent=true` via `ShellExecuteW("open")` so Epic handles auth, overlays, and anti-cheat setup.
+- `source: "epic"` — shows in the "Epic" subtab and "All" on Games tab; excluded from "Other".
 
 **Icon extraction (`extract_icon_base64`):**
 - **Approach:** `SHGetFileInfoW` → `HICON` (try **`SHGFI_JUMBOICON`** first, then fall back to **`SHGFI_LARGEICON`**), then **`DrawIconEx`** onto a square DIB, then **`GetDIBits`** from that bitmap, BGRA→RGBA swap, **`lodepng::encode32`**.
@@ -946,7 +971,7 @@ Enabled via `settings.show_home_collections`. Renders game and app collections a
 - **In-app browser** — lightweight browser overlay for game wikis, store pages, etc.
 - **More customization options** — additional accent colors, layout options, font sizes
 - **System settings controls** — display brightness, volume, Wi-Fi and Bluetooth toggles from within the app
-- **Additional game libraries** — GOG, Epic Games, and other launcher integrations
+- **Additional game libraries** — Ubisoft Connect and other launcher integrations
 
 ---
 
@@ -988,8 +1013,10 @@ Notable merged PRs from Moi that affect current architecture and settings:
 
 ## Known Good State
 
-- App scanning: Steam (non-default paths via registry), Xbox/Game Pass, UWP Store apps (including system apps like Windows Settings), Desktop shortcuts, Battle.net games
-- Battle.net: scans Uninstall registry for Blizzard games; launches via game's own Launcher.exe (same as Start Menu); Bnet subtab + scan_battlenet toggle
+- App scanning: Steam (non-default paths via registry), Xbox/Game Pass, UWP Store apps (including system apps like Windows Settings), Desktop shortcuts, Battle.net games, GOG games, and Epic Games Store games
+- Battle.net: scans Uninstall registry for Blizzard games; launches via game's own Launcher.exe (same as Start Menu); Battle.net subtab + scan_battlenet toggle
+- GOG: scans GOG registry game keys, skips `dependsOn` DLC records, dedupes by resolved executable, launches the game executable directly, and uses the GOG source tab + `scan_gog` toggle
+- Epic: scans Epic `.item` manifests, skips stale/non-application/add-on manifests, launches through the Epic launcher protocol, and uses the Epic source tab + `scan_epic` toggle
 - `find_main_exe_in_dir` skips utility exes (error, report, helper, agent, etc.); prefers "launcher"-named exes
 - `.lnk` shortcuts launch via `ShellExecuteW("open")` — correctly passes embedded shortcut arguments (e.g. Discord's `Update.exe --processStart Discord.exe`); `cmd /C start` was dropping these arguments
 - URI launches (`://`) use `ShellExecuteW` — reliable for all protocol handlers
@@ -1015,9 +1042,9 @@ Notable merged PRs from Moi that affect current architecture and settings:
 - `getBestGamepad()` skips non-controller HID devices (headset adapters, audio dongles) with <4 buttons
 - Non-standard controller D-pad via hat-switch axes[6]/axes[7] fallback in `readGpState`
 - Tab switching lands on first pinned item or first grid item
-- Source sub-tabs on Games tab (All/Steam/Xbox/Bnet/Other) via LT/RT or d-pad
+- Source sub-tabs on Games tab (All/Steam/Xbox/Battle.net/GOG/Epic/Other) via LT/RT or d-pad
 - Unified Manage modal with full gamepad nav, input isolation, bleed prevention
-- Settings: accent colors (WCAG-compliant in light mode for neon), theme, scan toggles (incl. Battle.net), startup, repeat speed, controller test, Discord link, Hero Art Mode cycle (static/animated/custom), update channel cycle (Stable/Alpha-Beta), UI scale slider
+- Settings: accent colors (WCAG-compliant in light mode for neon), theme, scan toggles (incl. Battle.net, GOG, and Epic), startup, repeat speed, controller test, Discord link, Hero Art Mode cycle (static/animated/custom), update channel cycle (Stable/Alpha-Beta), UI scale slider
 - Themes: Space/Sky/Plasma/Cinder/Wash are animated environments separate from Surface Style. Theme selection applies a default surface, but users can manually override Surface Style afterward.
 - Wash theme: liquid tie-dye / marble-ink background built from layered radial pigment pools. Main blobs use SVG `wash-edge` / `wash-flow` filters for organic displacement; soft perimeter fills intentionally avoid SVG filters for performance. Keep future Wash additions mindful of full-screen animated SVG filter cost in WebView2.
 - UI Scale: auto-detected from screen resolution on first launch; `transform: scale()` on root; "Reset Scale to Auto" in Settings

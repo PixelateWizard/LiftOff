@@ -186,6 +186,8 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "scan_uwp",       section: 1, label: t("settings.scanStoreApps"), type: "toggle" },
     { key: "scan_desktop",   section: 1, label: t("settings.scanDesktop"),   type: "toggle" },
     { key: "scan_battlenet", section: 1, label: t("settings.scanBattlenet"), type: "toggle" },
+    { key: "scan_gog",       section: 1, label: t("settings.scanGog"),       type: "toggle" },
+    { key: "scan_epic",      section: 1, label: t("settings.scanEpic"),      type: "toggle" },
 
     D("customFolders", 1),
     { key: "custom_folders",  section: 1, label: t("settings.customFolders"),  type: "custom_folders" },

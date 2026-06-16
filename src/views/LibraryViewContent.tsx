@@ -69,7 +69,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
   const isPixel = surfaceStyle === "win9x";
   const isOnyx = resolvedTheme === "onyx";
 
-              const SOURCES = gameSourceTabs ?? ["All", "Steam", "Xbox", "Battle.net", "Other", ...customSources, ...gameCollections.map(c => c.name)];
+              const SOURCES = gameSourceTabs ?? ["All", "Steam", "Xbox", "Battle.net", "GOG", "Epic", "Other", ...customSources, ...gameCollections.map(c => c.name)];
               const APP_COLS = ["All", ...appCollections.map(c => c.name)];
               const subtabItems = tab === "Games"
                 ? [...SOURCES, "manage"]

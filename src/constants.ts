@@ -139,12 +139,12 @@ export const KB_NUMS = [
   [";","'",",",".","!","@","#","$","%","^"],
 ];
 
-export const SCAN_KEYS = ["scan_steam", "scan_xbox", "scan_uwp", "scan_desktop", "scan_battlenet"] as const;
+export const SCAN_KEYS = ["scan_steam", "scan_xbox", "scan_uwp", "scan_desktop", "scan_battlenet", "scan_gog", "scan_epic"] as const;
 
 export const DEFAULT_SETTINGS = {
   accent: "ember", theme: "space", stars_enabled: true, ui_motion: true, lofi_music_enabled: true, wide_layout: false, wide_topbar: false, wide_bottombar: false, wide_games: false, wide_apps: false, wide_settings: false, topbar_background: true, bottombar_background: true, hide_bottom_bar: false,
   default_tab: "Home", scan_steam: true, scan_xbox: true,
-  scan_uwp: true, scan_desktop: true, scan_battlenet: true, repeat_speed: "normal",
+  scan_uwp: true, scan_desktop: true, scan_battlenet: true, scan_gog: true, scan_epic: true, repeat_speed: "normal",
   launch_at_startup: false, animated_heroes: "animated", update_channel: "stable", ui_scale: 1.0,
   language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, app_cover_scale: 1.0, show_store_badges: true, app_list_view: false, app_list_cols: 1, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false, home_mode: "normal", home_section_title_size: "small", show_home_recents: true, hero_content_pos: "bottom", show_immersive_hero_art: true,
   nav_bumpers_pos: "bottom",

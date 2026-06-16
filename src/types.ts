@@ -77,6 +77,8 @@ export interface Settings {
   scan_uwp: boolean;
   scan_desktop: boolean;
   scan_battlenet: boolean;
+  scan_gog: boolean;
+  scan_epic: boolean;
   repeat_speed: RepeatSpeed;
   launch_at_startup: boolean;
   animated_heroes: AnimatedHeroes;

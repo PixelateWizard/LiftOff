@@ -7,6 +7,7 @@ import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { IoMusicalNotesOutline } from "react-icons/io5";
 import { FaBattleNet, FaSteam, FaXbox } from "react-icons/fa6";
+import { SiEpicgames, SiGogdotcom } from "react-icons/si";
 import FileBrowser from "./components/FileBrowser";
 import GamepadKeyboard from "./components/GamepadKeyboard";
 import { GamepadBtn } from "./components/GamepadBtn";
@@ -73,12 +74,16 @@ const STORE_ICONS = {
   steam: FaSteam,
   xbox: FaXbox,
   battlenet: FaBattleNet,
+  gog: SiGogdotcom,
+  epic: SiEpicgames,
 };
 
 const STORE_LABELS = {
   steam: "Steam",
   xbox: "Xbox",
   battlenet: "Battle.net",
+  gog: "GOG",
+  epic: "Epic Games",
 };
 
 export default function App() {
@@ -994,6 +999,8 @@ export default function App() {
     && a.source !== "steam"
     && a.source !== "xbox"
     && a.source !== "battlenet"
+    && a.source !== "gog"
+    && a.source !== "epic"
     && !customSources.includes(a.source);
 
   const gamesFilteredApps = useMemo(() => apps.filter((a) => {
@@ -1001,6 +1008,8 @@ export default function App() {
     if (gameSourceTab === "Steam") return a.source === "steam";
     if (gameSourceTab === "Xbox")  return a.source === "xbox";
     if (gameSourceTab === "Battle.net")  return a.source === "battlenet";
+    if (gameSourceTab === "GOG")  return a.source === "gog";
+    if (gameSourceTab === "Epic") return a.source === "epic";
     if (gameSourceTab === "Other") return isOtherGameSource(a);
     if (customSources.includes(gameSourceTab)) return a.source === gameSourceTab;
     const gameCol = gameCollections.find(c => c.name === gameSourceTab);
@@ -1497,12 +1506,16 @@ export default function App() {
   const _showSteam     = settings.scan_steam     !== false && _hasSource("steam");
   const _showXbox      = settings.scan_xbox      !== false && _hasSource("xbox");
   const _showBattlenet = settings.scan_battlenet !== false && _hasSource("battlenet");
+  const _showGog       = settings.scan_gog       !== false && _hasSource("gog");
+  const _showEpic      = settings.scan_epic      !== false && _hasSource("epic");
   const _showOther     = apps.some(isOtherGameSource);
   const _hdrSources = [
     "All",
     ...(_showSteam     ? ["Steam"]      : []),
     ...(_showXbox      ? ["Xbox"]       : []),
     ...(_showBattlenet ? ["Battle.net"] : []),
+    ...(_showGog       ? ["GOG"]        : []),
+    ...(_showEpic      ? ["Epic"]       : []),
     ...(_showOther     ? ["Other"]      : []),
     ...customSources,
     ...gameCollections.map(c => c.name),
@@ -1969,7 +1982,7 @@ export default function App() {
 
             // Single entry: track custom source name unless it's a collection name
             if (isGameType && result.source) {
-              const BUILTIN = new Set(["Steam","Xbox","Battle.net","Other","steam","xbox","battlenet","desktop","uwp"]);
+              const BUILTIN = new Set(["Steam","Xbox","Battle.net","GOG","Epic","Other","steam","xbox","battlenet","gog","epic","desktop","uwp"]);
               const isColName = gameCollectionsRef.current.some(c => c.name === result.source);
               if (!BUILTIN.has(result.source) && !isColName) {
                 setCustomSources(prev => prev.includes(result.source) ? prev : [...prev, result.source]);
