@@ -3,13 +3,27 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Fix Epic Games Store launch dispatch.
+**Task:** Restore smooth non-repeat Games/Apps grid scrolling while keeping repeat-scroll rebound reduced.
 
 **Scope:**
-- Preserve the working GOG scan/launch path.
-- Fix Epic launches opening File Explorer instead of handing the protocol to Epic Games Launcher.
-- Prevent the accidental Explorer window from being treated as a successful game launch.
+- Find the focused-card/gamepad scroll path used by Games and Apps grids.
+- Keep normal one-step gamepad moves smooth, but avoid rebound during held stick-repeat.
 - Validate with the usual build/check gates and update `CLAUDE.md`/`CHANGELOG.md` after validation.
+
+**Completed (this session - non-repeat scroll animation restore):**
+- Restored smooth focused-card scroll correction for normal Games/Apps gamepad moves.
+- Kept immediate `auto` scroll correction only for held stick-repeat, so repeated down-scrolls do not stack eased scroll animations.
+- Validated with `npm run build` and `git diff --check`; only the existing large chunk and CRLF warnings remain.
+
+**Completed (this session - gamepad grid scroll rebound):**
+- Reduced Games/Apps held-repeat rebound by keeping repeated focused-card scroll correction immediate instead of stacking browser easing.
+- Added a calmer library-card focus motion path: Games cards use a smaller no-lift scale, and Apps square grid cards use a shorter transform transition with a smaller focused scale.
+- Validated with `npm run build` and `git diff --check`; only the existing large chunk and CRLF warnings remain.
+
+**Completed (this session - library grid smoothness Change 0):**
+- Removed hidden backdrop blur/background work from real-art game cards and custom-art app grid cards while leaving fallback/no-art card surfaces on the existing glass path.
+- Added `content-visibility: auto` plus intrinsic size hints to game cover cards and square Apps grid cards so off-screen library items can be skipped by Chromium/WebView2.
+- Validated with `npm run build` and `git diff --check`; only the existing large chunk and CRLF warnings remain.
 
 **Completed (this session - Epic launch dispatch fix):**
 - Changed Epic protocol launches from `explorer.exe` dispatch to `ShellExecuteW("open")`, matching the registered `com.epicgames.launcher` URL handler instead of opening File Explorer.

@@ -34,6 +34,8 @@
 - **Framed content removal** - removed the experimental Framed Content setting and wrapper, returning Games, Apps, and Settings to their normal full content layout.
 
 ### Fixed
+- **Gamepad grid scroll feel** - Games and Apps keep normal one-step gamepad moves smoothly animated while held stick-repeat uses immediate focused-card correction, and their grid-card focus scale is calmer so moving down through rows no longer reads as an exaggerated bounce/rebound.
+- **Library grid smoothness** - arted Games cards and custom-art Apps grid cards no longer spend compositor work on hidden backdrop blur behind opaque cover art, and off-screen grid cards can now use Chromium's `content-visibility` skipping so large libraries scroll with less render pressure.
 - **Epic game launch dispatch** - Epic Games Store titles now open through Epic's registered URL protocol handler instead of passing the protocol URL to File Explorer, preventing Documents from opening and preventing the Epic launcher window from being mistaken for the game.
 - **Glass motion compositing polish** - tab and subtab slides now move with transform-only motion instead of fading the whole glass card tree, and Settings drill-in no longer keeps a ghosted copy of the previous menu on screen during the transition.
 - **Focused app-card surface flicker** - focus pulse now draws through an overlay ring instead of animating the card or row's own `box-shadow`, preventing glassy app cards from briefly looking transparent before their glass background settles.

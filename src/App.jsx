@@ -1043,7 +1043,7 @@ export default function App() {
 
   useEffect(() => {
     if (tab === "Settings") return;
-    const scrollBehavior = navRepeatingRef.current ? "instant" : "smooth";
+    const scrollBehavior = navRepeatingRef.current ? "auto" : "smooth";
     const previousFocus = scrollFocusRef.current;
     const sameGridRow =
       focusSection === "grid" &&
@@ -1389,8 +1389,11 @@ export default function App() {
     );
   };
 
-  const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, isRunning: cardRunning, onRightClick }) => {
+  const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, isRunning: cardRunning, onRightClick, calmMotion = false }) => {
     const art = customArt[app.id] || gameArt[app.id];
+    const innerBase = art
+      ? { background: "transparent", backdropFilter: "none", WebkitBackdropFilter: "none" }
+      : glass;
     const placeholderCover = `/assets/liftoff_cover_${settings.accent}.svg`;
     const cardRadius = resolvedTheme === "cyberpunk" ? 0 : surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 8 : 16;
     const isOnyx = resolvedTheme === "onyx";
@@ -1400,14 +1403,15 @@ export default function App() {
         onContextMenu={onRightClick ? (e) => { e.preventDefault(); onRightClick(e, app); } : undefined}
         style={{
           position: "relative", borderRadius: cardRadius, aspectRatio: "2/3",
-          cursor: "pointer", transition: "box-shadow 0.15s ease, transform 0.15s ease",
-          ...(focused ? { transform: "scale(1.04) translateY(-1px)" } : {}),
+          cursor: "pointer", transition: calmMotion ? "box-shadow 0.12s ease, transform 0.08s ease" : "box-shadow 0.15s ease, transform 0.15s ease",
+          contentVisibility: "auto", containIntrinsicSize: "auto 240px",
+          ...(focused ? { transform: calmMotion ? "scale(1.02)" : "scale(1.04) translateY(-1px)" } : {}),
         }}
       >
         {/* Inner content — overflow:hidden clips the art to the card */}
         <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={focused
-          ? { ...glass, border: isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, overflow: "hidden", position: "absolute", inset: 0, boxShadow: isOnyx ? "none" : surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 40px ${accent.glow}0.2)` }
-          : { ...glass, border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)", borderRadius: cardRadius, overflow: "hidden", position: "absolute", inset: 0 }
+          ? { ...innerBase, border: isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, overflow: "hidden", position: "absolute", inset: 0, boxShadow: isOnyx ? "none" : surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 40px ${accent.glow}0.2)` }
+          : { ...innerBase, border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)", borderRadius: cardRadius, overflow: "hidden", position: "absolute", inset: 0 }
         }>
           {art
             ? <img src={art} alt={app.name} onError={(e) => { const img = e.currentTarget; if (img.dataset.fallbackApplied === "true") return; img.dataset.fallbackApplied = "true"; img.src = placeholderCover; }} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />

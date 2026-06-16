@@ -68,6 +68,13 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
   const { surface, resolvedTheme } = useTheme();
   const isPixel = surfaceStyle === "win9x";
   const isOnyx = resolvedTheme === "onyx";
+  const getAppCardSurface = (art: string | undefined | null) => art
+    ? { background: "transparent", backdropFilter: "none", WebkitBackdropFilter: "none" }
+    : {
+        background: surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"),
+        backdropFilter: cardBackdropFilter,
+        WebkitBackdropFilter: cardBackdropFilter,
+      };
 
               const SOURCES = gameSourceTabs ?? ["All", "Steam", "Xbox", "Battle.net", "GOG", "Epic", "Other", ...customSources, ...gameCollections.map(c => c.name)];
               const APP_COLS = ["All", ...appCollections.map(c => c.name)];
@@ -141,7 +148,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                     {pinnedAppsReactive.map((app, i) => {
                       const focused = focusSection === "pinned" && focusIndex === i;
                       const isPinned = true;
-                      return <GameCard key={app.id} app={app} focused={focused} isPinned={isPinned}
+                      return <GameCard key={app.id} app={app} focused={focused} isPinned={isPinned} calmMotion
                         isRunning={isRunning?.(app.id)}
                         cardRef={focused ? focusedCardRef : null}
                         onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
@@ -197,11 +204,12 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                           onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
                           onDoubleClick={() => triggerLaunch(app, recent)}
                           onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
-                          style={{ position: "relative", borderRadius: appCardRadius, aspectRatio: "1", cursor: "pointer", transition: "all 0.15s ease",
-                            ...(focused ? { transform: "scale(1.06)" } : {}),
+                          style={{ position: "relative", borderRadius: appCardRadius, aspectRatio: "1", cursor: "pointer", transition: "box-shadow 0.12s ease, transform 0.08s ease",
+                            contentVisibility: "auto", containIntrinsicSize: "auto 160px",
+                            ...(focused ? { transform: "scale(1.025)" } : {}),
                           }}>
                           {/* Inner content — overflow:hidden clips art */}
-                          <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
+                          <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ ...glass, ...getAppCardSurface(art),
                             border: focused
                               ? (isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`)
                               : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
@@ -251,7 +259,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                 {filteredApps.map((app, i) => {
                   const focused = isFocused("grid", i);
                   const isPinned = pins.includes(app.id);
-                  return <GameCard key={app.id} app={app} focused={focused} isPinned={isPinned}
+                  return <GameCard key={app.id} app={app} focused={focused} isPinned={isPinned} calmMotion
                     isRunning={isRunning?.(app.id)}
                     cardRef={focused ? focusedCardRef : null}
                     onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
@@ -309,11 +317,12 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                       onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recent)}
                       onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
-                      style={{ position: "relative", borderRadius: appGridCardRadius, aspectRatio: "1", cursor: "pointer", transition: "all 0.15s ease",
-                        ...(focused ? { transform: "scale(1.06)" } : {}),
+                      style={{ position: "relative", borderRadius: appGridCardRadius, aspectRatio: "1", cursor: "pointer", transition: "box-shadow 0.12s ease, transform 0.08s ease",
+                        contentVisibility: "auto", containIntrinsicSize: "auto 160px",
+                        ...(focused ? { transform: "scale(1.025)" } : {}),
                       }}>
                       {/* Inner content — overflow:hidden clips art */}
-                      <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ ...glass, background: art ? "transparent" : surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : (isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)"), backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
+                      <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ ...glass, ...getAppCardSurface(art),
                         border: focused
                           ? (isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`)
                           : `1px solid ${surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : art ? "rgba(255,255,255,0.12)" : tintBorder}`,
