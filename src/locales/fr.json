@@ -158,6 +158,8 @@
     "showHomeCollectionNames": "Afficher le nom des collections",
     "showHeroCover": "Afficher la pochette sur l'accueil",
     "showRecentGamesOnly": "Jeux uniquement dans les récents",
+    "showStoreBadges": "Afficher les badges de plateforme",
+    "showStoreBadgesDesc": "Afficher une petite icône de plateforme (Steam, Xbox, Battle.net) sur les jaquettes de jeux",
     "showHomePinned": "Afficher les épinglés sur l'accueil",
     "homePinnedPos": "Position des apps épinglées",
     "accentColor": "Couleur d'accent",

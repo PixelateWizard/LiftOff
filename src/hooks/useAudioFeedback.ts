@@ -4,9 +4,10 @@ import uiSound from "../assets/uiSound.mp3";
 import uiSoundAlt from "../assets/uiSoundAlt.mp3";
 import appStartSound from "../assets/gameLaunchSound.wav";
 import appLoadedSound from "../assets/appLoadedSound.wav";
+import launchSuccessSound from "../assets/launchSuccessSound.wav";
 import { AUDIO_PROFILES, type AudioProfile } from "../audio/audioProfiles";
 
-type AudioKey = "ui" | "uiAlt" | "gameStart" | "appLoaded";
+type AudioKey = "ui" | "uiAlt" | "gameStart" | "appLoaded" | "launchSuccess";
 
 export function useAudioFeedback(profileRef?: RefObject<AudioProfile>) {
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -59,6 +60,7 @@ export function useAudioFeedback(profileRef?: RefObject<AudioProfile>) {
     preloadAudio("uiAlt", uiSoundAlt);
     preloadAudio("gameStart", appStartSound);
     preloadAudio("appLoaded", appLoadedSound);
+    preloadAudio("launchSuccess", launchSuccessSound);
   }, [preloadAudio]);
 
   return {
@@ -66,5 +68,6 @@ export function useAudioFeedback(profileRef?: RefObject<AudioProfile>) {
     playSoundAlt: () => playBuffer("uiAlt"),
     playSoundGameStart: () => playBuffer("gameStart"),
     playAppLoadedSound: () => playBuffer("appLoaded"),
+    playLaunchSuccessSound: () => playBuffer("launchSuccess"),
   };
 }

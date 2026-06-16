@@ -3,13 +3,27 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Replace launch and successful-launch sounds and add attribution.
+**Task:** Restore splash-finished sound while keeping launch sounds separate.
 
 **Scope:**
-- Replace the current game/app launch sound with the supplied fantasy world UI sound.
-- Play the supplied Feraly pause/interface sound when an app or game successfully launches.
-- Add both Creative Commons 0 attributions to the Settings attribution section.
+- Restore the LiftOff startup/splash-finished cue to the supplied `achievement-sparkle` file.
+- Keep the fantasy world UI sound for game/app launch attempts.
+- Keep the Feraly pause/interface sound for confirmed game/app launch success.
+- Keep Settings attributions aligned with the active audio assets.
 - Update `CLAUDE.md`/`CHANGELOG.md` after validation.
+
+**Completed (this session - splash finished sound restore):**
+- Restored `appLoadedSound.wav` to the supplied DriftSpeira `achievement-sparkle` file so LiftOff's splash-finished cue uses the original liked sound again.
+- Added a separate `launchSuccessSound.wav` Feraly asset and routed `LaunchOverlay` launch-success playback through `playLaunchSuccessSound`, leaving `playAppLoadedSound` for startup completion.
+- Kept `gameLaunchSound.wav` on the supplied `fantasy world UI sound` launch-attempt cue.
+- Updated Settings credits with the DriftSpeira CC0 attribution while preserving the two new app/game launch sound attributions.
+- Validated with `npm run build` and `git diff --check`; only the existing large chunk and CRLF warnings remain.
+
+**Completed (this session - store source badges):**
+- Added a `StoreBadge` overlay using monochrome `react-icons/fa6` glyphs for Steam, Xbox, and Battle.net, with unknown/app/custom sources rendering no badge.
+- Rendered the badge on Games grid cards, Home recents, Home collection cards, and semi-immersive collection game cards while keeping it display-only and clipped inside existing card shells.
+- Added the default-on `show_store_badges` setting across Rust serde/defaults, TypeScript settings/defaults, Settings UI, and EN/FR locale labels.
+- Validated with `npm run build`, `cargo check`, and `git diff --check`; only the existing large chunk, unused Rust helper, and CRLF warnings remain.
 
 **Completed (this session - launch audio swap):**
 - Replaced `gameLaunchSound.wav` with the supplied `fantasy world UI sound` file so game/app launch attempts use the new cue.
@@ -369,7 +383,7 @@
 - `AppBackground` owns Lofi music playback and passes `appPaused` to `LofiBg`. `LofiBg` owns the mounted video element and video retry/playback effect. Lo-fi Effects off pauses music/video playback. The Lofi poster was removed; do not use `cozy_moonlit_study_night_scene-old.png` for the theme background.
 - `LaunchOverlay` owns its internal launch status state; `launchingAppRef` in `useGamepadNavigation` gates main gamepad input while a launch overlay is active.
 - `useCustomArt` owns custom art maps/refs, custom art loading, cached art hydration, SGDB fetch batching, and clear-art reset.
-- `useAudioFeedback` owns WebAudio preload/playback for UI, alt UI, game launch, and app-loaded sounds. It accepts a profile ref and routes playback through per-theme detune/filter/gain shaping from `src/audio/audioProfiles.ts`; call sites still use `playSound`, `playSoundAlt`, `playSoundGameStart`, and `playAppLoadedSound`.
+- `useAudioFeedback` owns WebAudio preload/playback for UI, alt UI, game launch, app-loaded/startup-finished, and launch-success sounds. It accepts a profile ref and routes playback through per-theme detune/filter/gain shaping from `src/audio/audioProfiles.ts`; call sites still use `playSound`, `playSoundAlt`, `playSoundGameStart`, `playAppLoadedSound`, and `playLaunchSuccessSound`.
 - `usePersistentJson` owns localStorage JSON state; currently used for `liftoff_heroCustomType`.
 - `useAppSettings` owns settings state/ref bootstrap, auto UI scale resolution, save/update helpers, language sync, default tab loading, and scan-toggle refresh keys.
 - `useStartupBootstrap` owns splash loading state, splash exit timing, `isReadyRef`, the app-loaded sound trigger, `set_gamepad_ready`, and the load-error splash fallback.
@@ -1105,6 +1119,7 @@ src/
     uiSoundAlt.mp3
     appLaunchSound.wav
     gameLaunchSound.wav
+    launchSuccessSound.wav
     appLoadedSound.wav
   locales/
     en.json

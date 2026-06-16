@@ -182,6 +182,8 @@ pub struct Settings {
     pub game_cover_scale: f32,
     #[serde(default = "default_cover_scale")]
     pub app_cover_scale: f32,
+    #[serde(default = "default_true")]
+    pub show_store_badges: bool,
     #[serde(default)]
     pub app_list_view: bool,
     #[serde(default = "default_app_list_cols")]
@@ -305,6 +307,7 @@ impl Default for Settings {
             home_cover_scale: 1.0,
             game_cover_scale: 1.0,
             app_cover_scale: 1.0,
+            show_store_badges: true,
             app_list_view: false,
             app_list_cols: 1,
             nav_bumpers_pos: "bottom".to_string(),

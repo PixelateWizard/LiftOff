@@ -6,6 +6,7 @@ import i18n from "./i18n";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { IoMusicalNotesOutline } from "react-icons/io5";
+import { FaBattleNet, FaSteam, FaXbox } from "react-icons/fa6";
 import FileBrowser from "./components/FileBrowser";
 import GamepadKeyboard from "./components/GamepadKeyboard";
 import { GamepadBtn } from "./components/GamepadBtn";
@@ -67,6 +68,18 @@ import {
   getRunAsAdmin, setRunAsAdmin,
 } from "./constants";
 import { CyberpunkCard, FocusRing } from "./components/ui";
+
+const STORE_ICONS = {
+  steam: FaSteam,
+  xbox: FaXbox,
+  battlenet: FaBattleNet,
+};
+
+const STORE_LABELS = {
+  steam: "Steam",
+  xbox: "Xbox",
+  battlenet: "Battle.net",
+};
 
 export default function App() {
   useAppFocusPause();
@@ -244,7 +257,7 @@ export default function App() {
     customFolders,
     setCustomFolders,
   } = useCustomSources();
-  const { playSound, playSoundAlt, playSoundGameStart, playAppLoadedSound } = useAudioFeedback(audioProfileRef);
+  const { playSound, playSoundAlt, playSoundGameStart, playAppLoadedSound, playLaunchSuccessSound } = useAudioFeedback(audioProfileRef);
   const {
     gameArt,
     setGameArt,
@@ -1327,6 +1340,46 @@ export default function App() {
     );
   };
 
+  const StoreBadge = ({ source, small = false }) => {
+    if (settings.show_store_badges === false) return null;
+    const Icon = STORE_ICONS[source];
+    if (!Icon) return null;
+
+    const glyph = small ? 13 : 15;
+    const pad = small ? 5 : 6;
+    const offset = small ? 6 : 8;
+    const square = surfaceStyle === "win9x" || resolvedTheme === "cyberpunk";
+
+    return (
+      <div
+        title={STORE_LABELS[source] || source}
+        aria-label={STORE_LABELS[source] || source}
+        style={{
+          position: "absolute",
+          right: offset,
+          bottom: offset,
+          zIndex: 3,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: glyph + pad * 2,
+          height: glyph + pad * 2,
+          borderRadius: square ? 0 : 8,
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+          boxShadow: surfaceStyle === "material"
+            ? "0 2px 6px rgba(0,0,0,0.25)"
+            : "0 1px 4px rgba(0,0,0,0.45)",
+          color: "rgba(255,255,255,0.94)",
+          pointerEvents: "none",
+        }}
+      >
+        <Icon size={glyph} />
+      </div>
+    );
+  };
+
   const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, isRunning: cardRunning, onRightClick }) => {
     const art = customArt[app.id] || gameArt[app.id];
     const placeholderCover = `/assets/liftoff_cover_${settings.accent}.svg`;
@@ -1356,6 +1409,7 @@ export default function App() {
           </div>
           <RunningBadge show={cardRunning} />
           <PinBadge isPinned={isPinned} />
+          <StoreBadge source={app.source} />
           {focused && !isOnyx && resolvedTheme !== "cyberpunk" && (
             <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, pointerEvents: "none" }} />
           )}
@@ -1675,6 +1729,7 @@ export default function App() {
     AppIcon,
     PinBadge,
     RunningBadge,
+    StoreBadge,
     isRunning,
     requestClose,
     filteredApps,
@@ -1743,7 +1798,7 @@ export default function App() {
 
       <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} />
       <AppOverlays>
-      {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={closeLaunchOverlay} onSuccess={playAppLoadedSound} />}
+      {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={closeLaunchOverlay} onSuccess={playLaunchSuccessSound} />}
       {closeRequest && (
         <ConfirmModal
           message={closeRequest.force
@@ -2311,6 +2366,7 @@ export default function App() {
             allAppsRef={allAppsRef}
             PinBadge={PinBadge}
             RunningBadge={RunningBadge}
+            StoreBadge={StoreBadge}
             isRunning={isRunning}
             requestClose={requestClose}
             glass={glass}

@@ -158,6 +158,8 @@
     "showHomeCollectionNames": "Show Collection Names",
     "showHeroCover": "Show Cover on Home",
     "showRecentGamesOnly": "Games Only in Recents",
+    "showStoreBadges": "Show Store Badges",
+    "showStoreBadgesDesc": "Display a small store icon (Steam, Xbox, Battle.net) on game covers",
     "showHomePinned":"Show Pinned on Home",
     "homePinnedPos": "Pinned apps position",
     "accentColor": "Accent Color",

@@ -86,6 +86,7 @@ export interface Settings {
   home_cover_scale: number;
   game_cover_scale: number;
   app_cover_scale: number;
+  show_store_badges: boolean;
   app_list_view: boolean;
   app_list_cols: number;
   time_format: TimeFormat;
