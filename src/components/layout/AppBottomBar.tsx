@@ -101,7 +101,7 @@ export function AppBottomBar({ tab, appCollectionsCount, spotifyMiniBar, spotify
   );
 
   return (
-    <div style={{ position: "sticky", bottom: 0, zIndex: 100 }}>
+    <div style={{ position: isTransparent ? "sticky" : "absolute", bottom: 0, left: 0, right: 0, zIndex: 100 }}>
       <div data-bottom-bar="" style={{
         display: "flex", gap: 20, alignItems: "center", padding: "10px 20px",
         justifyContent: justify,
@@ -141,6 +141,7 @@ export function AppBottomBar({ tab, appCollectionsCount, spotifyMiniBar, spotify
             {tab === "Games" && (
               <>
                 {triggersHint('gamepad.source')}
+                <GamepadBtn btn="RS" label={t('grid.filter.dock')} />
                 <GamepadBtn btn="MENU" label={t('gamepad.options')} />
                 <GamepadBtn btn="BACK" label={t('grid.manage')}    />
               </>

@@ -1,6 +1,7 @@
 import { memo, type RefObject } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { AppListItem, CyberpunkCard, FocusRing } from "../components/ui";
+import { GamepadBtn } from "../components/GamepadBtn";
 
 export interface LibraryViewContentProps {
   tab: "Games" | "Apps";
@@ -25,6 +26,18 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
     t,
     gameSourceTab,
     gameSourceTabs,
+    installFilter,
+    setInstallFilter,
+    viewbarFocus,
+    viewbarIndex,
+    setViewbarIndex,
+    sortOpen,
+    setSortOpen,
+    sortKbIndex,
+    setSortKbIndex,
+    gamesSort,
+    setGamesSort,
+    visibleGameCount,
     appCollectionTab,
     setAddAppType,
     setShowFileBrowser,
@@ -93,6 +106,83 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                 boxShadow: active ? (surfaceStyle === "material" ? "var(--material-shadow-medium)" : `0 2px 10px ${accent.glow}0.35)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
                 display: "flex", alignItems: "center", justifyContent: "center",
               });
+              const installFilterItems = ["all", "installed", "notInstalled"];
+              const sortItems = ["recent", "az", "store"];
+              const toolbarRadius = resolvedTheme === "cyberpunk" || isPixel ? 0 : surfaceStyle === "material" ? 8 : 12;
+              const toolbarFocused = viewbarFocus;
+              const toolbarSurface = surfaceStyle === "material"
+                ? {
+                    background: toolbarFocused ? "var(--material-elevation-2)" : "var(--material-elevation-1)",
+                    borderColor: toolbarFocused ? accent.primary : "var(--material-border-subtle)",
+                    boxShadow: toolbarFocused ? "var(--material-shadow-high)" : "var(--material-shadow-low)",
+                  }
+                : isPixel
+                  ? {
+                      background: surface.panelBg,
+                      borderColor: toolbarFocused ? accent.primary : surface.borderRaisedSoft,
+                      boxShadow: toolbarFocused ? `${surface.bevelRaised}, 0 0 0 2px ${accent.primary}` : surface.bevelRaised,
+                    }
+                  : {
+                      background: toolbarFocused
+                        ? (isDark ? `${accent.glow}0.14)` : `${accent.glow}0.10)`)
+                        : (isDark ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.42)"),
+                      borderColor: toolbarFocused ? `${accent.glow}0.70)` : (isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)"),
+                      boxShadow: toolbarFocused
+                        ? `0 0 0 1px ${accent.glow}0.42), 0 0 22px ${accent.glow}0.28), 0 8px 24px rgba(0,0,0,0.18)`
+                        : "none",
+                    };
+              const viewbarBtnStyle = (selected, focused) => ({
+                height: 28,
+                minWidth: 74,
+                padding: "0 10px",
+                borderRadius: resolvedTheme === "cyberpunk" || isPixel ? 0 : surfaceStyle === "material" ? 6 : 8,
+                border: `1px solid ${focused ? accent.primary : selected ? `${accent.glow}0.45)` : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)")}`,
+                background: selected
+                  ? (surfaceStyle === "material" ? accent.primary : `${accent.glow}0.22)`)
+                  : (isDark ? "rgba(255,255,255,0.045)" : "rgba(0,0,0,0.035)"),
+                color: selected && surfaceStyle === "material" ? (accent.darkText ? "#1a1a1a" : "white") : focused ? theme.text : theme.textDim,
+                fontSize: 11,
+                fontWeight: selected || focused ? 700 : 600,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                transition: "background 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease",
+                boxShadow: focused
+                  ? (surfaceStyle === "material" ? "var(--material-shadow-high)" : `0 0 0 2px ${accent.glow}0.40), 0 0 20px ${accent.glow}0.34), 0 3px 12px rgba(0,0,0,0.24)`)
+                  : "none",
+              });
+              const sortPopupStyle = {
+                position: "absolute",
+                top: "calc(100% + 6px)",
+                right: 0,
+                zIndex: 20,
+                minWidth: 150,
+                padding: 5,
+                borderRadius: toolbarRadius,
+                border: `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+                background: surfaceStyle === "material"
+                  ? "var(--material-elevation-3)"
+                  : isPixel
+                    ? surface.panelBg
+                    : isDark ? "rgba(18,16,14,0.96)" : "rgba(252,248,244,0.96)",
+                boxShadow: surfaceStyle === "material" ? "var(--material-shadow-high)" : "0 12px 32px rgba(0,0,0,0.32)",
+                backdropFilter: surfaceStyle === "material" ? undefined : "blur(18px) saturate(140%)",
+                WebkitBackdropFilter: surfaceStyle === "material" ? undefined : "blur(18px) saturate(140%)",
+              };
+              const sortItemStyle = (selected, focused) => ({
+                width: "100%",
+                height: 30,
+                padding: "0 9px",
+                border: `1px solid ${focused ? accent.primary : "transparent"}`,
+                borderRadius: resolvedTheme === "cyberpunk" || isPixel ? 0 : 6,
+                background: focused ? `${accent.glow}0.18)` : selected ? (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)") : "transparent",
+                color: focused ? theme.text : theme.textDim,
+                fontSize: 11,
+                fontWeight: selected ? 700 : 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              });
 
               // Build tab items for SectionTabBar
               const tabItems = tab === "Games"
@@ -107,7 +197,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                 : APP_COLS.indexOf(appCollectionTab);
 
               return (
-            <div ref={scrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2 }}>
+            <div ref={scrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2, paddingTop: "var(--header-height)", paddingBottom: "var(--bottom-bar-height)", boxSizing: "border-box" }}>
               <div style={{ padding: "0 24px 0", ...(wideLayout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" }}>
                 {/* Action buttons — hidden; kept for potential future use */}
                 <div style={{ display: "none" }}>
@@ -137,6 +227,105 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                 </div>
 
             {/* ── PINNED — same card size/style as main grid ── */}
+            {tab === "Games" && (
+              <div
+                className="view-toolbar"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  minHeight: 42,
+                  margin: "8px 0 4px",
+                  padding: "7px 10px",
+                  borderRadius: toolbarRadius,
+                  border: `1px solid ${toolbarSurface.borderColor}`,
+                  background: toolbarSurface.background,
+                  boxShadow: toolbarSurface.boxShadow,
+                  boxSizing: "border-box",
+                }}
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: 6, color: theme.textDim, fontSize: 11, fontWeight: 700, flex: "0 0 auto" }}>
+                  <GamepadBtn btn="RS" label={t("grid.filter.dock")} style={{ gap: 5, fontSize: 11 }} />
+                </span>
+                <div
+                  role="tablist"
+                  aria-label={t("grid.filter.dock")}
+                  style={{
+                    display: "flex",
+                    gap: 4,
+                    padding: 3,
+                    borderRadius: resolvedTheme === "cyberpunk" || isPixel ? 0 : 9,
+                    background: isDark ? "rgba(0,0,0,0.22)" : "rgba(0,0,0,0.045)",
+                    flex: "0 1 auto",
+                    minWidth: 0,
+                  }}
+                >
+                  {installFilterItems.map((key, i) => {
+                    const selected = installFilter === key;
+                    const focused = viewbarFocus && viewbarIndex === i;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        role="tab"
+                        aria-selected={selected}
+                        onClick={() => {
+                          setViewbarIndex(i);
+                          setInstallFilter(key);
+                          setFocusSection("viewbar");
+                          focusSectionRef.current = "viewbar";
+                          setFocusIndex(0);
+                          focusIndexRef.current = 0;
+                          setSortOpen(false);
+                        }}
+                        style={viewbarBtnStyle(selected, focused)}
+                      >
+                        {t(`grid.filter.${key}`)}
+                      </button>
+                    );
+                  })}
+                </div>
+                <span style={{ fontSize: 12, color: theme.textDim, fontWeight: 700, flex: "0 0 auto" }}>
+                  {t("grid.count", { count: visibleGameCount })}
+                </span>
+                <div style={{ marginLeft: "auto", position: "relative", flex: "0 0 auto" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setViewbarIndex(3);
+                      setFocusSection("viewbar");
+                      focusSectionRef.current = "viewbar";
+                      setSortKbIndex(Math.max(0, sortItems.indexOf(gamesSort)));
+                      setSortOpen((open) => !open);
+                    }}
+                    style={viewbarBtnStyle(false, viewbarFocus && viewbarIndex === 3)}
+                  >
+                    {t("grid.sort.label")}: {t(`grid.sort.${gamesSort}`)} v
+                  </button>
+                  {sortOpen && (
+                    <div role="listbox" aria-label={t("grid.sort.label")} style={sortPopupStyle}>
+                      {sortItems.map((key, i) => (
+                        <button
+                          key={key}
+                          type="button"
+                          role="option"
+                          aria-selected={gamesSort === key}
+                          onClick={() => {
+                            setGamesSort(key);
+                            setSortOpen(false);
+                          }}
+                          style={sortItemStyle(gamesSort === key, sortKbIndex === i)}
+                        >
+                          <span>{t(`grid.sort.${key}`)}</span>
+                          {gamesSort === key && <span aria-hidden="true">*</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {pinnedAppsReactive.length > 0 && !(tab === "Games" && gameSourceTab !== "All") && (
               <>
                 <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, padding: "18px 0 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -255,18 +444,26 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
             </div>
 
             {tab === "Games" ? (
-              <div style={{ display: "grid", gridTemplateColumns: `repeat(${effectiveGameCols}, minmax(0, 1fr))`, gap: 12, paddingBottom: 100 }}>
-                {filteredApps.map((app, i) => {
-                  const focused = isFocused("grid", i);
-                  const isPinned = pins.includes(app.id);
-                  return <GameCard key={app.id} app={app} focused={focused} isPinned={isPinned} calmMotion
-                    isRunning={isRunning?.(app.id)}
-                    cardRef={focused ? focusedCardRef : null}
-                    onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
-                    onDoubleClick={() => triggerLaunch(app, recent)}
-                    onRightClick={(e, a) => { setContextMenu({ x: e.clientX, y: e.clientY, app: a }); }} />;
-                })}
-              </div>
+              filteredApps.length === 0 ? (
+                <div style={{ minHeight: 220, display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: 100 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: theme.textDim, textAlign: "center" }}>
+                    {installFilter === "notInstalled" ? t("grid.empty.noUninstalled") : t("home.noGames")}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${effectiveGameCols}, minmax(0, 1fr))`, gap: 12, paddingBottom: 100 }}>
+                  {filteredApps.map((app, i) => {
+                    const focused = isFocused("grid", i);
+                    const isPinned = pins.includes(app.id);
+                    return <GameCard key={app.id} app={app} focused={focused} isPinned={isPinned} calmMotion
+                      isRunning={isRunning?.(app.id)}
+                      cardRef={focused ? focusedCardRef : null}
+                      onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
+                      onDoubleClick={() => triggerLaunch(app, recent)}
+                      onRightClick={(e, a) => { setContextMenu({ x: e.clientX, y: e.clientY, app: a }); }} />;
+                  })}
+                </div>
+              )
             ) : appListView ? (
               <div style={{ display: "grid", gridTemplateColumns: `repeat(${appListCols}, minmax(0, 1fr))`, gap: 6, paddingBottom: 100 }}>
                 {filteredApps.map((app, i) => {

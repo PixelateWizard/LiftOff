@@ -399,7 +399,23 @@
   "grid": {
     "pinned": "Épinglés",
     "unpinHint": "X pour désépingler",
-    "manage": "Gérer"
+    "manage": "Gérer",
+    "filter": {
+      "dock": "TODO(fr) Filter & sort",
+      "all": "TODO(fr) All",
+      "installed": "TODO(fr) Installed",
+      "notInstalled": "TODO(fr) Not installed"
+    },
+    "sort": {
+      "label": "TODO(fr) Sort",
+      "recent": "TODO(fr) Recent",
+      "az": "TODO(fr) A-Z",
+      "store": "TODO(fr) Store"
+    },
+    "count": "TODO(fr) {{count}} games",
+    "empty": {
+      "noUninstalled": "TODO(fr) Everything here is installed."
+    }
   },
   "library": {
     "refreshing": "Actualisation…",

@@ -1435,6 +1435,9 @@ export function HomeView(props: HomeViewProps) {
         opacity: active ? 1 : 0.001,
         pointerEvents: active ? "auto" : "none",
         transition: active ? "none" : "opacity 80ms ease",
+        paddingTop: "var(--header-height)",
+        paddingBottom: "var(--bottom-bar-height)",
+        boxSizing: "border-box",
       }}
     >
       {content}

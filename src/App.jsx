@@ -86,6 +86,9 @@ const STORE_LABELS = {
   epic: "Epic Games",
 };
 
+const INSTALL_FILTERS = ["all", "installed", "notInstalled"];
+const GAMES_SORTS = ["recent", "az", "store"];
+
 export default function App() {
   useAppFocusPause();
   const { t } = useTranslation();
@@ -218,6 +221,7 @@ export default function App() {
   const recentShelfRef        = useRef(null);
   const drawerScrollRef       = useRef(null);
   const handleNavRef          = useRef(null);
+  const utilityChromeRef      = useRef(null);
   const autoScaleRef          = useRef(1.0);
   const handleClearCacheRef   = useRef(null);
   const handleClearRecentsRef = useRef(null);
@@ -225,6 +229,32 @@ export default function App() {
   const runningIdsRef = useRef(new Set());
   const scrollFocusRef = useRef({ tab: null, focusSection: null, focusIndex: 0, gameSourceTab: null, appCollectionTab: null, cols: 0 });
   const settingsScrollTimeRef = useRef(0);
+  const [installFilter, setInstallFilterState] = useState("all");
+  const installFilterRef = useRef("all");
+  const setInstallFilter = (value) => {
+    installFilterRef.current = value;
+    setInstallFilterState(value);
+  };
+  const [viewbarIndex, setViewbarIndexState] = useState(0);
+  const viewbarIndexRef = useRef(0);
+  const setViewbarIndex = (value) => {
+    viewbarIndexRef.current = value;
+    setViewbarIndexState(value);
+  };
+  const [sortOpen, setSortOpenState] = useState(false);
+  const sortOpenRef = useRef(false);
+  const setSortOpen = (value) => {
+    const next = typeof value === "function" ? value(sortOpenRef.current) : value;
+    sortOpenRef.current = next;
+    setSortOpenState(next);
+  };
+  const [sortKbIndex, setSortKbIndexState] = useState(0);
+  const sortKbIndexRef = useRef(0);
+  const setSortKbIndex = (value) => {
+    sortKbIndexRef.current = value;
+    setSortKbIndexState(value);
+  };
+  const gamesSortRef = useRef("recent");
 
   const {
     searchOpen, searchQuery, searchMode, searchFocusIndex,
@@ -319,6 +349,8 @@ export default function App() {
     language: i18n.language,
     settingsRef,
   });
+  const gamesSort = GAMES_SORTS.includes(settings.games_sort) ? settings.games_sort : "recent";
+  gamesSortRef.current = gamesSort;
   const spotify = useSpotify();
   useEffect(() => {
     spotifyConnectedRef.current = !!spotify.status.connected;
@@ -398,6 +430,16 @@ export default function App() {
     initialTab: defaultTab,
     settingsRef,
     updateSetting,
+    utilityChromeRef,
+    installFilterRef,
+    setInstallFilter,
+    viewbarIndexRef,
+    setViewbarIndex,
+    sortOpenRef,
+    setSortOpen,
+    sortKbIndexRef,
+    setSortKbIndex,
+    gamesSortRef,
     resolvedTheme,
     appearanceGroupRef,
     setAppearanceGroup,
@@ -493,6 +535,61 @@ export default function App() {
     ACCENTS,
     GITHUB_REPO,
   });
+  useEffect(() => {
+    if (tab !== "Games") {
+      utilityChromeRef.current = null;
+      setSortOpen(false);
+      return;
+    }
+    utilityChromeRef.current = {
+      enter: () => {
+        setFocusSection("viewbar");
+        focusSectionRef.current = "viewbar";
+        setViewbarIndex(viewbarIndexRef.current);
+        playSound();
+      },
+      move: (dir) => {
+        const next = Math.max(0, Math.min(3, viewbarIndexRef.current + dir));
+        if (next === viewbarIndexRef.current) return;
+        setViewbarIndex(next);
+        if (next < 3) {
+          setSortOpen(false);
+          setInstallFilter(INSTALL_FILTERS[next]);
+          setFocusIndex(0);
+          focusIndexRef.current = 0;
+        }
+        playSound();
+      },
+      activate: () => {
+        if (viewbarIndexRef.current === 3) {
+          const currentSortIndex = Math.max(0, GAMES_SORTS.indexOf(gamesSortRef.current));
+          setSortKbIndex(currentSortIndex);
+          setSortOpen((open) => !open);
+          playSound();
+        }
+      },
+      exit: () => {
+        setSortOpen(false);
+        const shouldLandOnPinned = gameSourceTabRef.current === "All"
+          && pinsRef.current.some((id) => {
+            const app = allAppsRef.current.find((entry) => entry.id === id);
+            if (!app || app.app_type !== "game") return false;
+            if (installFilterRef.current === "installed") return app.installed !== false;
+            if (installFilterRef.current === "notInstalled") return app.installed === false;
+            return true;
+          });
+        const nextSection = shouldLandOnPinned ? "pinned" : "grid";
+        setFocusSection(nextSection);
+        focusSectionRef.current = nextSection;
+        setFocusIndex(0);
+        focusIndexRef.current = 0;
+        playSound();
+      },
+    };
+    return () => {
+      if (utilityChromeRef.current) utilityChromeRef.current = null;
+    };
+  }, [tab, playSound]);
   const surfaceStyle = (THEME_LOCKED_SETTINGS[resolvedTheme]?.surface_style ?? settings.surface_style) ?? "glass";
   const glassEnabled = surfaceStyle !== "clear";
   const isMaterial = surfaceStyle === "material";
@@ -577,11 +674,21 @@ export default function App() {
     const rapidRepeat = now - settingsScrollTimeRef.current < 180;
     settingsScrollTimeRef.current = now;
 
+    if (settingsFocusIndex <= 0) {
+      if (scroller.scrollTop > 1) {
+        scroller.scrollTo({ top: 0, behavior: rapidRepeat ? "auto" : "smooth" });
+      }
+      if (outerRef.current) outerRef.current.scrollTop = 0;
+      return;
+    }
+
     const scale = settings.ui_scale ?? 1;
     const sr = scroller.getBoundingClientRect();
     const rr = row.getBoundingClientRect();
-    const topClearance = 80;
-    const bottomClearance = 80;
+    const headerHeight = !(settings.topbar_background ?? true) ? 0 : (tab === "Home" ? 72 : 124);
+    const bottomBarHeight = (!(settings.bottombar_background ?? true) || settings.hide_bottom_bar) ? 0 : 64;
+    const topClearance = headerHeight + 20;
+    const bottomClearance = bottomBarHeight + 20;
     let rowTop = (rr.top - sr.top) / scale;
     let rowBottom = (rr.bottom - sr.top) / scale;
     let layoutTop = 0;
@@ -606,7 +713,7 @@ export default function App() {
       scroller.scrollTo({ top: newTop, behavior: rapidRepeat ? "auto" : "smooth" });
     }
     if (outerRef.current) outerRef.current.scrollTop = 0;
-  }, [settingsFocusIndex, settingsSection, tab, settings.ui_scale]);
+  }, [settingsFocusIndex, settingsSection, tab, settings.ui_scale, settings.topbar_background, settings.bottombar_background, settings.hide_bottom_bar]);
 
   useEffect(() => {
     if (resolvedTheme === "onyx" || settings.ui_motion === false || navRepeatingRef.current) return;
@@ -1003,7 +1110,26 @@ export default function App() {
     && a.source !== "epic"
     && !customSources.includes(a.source);
 
-  const gamesFilteredApps = useMemo(() => apps.filter((a) => {
+  const isInstalled = (app) => app?.installed !== false;
+  const filterByInstallState = (items) => items.filter((app) => {
+    if (installFilter === "installed") return isInstalled(app);
+    if (installFilter === "notInstalled") return !isInstalled(app);
+    return true;
+  });
+  const recentRank = useMemo(() => new Map(recent.map((entry, index) => [entry.id, recent.length - index])), [recent]);
+  const sortGamesForView = (items) => [...items].sort((a, b) => {
+    if (gamesSort === "az") {
+      return (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+    }
+    if (gamesSort === "store") {
+      const byStore = (a.source || "").localeCompare(b.source || "", undefined, { sensitivity: "base" });
+      return byStore || (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+    }
+    return (recentRank.get(b.id) || 0) - (recentRank.get(a.id) || 0)
+      || (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+  });
+
+  const gamesSourceFilteredApps = useMemo(() => apps.filter((a) => {
     if (a.app_type !== "game") return false;
     if (gameSourceTab === "Steam") return a.source === "steam";
     if (gameSourceTab === "Xbox")  return a.source === "xbox";
@@ -1015,7 +1141,11 @@ export default function App() {
     const gameCol = gameCollections.find(c => c.name === gameSourceTab);
     if (gameCol) return (gameMemberships[a.id] || []).includes(gameCol.id);
     return true;
-  }).sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })), [apps, customSources, gameCollections, gameMemberships, gameSourceTab]);
+  }), [apps, customSources, gameCollections, gameMemberships, gameSourceTab]);
+  const gamesFilteredApps = useMemo(
+    () => sortGamesForView(filterByInstallState(gamesSourceFilteredApps)),
+    [gamesSourceFilteredApps, installFilter, gamesSort, recentRank]
+  );
   const libraryAppsFilteredApps = useMemo(() => apps.filter((a) => {
     if (a.app_type !== "app") return false;
     if (appCollectionTab === "All") return true;
@@ -1033,7 +1163,10 @@ export default function App() {
     .map(id => apps.find(a => a.id === id))
     .filter(Boolean)
     .filter(a => pane === "Home" ? true : pane === "Games" ? a.app_type === "game" : a.app_type === "app");
-  const gamesPinnedApps = useMemo(() => pinnedAppsFor("Games"), [appCollectionTab, apps, pins]);
+  const gamesPinnedApps = useMemo(
+    () => sortGamesForView(filterByInstallState(pinnedAppsFor("Games"))),
+    [appCollectionTab, apps, pins, installFilter, gamesSort, recentRank]
+  );
   const appsPinnedApps = useMemo(() => pinnedAppsFor("Apps"), [appCollectionTab, apps, pins]);
   const pinnedAppsReactive = tab === "Games" ? gamesPinnedApps : tab === "Apps" ? appsPinnedApps : pinnedAppsFor("Home");
 
@@ -1073,8 +1206,10 @@ export default function App() {
       const scale = settings.ui_scale ?? 1;
       const sr = scroller.getBoundingClientRect();
       const cr = card.getBoundingClientRect();
-      const topClearance = 100;
-      const bottomClearance = 80;
+      const headerHeight = !(settings.topbar_background ?? true) ? 0 : (tab === "Home" ? 72 : 124);
+      const bottomBarHeight = (!(settings.bottombar_background ?? true) || settings.hide_bottom_bar) ? 0 : 64;
+      const topClearance = headerHeight + 24;
+      const bottomClearance = bottomBarHeight + 20;
       let cardTop = (cr.top - sr.top) / scale;
       let cardBottom = (cr.bottom - sr.top) / scale;
       let layoutTop = 0;
@@ -1148,13 +1283,17 @@ export default function App() {
             const scale = settings.ui_scale ?? 1;
             const sr = scroller.getBoundingClientRect();
             const rr = focusedRowRef.current.getBoundingClientRect();
+            const headerHeight = !(settings.topbar_background ?? true) ? 0 : 72;
+            const bottomBarHeight = (!(settings.bottombar_background ?? true) || settings.hide_bottom_bar) ? 0 : 64;
+            const topClearance = headerHeight + 28;
+            const bottomClearance = bottomBarHeight + 20;
             const rowTop = (rr.top - sr.top) / scale;
             const rowBottom = (rr.bottom - sr.top) / scale;
             let newTop = scroller.scrollTop;
-            if (rowTop < 100) {
-              newTop = scroller.scrollTop + rowTop - 100;
-            } else if (rowBottom > scroller.clientHeight - 80) {
-              newTop = scroller.scrollTop + rowBottom - (scroller.clientHeight - 80);
+            if (rowTop < topClearance) {
+              newTop = scroller.scrollTop + rowTop - topClearance;
+            } else if (rowBottom > scroller.clientHeight - bottomClearance) {
+              newTop = scroller.scrollTop + rowBottom - (scroller.clientHeight - bottomClearance);
             }
             scroller.scrollTo({ top: Math.max(0, newTop), behavior: "smooth" });
           }
@@ -1191,7 +1330,21 @@ export default function App() {
     } else if (focusedCardRef.current) {
       scrollFocusedCardIntoView();
     }
-  }, [focusSection, focusIndex, homeColFocusRow, tab, gameSourceTab, appCollectionTab, pins, apps, settings.ui_scale, currentCols]);
+  }, [
+    focusSection,
+    focusIndex,
+    homeColFocusRow,
+    tab,
+    gameSourceTab,
+    appCollectionTab,
+    pins,
+    apps,
+    settings.ui_scale,
+    currentCols,
+    settings.topbar_background,
+    settings.bottombar_background,
+    settings.hide_bottom_bar
+  ]);
 
 
   // Block ALL click/mousedown events while modal is open — gamepad A button fires
@@ -1714,6 +1867,18 @@ export default function App() {
     t,
     gameSourceTab,
     gameSourceTabs: _hdrSources,
+    installFilter,
+    setInstallFilter,
+    viewbarFocus: focusSection === "viewbar",
+    viewbarIndex,
+    setViewbarIndex,
+    sortOpen,
+    setSortOpen,
+    sortKbIndex,
+    setSortKbIndex,
+    gamesSort,
+    setGamesSort: (value) => updateSetting("games_sort", value),
+    visibleGameCount: gamesFilteredApps.length,
     appCollectionTab,
     setAddAppType,
     setShowFileBrowser,
@@ -1807,11 +1972,16 @@ export default function App() {
     )
     : null;
 
+  const topbarBg = settings.topbar_background ?? true;
+  const bottombarBg = settings.bottombar_background ?? true;
+  const headerHeightVal = !topbarBg ? 0 : (tab === "Home" ? 72 : 124);
+  const bottomBarHeightVal = (!bottombarBg || settings.hide_bottom_bar) ? 0 : 64;
+
   return (
     <ThemeProvider value={themeValue}>
     <SettingsProvider value={settingsValue}>
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
-    <div data-theme={resolvedTheme} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} data-effects={settings.stars_enabled === false ? "static" : "animated"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, "--accent-pulse": `${accent.glow}0.22)`, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
+    <div data-theme={resolvedTheme} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} data-effects={settings.stars_enabled === false ? "static" : "animated"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, "--accent-pulse": `${accent.glow}0.22)`, "--header-height": `${headerHeightVal}px`, "--bottom-bar-height": `${bottomBarHeightVal}px`, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
 
       <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} />
       <AppOverlays>
@@ -2337,7 +2507,7 @@ export default function App() {
         <div style={{ position: "relative", flex: 1, overflow: (!(settings.topbar_background ?? true) && tab === "Home") || ((settings.cinematic_home || settings.home_mode === "semi") && tab === "Home") ? "auto" : "hidden" }}>
 
           {tab === "Settings" && (
-            <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", zIndex: 2 }}>
+            <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", zIndex: 2, paddingTop: "var(--header-height)", paddingBottom: "var(--bottom-bar-height)", boxSizing: "border-box" }}>
               <div key={settingsPanelKey} className={settingsMotionClass} style={{ position: "relative", minHeight: "100%", zIndex: 2 }}>
                 <SettingsScreenWrapper />
               </div>

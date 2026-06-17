@@ -269,7 +269,7 @@ export function AppHeader({
   // ── Case: nav + subtab share a single glass container ──────────
   if (!transparentNav && tabbarBg && !tabbarBgCompact) {
     return (
-      <div data-liftoff-nav-boundary style={{ position: "sticky", top: 0, zIndex: 100 }}>
+      <div data-liftoff-nav-boundary style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 100 }}>
         <div data-top-bar="" style={{
           ...widthConstraints(wideLayout, false, true, uiScale),
           ...pixelFullBleedNav,
@@ -290,7 +290,7 @@ export function AppHeader({
 
   // ── Cases: independent nav / subtab backgrounds ────────────────
   return (
-    <div data-liftoff-nav-boundary style={{ position: "sticky", top: 0, zIndex: 100, ...homeNavBoundaryStyle }}>
+    <div data-liftoff-nav-boundary style={{ position: transparentNav ? "sticky" : "absolute", top: 0, left: 0, right: 0, zIndex: 100, ...homeNavBoundaryStyle }}>
 
       {/* Nav row */}
       <div data-top-bar="" style={{

@@ -6,6 +6,9 @@ export interface App {
   source?: string;
   launch_path?: string;
   icon_base64?: string;
+  installed?: boolean;
+  installing?: boolean;
+  installProgress?: number;
   runAsAdmin?: boolean;
   [key: string]: unknown;
 }
@@ -53,6 +56,7 @@ export type TabbarLabelCase  = "default" | "ucfirst" | "uppercase";
 export type BottombarAlign   = "left" | "center" | "right";
 export type GamepadPlatform  = "xbox" | "ps" | "switch";
 export type GamepadBtnSize   = "small" | "medium" | "large";
+export type GamesSort        = "recent" | "az" | "store";
 
 /** Full persisted settings object */
 export interface Settings {
@@ -89,6 +93,7 @@ export interface Settings {
   game_cover_scale: number;
   app_cover_scale: number;
   show_store_badges: boolean;
+  games_sort: GamesSort;
   app_list_view: boolean;
   app_list_cols: number;
   time_format: TimeFormat;

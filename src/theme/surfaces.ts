@@ -249,9 +249,9 @@ function buildGlassBarSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, fl
   const { glassEnabled, surfaceStyle, isDark, cinematicLight, accent, resolvedTheme } = args;
   if (!glassEnabled) return flat;
   if (resolvedTheme === "onyx") return {
-    background: "linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.10)), linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.04))",
-    backdropFilter: "blur(18px) saturate(130%) brightness(0.88)",
-    WebkitBackdropFilter: "blur(18px) saturate(130%) brightness(0.88)",
+    background: "linear-gradient(180deg, rgba(0,0,0,0.34), rgba(0,0,0,0.22)), linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05))",
+    backdropFilter: "blur(18px) saturate(130%) brightness(0.84)",
+    WebkitBackdropFilter: "blur(18px) saturate(130%) brightness(0.84)",
     border: "1.5px solid rgba(255,255,255,0.12)",
     boxShadow: "inset 0 1px 0 rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.22), 0 4px 16px rgba(0,0,0,0.32)",
   };
@@ -271,12 +271,12 @@ function buildGlassBarSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, fl
   };
   if (surfaceStyle === "aero") return {
     background: isDark
-      ? "linear-gradient(180deg, rgba(0,0,0,0.14), rgba(0,0,0,0.05)), linear-gradient(180deg, rgba(255,255,255,0.30) 0%, rgba(255,255,255,0.14) 20%, rgba(255,255,255,0.07) 100%)"
+      ? "linear-gradient(180deg, rgba(0,0,0,0.42), rgba(0,0,0,0.28)), linear-gradient(180deg, rgba(255,255,255,0.26) 0%, rgba(255,255,255,0.10) 20%, rgba(255,255,255,0.05) 100%)"
       : cinematicLight
-        ? "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.56) 15%, rgba(255,255,255,0.38) 100%)"
-        : "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.82) 15%, rgba(255,255,255,0.60) 100%)",
-    backdropFilter: isDark ? "blur(12px) saturate(130%) brightness(0.91)" : "blur(16px) saturate(140%) brightness(1.02)",
-    WebkitBackdropFilter: isDark ? "blur(12px) saturate(130%) brightness(0.91)" : "blur(16px) saturate(140%) brightness(1.02)",
+        ? "linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(255,255,255,0.70) 15%, rgba(255,255,255,0.54) 100%)"
+        : "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.88) 15%, rgba(255,255,255,0.72) 100%)",
+    backdropFilter: isDark ? "blur(12px) saturate(130%) brightness(0.84)" : "blur(16px) saturate(140%) brightness(1.02)",
+    WebkitBackdropFilter: isDark ? "blur(12px) saturate(130%) brightness(0.84)" : "blur(16px) saturate(140%) brightness(1.02)",
     border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.85)"}`,
     boxShadow: isDark
       ? `inset 0 1px 0 rgba(255,255,255,0.52), inset 0 2px 7px rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.18), 0 0 0 1px ${accent.glow}0.14), 0 4px 16px rgba(0,0,0,0.22)`
@@ -287,12 +287,12 @@ function buildGlassBarSurface(args: SurfaceThemeArgs, surface: SurfaceTokens, fl
   if (surfaceStyle === "win9x") return win9xSurface(surface);
   return {
     background: isDark
-      ? "linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.10)), linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.045))"
+      ? "linear-gradient(180deg, rgba(0,0,0,0.46), rgba(0,0,0,0.32)), linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05))"
       : cinematicLight
-        ? "linear-gradient(180deg, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.28) 100%)"
-        : "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.42) 100%)",
-    backdropFilter: isDark ? "blur(30px) saturate(120%) brightness(0.88)" : "blur(30px) saturate(160%) brightness(1.02)",
-    WebkitBackdropFilter: isDark ? "blur(30px) saturate(120%) brightness(0.88)" : "blur(30px) saturate(160%) brightness(1.02)",
+        ? "linear-gradient(180deg, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.46) 100%)"
+        : "linear-gradient(180deg, rgba(255,255,255,0.84) 0%, rgba(255,255,255,0.58) 100%)",
+    backdropFilter: isDark ? "blur(30px) saturate(120%) brightness(0.84)" : "blur(30px) saturate(160%) brightness(1.02)",
+    WebkitBackdropFilter: isDark ? "blur(30px) saturate(120%) brightness(0.84)" : "blur(30px) saturate(160%) brightness(1.02)",
     border: `1px solid ${isDark ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.55)"}`,
     boxShadow: isDark
       ? "inset 0 0 0 0.5px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.16), 0 6px 20px rgba(0,0,0,0.25)"

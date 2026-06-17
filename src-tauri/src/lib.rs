@@ -83,6 +83,8 @@ pub struct AppEntry {
     pub launch_path: String,
     pub app_type: String,
     pub source: String, // "steam" | "xbox" | "uwp" | "desktop" | "other"
+    #[serde(default = "default_true")]
+    pub installed: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -188,6 +190,8 @@ pub struct Settings {
     pub app_cover_scale: f32,
     #[serde(default = "default_true")]
     pub show_store_badges: bool,
+    #[serde(default = "default_games_sort")]
+    pub games_sort: String,
     #[serde(default)]
     pub app_list_view: bool,
     #[serde(default = "default_app_list_cols")]
@@ -267,6 +271,7 @@ fn default_gamepad_btn_size()     -> String { "small".to_string() }
 fn default_topbar_show_bumpers()  -> bool   { false }
 fn default_surface_style()        -> String { "clear".to_string() }
 fn default_update_channel()       -> String { "stable".to_string() }
+fn default_games_sort()           -> String { "recent".to_string() }
 
 impl Default for Settings {
     fn default() -> Self {
@@ -314,6 +319,7 @@ impl Default for Settings {
             game_cover_scale: 1.0,
             app_cover_scale: 1.0,
             show_store_badges: true,
+            games_sort: "recent".to_string(),
             app_list_view: false,
             app_list_cols: 1,
             nav_bumpers_pos: "bottom".to_string(),
@@ -1235,7 +1241,7 @@ fn add_custom_app(name: String, path: String, app_type: String, source: String) 
     let id = format!("custom_{}", std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_millis());
     let icon = extract_icon_base64(&path);
-    let entry = AppEntry { id, name, icon_base64: icon, launch_path: path, app_type, source };
+    let entry = AppEntry { id, name, icon_base64: icon, launch_path: path, app_type, source, installed: true };
     data.apps.push(entry.clone());
     save_custom_data(&data);
     Ok(entry)
@@ -1970,6 +1976,7 @@ fn scan_folder_recursive(path: &Path, app_type: &str, source: &str, depth: u32, 
                     launch_path: path_str,
                     app_type: app_type.to_string(),
                     source: source.to_string(),
+                    installed: true,
                 });
             }
         }
@@ -2071,6 +2078,7 @@ fn scan_uwp_apps() -> Vec<AppEntry> {
             launch_path: format!("shell:AppsFolder\\{}", aumid),
             app_type: app_type.to_string(),
             source: source.to_string(),
+            installed: true,
         });
     }
     apps
@@ -2184,7 +2192,7 @@ fn scan_battlenet_games() -> Vec<AppEntry> {
         if launch_path.is_empty() { continue; }
         let icon = find_game_icon(install);
         let id = format!("battlenet:{}", name.to_lowercase().replace(' ', "_").replace([':', '\'', '"'], ""));
-        games.push(AppEntry { id, name, icon_base64: icon, launch_path, app_type: "game".to_string(), source: "battlenet".to_string() });
+        games.push(AppEntry { id, name, icon_base64: icon, launch_path, app_type: "game".to_string(), source: "battlenet".to_string(), installed: true });
     }
     games
 }
@@ -2246,6 +2254,7 @@ fn scan_gog_games() -> Vec<AppEntry> {
             launch_path,
             app_type: "game".to_string(),
             source: "gog".to_string(),
+            installed: true,
         });
     }
 
@@ -2312,6 +2321,7 @@ fn scan_epic_games() -> Vec<AppEntry> {
             launch_path,
             app_type: "game".to_string(),
             source: "epic".to_string(),
+            installed: true,
         });
     }
 
@@ -2420,6 +2430,7 @@ fn scan_steam_games() -> Vec<AppEntry> {
                         launch_path,
                         app_type: "game".to_string(),
                         source: "steam".to_string(),
+                        installed: true,
                     });
                 }
             }
@@ -2478,6 +2489,7 @@ fn get_apps() -> Vec<AppEntry> {
                 launch_path: steam_path,
                 app_type: "app".to_string(),
                 source: "desktop".to_string(),
+                installed: true,
             });
         }
     }
@@ -2556,6 +2568,7 @@ fn get_all_apps() -> Vec<AppEntry> {
                 launch_path: steam_path,
                 app_type: "app".to_string(),
                 source: "desktop".to_string(),
+                installed: true,
             });
         }
     }

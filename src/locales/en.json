@@ -398,7 +398,23 @@
   "grid": {
     "pinned": "Pinned",
     "unpinHint": "X to unpin",
-    "manage": "Manage"
+    "manage": "Manage",
+    "filter": {
+      "dock": "Filter & sort",
+      "all": "All",
+      "installed": "Installed",
+      "notInstalled": "Not installed"
+    },
+    "sort": {
+      "label": "Sort",
+      "recent": "Recent",
+      "az": "A-Z",
+      "store": "Store"
+    },
+    "count": "{{count}} games",
+    "empty": {
+      "noUninstalled": "Everything here is installed."
+    }
   },
   "library": {
     "refreshing": "Refreshing library…",

@@ -31,6 +31,9 @@ type ButtonStateMap = Record<string, boolean>;
 type ButtonTimeMap = Record<string, number>;
 
 const LAUNCH_RETURN_COOLDOWN_MS = 1800;
+const INSTALL_FILTERS = ["all", "installed", "notInstalled"];
+const GAMES_SORTS = ["recent", "az", "store"];
+const isInstalled = (app: App) => app?.installed !== false;
 
 export interface UseGamepadNavigationOptions {
   isReadyRef: AnyRef<boolean>;
@@ -38,6 +41,21 @@ export interface UseGamepadNavigationOptions {
 
   settingsRef?: AnyRef<Settings>;
   updateSetting?: (key: keyof Settings, value: unknown) => void;
+  utilityChromeRef?: AnyRef<null | {
+    enter: () => void;
+    move: (dir: -1 | 1) => void;
+    activate: () => void;
+    exit: () => void;
+  }>;
+  installFilterRef?: AnyRef<string>;
+  setInstallFilter?: (value: string) => void;
+  viewbarIndexRef?: AnyRef<number>;
+  setViewbarIndex?: (value: number) => void;
+  sortOpenRef?: AnyRef<boolean>;
+  setSortOpen?: (value: boolean | ((open: boolean) => boolean)) => void;
+  sortKbIndexRef?: AnyRef<number>;
+  setSortKbIndex?: (value: number) => void;
+  gamesSortRef?: AnyRef<string>;
   resolvedTheme?: string;
   appearanceGroupRef?: AnyRef<number | null>;
   setAppearanceGroup?: (value: number | null, options?: { animate?: boolean }) => void;
@@ -252,6 +270,7 @@ export function useGamepadNavigation(
   // True while a directional input is in hold-repeat mode (not a single press).
   // Read by the scroll-correction effect in App.jsx to choose instant vs smooth scroll.
   const navRepeatingRef = useRef(false);
+  const rsLatchRef = useRef({ up: false, down: false, left: false, right: false });
   const suppressUntilRelease = useRef<ButtonStateMap>({});
   const launchedAppSessionRef = useRef(false);
   const launchReturnCooldownUntil = useRef(0);
@@ -263,6 +282,21 @@ export function useGamepadNavigation(
     initialTab,
     settingsRef,
     updateSetting = noop as (key: keyof Settings, value: unknown) => void,
+    utilityChromeRef = { current: null } as AnyRef<null | {
+      enter: () => void;
+      move: (dir: -1 | 1) => void;
+      activate: () => void;
+      exit: () => void;
+    }>,
+    installFilterRef = { current: "all" } as AnyRef<string>,
+    setInstallFilter = noop as (value: string) => void,
+    viewbarIndexRef = { current: 0 } as AnyRef<number>,
+    setViewbarIndex = noop as (value: number) => void,
+    sortOpenRef = { current: false } as AnyRef<boolean>,
+    setSortOpen = noop as (value: boolean | ((open: boolean) => boolean)) => void,
+    sortKbIndexRef = { current: 0 } as AnyRef<number>,
+    setSortKbIndex = noop as (value: number) => void,
+    gamesSortRef = { current: "recent" } as AnyRef<string>,
     resolvedTheme = "space",
     appearanceGroupRef = { current: null } as AnyRef<number | null>,
     setAppearanceGroup = noop as (value: number | null, options?: { animate?: boolean }) => void,
@@ -538,6 +572,9 @@ export function useGamepadNavigation(
       appearanceGroupRef.current = null;
     }
     setGameSourceTab("All"); gameSourceTabRef.current = "All";
+    setInstallFilter("all");
+    setViewbarIndex(0);
+    setSortOpen(false);
     setSubtabFocusIndex(0); subtabFocusIndexRef.current = 0;
     if (outerRef.current) outerRef.current.scrollTop = 0;
     setTimeout(() => {
@@ -584,6 +621,49 @@ export function useGamepadNavigation(
     suppressHeldButtons();
     setShowSurfacePicker(false);
     showSurfacePickerRef.current = false;
+  };
+
+  const modalOwnsInput = () =>
+    !!launchingAppRef.current
+    || !!showHideModalRef?.current
+    || !!showLibraryActionsRef?.current
+    || !!showFileBrowserRef?.current
+    || !!pendingFileRef?.current
+    || !!showFolderManagerRef?.current
+    || !!confirmDeleteRef?.current
+    || !!showColModalRef?.current
+    || !!colPickerAppRef?.current
+    || !!editNameAppRef?.current
+    || !!showPowerModalRef?.current
+    || !!showThemePickerRef?.current
+    || !!showSurfacePickerRef?.current
+    || !!showSpotifyGuideRef.current
+    || !!showSpotifyOverlayRef.current
+    || !!artPickerAppRef.current
+    || !!contextMenuRef.current
+    || !!searchOpenRef.current;
+
+  const onRightStick = (dir: "up" | "down" | "left" | "right") => {
+    const chrome = utilityChromeRef.current;
+    if (!chrome) return;
+    const inBar = focusSectionRef.current === "viewbar";
+    if (sortOpenRef.current && inBar) {
+      if (dir === "up" || dir === "down") {
+        const next = Math.max(0, Math.min(2, sortKbIndexRef.current + (dir === "down" ? 1 : -1)));
+        if (next !== sortKbIndexRef.current) {
+          setSortKbIndex(next);
+          playSound();
+        }
+      }
+      return;
+    }
+    if (dir === "up") {
+      if (!inBar) chrome.enter();
+    } else if (dir === "down") {
+      if (inBar) chrome.exit();
+    } else if (inBar) {
+      chrome.move(dir === "right" ? 1 : -1);
+    }
   };
 
   // ── handleNav ─────────────────────────────────────────────────
@@ -688,7 +768,23 @@ export function useGamepadNavigation(
       ];
     };
 
-    const fApps = allApps.filter(a => {
+    const filterByInstallState = (items: App[]) => items.filter((app) => {
+      if (installFilterRef.current === "installed") return isInstalled(app);
+      if (installFilterRef.current === "notInstalled") return !isInstalled(app);
+      return true;
+    });
+    const recentRank = new Map(rec.map((entry, recIndex) => [entry.id, rec.length - recIndex]));
+    const sortGamesForView = (items: App[]) => items.sort((a, b) => {
+      const sort = gamesSortRef.current;
+      if (sort === "az") return (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+      if (sort === "store") {
+        const byStore = (a.source || "").localeCompare(b.source || "", undefined, { sensitivity: "base" });
+        return byStore || (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+      }
+      return (recentRank.get(b.id) || 0) - (recentRank.get(a.id) || 0)
+        || (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" });
+    });
+    let fApps = allApps.filter(a => {
       if (currentTab === "Home" || currentTab === "All") return true;
       if (currentTab === "Games") {
         if (a.app_type !== "game") return false;
@@ -711,10 +807,8 @@ export function useGamepadNavigation(
       if (!col) return true;
       return (appMembershipsRef.current[a.id] || []).includes(col.id);
     });
-    // Match the alphabetical ordering the Games grid renders so focus index,
-    // launch, art picker, and context actions resolve to the visible card.
     if (currentTab === "Games") {
-      fApps.sort((a, b) => (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" }));
+      fApps = sortGamesForView(filterByInstallState(fApps));
     }
     const fRecent = rec.filter(a => {
       if (currentTab === "Home") {
@@ -726,12 +820,43 @@ export function useGamepadNavigation(
       if (currentTab === "All") return true;
       return currentTab === "Games" ? a.app_type === "game" : a.app_type === "app";
     }).slice(0, 8);
-    const fPinned = (currentTab === "Apps" && appCollectionTabRef.current !== "All") ? [] : currentPins
+    let fPinned = (currentTab === "Apps" && appCollectionTabRef.current !== "All") ? [] : currentPins
       .map(id => allApps.find(a => a.id === id))
       .filter(Boolean)
       .filter(a => currentTab === "Home" || currentTab === "All" ? true
         : currentTab === "Games" ? a.app_type === "game" : a.app_type === "app");
+    if (currentTab === "Games") {
+      fPinned = sortGamesForView(filterByInstallState(fPinned));
+    }
     const homePinnedVisible = currentTab === "Home" && (currentSettings.home_pinned_pos ?? "bottom") !== "none" && fPinned.length > 0;
+    const hasPinnedForGameSource = (source: string, installFilter = installFilterRef.current) =>
+      currentTab === "Games"
+      && source === "All"
+      && currentPins.some(id => {
+        const app = allApps.find(a => a.id === id);
+        if (!app || app.app_type !== "game") return false;
+        if (installFilter === "installed") return isInstalled(app);
+        if (installFilter === "notInstalled") return !isInstalled(app);
+        return true;
+      });
+    const focusLibraryCards = (source = gameSourceTabRef.current, installFilter = installFilterRef.current) => {
+      const nextSection = hasPinnedForGameSource(source, installFilter) ? "pinned" : "grid";
+      setFocusSection(nextSection); focusSectionRef.current = nextSection;
+      setFocusIndex(0); focusIndexRef.current = 0;
+    };
+    const cycleGameSource = (direction: -1 | 1) => {
+      const sources = getGameSourceTabs();
+      const cur = sources.indexOf(gameSourceTabRef.current);
+      const currentIndex = cur >= 0 ? cur : 0;
+      const next = sources[(currentIndex + direction + sources.length) % sources.length];
+      if (next !== gameSourceTabRef.current) onSubtabMotionDirection(direction > 0 ? "forward" : "back");
+      setGameSourceTab(next); gameSourceTabRef.current = next;
+      setInstallFilter("all");
+      setViewbarIndex(0);
+      setSortOpen(false);
+      focusLibraryCards(next, "all");
+      playSound();
+    };
 
     // ══ SEARCH OVERLAY ════════════════════════════════════════════
     if (searchOpenRef.current) {
@@ -809,6 +934,52 @@ export function useGamepadNavigation(
       return;
     }
     // ══ END SEARCH OVERLAY ════════════════════════════════════════
+
+    if (section === "viewbar" && currentTab === "Games") {
+      if (key === "TriggerLeft") { cycleGameSource(-1); return; }
+      if (key === "TriggerRight") { cycleGameSource(1); return; }
+      if (sortOpenRef.current) {
+        if (key === "ArrowDown") {
+          const next = Math.min(sortKbIndexRef.current + 1, GAMES_SORTS.length - 1);
+          if (next !== sortKbIndexRef.current) { setSortKbIndex(next); playSound(); }
+          return;
+        }
+        if (key === "ArrowUp") {
+          const next = Math.max(sortKbIndexRef.current - 1, 0);
+          if (next !== sortKbIndexRef.current) { setSortKbIndex(next); playSound(); }
+          return;
+        }
+        if (key === "Enter") {
+          updateSetting("games_sort", GAMES_SORTS[sortKbIndexRef.current] ?? "recent");
+          setSortOpen(false);
+          playSoundAlt();
+          return;
+        }
+        if (key === "Escape") {
+          setSortOpen(false);
+          playSoundAlt();
+          return;
+        }
+        return;
+      }
+      if (key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight") {
+        focusLibraryCards();
+        playSound();
+        return;
+      }
+      if (key === "Enter") {
+        if (viewbarIndexRef.current < 3) {
+          setInstallFilter(INSTALL_FILTERS[viewbarIndexRef.current] ?? "all");
+        } else {
+          const currentSortIndex = Math.max(0, GAMES_SORTS.indexOf(gamesSortRef.current));
+          setSortKbIndex(currentSortIndex);
+          utilityChromeRef.current?.activate();
+        }
+        return;
+      }
+      if (key === "Escape") { utilityChromeRef.current?.exit(); return; }
+      return;
+    }
 
     // Y opens search from main UI
     if (key === "ButtonY") { playSound(); openSearch(); return; }
@@ -1133,31 +1304,8 @@ export function useGamepadNavigation(
     // Games / Apps tabs
     // LT/RT cycle source sub-tabs on Games tab (from anywhere)
     if (currentTab === "Games") {
-      const SOURCES = getGameSourceTabs();
-      const currentSourceIndex = () => {
-        const cur = SOURCES.indexOf(gameSourceTabRef.current);
-        return cur >= 0 ? cur : 0;
-      };
-      if (key === "TriggerLeft") {
-        const cur = currentSourceIndex();
-        const next = SOURCES[(cur - 1 + SOURCES.length) % SOURCES.length];
-        if (next !== gameSourceTabRef.current) onSubtabMotionDirection("back");
-        setGameSourceTab(next); gameSourceTabRef.current = next;
-        const hasPinned = next === "All" && pinsRef.current.length > 0 && pinsRef.current.some(id => appsRef.current.find(a => a.id === id));
-        setFocusSection(hasPinned ? "pinned" : "grid"); focusSectionRef.current = hasPinned ? "pinned" : "grid";
-        setFocusIndex(0); focusIndexRef.current = 0;
-        playSound(); return;
-      }
-      if (key === "TriggerRight") {
-        const cur = currentSourceIndex();
-        const next = SOURCES[(cur + 1) % SOURCES.length];
-        if (next !== gameSourceTabRef.current) onSubtabMotionDirection("forward");
-        setGameSourceTab(next); gameSourceTabRef.current = next;
-        const hasPinned = next === "All" && pinsRef.current.length > 0 && pinsRef.current.some(id => appsRef.current.find(a => a.id === id));
-        setFocusSection(hasPinned ? "pinned" : "grid"); focusSectionRef.current = hasPinned ? "pinned" : "grid";
-        setFocusIndex(0); focusIndexRef.current = 0;
-        playSound(); return;
-      }
+      if (key === "TriggerLeft") { cycleGameSource(-1); return; }
+      if (key === "TriggerRight") { cycleGameSource(1); return; }
     }
     if (currentTab === "Apps") {
       const APP_COLS = ["All", ...appCollectionsRef.current.map(c => c.name)];
@@ -1193,6 +1341,9 @@ export function useGamepadNavigation(
       if (currentTab === "Games") {
         if (item !== gameSourceTabRef.current) onSubtabMotionDirection(direction);
         setGameSourceTab(item); gameSourceTabRef.current = item;
+        setInstallFilter("all");
+        setViewbarIndex(0);
+        setSortOpen(false);
       }
       else {
         if (item !== appCollectionTabRef.current) onSubtabMotionDirection(direction);
@@ -1328,6 +1479,24 @@ export function useGamepadNavigation(
         const initialDelay = speed === "slow" ? 500 : speed === "fast" ? 250 : 400;
         const repeatDelay = speed === "slow" ? 150 : speed === "fast" ? 60 : 100;
         const state = readGpState(gp);
+
+        if (!modalOwnsInput()) {
+          const RS_ON = 0.6;
+          const RS_OFF = 0.3;
+          const rx = gp.axes?.[2] ?? 0;
+          const ry = gp.axes?.[3] ?? 0;
+          const latch = rsLatchRef.current;
+          if (ry < -RS_ON && !latch.up) { latch.up = true; onRightStick("up"); }
+          if (ry > -RS_OFF) latch.up = false;
+          if (ry > RS_ON && !latch.down) { latch.down = true; onRightStick("down"); }
+          if (ry < RS_OFF) latch.down = false;
+          if (rx < -RS_ON && !latch.left) { latch.left = true; onRightStick("left"); }
+          if (rx > -RS_OFF) latch.left = false;
+          if (rx > RS_ON && !latch.right) { latch.right = true; onRightStick("right"); }
+          if (rx < RS_OFF) latch.right = false;
+        } else {
+          rsLatchRef.current = { up: false, down: false, left: false, right: false };
+        }
 
         Object.keys(state).forEach(key => {
           const pressed = state[key];

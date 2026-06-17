@@ -3,12 +3,48 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Restore smooth non-repeat Games/Apps grid scrolling while keeping repeat-scroll rebound reduced.
+**Task:** Tune translucent bar opacity and Settings gamepad top-scroll behavior.
 
 **Scope:**
-- Find the focused-card/gamepad scroll path used by Games and Apps grids.
-- Keep normal one-step gamepad moves smooth, but avoid rebound during held stick-repeat.
-- Validate with the usual build/check gates and update `CLAUDE.md`/`CHANGELOG.md` after validation.
+- Make transparent/glassy top and bottom bars read more opaque over bright game artwork.
+- Fix Settings gamepad upward scrolling so reaching the first row snaps the scroller all the way to the top.
+- Preserve the current PR1 toolbar/right-stick repair and external scroll-clearance work.
+- Validate with the usual frontend build/check gates and update `CLAUDE.md`/`CHANGELOG.md` after validation.
+
+**Completed (this session - translucent bars and Settings top-scroll):**
+- Increased the shared Glass/Aero/Onyx bar surface density in `src/theme/surfaces.ts` so transparent top and bottom bars stay readable over bright library artwork.
+- Added a Settings gamepad scroll escape hatch in `App.jsx` so focusing the first Settings row snaps the tab scroller to `scrollTop: 0` instead of stopping below the floating-header clearance.
+- Updated `CHANGELOG.md`.
+- Validated with `npm run build` and `git diff --check`; only the existing Vite large-chunk warning and CRLF notices remain.
+
+**Completed (this session - post-repair sanity sweep):**
+- Re-ran `npm run build`, `cargo check`, and `git diff --check` against the current dirty tree.
+- Confirmed the Games toolbar bridge is connected from `App.jsx` through `useGamepadNavigation`, `LibraryViewContent`, and `AppBottomBar` for Right-Stick focus, visible count, sort state, and footer hint.
+- Reviewed the non-toolbar dirty files at a diff level; no obvious disconnected state or compile-breaking regressions surfaced. Existing warnings remain: Vite large chunk, Rust path canonicalization, unused `is_our_window_focused`, and CRLF notices.
+
+**Completed (this session - PR1 toolbar regression repair):**
+- Restored the App-to-hook bridge for `utilityChromeRef`, install filter refs, viewbar focus/index state, sort open/index state, and persisted `games_sort`.
+- Reconnected Games toolbar props so the filter buttons, visible game count, sort button/flyout, and focused toolbar styling receive live state again.
+- Restored the Games bottom bar RS hint while preserving the existing LT/RT source switching, pinned-first toolbar exit, and external scroll-clearance changes.
+- Validated with `npm run build` and `git diff --check`; only the existing large chunk and CRLF warnings remain.
+
+**Completed (this session - PR1 library install filter and view toolbar):**
+- Added `installed` data plumbing for app/game entries with serde defaults and scan-created entries defaulting installed, plus persisted `games_sort` settings across Rust, TypeScript, and frontend defaults.
+- Added the Games-only view toolbar with All / Installed / Not installed filter segments, visible game count, Recent / A-Z / Store sorting, a sort flyout, empty Not installed copy, and dormant not-installed/installing card treatments.
+- Added global Right-Stick utility chrome registration in `useGamepadNavigation`: RS-up docks focus into Games filter/sort chrome, RS-left/right operates toolbar items, A opens/picks sort, B/RS-down exits, source changes reset the transient filter, and overlays/search/art/context surfaces suppress RS input.
+- Added the Games footer RS hint and English/French TODO locale keys; French strings need moi952 translation follow-up.
+- Validated with `npm run build`, `cargo check`, and `git diff --check`; only the existing large chunk, unused Rust helper, path canonicalization, and CRLF warnings remain. Real Ally tuning should still confirm RS axes/threshold feel.
+
+**Completed (this session - PR1 toolbar focus polish):**
+- RS-down/B exit from the Games toolbar now returns to pinned on `All` when matching pinned games are available, instead of always skipping to the grid.
+- The focused Games toolbar now has a stronger focused shell border/glow and brighter focused control ring.
+- Validated with `npm run build` and `git diff --check`; only the existing large chunk and CRLF warnings remain.
+
+**Completed (this session - PR1 toolbar source-switch return):**
+- Games LT/RT source switching now works from the Games toolbar, resets the transient install filter, closes the sort flyout, preserves subtab motion direction, and returns focus to the card area.
+- The `All` source keeps its previous pinned-first landing behavior when pinned games are available; other sources land on the first grid card.
+- Left-stick/d-pad movement from the Games toolbar returns focus to the card area without needing RS-down.
+- Validated with `npm run build` and `git diff --check`; only the existing large chunk and CRLF warnings remain.
 
 **Completed (this session - non-repeat scroll animation restore):**
 - Restored smooth focused-card scroll correction for normal Games/Apps gamepad moves.
@@ -691,7 +727,7 @@ Two parallel input paths:
 ### Navigation Sections (Games/Apps tab)
 `subtabs` → `pinned` → `grid`
 - Switching main tabs (LB/RB) lands on **first pinned item** if any pins exist, otherwise **first grid item**
-- LT/RT source switches: "All" subtab lands on first pinned or first grid; Steam/Xbox/Bnet/Other always land on first grid item
+- LT/RT source switches from Games, including while focus is in the toolbar, land on first pinned item for `All` when available; other source switches land on the first grid item. Apps collection switches land on the first grid item.
 - Navigating up from `pinned` or first row of `grid` goes to `subtabs`
 - `subtabs` row: source pills (Games only) + single "Manage" button
 - Source pills auto-switch on focus (no Enter needed)
