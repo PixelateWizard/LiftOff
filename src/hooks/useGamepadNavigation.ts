@@ -1208,7 +1208,9 @@ export function useGamepadNavigation(
 
       const goTo = (sec: string) => {
         setFocusSection(sec); focusSectionRef.current = sec;
-        setFocusIndex(0); focusIndexRef.current = 0;
+        const isSemi = currentSettings.home_mode === "semi";
+        const initialIdx = (sec === "hero" && isSemi) ? heroIndexRef.current : 0;
+        setFocusIndex(initialIdx); focusIndexRef.current = initialIdx;
         if (sec === "home_collections") {
           setHomeColFocusRow(0); homeColFocusRowRef.current = 0;
           setHomeColFocusCol(0); homeColFocusColRef.current = 0;
@@ -1218,13 +1220,17 @@ export function useGamepadNavigation(
       // ─── HERO ───────────────────────────────────────────────────────────────
       if (section === "hero") {
         const heroApp = fRecentGames[heroIndexRef.current];
-        const heroRunning = !!heroApp && isRunning(heroApp.id);
-        const heroMax = Math.min(fRecentGames.length, 6) - 1;
+        const isSemi = currentSettings.home_mode === "semi";
+        const heroRunning = !isSemi && !!heroApp && isRunning(heroApp.id);
+        const heroMax = isSemi ? fRecentGames.length - 1 : Math.min(fRecentGames.length, 6) - 1;
         const moveHero = (dir: number) => {
           const ni = Math.min(Math.max(heroIndexRef.current + dir, 0), heroMax);
           if (ni === heroIndexRef.current) return;
           setHeroIndex(ni); heroIndexRef.current = ni;
           setHeroActionIndex(0); heroActionIndexRef.current = 0;
+          if (isSemi) {
+            setFocusIndex(ni); focusIndexRef.current = ni;
+          }
         };
         if (heroRunning) {
           // Running games show two actions: Resume (0) and Close (1). Pressing past

@@ -3,19 +3,30 @@
 ## ⚡ Active Task
 > Update this block whenever starting a new task. This is the first thing the AI reads.
 
-**Task:** Tune translucent bar opacity and Settings gamepad top-scroll behavior.
+**Task:** Update semi-immersive home theme to feature a full-screen background and Xbox-like focus-art layout.
 
 **Scope:**
-- Make transparent/glassy top and bottom bars read more opaque over bright game artwork.
-- Fix Settings gamepad upward scrolling so reaching the first row snaps the scroller all the way to the top.
-- Preserve the current PR1 toolbar/right-stick repair and external scroll-clearance work.
-- Validate with the usual frontend build/check gates and update `CLAUDE.md`/`CHANGELOG.md` after validation.
+- Modify [HomeView.tsx](file:///c:/Users/taylo/ally-launcher/src/views/HomeView.tsx) to hide CTAs/dots/covers, implement full-bleed dynamic backgrounds based on the currently focused card/app, and structure the card deck slots to start with a Recent Games row.
+- Update [App.jsx](file:///c:/Users/taylo/ally-launcher/src/App.jsx) scroll correction for the new semi-immersive hero row cards.
+- Update [useGamepadNavigation.ts](file:///c:/Users/taylo/ally-launcher/src/hooks/useGamepadNavigation.ts) to handle horizontal navigation and direct launches in the semi-immersive hero section.
+- Validate with frontend builds.
 
-**Completed (this session - translucent bars and Settings top-scroll):**
-- Increased the shared Glass/Aero/Onyx bar surface density in `src/theme/surfaces.ts` so transparent top and bottom bars stay readable over bright library artwork.
-- Added a Settings gamepad scroll escape hatch in `App.jsx` so focusing the first Settings row snaps the tab scroller to `scrollTop: 0` instead of stopping below the floating-header clearance.
-- Updated `CHANGELOG.md`.
-- Validated with `npm run build` and `git diff --check`; only the existing Vite large-chunk warning and CRLF notices remain.
+**Completed (this session - semi-immersive theme rewrite):**
+- Redesigned the Semi-immersive theme in [HomeView.tsx](file:///c:/Users/taylo/ally-launcher/src/views/HomeView.tsx) to feature a full-bleed background influenced by the currently focused game/app card.
+- Placed the hero title text overlay in a top zone of height `semiHeroHeight` and hid dots, covers, and CTA buttons under `!semiHome` guards.
+- Structured the card deck slots to start with a new `"Recent Games"` shelf, followed by `"Recents"` and `"Collections"`.
+- Wired hovered cards (`onMouseEnter`) and clicked cards (`onClick`) to update active card focus indices to update background art dynamically.
+- Implemented direct game/app launching on Enter (bypassing the Close/Resume modal) and unified the horizontal focus index sync when vertical focus enters the semi-immersive hero section in [useGamepadNavigation.ts](file:///c:/Users/taylo/ally-launcher/src/hooks/useGamepadNavigation.ts).
+- Re-implemented horizontal/vertical scroll alignment and clearance for semi-immersive hero cards in [App.jsx](file:///c:/Users/taylo/ally-launcher/src/App.jsx).
+- Cleaned up duplicate keys and syntax errors in [en.json](file:///c:/Users/taylo/ally-launcher/src/locales/en.json) and [fr.json](file:///c:/Users/taylo/ally-launcher/src/locales/fr.json).
+
+**Completed (this session - immersive home scrolling drawer background removal):**
+- Declared `panelOpen` in the content function scope of [HomeView.tsx](file:///c:/Users/taylo/ally-launcher/src/views/HomeView.tsx) to react to drawer open state.
+- Updated the hero container (`{/* ── HERO ── */}`) in [HomeView.tsx](file:///c:/Users/taylo/ally-launcher/src/views/HomeView.tsx) to transition opacity to 0 and disable pointer events when `panelOpen` is true.
+- Updated the fixed pinned shelf overlay in [HomeView.tsx](file:///c:/Users/taylo/ally-launcher/src/views/HomeView.tsx) to fade out and disable pointer events when the drawer is open.
+- Removed solid/frosted styling (background, border, shadow, backdrop-filter) and Win9x titlebar from the slide-up drawer panel in [HomeView.tsx](file:///c:/Users/taylo/ally-launcher/src/views/HomeView.tsx) so scrolled lists float directly over the active theme background.
+- Updated [CHANGELOG.md](file:///c:/Users/taylo/ally-launcher/CHANGELOG.md).
+- Validated with `npm run build` and `git diff --check`.
 
 **Completed (this session - post-repair sanity sweep):**
 - Re-ran `npm run build`, `cargo check`, and `git diff --check` against the current dirty tree.

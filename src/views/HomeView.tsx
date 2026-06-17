@@ -257,7 +257,9 @@ export function HomeView(props: HomeViewProps) {
       ? slot.querySelector<HTMLElement>(`[data-semi-slot-page="collection-${homeColFocusRow}"]`)
       : focusSection === "recent"
         ? slot.querySelector<HTMLElement>('[data-semi-slot-page="recent"]')
-        : null;
+        : focusSection === "hero"
+          ? slot.querySelector<HTMLElement>('[data-semi-slot-page="hero"]')
+          : null;
     if (!page) return;
     slot.scrollTo({ top: page.offsetTop, behavior: "smooth" });
   }, [focusSection, homeColFocusRow, semiHome]);
@@ -265,27 +267,14 @@ export function HomeView(props: HomeViewProps) {
   const content = (() => {
     const focusSec = focusSection;
     const focusIdx = focusIndex;
-    const heroGame   = activeHeroGame;
-    const heroArt    = heroGame ? (customArt[heroGame.id] || gameArt[heroGame.id]) : null;
-    const resolveHeroType = (id) => {
-      if (settings.animated_heroes === "static")   return "static";
-      if (settings.animated_heroes === "animated") return "animated";
-      return heroCustomType[id] || "static";
-    };
-    const heroBanner = heroGame
-      ? (resolveHeroType(heroGame.id) === "animated"
-          ? (heroAnimated[heroGame.id] || heroStatic[heroGame.id])
-          : heroStatic[heroGame.id])
-      : null;
+    const colsFocused = focusSec === "home_collections";
+    const panelOpen = settings.cinematic_home && (colsFocused || focusSec === "recent");
+    // Moved down below homeCollections definition to resolve activeApp correctly in semi-immersive mode
     const sectionTitleFontSize = settings.home_section_title_size === "large" ? 15 : settings.home_section_title_size === "medium" ? 12 : 10;
     const pinnedAtTop = settings.home_pinned_pos === "top";
     const isOnyx = resolvedTheme === "onyx";
     const showHeroArtwork = !settings.cinematic_home || settings.show_immersive_hero_art !== false;
-    const visibleHeroBanner = showHeroArtwork ? heroBanner : null;
     const heroFocused = focusSec === "hero";
-    const heroRunning = !!heroGame && !!isRunning?.(heroGame.id);
-    const heroResumeFocused = heroFocused && (!heroRunning || heroActionIndex === 0);
-    const heroCloseFocused = heroFocused && heroRunning && heroActionIndex === 1;
     const webcoreHero = surfaceStyle === "win9x";
     const materialHero = surfaceStyle === "material" || webcoreHero;
     const materialHeroText = isDark ? "#fffefd" : "#18110b";
@@ -428,6 +417,67 @@ export function HomeView(props: HomeViewProps) {
         items: apps.filter(a => a.app_type === "app" && (appMemberships[a.id] || []).includes(col.id)).slice(0, 20),
       })),
     ].filter(c => c.items.length > 0 && !homeHiddenCollections.includes(c.name)) : [];
+
+    const activeApp = (() => {
+      if (!semiHome) return activeHeroGame;
+      if (focusSec === "hero") {
+        return heroGames[heroIdx] || null;
+      }
+      if (focusSec === "pinned") {
+        return homePinnedApps[focusIdx] || null;
+      }
+      if (focusSec === "recent") {
+        return homeFilteredRecent[focusIdx] || null;
+      }
+      if (focusSec === "home_collections") {
+        const colData = homeCollections[homeColFocusRow];
+        return colData ? colData.items[homeColFocusCol] || null : null;
+      }
+      return null;
+    })();
+
+    const heroGame = semiHome ? activeApp : activeHeroGame;
+    const heroArt = heroGame ? (customArt[heroGame.id] || gameArt[heroGame.id]) : null;
+    const resolveHeroType = (id) => {
+      if (settings.animated_heroes === "static")   return "static";
+      if (settings.animated_heroes === "animated") return "animated";
+      return heroCustomType[id] || "static";
+    };
+    const heroBanner = heroGame
+      ? (resolveHeroType(heroGame.id) === "animated"
+          ? (heroAnimated[heroGame.id] || heroStatic[heroGame.id])
+          : heroStatic[heroGame.id])
+      : null;
+
+    const visibleHeroBanner = showHeroArtwork ? heroBanner : null;
+    const heroRunning = !!heroGame && !!isRunning?.(heroGame.id);
+    const heroResumeFocused = heroFocused && (!heroRunning || heroActionIndex === 0);
+    const heroCloseFocused = heroFocused && heroRunning && heroActionIndex === 1;
+
+    const activeGame = activeApp && activeApp.app_type === "game" ? activeApp : null;
+    const activeGameHeroType = activeGame
+      ? settings.animated_heroes === "static"
+        ? "static"
+        : settings.animated_heroes === "animated"
+          ? "animated"
+          : heroCustomType[activeGame.id] || "static"
+      : "none";
+
+    const activeGameStaticBanner = activeGame
+      ? customHeroArt[activeGame.id] || heroStatic[activeGame.id] || null
+      : null;
+
+    const activeGameFallback = activeGame
+      ? customArt[activeGame.id] || gameArt[activeGame.id] || null
+      : null;
+
+    const activeGameAnimatedUrl = activeGame && activeGameHeroType === "animated"
+      ? heroAnimated[activeGame.id] || null
+      : null;
+
+    const activeGameIsAnimatedImage = activeGameHeroType === "animated" && isAnimatedImageUrl(heroAnimated[activeGame.id]);
+    const activeGameIsVideo = activeGameHeroType === "animated" && !activeGameIsAnimatedImage;
+
     const heroSideOverlay = !showHeroArtwork
       ? "transparent"
       : materialCinematicHero
@@ -467,6 +517,48 @@ export function HomeView(props: HomeViewProps) {
           ? "radial-gradient(ellipse 46% 42% at 16% 72%, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.18) 34%, transparent 68%)"
           : "radial-gradient(ellipse 46% 42% at 16% 72%, rgba(39,27,18,0.18) 0%, rgba(39,27,18,0.09) 34%, transparent 68%)")
       : "transparent";
+    const renderSemiHeroCard = (app: any, i: number) => {
+      const focused = focusSec === "hero" && heroIdx === i;
+      const isPinned = pins.includes(app.id);
+      const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : (customArt[app.id] || null);
+      const fullApp = allAppsRef.current.find(a => a.id === app.id) || app;
+      const wrapperStyle = { flexShrink: 0, width: semiCardW, height: semiCardH, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative" as const, transition: "transform 0.15s ease", transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" };
+      const select = () => {
+        setFocusSection("hero");
+        focusSectionRef.current = "hero";
+        setHeroIndex(i);
+        if (heroIndexRef) heroIndexRef.current = i;
+        setFocusIndex(i);
+        focusIndexRef.current = i;
+      };
+
+      return (
+        <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
+          onClick={select}
+          onMouseEnter={select}
+          onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+          style={wrapperStyle}>
+          <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ position: "absolute", inset: 0, borderRadius: surfaceCardRadius, overflow: "hidden", transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+            border: `1px solid ${focused && !isOnyx ? (surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)") : (surfaceStyle === "material" ? "var(--material-border-subtle)" : "rgba(255,255,255,0.08)")}`,
+            boxShadow: focused && !isOnyx ? (surfaceStyle === "material" ? materialFocusShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 24px ${accent.glow}0.2)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
+          }}>
+            {art
+              ? <img src={art} alt={fullApp.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : <div style={{ width: "100%", height: "100%", background: surfaceStyle === "material" ? "var(--material-elevation-1)" : `${accent.glow}0.08)`, display: "flex", alignItems: "center", justifyContent: "center" }}><AppIcon app={fullApp} size={36} /></div>
+            }
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 8px 7px", background: "linear-gradient(transparent, rgba(0,0,0,0.85))" }}>
+              <div style={{ fontSize: 9, fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{fullApp.name}</div>
+            </div>
+            <PinBadge isPinned={isPinned} small />
+            <RunningBadge show={isRunning?.(app.id)} small />
+            {app.app_type === "game" && <StoreBadge source={app.source ?? fullApp.source} small />}
+            {focused && !isOnyx && <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: surfaceCardRadius, pointerEvents: "none" }} />}
+          </CyberpunkCard>
+          <FocusRing focused={focused} variant="spin" elementRadius={surfaceCardRadius} />
+        </div>
+      );
+    };
+
     const renderSemiRecentCard = (app: any, i: number) => {
       const focused = focusSec === "recent" && focusIdx === i;
       const isPinned = pins.includes(app.id);
@@ -479,6 +571,7 @@ export function HomeView(props: HomeViewProps) {
         return (
           <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
             onClick={select}
+            onMouseEnter={select}
             onDoubleClick={() => triggerLaunch(app, recentRef.current)}
             style={wrapperStyle}>
             <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ position: "absolute", inset: 0, borderRadius: surfaceCardRadius, overflow: "hidden", transition: "border-color 0.15s ease, box-shadow 0.15s ease",
@@ -505,6 +598,7 @@ export function HomeView(props: HomeViewProps) {
       return (
         <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
           onClick={select}
+          onMouseEnter={select}
           onDoubleClick={() => triggerLaunch(app, recentRef.current)}
           style={wrapperStyle}>
           <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ ...glass, background: surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)", backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
@@ -522,6 +616,7 @@ export function HomeView(props: HomeViewProps) {
         </div>
       );
     };
+
     const renderSemiCollectionCard = (app: any, rowIdx: number, colIdx: number) => {
       const colsFocused = focusSec === "home_collections";
       const focused = colsFocused && homeColFocusRow === rowIdx && homeColFocusCol === colIdx;
@@ -533,6 +628,7 @@ export function HomeView(props: HomeViewProps) {
         return (
           <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
             onClick={select}
+            onMouseEnter={select}
             onDoubleClick={() => triggerLaunch(app, recentRef.current)}
             style={{ flexShrink: 0, width: semiCardW, height: semiCardH, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative" }}>
             <div style={{ position: "absolute", inset: 0, borderRadius: surfaceCardRadius, overflow: "hidden", transition: "box-shadow 0.15s ease",
@@ -558,6 +654,7 @@ export function HomeView(props: HomeViewProps) {
       return (
         <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
           onClick={select}
+          onMouseEnter={select}
           onDoubleClick={() => triggerLaunch(app, recentRef.current)}
           style={{ ...glass, flexShrink: 0, width: semiCardW, height: semiCardH, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative",
             outline: focused && !isOnyx ? `2px solid ${accent.primary}` : "2px solid transparent",
@@ -580,111 +677,157 @@ export function HomeView(props: HomeViewProps) {
         {/* ── HERO ── */}
         <div style={{
           ...(settings.cinematic_home
-            ? { position: "fixed", inset: 0, zIndex: 0 }
+            ? { position: "fixed", inset: 0, zIndex: 0, opacity: panelOpen ? 0 : 1, transform: panelOpen ? "translateY(-100%)" : "translateY(0)", pointerEvents: panelOpen ? "none" : "auto" as const }
             : semiHome
-            ? { position: "fixed", top: 0, left: 0, right: 0, height: semiHeroHeight, zIndex: 1, flexShrink: 0 }
+            ? { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, height: "100%", zIndex: 1, flexShrink: 0 }
             : { position: "relative", height: "clamp(280px, 44vh, 460px)", borderRadius: surfaceCardRadius, flexShrink: 0 }),
           overflow: "hidden", display: "flex", flexDirection: "column",
           border: (settings.cinematic_home || semiHome) ? "none" : heroFocused ? `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.5)"}` : `1px solid ${surfaceStyle === "material" ? "var(--material-border-subtle)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
           boxShadow: (settings.cinematic_home || semiHome) ? "none" : heroFocused ? (surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.2), 0 8px 40px ${accent.glow}0.15)`) : (surfaceStyle === "material" ? "var(--material-shadow-medium)" : "0 4px 24px rgba(0,0,0,0.15)"),
-          transition: "border-color 0.2s ease, box-shadow 0.2s ease",
-          background: (settings.cinematic_home && !showHeroArtwork) || (showHeroArtwork && activeIsVideo) ? "transparent" : materialHero ? appBg : isDark ? "#0a0502" : appBg,
+          transition: settings.cinematic_home
+            ? "opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)"
+            : "border-color 0.2s ease, box-shadow 0.2s ease",
+          background: (settings.cinematic_home && !showHeroArtwork) || (showHeroArtwork && (semiHome ? activeGameIsVideo : activeIsVideo)) ? "transparent" : materialHero ? appBg : isDark ? "#0a0502" : appBg,
           // Cyberpunk normal hero: corner-cut shape + a neon "border" drawn as the
           // padding frame (the cover art inset by padding reveals the accent edge,
           // which follows the diagonal cut because both layers are clipped).
           ...(cyberNormalHero ? { clipPath: HERO_CLIP, WebkitClipPath: HERO_CLIP, padding: heroFocused ? 3 : 2, background: heroFocused ? accent.primary : `${accent.glow}0.75)`, border: "none", boxShadow: heroFocused ? `0 0 24px ${accent.glow}0.3)` : "none" } : {}),
         }}>
           <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: settings.cinematic_home ? 0 : surfaceCardRadius, overflow: "hidden", ...(cyberNormalHero ? { clipPath: HERO_CLIP, WebkitClipPath: HERO_CLIP } : {}) }}>
-            {heroGames.map((game, idx) => {
-              const isActive = idx === heroIdx;
-              const isNearby = Math.abs(idx - heroIdx) <= 1;
-
-              const rawStaticBanner = customHeroArt[game.id] || heroStatic[game.id];
-              const fallback = customArt[game.id] || gameArt[game.id];
-              const heroType = resolveHeroType(game.id);
-              const animatedUrl = heroType === "animated"
-                ? heroAnimated[game.id] : null;
-              const primaryHeroMedia = animatedUrl || rawStaticBanner;
-              const showAnimatedImage = !!animatedUrl && isAnimatedImageUrl(animatedUrl);
-              const showVideo = !!animatedUrl && !showAnimatedImage;
-              const staticBanner = rawStaticBanner;
-              const mediaPaused = appPaused || heroMediaPaused || !active;
-              const mediaVisible = !mediaPaused;
-              // True when this hero is *meant* to be a video, even if the URL hasn't loaded yet.
-              // Prevents the static banner from showing through the transparent video during decode.
-              const animatedImageByType = heroType === "animated" && isAnimatedImageUrl(heroAnimated[game.id]);
-              const intendedVideo = heroType === "animated" && !animatedImageByType;
-
+            {(() => {
               const coverStyle: any = { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" };
-              return (
-                <div key={game.id} style={{ position: "absolute", inset: 0, opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
-                  {/* Base layer: render images only for active ±1 to reduce GPU texture pressure */}
-                  {isNearby && showHeroArtwork && !intendedVideo
-                    ? (staticBanner
-                        ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
-                        : fallback
-                          ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(10px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
-                          : <img src={`/assets/liftoff_hero_${settings.accent}.svg`} alt="" style={{ ...coverStyle }} />)
-                    : <div style={{ width: "100%", height: "100%" }} />
-                  }
-                  {showHeroArtwork && showAnimatedImage && (
-                    <img
-                      src={primaryHeroMedia}
-                      alt=""
-                      decoding="async"
-                      loading="eager"
-                      style={{
-                        ...coverStyle,
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        transform: "translateZ(0)",
-                        // Always keep src loaded. Removing src on pause forced a re-decode on
-                        // return, exposing the static banner for the re-decode beat. The off-tab
-                        // Home wrapper is hidden anyway, so leaving it mounted costs nothing.
-                        opacity: 1,
-                      }}
-                    />
-                  )}
-                  {showHeroArtwork && showVideo && (
-                    <video
-                      ref={el => {
-                        if (el) {
-                          heroVideoRefs.current[game.id] = el;
-                          requestAnimationFrame(() => playActiveHeroVideo(el, game.id));
-                        } else {
-                          delete heroVideoRefs.current[game.id];
-                          setHeroVideoPlaying(prev => {
-                            if (!(game.id in prev)) return prev;
-                            const next = { ...prev }; delete next[game.id]; return next;
-                          });
-                        }
-                      }}
-                      src={primaryHeroMedia}
-                      autoPlay={isActive && !mediaPaused}
-                      onCanPlay={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
-                      onLoadedData={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
-                      onPlaying={() => setHeroVideoPlaying(prev => prev[game.id] ? prev : { ...prev, [game.id]: true })}
-                      loop muted playsInline preload={isNearby ? "auto" : "none"}
-                      style={{
-                        position: "absolute",
-                        top: 0, left: 0,
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        objectPosition: "center top",
-                        transform: "translateZ(0)",
-                        // Fades in on first paint; holds last frame across pauses so there is no
-                        // transparent window when returning to Home or after launch.
-                        opacity: (isActive && showHeroArtwork && heroVideoPlaying[game.id]) ? 1 : 0,
-                        transition: "opacity 0.25s ease",
-                        pointerEvents: "none",
-                      }}
-                    />
-                  )}
-                </div>
-              );
-            })}
+              if (semiHome) {
+                return activeGame ? (
+                  <div key={activeGame.id} style={{ position: "absolute", inset: 0, opacity: 1, zIndex: 1 }}>
+                    {showHeroArtwork && !activeGameIsVideo && (
+                      activeGameStaticBanner ? (
+                        <img src={activeGameStaticBanner} alt="" decoding="async" loading="eager" style={{ ...coverStyle, transform: "translateZ(0)" }} />
+                      ) : activeGameFallback ? (
+                        <img src={activeGameFallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(10px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
+                      ) : (
+                        <img src={`/assets/liftoff_hero_${settings.accent}.svg`} alt="" style={{ ...coverStyle }} />
+                      )
+                    )}
+                    {showHeroArtwork && activeGameIsAnimatedImage && activeGameAnimatedUrl && (
+                      <img src={activeGameAnimatedUrl} alt="" decoding="async" loading="eager" style={{ ...coverStyle, position: "absolute", top: 0, left: 0, transform: "translateZ(0)", opacity: 1 }} />
+                    )}
+                    {showHeroArtwork && activeGameIsVideo && activeGameAnimatedUrl && (
+                      <video
+                        key={activeGame.id}
+                        ref={el => {
+                          if (el) {
+                            heroVideoRefs.current[activeGame.id] = el;
+                            if (!appPaused && !heroMediaPaused && active) {
+                              el.play().catch(() => {});
+                            } else {
+                              el.pause();
+                            }
+                          } else {
+                            delete heroVideoRefs.current[activeGame.id];
+                          }
+                        }}
+                        src={activeGameAnimatedUrl}
+                        autoPlay={!appPaused && !heroMediaPaused && active}
+                        loop muted playsInline preload="auto"
+                        style={{
+                          position: "absolute",
+                          top: 0, left: 0,
+                          width: "100%", height: "100%",
+                          objectFit: "cover", objectPosition: "center top",
+                          transform: "translateZ(0)",
+                          opacity: 1,
+                          pointerEvents: "none",
+                        }}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ position: "absolute", inset: 0, opacity: 1, zIndex: 1 }}>
+                    <img src={`/assets/liftoff_hero_${settings.accent}.svg`} alt="" style={{ ...coverStyle }} />
+                  </div>
+                );
+              }
+
+              return heroGames.map((game, idx) => {
+                const isActive = idx === heroIdx;
+                const isNearby = Math.abs(idx - heroIdx) <= 1;
+
+                const rawStaticBanner = customHeroArt[game.id] || heroStatic[game.id];
+                const fallback = customArt[game.id] || gameArt[game.id];
+                const heroType = resolveHeroType(game.id);
+                const animatedUrl = heroType === "animated"
+                  ? heroAnimated[game.id] : null;
+                const primaryHeroMedia = animatedUrl || rawStaticBanner;
+                const showAnimatedImage = !!animatedUrl && isAnimatedImageUrl(animatedUrl);
+                const showVideo = !!animatedUrl && !showAnimatedImage;
+                const staticBanner = rawStaticBanner;
+                const mediaPaused = appPaused || heroMediaPaused || !active;
+                const intendedVideo = heroType === "animated" && !isAnimatedImageUrl(heroAnimated[game.id]);
+
+                return (
+                  <div key={game.id} style={{ position: "absolute", inset: 0, opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
+                    {isNearby && showHeroArtwork && !intendedVideo
+                      ? (staticBanner
+                          ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
+                          : fallback
+                            ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(10px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
+                            : <img src={`/assets/liftoff_hero_${settings.accent}.svg`} alt="" style={{ ...coverStyle }} />)
+                      : <div style={{ width: "100%", height: "100%" }} />
+                    }
+                    {showHeroArtwork && showAnimatedImage && (
+                      <img
+                        src={primaryHeroMedia}
+                        alt=""
+                        decoding="async"
+                        loading="eager"
+                        style={{
+                          ...coverStyle,
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          transform: "translateZ(0)",
+                          opacity: 1,
+                        }}
+                      />
+                    )}
+                    {showHeroArtwork && showVideo && (
+                      <video
+                        ref={el => {
+                          if (el) {
+                            heroVideoRefs.current[game.id] = el;
+                            requestAnimationFrame(() => playActiveHeroVideo(el, game.id));
+                          } else {
+                            delete heroVideoRefs.current[game.id];
+                            setHeroVideoPlaying(prev => {
+                              if (!(game.id in prev)) return prev;
+                              const next = { ...prev }; delete next[game.id]; return next;
+                            });
+                          }
+                        }}
+                        src={primaryHeroMedia}
+                        autoPlay={isActive && !mediaPaused}
+                        onCanPlay={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
+                        onLoadedData={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
+                        onPlaying={() => setHeroVideoPlaying(prev => prev[game.id] ? prev : { ...prev, [game.id]: true })}
+                        loop muted playsInline preload={isNearby ? "auto" : "none"}
+                        style={{
+                          position: "absolute",
+                          top: 0, left: 0,
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "center top",
+                          transform: "translateZ(0)",
+                          opacity: (isActive && showHeroArtwork && heroVideoPlaying[game.id]) ? 1 : 0,
+                          transition: "opacity 0.25s ease",
+                          pointerEvents: "none",
+                        }}
+                      />
+                    )}
+                  </div>
+                );
+              });
+            })()}
             <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroSideOverlay }} />
             <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: materialHero ? "42%" : "55%", zIndex: 2, background: heroBottomOverlay }} />
             {materialHero && <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroTextAnchorOverlay }} />}
@@ -781,9 +924,11 @@ export function HomeView(props: HomeViewProps) {
               }
             : settings.cinematic_home
             ? { position: "fixed", left: 0, right: 0, bottom: cinematicHeroAtBottom ? 0 : cinematicPinnedAtBottom ? 84 : cinematicHeroNearChevron ? 68 : 120, zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
+            : semiHome
+            ? { position: "absolute", left: 0, right: 0, top: 0, height: semiHeroHeight, zIndex: 2, display: "flex", alignItems: "flex-end", padding: "0 42px 24px", boxSizing: "border-box" as any }
             : { position: "relative", zIndex: 1, flex: 1, display: "flex",
                 alignItems: "flex-end",
-                padding: semiHome ? "0 20px 56px" : "0 20px 20px",
+                padding: "0 20px 20px",
                 order: 1 }}>
             <div style={cyberImmersive ? cyberHeroInnerFill : { display: "contents" }}>
             {webcoreHero && materialCinematicHero && (
@@ -793,7 +938,7 @@ export function HomeView(props: HomeViewProps) {
               </div>
             )}
             <div style={{ display: "contents" }}>
-            {settings.show_hero_cover !== false && (
+            {!semiHome && settings.show_hero_cover !== false && (
               <div style={materialCinematicHero
                 ? { flexShrink: 0, width: 90, height: 135 }
                 : { flexShrink: 0, width: "clamp(80px, 10vw, 150px)", aspectRatio: "2/3", marginRight: 20 }}>
@@ -806,95 +951,99 @@ export function HomeView(props: HomeViewProps) {
               </div>
             )}
             {heroGame ? (
-              <div style={materialCinematicHero ? { display: "flex", flexDirection: "column", gap: 6, minWidth: 0 } : { flex: settings.cinematic_home ? 1 : "0 1 auto", minWidth: 0, maxWidth: settings.cinematic_home ? undefined : "min(780px, 100%)", alignSelf: settings.cinematic_home ? undefined : "flex-end", ...(!settings.cinematic_home ? heroCopySurfaceStyle : {}), ...(!settings.cinematic_home && settings.show_hero_cover !== false ? { minHeight: "clamp(120px, 15vw, 225px)", boxSizing: "border-box", justifyContent: "center", display: "flex", flexDirection: "column" } : {}) }}>
+              <div style={materialCinematicHero ? { display: "flex", flexDirection: "column", gap: 6, minWidth: 0 } : { flex: settings.cinematic_home ? 1 : "0 1 auto", minWidth: 0, maxWidth: settings.cinematic_home ? undefined : "min(780px, 100%)", alignSelf: settings.cinematic_home ? undefined : "flex-end", ...(!settings.cinematic_home ? heroCopySurfaceStyle : {}), ...(!settings.cinematic_home && settings.show_hero_cover !== false && !semiHome ? { minHeight: "clamp(120px, 15vw, 225px)", boxSizing: "border-box", justifyContent: "center", display: "flex", flexDirection: "column" } : {}) }}>
                 {/* Title label and name */}
                 {<>
                   <div style={{ fontSize: materialCinematicHero ? 11 : 10, letterSpacing: materialCinematicHero ? "0.10em" : "0.2em", textTransform: "uppercase", color: materialCinematicHero ? accent.primary : settings.cinematic_home ? accent.primary : heroLabelColor, marginBottom: materialCinematicHero ? 0 : 6, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, textShadow: materialCinematicHero || settings.cinematic_home ? undefined : heroTextShadow }}>
                     {heroIdx === 0 ? t('home.resumePlaying') : t('home.recentlyPlayed')}
                   </div>
                   <div style={{ fontSize: materialCinematicHero ? 28 : "clamp(22px, 3.2vw, 48px)", fontWeight: 700, color: materialCinematicHero ? (isDark ? "rgba(255,250,245,0.95)" : "rgba(28,20,14,0.92)") : settings.cinematic_home ? (materialHero ? materialHeroText : theme.text) : heroTextColor, marginBottom: materialCinematicHero ? 0 : 4, lineHeight: materialCinematicHero ? 1.1 : 1.05, textShadow: materialCinematicHero ? "none" : settings.cinematic_home ? (materialHero ? (isDark ? "0 2px 14px rgba(0,0,0,0.64)" : "0 1px 0 rgba(255,255,255,0.32), 0 2px 10px rgba(39,27,18,0.12)") : isDark ? "0 2px 20px rgba(0,0,0,0.8)" : "none") : heroTextShadow }}>{heroGame.name}</div>
-                  <div style={{ fontSize: materialCinematicHero ? 12 : 11, color: materialCinematicHero ? (isDark ? "rgba(255,250,245,0.45)" : "rgba(28,20,14,0.42)") : settings.cinematic_home ? (materialHero ? materialHeroDimText : theme.textDim) : heroSubtextColor, marginBottom: materialCinematicHero ? 4 : 16, textShadow: materialCinematicHero || settings.cinematic_home ? undefined : heroTextShadow }}>{t('home.game')}</div>
+                  <div style={{ fontSize: materialCinematicHero ? 12 : 11, color: materialCinematicHero ? (isDark ? "rgba(255,250,245,0.45)" : "rgba(28,20,14,0.42)") : settings.cinematic_home ? (materialHero ? materialHeroDimText : theme.textDim) : heroSubtextColor, marginBottom: materialCinematicHero ? 4 : 16, textShadow: materialCinematicHero || settings.cinematic_home ? undefined : heroTextShadow }}>
+                    {heroGame.app_type === "game" ? t('home.game') : t('home.app')}
+                  </div>
                 </>}
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  {resolvedTheme === "cyberpunk" ? (
-                    <CornerCutButton
-                      data-launch-btn=""
-                      color={accent.primary}
-                      hoverColor="rgba(255,20,140,0.95)"
-                      textColor={accent.darkText ? "#061016" : "#001018"}
-                      size="sm"
-                      variant="solid"
-                      corner="bottom-right"
-                      cornerSize={12}
-                      hoverEffect="glow"
-                      glowIntensity="high"
-                      onClick={() => triggerLaunch(heroGame, recentRef.current)}
-                      style={{ minWidth: materialCinematicHero ? 130 : undefined }}
-                    >
+                {!semiHome && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    {resolvedTheme === "cyberpunk" ? (
+                      <CornerCutButton
+                        data-launch-btn=""
+                        color={accent.primary}
+                        hoverColor="rgba(255,20,140,0.95)"
+                        textColor={accent.darkText ? "#061016" : "#001018"}
+                        size="sm"
+                        variant="solid"
+                        corner="bottom-right"
+                        cornerSize={12}
+                        hoverEffect="glow"
+                        glowIntensity="high"
+                        onClick={() => triggerLaunch(heroGame, recentRef.current)}
+                        style={{ minWidth: materialCinematicHero ? 130 : undefined }}
+                      >
+                        <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5l7 3.5-7 3.5z"/></svg>
+                        {heroRunning ? t('home.resume') : t('home.launch')}
+                      </CornerCutButton>
+                    ) : (
+                    <div data-launch-btn="" onClick={() => triggerLaunch(heroGame, recentRef.current)}
+                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, minWidth: materialCinematicHero ? 130 : undefined, padding: materialCinematicHero ? "10px 20px" : "10px 24px", borderRadius: launchRadius, cursor: "pointer", transition: "all 0.15s ease", fontWeight: 600, fontSize: 14,
+                        background: settings.cinematic_home
+                          ? (heroResumeFocused ? accent.primary : surfaceStyle === "material" ? "var(--material-elevation-3)" : surfaceStyle === "aero" ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.11) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.72) 100%)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)")
+                          : heroResumeFocused
+                            ? accent.primary
+                            : isDark
+                              ? "rgba(255,255,255,0.12)"
+                              : surfaceStyle === "material"
+                                ? "rgba(250,241,230,0.72)"
+                                : surfaceStyle === "clear"
+                                  ? "rgba(255,255,255,0.34)"
+                                  : "rgba(255,255,255,0.28)",
+                        color: heroResumeFocused ? activeTextColor : settings.cinematic_home ? (materialHero ? materialHeroText : theme.text) : heroTextColor,
+                        border: settings.cinematic_home
+                          ? `1px solid ${heroResumeFocused ? accent.primary : surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : surfaceStyle === "aero" ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`
+                          : `1px solid ${heroResumeFocused ? accent.primary : isDark ? "rgba(255,255,255,0.2)" : surfaceStyle === "material" ? "rgba(80,48,28,0.14)" : "rgba(255,255,255,0.34)"}`,
+                        backdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(8px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(8px)",
+                        boxShadow: settings.cinematic_home
+                          ? (heroResumeFocused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 4px 24px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-high)" : `0 4px 24px ${accent.glow}0.5)`) : surfaceStyle === "aero" ? (isDark ? `inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -1px 0 rgba(0,0,0,0.12), 0 0 0 1px ${accent.glow}0.12)` : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 0 0 1px ${accent.glow}0.10)`) : surfaceStyle === "material" ? (isDark ? "0 8px 22px rgba(0,0,0,0.36), 0 20px 46px rgba(0,0,0,0.24)" : "0 8px 22px rgba(39,27,18,0.16), 0 18px 44px rgba(39,27,18,0.10)") : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none")
+                          : heroResumeFocused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 4px 24px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-high)" : `0 4px 24px ${accent.glow}0.5)`) : "none",
+                      }}>
                       <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5l7 3.5-7 3.5z"/></svg>
                       {heroRunning ? t('home.resume') : t('home.launch')}
-                    </CornerCutButton>
-                  ) : (
-                  <div data-launch-btn="" onClick={() => triggerLaunch(heroGame, recentRef.current)}
-                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, minWidth: materialCinematicHero ? 130 : undefined, padding: materialCinematicHero ? "10px 20px" : "10px 24px", borderRadius: launchRadius, cursor: "pointer", transition: "all 0.15s ease", fontWeight: 600, fontSize: 14,
-                      background: settings.cinematic_home
-                        ? (heroResumeFocused ? accent.primary : surfaceStyle === "material" ? "var(--material-elevation-3)" : surfaceStyle === "aero" ? (isDark ? "linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.11) 100%)" : "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.72) 100%)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.55)") : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)")
-                        : heroResumeFocused
-                          ? accent.primary
-                          : isDark
-                            ? "rgba(255,255,255,0.12)"
-                            : surfaceStyle === "material"
-                              ? "rgba(250,241,230,0.72)"
-                              : surfaceStyle === "clear"
-                                ? "rgba(255,255,255,0.34)"
-                                : "rgba(255,255,255,0.28)",
-                      color: heroResumeFocused ? activeTextColor : settings.cinematic_home ? (materialHero ? materialHeroText : theme.text) : heroTextColor,
-                      border: settings.cinematic_home
-                        ? `1px solid ${heroResumeFocused ? accent.primary : surfaceStyle === "material" ? (isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)") : surfaceStyle === "aero" ? (isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.88)") : glassEnabled ? (isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.70)") : isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.12)"}`
-                        : `1px solid ${heroResumeFocused ? accent.primary : isDark ? "rgba(255,255,255,0.2)" : surfaceStyle === "material" ? "rgba(80,48,28,0.14)" : "rgba(255,255,255,0.34)"}`,
-                      backdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(8px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : glassEnabled ? (surfaceStyle === "aero" ? "blur(10px) saturate(140%)" : "blur(14px) saturate(150%)") : "blur(8px)",
-                      boxShadow: settings.cinematic_home
-                        ? (heroResumeFocused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 4px 24px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-high)" : `0 4px 24px ${accent.glow}0.5)`) : surfaceStyle === "aero" ? (isDark ? `inset 0 1px 0 rgba(255,255,255,0.48), inset 0 -1px 0 rgba(0,0,0,0.12), 0 0 0 1px ${accent.glow}0.12)` : `inset 0 1px 0 rgba(255,255,255,0.99), inset 0 -1px 0 rgba(0,0,0,0.06), 0 0 0 1px ${accent.glow}0.10)`) : surfaceStyle === "material" ? (isDark ? "0 8px 22px rgba(0,0,0,0.36), 0 20px 46px rgba(0,0,0,0.24)" : "0 8px 22px rgba(39,27,18,0.16), 0 18px 44px rgba(39,27,18,0.10)") : glassEnabled ? (isDark ? "inset 0 1px 0 rgba(255,255,255,0.14)" : "inset 0 1px 0 rgba(255,255,255,0.95)") : "none")
-                        : heroResumeFocused ? (surfaceStyle === "aero" ? `inset 0 1px 0 rgba(255,255,255,0.62), inset 0 2px 8px rgba(255,255,255,0.20), inset 0 -1px 0 rgba(0,0,0,0.20), 0 4px 24px ${accent.glow}0.55)` : surfaceStyle === "material" ? "var(--material-shadow-high)" : `0 4px 24px ${accent.glow}0.5)`) : "none",
-                    }}>
-                    <svg width="11" height="11" viewBox="0 0 10 10" fill="currentColor"><path d="M2 1.5l7 3.5-7 3.5z"/></svg>
-                    {heroRunning ? t('home.resume') : t('home.launch')}
+                    </div>
+                    )}
+                    {heroRunning && (
+                      <div
+                        data-hero-close-btn=""
+                        onClick={() => requestClose?.(heroGame)}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 8,
+                          padding: materialCinematicHero ? "10px 18px" : "10px 20px",
+                          borderRadius: launchRadius,
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                          fontWeight: 600,
+                          fontSize: 14,
+                          color: heroCloseFocused ? "#fff" : "#e85a5a",
+                          background: heroCloseFocused ? "#e85a5a" : settings.cinematic_home ? "rgba(232,90,90,0.08)" : "rgba(232,90,90,0.10)",
+                          border: "1px solid #e85a5a",
+                          boxShadow: heroCloseFocused ? "0 4px 22px rgba(232,90,90,0.32)" : "none",
+                        }}
+                      >
+                        {t('home.close')}
+                      </div>
+                    )}
+                    {heroGames.length > 1 && (
+                      <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                        {heroGames.slice(0, 6).map((_, i) => (
+                          <div key={i} onClick={() => { setHeroIndex(i); heroIndexRef.current = i; }}
+                            style={{ width: i === heroIdx ? 20 : 6, height: 6, borderRadius: 3, cursor: "pointer", transition: "all 0.2s ease",
+                              background: i === heroIdx ? accent.primary : settings.cinematic_home ? (materialCinematicHero ? (isDark ? "rgba(255,250,245,0.20)" : "rgba(28,20,14,0.18)") : isDark ? "rgba(245,237,232,0.25)" : "rgba(0,0,0,0.2)") : isDark ? "rgba(245,237,232,0.25)" : "rgba(48,32,24,0.22)" }} />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  )}
-                  {heroRunning && (
-                    <div
-                      data-hero-close-btn=""
-                      onClick={() => requestClose?.(heroGame)}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                        padding: materialCinematicHero ? "10px 18px" : "10px 20px",
-                        borderRadius: launchRadius,
-                        cursor: "pointer",
-                        transition: "all 0.15s ease",
-                        fontWeight: 600,
-                        fontSize: 14,
-                        color: heroCloseFocused ? "#fff" : "#e85a5a",
-                        background: heroCloseFocused ? "#e85a5a" : settings.cinematic_home ? "rgba(232,90,90,0.08)" : "rgba(232,90,90,0.10)",
-                        border: "1px solid #e85a5a",
-                        boxShadow: heroCloseFocused ? "0 4px 22px rgba(232,90,90,0.32)" : "none",
-                      }}
-                    >
-                      {t('home.close')}
-                    </div>
-                  )}
-                  {heroGames.length > 1 && (
-                    <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                      {heroGames.slice(0, 6).map((_, i) => (
-                        <div key={i} onClick={() => { setHeroIndex(i); heroIndexRef.current = i; }}
-                          style={{ width: i === heroIdx ? 20 : 6, height: 6, borderRadius: 3, cursor: "pointer", transition: "all 0.2s ease",
-                            background: i === heroIdx ? accent.primary : settings.cinematic_home ? (materialCinematicHero ? (isDark ? "rgba(255,250,245,0.20)" : "rgba(28,20,14,0.18)") : isDark ? "rgba(245,237,232,0.25)" : "rgba(0,0,0,0.2)") : isDark ? "rgba(245,237,232,0.25)" : "rgba(48,32,24,0.22)" }} />
-                      ))}
-                    </div>
-                  )}
-                </div>
+                )}
                 {showSpotifyHeroChip && (
                   <div
                     data-spotify-hero-chip-slot=""
@@ -921,10 +1070,15 @@ export function HomeView(props: HomeViewProps) {
         {/* ── CINEMATIC / SEMI+TOP PINNED SHELF — fixed overlay, position driven by home_pinned_pos ── */}
         {(settings.cinematic_home || (semiHome && pinnedAtTop)) && cinematicPinnedVisible && (
           <div ref={pinnedShelfRef} style={{
-            position: "fixed", left: 0, right: 0, zIndex: 2, display: "flex", gap: 8, overflowX: "auto", pointerEvents: "auto",
+            position: "fixed", left: 0, right: 0, zIndex: 2, display: "flex", gap: 8, overflowX: "auto",
             ...(pinnedAtTop
               ? { top: 72, padding: "12px 24px 0" }
               : { bottom: cinematicPinnedAtBottom ? 0 : 60, padding: cinematicPinnedAtBottom ? "0 24px 14px" : "0 24px 12px" }),
+            ...(settings.cinematic_home ? {
+              opacity: panelOpen ? 0 : 1,
+              pointerEvents: panelOpen ? "none" : "auto" as const,
+              transition: "opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1)",
+            } : { pointerEvents: "auto" as const }),
           }}>
               {homePinnedApps.map((app, i) => {
                 const focused = focusSec === "pinned" && focusIdx === i;
@@ -951,15 +1105,6 @@ export function HomeView(props: HomeViewProps) {
           </div>
         )}
 
-        {/* Gradient fade at the hero/content boundary */}
-        {semiHome && (
-          <div style={{
-            position: "fixed", left: 0, right: 0,
-            top: `calc(${semiHeroHeight} - 56px)`, height: 56,
-            background: `linear-gradient(to bottom, transparent, ${appBg})`,
-            zIndex: 2, pointerEvents: "none",
-          }} />
-        )}
 
         {/* ── RECENTS ── */}
         {semiHome && !settings.cinematic_home && (
@@ -982,6 +1127,44 @@ export function HomeView(props: HomeViewProps) {
               pointerEvents: "auto",
             } as any}
           >
+            {/* ── RECENT GAMES (HERO) ── */}
+            {heroGames.length > 0 && (
+              <div data-semi-slot-page="hero" style={{
+                height: SEMI_SLOT_H,
+                flexShrink: 0,
+                scrollSnapAlign: "start",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "flex-start",
+                paddingTop: SLOT_PAD_TOP,
+                paddingBottom: SLOT_PAD_BOTTOM,
+                boxSizing: "border-box",
+                overflow: "visible",
+              }}>
+                {settings.show_home_collection_names !== false && (
+                  <div style={{ height: SLOT_LABEL_H, paddingLeft: 42, paddingRight: 42, boxSizing: "border-box", fontSize: sectionTitleFontSize, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: `${SLOT_LABEL_H}px` }}>
+                    {t('home.recentGames')}
+                  </div>
+                )}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 10,
+                    overflowX: "auto",
+                    overflowY: "visible",
+                    paddingTop: SLOT_FOCUS_BLEED,
+                    paddingBottom: SLOT_SHADOW_BLEED,
+                    paddingLeft: 42,
+                    paddingRight: 42,
+                    scrollPaddingLeft: 42,
+                    scrollPaddingRight: 42,
+                  }}
+                >
+                  {heroGames.map(renderSemiHeroCard)}
+                </div>
+              </div>
+            )}
+
             {settings.show_home_recents !== false && (
               <div data-semi-slot-page="recent" style={{
                 height: SEMI_SLOT_H,
@@ -995,6 +1178,11 @@ export function HomeView(props: HomeViewProps) {
                 boxSizing: "border-box",
                 overflow: "visible",
               }}>
+                {settings.show_home_collection_names !== false && (
+                  <div style={{ height: SLOT_LABEL_H, paddingLeft: 42, paddingRight: 42, boxSizing: "border-box", fontSize: sectionTitleFontSize, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: theme.textFaint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: `${SLOT_LABEL_H}px` }}>
+                    {t('home.recents')}
+                  </div>
+                )}
                 {homeFilteredRecent.length === 0 ? (
                   <div style={{ fontSize: 13, color: theme.textFaint, padding: "0 42px" }}>{t('home.noRecents')}</div>
                 ) : (
@@ -1257,110 +1445,27 @@ export function HomeView(props: HomeViewProps) {
 
           if (settings.cinematic_home) {
             // ── CINEMATIC: chevron hint + slide-up full-screen panel ──
-            const panelOpen = colsFocused || focusSec === "recent";
             return (
               <>
-                {/* Chevron — clickable for mouse/keyboard users to open drawer */}
-                <div
-                  onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(0); focusIndexRef.current = 0; }}
-                  style={{
-                    position: "fixed", left: 0, right: 0, bottom: "16px", zIndex: 3,
-                    display: "flex", justifyContent: "center", pointerEvents: panelOpen ? "none" : "auto",
-                    opacity: panelOpen ? 0 : 1,
-                    cursor: "pointer",
-                    transition: "opacity 0.3s ease",
-                    animation: panelOpen ? "none" : "colChevronBob 1.6s ease-in-out infinite",
-                    padding: "8px 0",
-                  }}>
-                  <svg width="22" height="12" viewBox="0 0 22 12" fill="none">
-                    <path d="M2 2L11 10L20 2" stroke={isDark ? "white" : "rgba(0,0,0,0.7)"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-
                 {/* Slide-up drawer panel */}
                 <div style={{
-                  position: "fixed", left: 0, right: 0, bottom: 0, top: "72px", zIndex: 4,
-                  ...(webcoreHero ? {
-                    background: surface.panelBg,
-                    backdropFilter: undefined,
-                    WebkitBackdropFilter: undefined,
-                    borderTop: `2px solid ${surface.raisedLight}`,
-                    borderLeft: `2px solid ${surface.raisedLight}`,
-                    borderRight: `2px solid ${surface.darkEdge}`,
-                    boxShadow: `${surface.bevelRaisedSoft}, 0 -10px 24px rgba(0,0,0,${isDark ? "0.42" : "0.20"})`,
-                  } : surfaceStyle === "material" ? {
-                    background: "var(--material-elevation-3)",
-                    borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.05)" : "rgba(43,31,20,0.05)"}`,
-                    boxShadow: isDark ? "inset 0 1px 0 rgba(255,255,255,0.04)" : "inset 0 1px 0 rgba(255,255,255,0.35)",
-                  } : resolvedTheme === "cyberpunk" ? {
-                    background: `linear-gradient(180deg, color-mix(in srgb, ${accent.primary} 12%, #04060d 88%) 0%, color-mix(in srgb, ${accent.primary} 7%, #02040a 93%) 100%)`,
-                    backdropFilter: "blur(10px) saturate(130%)",
-                    WebkitBackdropFilter: "blur(10px) saturate(130%)",
-                    borderTop: `1px solid ${accent.glow}0.45)`,
-                    boxShadow: `0 -8px 40px rgba(0,0,0,0.6), 0 -1px 0 ${accent.glow}0.50), inset 0 1px 0 ${accent.glow}0.12)`,
-                  } : glassEnabled ? {
-                    background: isDark
-                      ? (surfaceStyle === "aero"
-                          ? "linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.08) 100%)"
-                          : "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)")
-                      : surfaceStyle === "aero"
-                        ? "linear-gradient(180deg, rgba(255,255,255,0.74) 0%, rgba(255,255,255,0.52) 100%)"
-                        : "linear-gradient(180deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.38) 100%)",
-                    backdropFilter: isDark
-                      ? (surfaceStyle === "aero" ? "blur(18px) saturate(130%) brightness(0.88)" : "blur(32px) saturate(140%) brightness(0.85)")
-                      : surfaceStyle === "aero"
-                        ? "blur(18px) saturate(145%) brightness(1.04)"
-                        : "blur(32px) saturate(150%) brightness(1.02)",
-                    WebkitBackdropFilter: isDark
-                      ? (surfaceStyle === "aero" ? "blur(18px) saturate(130%) brightness(0.88)" : "blur(32px) saturate(140%) brightness(0.85)")
-                      : surfaceStyle === "aero"
-                        ? "blur(18px) saturate(145%) brightness(1.04)"
-                        : "blur(32px) saturate(150%) brightness(1.02)",
-                    borderTop: `1px solid ${isDark ? (surfaceStyle === "aero" ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.14)") : surfaceStyle === "aero" ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.58)"}`,
-                    boxShadow: isDark
-                      ? (surfaceStyle === "aero" ? "0 -6px 32px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.22)" : "0 -8px 40px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)")
-                      : surfaceStyle === "aero"
-                        ? "0 -8px 34px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.95), inset 0 -1px 0 rgba(0,0,0,0.04)"
-                        : "0 -8px 40px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.72)",
-                  } : {
-                    background: isDark ? appBg : "rgba(255,250,244,0.88)",
-                    backdropFilter: isDark ? "blur(24px)" : "blur(10px)",
-                    WebkitBackdropFilter: isDark ? "blur(24px)" : "blur(10px)",
-                    borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-                    boxShadow: isDark ? "0 -8px 40px rgba(0,0,0,0.4)" : "0 -8px 32px rgba(43,31,20,0.12)",
-                  }),
+                  position: "fixed", left: 0, right: 0, bottom: 0, top: 0, zIndex: 4,
+                  background: "transparent",
+                  backdropFilter: "none",
+                  WebkitBackdropFilter: "none",
+                  border: "none",
+                  boxShadow: "none",
                   transform: panelOpen ? "translateY(0)" : "translateY(100%)",
                   transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
                   display: "flex", flexDirection: "column",
                   pointerEvents: panelOpen ? "auto" : "none",
                 }}>
-                  {webcoreHero && (
-                    <div style={{
-                      height: 24,
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "0 6px 0 8px",
-                      boxSizing: "border-box",
-                      background: surface.titleBarBg,
-                      borderBottom: surface.titleBarBorder,
-                    }}>
-                      <span style={{ color: "white", fontSize: 11, fontFamily: "Tahoma, Arial, sans-serif", fontWeight: 700 }}>Library</span>
-                      <span style={{ width: 14, height: 14, background: surface.buttonBg, border: "1px solid", borderColor: surface.buttonBorder, boxShadow: surface.buttonShadow, color: surface.buttonText, fontSize: 10, lineHeight: "12px", textAlign: "center", fontFamily: "monospace", fontWeight: 700 }}>x</span>
-                    </div>
-                  )}
-                  {/* Up chevron — sticky outside scroll, always visible */}
-                  <div
-                    onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }}
-                    style={{ display: "flex", justifyContent: "center", padding: webcoreHero ? "12px 0 10px" : "16px 0 16px", flexShrink: 0, cursor: "pointer" }}>
-                    <svg width="18" height="10" viewBox="0 0 22 12" fill="none" style={{ opacity: 0.4 }}>
-                      <path d="M20 10L11 2L2 10" stroke={isDark ? "white" : "rgba(0,0,0,0.7)"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-
                   {/* Scrollable content */}
-                  <div ref={drawerScrollRef} style={{ flex: 1, overflowY: "auto", padding: "8px 0 0" }}>
+                  <div ref={drawerScrollRef} style={{
+                    flex: 1,
+                    overflowY: "auto",
+                    padding: "calc(var(--header-height) + 16px) 0 calc(var(--bottom-bar-height) + 32px)",
+                  }}>
                     {/* Recents row — fully navigable */}
                     {homeFilteredRecent.length > 0 && (
                     <div style={{ marginBottom: 24, padding: "0 24px" }}>

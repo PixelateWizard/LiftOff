@@ -1253,7 +1253,15 @@ export default function App() {
       container.scrollTo({ left: Math.max(0, newLeft), behavior: "smooth" });
     };
     if (focusSection === "hero") {
-      setTimeout(scrollToTop, 50);
+      if (settingsRef.current?.home_mode === "semi") {
+        setTimeout(() => {
+          if (focusedCardRef.current?.parentElement) {
+            scrollFocusedCardHorizontally(focusedCardRef.current.parentElement, true);
+          }
+        }, 50);
+      } else {
+        setTimeout(scrollToTop, 50);
+      }
     } else if (focusSection === "recent") {
       if (settingsRef.current?.cinematic_home) {
         setTimeout(() => {
@@ -1271,7 +1279,8 @@ export default function App() {
         if (drawerScrollRef.current) {
           const drawerRect = drawerScrollRef.current.getBoundingClientRect();
           const rowRect = focusedRowRef.current.getBoundingClientRect();
-          const drawerTopClearance = 56;
+          // Keep title & focus rings cleanly below the 72px floating navigation header
+          const drawerTopClearance = 120;
           const scrollTarget = drawerScrollRef.current.scrollTop + rowRect.top - drawerRect.top - drawerTopClearance;
           drawerScrollRef.current.scrollTo({ top: scrollTarget, behavior: "smooth" });
           if (focusedCardRef.current) {
