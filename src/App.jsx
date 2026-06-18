@@ -1556,10 +1556,7 @@ export default function App() {
     const innerBase = art
       ? { background: "transparent", backdropFilter: "none", WebkitBackdropFilter: "none" }
       : glass;
-    const PNG_ACCENTS = ["ember", "ocean", "neon", "rose", "midnight", "nova", "steel", "lunar", "atomic", "aqua", "sage", "copper"];
-    const placeholderCover = PNG_ACCENTS.includes(settings.accent)
-      ? `/assets/liftoff_cover_${settings.accent}.png`
-      : `/assets/liftoff_cover_${settings.accent}.svg`;
+    const placeholderCover = `/assets/liftoff_cover_${settings.accent}.svg`;
     const cardRadius = resolvedTheme === "cyberpunk" ? 0 : surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 8 : 16;
     const isOnyx = resolvedTheme === "onyx";
     return (

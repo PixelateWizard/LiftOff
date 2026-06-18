@@ -20,8 +20,7 @@ const isAnimatedMediaUrl = (url?: string | null) => isHeroVideoUrl(url) || isAni
 const PNG_ACCENTS = ["ember", "ocean", "neon", "rose", "midnight", "nova", "steel", "lunar", "atomic", "aqua", "sage", "copper"];
 const getHeroPlaceholder = (accent: string) =>
   PNG_ACCENTS.includes(accent) ? `/assets/liftoff_hero_${accent}.png` : `/assets/liftoff_hero_${accent}.svg`;
-const getCoverPlaceholder = (accent: string) =>
-  PNG_ACCENTS.includes(accent) ? `/assets/liftoff_cover_${accent}.png` : `/assets/liftoff_cover_${accent}.svg`;
+const getCoverPlaceholder = (accent: string) => `/assets/liftoff_cover_${accent}.svg`;
 
 export function HomeView(props: HomeViewProps) {
   const {

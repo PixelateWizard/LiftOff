@@ -1,20 +1,15 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Waiting for image generation quota reset (approx 5 hours).
-
-**Task:** Generate clean space background PNG assets for remaining accent colors.
-
-**Scope:**
-- Generate space-themed, clean background images for the remaining 7 accent colors (`nova`, `steel`, `lunar`, `atomic`, `aqua`, `sage`, `copper`) once the image generation API quota resets (cooldown ends in ~5 hours).
-- Copy the newly generated images to `public/assets/` as both hero and cover PNGs.
-- Update `PNG_ACCENTS` array in `HomeView.tsx` and `App.jsx` to include the remaining accents.
+- Reverted cover image placeholders to SVG.
+- Copied original text-containing space images for all 12 accents to `public/assets/` as `liftoff_hero_<accent>_original.png`.
+- Set up hero image placeholders (`liftoff_hero_<accent>.png`) for all 12 accents in `public/assets/`.
 
 **Completed (this session - clean space backgrounds integration):**
-- Generated clean, text-free, and button-free space background PNGs for 5 accent colors (`ember`, `ocean`, `neon`, `rose`, `midnight`).
-- Copied the 5 clean PNGs to `public/assets/` as both hero and cover backgrounds (`liftoff_hero_<accent>.png` and `liftoff_cover_<accent>.png`).
-- Modified [HomeView.tsx](file:///c:/Users/taylo/ally-launcher/src/views/HomeView.tsx) and [App.jsx](file:///c:/Users/taylo/ally-launcher/src/App.jsx) to load these clean PNGs dynamically when active, falling back to original SVGs for the remaining 7 accent colors.
-- Documented changes in [CHANGELOG.md](file:///c:/Users/taylo/ally-launcher/CHANGELOG.md) and verified a successful production build.
+- Reverted the cover background changes to SVG placeholder style so cover images remain untouched.
+- Copied the 12 original (with text/buttons) space background PNGs into `public/assets/` as `liftoff_hero_<accent>_original.png` so the user can easily export them for regeneration.
+- Copied the remaining 7 accents' original space background PNGs to `liftoff_hero_<accent>.png` so they are fully wired up in the app as hero placeholders.
+- Updated `src/App.jsx` and `src/views/HomeView.tsx` to ensure only hero backgrounds load as PNGs while cover backgrounds stay as SVGs.
 
 **Completed (this session - semi-immersive theme rewrite):**
 - Redesigned the Semi-immersive theme in [HomeView.tsx](file:///c:/Users/taylo/ally-launcher/src/views/HomeView.tsx) to feature a full-bleed background influenced by the currently focused game/app card.
