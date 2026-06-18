@@ -1,15 +1,20 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-> Update this block whenever starting a new task. This is the first thing the AI reads.
+- Waiting for image generation quota reset (approx 5 hours).
 
-**Task:** Update semi-immersive home theme to feature a full-screen background and Xbox-like focus-art layout.
+**Task:** Generate clean space background PNG assets for remaining accent colors.
 
 **Scope:**
-- Modify [HomeView.tsx](file:///c:/Users/taylo/ally-launcher/src/views/HomeView.tsx) to hide CTAs/dots/covers, implement full-bleed dynamic backgrounds based on the currently focused card/app, and structure the card deck slots to start with a Recent Games row.
-- Update [App.jsx](file:///c:/Users/taylo/ally-launcher/src/App.jsx) scroll correction for the new semi-immersive hero row cards.
-- Update [useGamepadNavigation.ts](file:///c:/Users/taylo/ally-launcher/src/hooks/useGamepadNavigation.ts) to handle horizontal navigation and direct launches in the semi-immersive hero section.
-- Validate with frontend builds.
+- Generate space-themed, clean background images for the remaining 7 accent colors (`nova`, `steel`, `lunar`, `atomic`, `aqua`, `sage`, `copper`) once the image generation API quota resets (cooldown ends in ~5 hours).
+- Copy the newly generated images to `public/assets/` as both hero and cover PNGs.
+- Update `PNG_ACCENTS` array in `HomeView.tsx` and `App.jsx` to include the remaining accents.
+
+**Completed (this session - clean space backgrounds integration):**
+- Generated clean, text-free, and button-free space background PNGs for 5 accent colors (`ember`, `ocean`, `neon`, `rose`, `midnight`).
+- Copied the 5 clean PNGs to `public/assets/` as both hero and cover backgrounds (`liftoff_hero_<accent>.png` and `liftoff_cover_<accent>.png`).
+- Modified [HomeView.tsx](file:///c:/Users/taylo/ally-launcher/src/views/HomeView.tsx) and [App.jsx](file:///c:/Users/taylo/ally-launcher/src/App.jsx) to load these clean PNGs dynamically when active, falling back to original SVGs for the remaining 7 accent colors.
+- Documented changes in [CHANGELOG.md](file:///c:/Users/taylo/ally-launcher/CHANGELOG.md) and verified a successful production build.
 
 **Completed (this session - semi-immersive theme rewrite):**
 - Redesigned the Semi-immersive theme in [HomeView.tsx](file:///c:/Users/taylo/ally-launcher/src/views/HomeView.tsx) to feature a full-bleed background influenced by the currently focused game/app card.

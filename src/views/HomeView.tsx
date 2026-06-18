@@ -17,6 +17,12 @@ const isHeroVideoUrl = (url?: string | null) => /\.(webm|mp4)$/i.test(mediaBase(
 const isAnimatedImageUrl = (url?: string | null) => /\.(gif|webp)$/i.test(mediaBase(url));
 const isAnimatedMediaUrl = (url?: string | null) => isHeroVideoUrl(url) || isAnimatedImageUrl(url);
 
+const PNG_ACCENTS = ["ember", "ocean", "neon", "rose", "midnight", "nova", "steel", "lunar", "atomic", "aqua", "sage", "copper"];
+const getHeroPlaceholder = (accent: string) =>
+  PNG_ACCENTS.includes(accent) ? `/assets/liftoff_hero_${accent}.png` : `/assets/liftoff_hero_${accent}.svg`;
+const getCoverPlaceholder = (accent: string) =>
+  PNG_ACCENTS.includes(accent) ? `/assets/liftoff_cover_${accent}.png` : `/assets/liftoff_cover_${accent}.svg`;
+
 export function HomeView(props: HomeViewProps) {
   const {
     active,
@@ -705,7 +711,7 @@ export function HomeView(props: HomeViewProps) {
                       ) : activeGameFallback ? (
                         <img src={activeGameFallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(10px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
                       ) : (
-                        <img src={`/assets/liftoff_hero_${settings.accent}.svg`} alt="" style={{ ...coverStyle }} />
+                        <img src={getHeroPlaceholder(settings.accent)} alt="" style={{ ...coverStyle }} />
                       )
                     )}
                     {showHeroArtwork && activeGameIsAnimatedImage && activeGameAnimatedUrl && (
@@ -743,7 +749,7 @@ export function HomeView(props: HomeViewProps) {
                   </div>
                 ) : (
                   <div style={{ position: "absolute", inset: 0, opacity: 1, zIndex: 1 }}>
-                    <img src={`/assets/liftoff_hero_${settings.accent}.svg`} alt="" style={{ ...coverStyle }} />
+                    <img src={getHeroPlaceholder(settings.accent)} alt="" style={{ ...coverStyle }} />
                   </div>
                 );
               }
@@ -771,7 +777,7 @@ export function HomeView(props: HomeViewProps) {
                           ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
                           : fallback
                             ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(10px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
-                            : <img src={`/assets/liftoff_hero_${settings.accent}.svg`} alt="" style={{ ...coverStyle }} />)
+                            : <img src={getHeroPlaceholder(settings.accent)} alt="" style={{ ...coverStyle }} />)
                       : <div style={{ width: "100%", height: "100%" }} />
                     }
                     {showHeroArtwork && showAnimatedImage && (
@@ -945,7 +951,7 @@ export function HomeView(props: HomeViewProps) {
                 {heroArt
                   ? <img key={heroGame?.id} src={heroArt} alt={heroGame?.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: webcoreHero ? 0 : 8, boxShadow: materialCinematicHero ? (webcoreHero ? surface.coverShadow : isDark ? "var(--material-shadow-medium)" : "0 4px 14px rgba(39,27,18,0.18), 0 10px 28px rgba(39,27,18,0.10)") : "0 8px 32px rgba(0,0,0,0.7)", animation: "heroArtFade 0.3s ease forwards" }} />
                   : heroGame
-                    ? <img src={`/assets/liftoff_cover_${settings.accent}.svg`} alt={heroGame.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: webcoreHero ? 0 : 8, boxShadow: materialCinematicHero ? (webcoreHero ? surface.coverShadow : isDark ? "var(--material-shadow-medium)" : "0 4px 14px rgba(39,27,18,0.18), 0 10px 28px rgba(39,27,18,0.10)") : "0 8px 32px rgba(0,0,0,0.7)" }} />
+                    ? <img src={getCoverPlaceholder(settings.accent)} alt={heroGame.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: webcoreHero ? 0 : 8, boxShadow: materialCinematicHero ? (webcoreHero ? surface.coverShadow : isDark ? "var(--material-shadow-medium)" : "0 4px 14px rgba(39,27,18,0.18), 0 10px 28px rgba(39,27,18,0.10)") : "0 8px 32px rgba(0,0,0,0.7)" }} />
                     : <div style={{ width: "100%", height: "100%", borderRadius: webcoreHero ? 0 : 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }} />
                 }
               </div>
