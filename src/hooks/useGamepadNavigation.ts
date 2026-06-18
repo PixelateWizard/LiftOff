@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { App, Settings } from "../types";
 import { launchApp } from "./useLaunchApp";
-import { getBestGamepad, getActiveGamepad, readGpState, detectPlatform } from "../utils/gamepad";
+import { getBestGamepad, getActiveGamepad, readGpState, detectPlatform, rumble, type HapticPattern } from "../utils/gamepad";
 import { buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "../views/settings";
 import {
   ACCENTS as DEFAULT_ACCENTS,
@@ -406,6 +406,9 @@ export function useGamepadNavigation(
     tabRef.current = initialTab;
   }, [initialTab]);
 
+  const haptic = (pattern: HapticPattern) =>
+    rumble(pattern, settingsRef?.current?.haptic_feedback ?? true);
+
   const _triggerLaunchImpl = (app, rec) => {
     if (app?.app_type === "game" && isRunning(app.id)) {
       invoke("try_focus_launched_app", {
@@ -430,6 +433,7 @@ export function useGamepadNavigation(
     launchedAppSessionRef.current = true;
     playSoundGameStart();
     setLaunchingApp(app); launchingAppRef.current = app;
+    haptic("confirm");
     launchApp(app).catch((err) => console.warn("launch_app failed", err));
     const updated = [app, ...rec.filter(r => r.id !== app.id)].slice(0, 10);
     setRecent(updated); recentRef.current = updated;
@@ -523,6 +527,7 @@ export function useGamepadNavigation(
     setShowHideModal(true); showHideModalRef.current = true;
   };
   const closeHideModal = ()     => {
+    haptic("cancel");
     // Snapshot whichever buttons are currently held so main poll won't fire them on release
     const gps = navigator.getGamepads();
     const gp  = gps[0] || gps[1] || gps[2] || gps[3];
@@ -558,7 +563,8 @@ export function useGamepadNavigation(
     detailsAppRef.current = app;
   };
 
-  const closeDetailsModal = () => {
+  const closeDetailsModal = (pattern: HapticPattern | false = "cancel") => {
+    if (pattern) haptic(pattern);
     suppressHeldButtons();
     setDetailsApp(null);
     detailsAppRef.current = null;
@@ -571,6 +577,7 @@ export function useGamepadNavigation(
       const currentIdx = TABS.indexOf(currentTab);
       const nextIdx = TABS.indexOf(newTab);
       onTabMotionDirection(direction ?? (nextIdx < currentIdx ? "back" : "forward"));
+      haptic("tab");
     }
     setTab(newTab); tabRef.current = newTab;
     let defaultSection;
@@ -629,13 +636,15 @@ export function useGamepadNavigation(
     };
   };
 
-  const closeThemePicker = () => {
+  const closeThemePicker = (pattern: HapticPattern = "cancel") => {
+    haptic(pattern);
     suppressHeldButtons();
     setShowThemePicker(false);
     showThemePickerRef.current = false;
   };
 
-  const closeSurfacePicker = () => {
+  const closeSurfacePicker = (pattern: HapticPattern = "cancel") => {
+    haptic(pattern);
     suppressHeldButtons();
     setShowSurfacePicker(false);
     showSurfacePickerRef.current = false;
@@ -696,6 +705,7 @@ export function useGamepadNavigation(
         if (ni === themePickerFocusIndexRef.current) return;
         setThemePickerFocusIndex(ni);
         themePickerFocusIndexRef.current = ni;
+
         playSound();
       };
       if (key === "ArrowRight") moveTo(cur + 1);
@@ -707,7 +717,7 @@ export function useGamepadNavigation(
         playSoundAlt();
       } else if (key === "Enter") {
         updateSetting("theme", THEME_OPTIONS[cur]);
-        closeThemePicker();
+        closeThemePicker("confirm");
         playSoundAlt();
       }
       return;
@@ -722,6 +732,7 @@ export function useGamepadNavigation(
         if (ni === surfacePickerFocusIndexRef.current) return;
         setSurfacePickerFocusIndex(ni);
         surfacePickerFocusIndexRef.current = ni;
+
         playSound();
       };
       if (key === "ArrowRight") moveTo(cur + 1);
@@ -733,7 +744,7 @@ export function useGamepadNavigation(
         playSoundAlt();
       } else if (key === "Enter") {
         updateSetting("surface_style", SURFACE_STYLE_OPTIONS[cur]);
-        closeSurfacePicker();
+        closeSurfacePicker("confirm");
         playSoundAlt();
       }
       return;
@@ -868,7 +879,10 @@ export function useGamepadNavigation(
       const cur = sources.indexOf(gameSourceTabRef.current);
       const currentIndex = cur >= 0 ? cur : 0;
       const next = sources[(currentIndex + direction + sources.length) % sources.length];
-      if (next !== gameSourceTabRef.current) onSubtabMotionDirection(direction > 0 ? "forward" : "back");
+      if (next !== gameSourceTabRef.current) {
+        onSubtabMotionDirection(direction > 0 ? "forward" : "back");
+        haptic("tab");
+      }
       setGameSourceTab(next); gameSourceTabRef.current = next;
       setInstallFilter("all");
       setViewbarIndex(0);
@@ -960,22 +974,24 @@ export function useGamepadNavigation(
       if (sortOpenRef.current) {
         if (key === "ArrowDown") {
           const next = Math.min(sortKbIndexRef.current + 1, GAMES_SORTS.length - 1);
-          if (next !== sortKbIndexRef.current) { setSortKbIndex(next); playSound(); }
+          if (next !== sortKbIndexRef.current) { setSortKbIndex(next);  playSound(); }
           return;
         }
         if (key === "ArrowUp") {
           const next = Math.max(sortKbIndexRef.current - 1, 0);
-          if (next !== sortKbIndexRef.current) { setSortKbIndex(next); playSound(); }
+          if (next !== sortKbIndexRef.current) { setSortKbIndex(next);  playSound(); }
           return;
         }
         if (key === "Enter") {
           updateSetting("games_sort", GAMES_SORTS[sortKbIndexRef.current] ?? "recent");
           setSortOpen(false);
+          haptic("confirm");
           playSoundAlt();
           return;
         }
         if (key === "Escape") {
           setSortOpen(false);
+          haptic("cancel");
           playSoundAlt();
           return;
         }
@@ -989,14 +1005,16 @@ export function useGamepadNavigation(
       if (key === "Enter") {
         if (viewbarIndexRef.current < 3) {
           setInstallFilter(INSTALL_FILTERS[viewbarIndexRef.current] ?? "all");
+          haptic("confirm");
         } else {
           const currentSortIndex = Math.max(0, GAMES_SORTS.indexOf(gamesSortRef.current));
           setSortKbIndex(currentSortIndex);
           utilityChromeRef.current?.activate();
+          haptic("confirm");
         }
         return;
       }
-      if (key === "Escape") { utilityChromeRef.current?.exit(); return; }
+      if (key === "Escape") { utilityChromeRef.current?.exit(); haptic("cancel"); return; }
       return;
     }
 
@@ -1019,8 +1037,8 @@ export function useGamepadNavigation(
     }
 
     if (key === "BumperLeft" || key === "BumperRight") playSoundAlt(); else playSound();
-    if (key === "BumperLeft")  { const _tabs = TABS as string[]; const i = _tabs.indexOf(currentTab); switchTab(_tabs[(i - 1 + _tabs.length) % _tabs.length], "back"); return; }
-    if (key === "BumperRight") { const _tabs = TABS as string[]; const i = _tabs.indexOf(currentTab); switchTab(_tabs[(i + 1) % _tabs.length], "forward"); return; }
+    if (key === "BumperLeft")  { const _tabs = TABS as string[]; const i = _tabs.indexOf(currentTab);  switchTab(_tabs[(i - 1 + _tabs.length) % _tabs.length], "back"); return; }
+    if (key === "BumperRight") { const _tabs = TABS as string[]; const i = _tabs.indexOf(currentTab);  switchTab(_tabs[(i + 1) % _tabs.length], "forward"); return; }
 
     // BACK (Select) opens library actions menu; MENU (Start) opens Apps context menu.
     // Start/Menu is intentionally reserved on Games for the future bottom-bar revamp.
@@ -1051,6 +1069,7 @@ export function useGamepadNavigation(
         const ni = Math.max(0, settingsSectionRef.current - 1);
         if (ni !== settingsSectionRef.current) {
           onSubtabMotionDirection("back");
+          haptic("tab");
           setSettingsSection(ni); settingsSectionRef.current = ni;
           if (ni !== 0) {
             setAppearanceGroup(null, { animate: false });
@@ -1058,6 +1077,7 @@ export function useGamepadNavigation(
           }
           setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
           if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+
           playSound();
         }
         return;
@@ -1066,6 +1086,7 @@ export function useGamepadNavigation(
         const ni = Math.min(SETTINGS_SECTIONS.length - 1, settingsSectionRef.current + 1);
         if (ni !== settingsSectionRef.current) {
           onSubtabMotionDirection("forward");
+          haptic("tab");
           setSettingsSection(ni); settingsSectionRef.current = ni;
           if (ni !== 0) {
             setAppearanceGroup(null, { animate: false });
@@ -1073,6 +1094,7 @@ export function useGamepadNavigation(
           }
           setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
           if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+
           playSound();
         }
         return;
@@ -1086,6 +1108,7 @@ export function useGamepadNavigation(
         setSettingsFocusIndex(cameFrom);
         settingsFocusIndexRef.current = cameFrom;
         if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "auto" });
+        haptic("cancel");
         playSoundAlt();
         return;
       }
@@ -1093,12 +1116,14 @@ export function useGamepadNavigation(
         const ni = Math.min(sfIndex + 1, navigableSettings.length - 1);
         if (ni !== sfIndex) {
           setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni;
+
         }
       }
       if (key === "ArrowUp") {
         const ni = Math.max(sfIndex - 1, 0);
         if (ni !== sfIndex) {
           setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni;
+
         }
       }
       if (key === "ArrowRight" || key === "Enter") {
@@ -1110,6 +1135,7 @@ export function useGamepadNavigation(
           setSettingsFocusIndex(cameFrom);
           settingsFocusIndexRef.current = cameFrom;
           if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "auto" });
+          haptic("cancel");
         }
         else if (item.type === "appearance_category") {
           setAppearanceGroup(item.categoryIndex);
@@ -1117,15 +1143,17 @@ export function useGamepadNavigation(
           setSettingsFocusIndex(1);
           settingsFocusIndexRef.current = 1;
           if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "auto" });
+          haptic("confirm");
         }
-        else if (item.type === "toggle")  updateSetting(item.key, !currentSettings[item.key]);
-        else if (item.type === "cycle")  { const opts = item.options; const curVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur + 1) % opts.length]); }
+        else if (item.type === "toggle")  { updateSetting(item.key, !currentSettings[item.key]); haptic("confirm"); }
+        else if (item.type === "cycle")  { const opts = item.options; const curVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur + 1) % opts.length]); haptic("confirm"); }
         else if (item.type === "theme_picker") {
           const idx = Math.max(0, THEME_OPTIONS.indexOf(normalizeThemeKey(String(currentSettings.theme))));
           setThemePickerFocusIndex(idx);
           themePickerFocusIndexRef.current = idx;
           setShowThemePicker(true);
           showThemePickerRef.current = true;
+          haptic("confirm");
         }
         else if (item.type === "surface_picker") {
           const idx = Math.max(0, SURFACE_STYLE_OPTIONS.indexOf(String(currentSettings.surface_style ?? "glass") as any));
@@ -1133,22 +1161,26 @@ export function useGamepadNavigation(
           surfacePickerFocusIndexRef.current = idx;
           setShowSurfacePicker(true);
           showSurfacePickerRef.current = true;
+          haptic("confirm");
         }
-        else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur + 1) % keys.length]); }
+        else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur + 1) % keys.length]); haptic("confirm"); }
         else if (item.type === "slider") {
           const cur = (currentSettings[item.key] as number | undefined) ?? 1.0;
           updateSetting(item.key, Math.min(item.max, Math.round((cur + item.step) * 100) / 100));
+          haptic("confirm");
         }
         else if (item.type === "action") {
           if (item.key === "clear_recents") handleClearRecents();
           if (item.key === "clear_cache")   handleClearCache();
           if (item.key === "reset_scale")   updateSetting("ui_scale", autoScaleRef.current);
+          haptic("confirm");
         }
         else if (item.type === "spotify") {
           if (spotifyConnectedRef.current) onSpotifyDisconnect();
           else onOpenSpotifyGuide();
+          haptic("confirm");
         }
-        else if (item.type === "refresh") { refreshLibrary(); }
+        else if (item.type === "refresh") { refreshLibrary(); haptic("confirm"); }
         else if (item.type === "update") {
           if (updateStatus === "available") {
             const releasesUrl = (currentSettings.update_channel ?? "stable") === "prerelease"
@@ -1157,33 +1189,40 @@ export function useGamepadNavigation(
             invoke("launch_app", { path: releasesUrl, id: "releases", name: "LiftOff Releases", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
           }
           else checkForUpdates();
+          haptic("confirm");
         }
         else if (item.type === "link") {
           if (item.key === "coffee")  invoke("launch_app", { path: "https://buymeacoffee.com/liftoff_handheld_launcher", id: "coffee", name: "Buy Me a Coffee", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
           if (item.key === "github")  invoke("launch_app", { path: "https://github.com/PixelateWizard/LiftOff", id: "github", name: "GitHub", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
           if (item.key === "discord") invoke("launch_app", { path: "https://discord.gg/F5ncP75WtD", id: "discord", name: "Discord", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
+          haptic("confirm");
         }
         else if (item.type === "attribution") {
           if (item.url) invoke("launch_app", { path: item.url, id: item.key, name: item.label, appType: "app", source: "", runAsAdmin: false }).catch(() => {});
+          haptic("confirm");
         }
         else if (item.type === "custom_folders") {
           setShowFolderManager(true); showFolderManagerRef.current = true;
+          haptic("confirm");
         }
         else if (item.type === "home_collection_toggle") {
           toggleHomeCollection(item.colName);
+          haptic("confirm");
         }
       }
       if (key === "ArrowLeft") {
         if (!item) return;
-        if (item.type === "toggle")  updateSetting(item.key, !currentSettings[item.key]);
-        else if (item.type === "cycle")  { const opts = item.options; const curVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length]); }
-        else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur - 1 + keys.length) % keys.length]); }
+        if (item.type === "toggle")  { updateSetting(item.key, !currentSettings[item.key]); haptic("confirm"); }
+        else if (item.type === "cycle")  { const opts = item.options; const curVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length]); haptic("confirm"); }
+        else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur - 1 + keys.length) % keys.length]); haptic("confirm"); }
         else if (item.type === "slider") {
           const cur = (currentSettings[item.key] as number | undefined) ?? 1.0;
           updateSetting(item.key, Math.max(item.min, Math.round((cur - item.step) * 100) / 100));
+          haptic("confirm");
         }
         else if (item.type === "home_collection_toggle") {
           toggleHomeCollection(item.colName);
+          haptic("confirm");
         }
       }
       return;
@@ -1234,6 +1273,7 @@ export function useGamepadNavigation(
         const isSemi = currentSettings.home_mode === "semi";
         const initialIdx = (sec === "hero" && isSemi) ? heroIndexRef.current : 0;
         setFocusIndex(initialIdx); focusIndexRef.current = initialIdx;
+
         if (sec === "home_collections") {
           setHomeColFocusRow(0); homeColFocusRowRef.current = 0;
           setHomeColFocusCol(0); homeColFocusColRef.current = 0;
@@ -1254,16 +1294,17 @@ export function useGamepadNavigation(
           if (isSemi) {
             setFocusIndex(ni); focusIndexRef.current = ni;
           }
+
         };
         if (heroRunning) {
           // Running games show two actions: Resume (0) and Close (1). Pressing past
           // either edge scrolls the carousel so a running game can't trap hero nav.
           if (key === "ArrowLeft") {
-            if (heroActionIndexRef.current === 1) { setHeroActionIndex(0); heroActionIndexRef.current = 0; }
+            if (heroActionIndexRef.current === 1) { setHeroActionIndex(0); heroActionIndexRef.current = 0;  }
             else moveHero(-1);
           }
           if (key === "ArrowRight") {
-            if (heroActionIndexRef.current === 0) { setHeroActionIndex(1); heroActionIndexRef.current = 1; }
+            if (heroActionIndexRef.current === 0) { setHeroActionIndex(1); heroActionIndexRef.current = 1;  }
             else moveHero(1);
           }
         } else {
@@ -1281,8 +1322,8 @@ export function useGamepadNavigation(
 
       // ─── PINNED ─────────────────────────────────────────────────────────────
       if (section === "pinned") {
-        if (key === "ArrowRight") { const ni = Math.min(index + 1, fPinned.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
-        if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                  setFocusIndex(ni); focusIndexRef.current = ni; }
+        if (key === "ArrowRight") { const ni = Math.min(index + 1, fPinned.length - 1); if (ni !== index) { setFocusIndex(ni); focusIndexRef.current = ni;  } }
+        if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                  if (ni !== index) { setFocusIndex(ni); focusIndexRef.current = ni;  } }
         if (key === "ArrowUp"   && chainPrev) goTo(chainPrev);
         if (key === "ArrowDown" && chainNext) goTo(chainNext);
         if (key === "Enter" && fPinned[index]) triggerLaunch(fPinned[index], rec);
@@ -1292,8 +1333,8 @@ export function useGamepadNavigation(
       // ─── RECENT ─────────────────────────────────────────────────────────────
       if (section === "recent") {
         const maxIdx = Math.min(fRecent.length, 10) - 1;
-        if (key === "ArrowRight") { const ni = Math.min(index + 1, maxIdx); setFocusIndex(ni); focusIndexRef.current = ni; }
-        if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);      setFocusIndex(ni); focusIndexRef.current = ni; }
+        if (key === "ArrowRight") { const ni = Math.min(index + 1, maxIdx); if (ni !== index) { setFocusIndex(ni); focusIndexRef.current = ni;  } }
+        if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);      if (ni !== index) { setFocusIndex(ni); focusIndexRef.current = ni;  } }
         if (key === "ArrowUp"   && chainPrev) goTo(chainPrev);
         if (key === "ArrowDown" && chainNext) goTo(chainNext);
         if (key === "Enter" && fRecent[index]) triggerLaunch(fRecent[index], rec);
@@ -1305,13 +1346,14 @@ export function useGamepadNavigation(
         const row = homeColFocusRowRef.current;
         const col = homeColFocusColRef.current;
         const currentRow = homeCols[row];
-        if (key === "ArrowRight") { if (currentRow && col < currentRow.items.length - 1) { const ni = col + 1; setHomeColFocusCol(ni); homeColFocusColRef.current = ni; } }
-        if (key === "ArrowLeft")  { if (col > 0) { const ni = col - 1; setHomeColFocusCol(ni); homeColFocusColRef.current = ni; } }
+        if (key === "ArrowRight") { if (currentRow && col < currentRow.items.length - 1) { const ni = col + 1; setHomeColFocusCol(ni); homeColFocusColRef.current = ni;  } }
+        if (key === "ArrowLeft")  { if (col > 0) { const ni = col - 1; setHomeColFocusCol(ni); homeColFocusColRef.current = ni;  } }
         if (key === "ArrowDown") {
           if (row < homeCols.length - 1) {
             const nr = row + 1; const nc = Math.min(col, homeCols[nr].items.length - 1);
             setHomeColFocusRow(nr); homeColFocusRowRef.current = nr;
             setHomeColFocusCol(nc); homeColFocusColRef.current = nc;
+
           }
         }
         if (key === "ArrowUp") {
@@ -1319,6 +1361,7 @@ export function useGamepadNavigation(
             const nr = row - 1; const nc = Math.min(col, homeCols[nr].items.length - 1);
             setHomeColFocusRow(nr); homeColFocusRowRef.current = nr;
             setHomeColFocusCol(nc); homeColFocusColRef.current = nc;
+
           } else if (chainPrev) {
             goTo(chainPrev);
           }
@@ -1341,7 +1384,10 @@ export function useGamepadNavigation(
       if (key === "TriggerLeft") {
         const cur = APP_COLS.indexOf(appCollectionTabRef.current);
         const next = APP_COLS[(cur - 1 + APP_COLS.length) % APP_COLS.length];
-        if (next !== appCollectionTabRef.current) onSubtabMotionDirection("back");
+        if (next !== appCollectionTabRef.current) {
+          onSubtabMotionDirection("back");
+          haptic("tab");
+        }
         setAppCollectionTab(next); appCollectionTabRef.current = next;
         setFocusSection("grid"); focusSectionRef.current = "grid";
         setFocusIndex(0); focusIndexRef.current = 0;
@@ -1350,7 +1396,10 @@ export function useGamepadNavigation(
       if (key === "TriggerRight") {
         const cur = APP_COLS.indexOf(appCollectionTabRef.current);
         const next = APP_COLS[(cur + 1) % APP_COLS.length];
-        if (next !== appCollectionTabRef.current) onSubtabMotionDirection("forward");
+        if (next !== appCollectionTabRef.current) {
+          onSubtabMotionDirection("forward");
+          haptic("tab");
+        }
         setAppCollectionTab(next); appCollectionTabRef.current = next;
         setFocusSection("grid"); focusSectionRef.current = "grid";
         setFocusIndex(0); focusIndexRef.current = 0;
@@ -1368,14 +1417,20 @@ export function useGamepadNavigation(
     const switchSubtabItem = (item, direction: "forward" | "back") => {
       if (item === "add_app" || item === "add_folder" || item === "manage" || item === "collections") return;
       if (currentTab === "Games") {
-        if (item !== gameSourceTabRef.current) onSubtabMotionDirection(direction);
+        if (item !== gameSourceTabRef.current) {
+          onSubtabMotionDirection(direction);
+          haptic("tab");
+        }
         setGameSourceTab(item); gameSourceTabRef.current = item;
         setInstallFilter("all");
         setViewbarIndex(0);
         setSortOpen(false);
       }
       else {
-        if (item !== appCollectionTabRef.current) onSubtabMotionDirection(direction);
+        if (item !== appCollectionTabRef.current) {
+          onSubtabMotionDirection(direction);
+          haptic("tab");
+        }
         setAppCollectionTab(item); appCollectionTabRef.current = item;
       }
       setFocusIndex(0); focusIndexRef.current = 0;
@@ -1392,24 +1447,31 @@ export function useGamepadNavigation(
       }
       if (key === "ArrowRight") {
         const ni = Math.min(currentSubtabIndex + 1, subtabItems.length - 1);
-        setSubtabFocusIndex(ni); subtabFocusIndexRef.current = ni;
-        switchSubtabItem(subtabItems[ni], "forward");
-        playSound();
+        if (ni !== currentSubtabIndex) {
+          setSubtabFocusIndex(ni); subtabFocusIndexRef.current = ni;
+          switchSubtabItem(subtabItems[ni], "forward");
+
+          playSound();
+        }
       }
       else if (key === "ArrowLeft") {
         const ni = Math.max(currentSubtabIndex - 1, 0);
-        setSubtabFocusIndex(ni); subtabFocusIndexRef.current = ni;
-        switchSubtabItem(subtabItems[ni], "back");
-        playSound();
+        if (ni !== currentSubtabIndex) {
+          setSubtabFocusIndex(ni); subtabFocusIndexRef.current = ni;
+          switchSubtabItem(subtabItems[ni], "back");
+
+          playSound();
+        }
       }
       else if (key === "ArrowDown") {
         if (fPinned.length > 0) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
         else { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; }
+
         playSound();
       }
       else if (key === "Enter") {
         const item = subtabItems[subtabFocusIndexRef.current];
-        if (item === "manage") { openLibraryActionsModal(); }
+        if (item === "manage") { haptic("confirm"); openLibraryActionsModal(); }
         // Pills already auto-switched on focus movement — Enter is a no-op for them
       }
       return; // always return — never fall through to grid/pinned launch
@@ -1422,8 +1484,8 @@ export function useGamepadNavigation(
           ? Math.max(1, settingsRef.current.app_list_cols ?? 1)
           : Math.max(2, Math.round(COLS / (settingsRef.current.app_cover_scale ?? 1.0)));
       if (fPinned.length === 0) { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; return; }
-      if (key === "ArrowRight") { const ni = Math.min(index + 1, fPinned.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
-      if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                  setFocusIndex(ni); focusIndexRef.current = ni; }
+      if (key === "ArrowRight") { const ni = Math.min(index + 1, fPinned.length - 1); if (ni !== index) { setFocusIndex(ni); focusIndexRef.current = ni;  } }
+      if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                  if (ni !== index) { setFocusIndex(ni); focusIndexRef.current = ni;  } }
       if (key === "ArrowUp") {
         if (index >= pinnedCols) {
           const ni = index - pinnedCols;
@@ -1431,16 +1493,17 @@ export function useGamepadNavigation(
         } else {
           setFocusSection("subtabs"); focusSectionRef.current = "subtabs";
           setSubtabFocusIndex(0); subtabFocusIndexRef.current = 0;
+
           playSound();
         }
       }
       if (key === "ArrowDown") {
         const ni = index + pinnedCols;
-        if (ni < fPinned.length) { setFocusIndex(ni); focusIndexRef.current = ni; }
-        else { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; }
+        if (ni < fPinned.length) { setFocusIndex(ni); focusIndexRef.current = ni;  }
+        else { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0;  }
       }
       if (key === "Enter" && fPinned[index]) {
-        if (currentTab === "Games") openDetailsModal(fPinned[index]);
+        if (currentTab === "Games") { haptic("confirm"); openDetailsModal(fPinned[index]); }
         else triggerLaunch(fPinned[index], rec);
       }
       return;
@@ -1452,9 +1515,9 @@ export function useGamepadNavigation(
           ? Math.max(1, settingsRef.current.app_list_cols ?? 1)
           : Math.max(2, Math.round(COLS / (settingsRef.current.app_cover_scale ?? 1.0)));
       if (fApps.length === 0) return;
-      if (key === "ArrowRight") { const ni = Math.min(index + 1, fApps.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
-      if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                setFocusIndex(ni); focusIndexRef.current = ni; }
-      if (key === "ArrowDown")  { const ni = Math.min(index + cols, fApps.length - 1); setFocusIndex(ni); focusIndexRef.current = ni; }
+      if (key === "ArrowRight") { const ni = Math.min(index + 1, fApps.length - 1); if (ni !== index) { setFocusIndex(ni); focusIndexRef.current = ni;  } }
+      if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                if (ni !== index) { setFocusIndex(ni); focusIndexRef.current = ni;  } }
+      if (key === "ArrowDown")  { const ni = Math.min(index + cols, fApps.length - 1); if (ni !== index) { setFocusIndex(ni); focusIndexRef.current = ni;  } }
       if (key === "ArrowUp") {
         if (index < cols) {
           if (fPinned.length > 0) {
@@ -1464,11 +1527,12 @@ export function useGamepadNavigation(
           } else {
             setFocusSection("subtabs"); focusSectionRef.current = "subtabs";
             setSubtabFocusIndex(0); subtabFocusIndexRef.current = 0;
+
           }
-        } else { const ni = index - cols; setFocusIndex(ni); focusIndexRef.current = ni; }
+        } else { const ni = index - cols; setFocusIndex(ni); focusIndexRef.current = ni;  }
       }
       if (key === "Enter" && fApps[index]) {
-        if (currentTab === "Games") openDetailsModal(fApps[index]);
+        if (currentTab === "Games") { haptic("confirm"); openDetailsModal(fApps[index]); }
         else triggerLaunch(fApps[index], rec);
       }
       return;

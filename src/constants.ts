@@ -152,7 +152,7 @@ export const DEFAULT_SETTINGS = {
   bottombar_alignment: "left", bottombar_compact: "off", tabbar_label_case: "default",
   show_recent_games_only: false, show_home_collections: false, show_home_collection_names: true, show_hero_cover: true, show_home_pinned: true, home_pinned_pos: "bottom", onyx_flat_settings: true,
   gamepad_platform: "xbox", gamepad_icons_colored: false, gamepad_icons_filled: true, gamepad_icons_theme_color: false,
-  gamepad_btn_size: "small", gamepad_auto_detect: true,
+  gamepad_btn_size: "small", gamepad_auto_detect: true, haptic_feedback: true,
   surface_style: "clear",
   onyx_top_light: true,
 } as const;

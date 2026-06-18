@@ -1,9 +1,31 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Fix Xbox / UWP running-state detection for PID-less `shell:AppsFolder` launches.
-- Confirm package-backed targets by Application User Model ID package-family match instead of window title only.
-- Keep the change scoped to the Rust backend, then update `CHANGELOG.md` and the launch-detection handoff notes after validation.
+- Fix missing splash/startup rumble after real-device feedback.
+- Keep Web Gamepad haptics for normal in-app actions, but add a narrow native XInput splash fallback because the browser path is not firing during startup.
+- Keep tab/source/section ticks and quiet list/card scrolling unchanged.
+
+**Completed (this session - native startup haptics):**
+- Added a Windows/XInput `native_startup_rumble` Tauri command that pulses all XInput controller slots during splash startup and the stronger splash-finished cue.
+- Wired `useStartupBootstrap` to call the native startup fallback alongside Web Gamepad rumble while still honoring the persisted `haptic_feedback` setting.
+- Stopped pending splash retry pulses once the splash-finished cue starts so the stronger startup-sound rumble is not clipped by an older retry.
+- Updated `CHANGELOG.md`.
+- Validated with `npm run build` and `cargo check`; only the existing Vite chunk-size warning, Rust path canonicalization warning, and unused `is_our_window_focused` warning remain.
+
+**Completed (this session - gamepad haptics tuning):**
+- Reintroduced a dedicated short `tab` haptic for actual main-tab, source-tab, app-collection, and Settings-section switches.
+- Kept card/list/picker/Details focus movement quiet so stick/D-pad browsing does not buzz on every step.
+- Strengthened startup-specific haptic patterns and added splash-start retry pulses plus a `gamepadconnected` retry, with the stronger splash-finished pulse still fired next to `playAppLoadedSound`.
+- Kept confirm, cancel, launch-start, and launch-success haptics gated by `haptic_feedback`.
+- Updated `CHANGELOG.md`.
+- Validated with `npm run build` and `git diff --check`; only the existing Vite chunk-size warning and CRLF notices remain.
+
+**Completed (this session - gamepad haptics):**
+- Added default-on persisted `haptic_feedback` settings across Rust, TypeScript, frontend defaults, Settings UI, and English/French locale strings.
+- Added Web Gamepad API rumble helpers in the typed and runtime gamepad utilities, with unsupported controllers failing silently.
+- Wired haptics into main gamepad navigation, Settings actions, Games/App source movement, Game Details navigation/actions, launch start, and launch-success overlay feedback.
+- Updated `CHANGELOG.md`.
+- Validated with `npm run build` and `cargo check`; only the existing Vite chunk-size warning, Rust path canonicalization warning, and unused `is_our_window_focused` warning remain.
 
 **Completed (this session - Xbox/UWP running detection):**
 - Added package-family AUMID matching for PID-less `shell:AppsFolder` launches in `get_running_launched` and `check_launch_focus`, so Xbox/Game Pass/GDK titles such as Control can confirm running state without title-matching their windows.

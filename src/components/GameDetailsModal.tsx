@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { IoChevronDownOutline } from "react-icons/io5";
 import { StoreBadge } from "./ui/StoreBadge";
-import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../utils/gamepad";
+import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, rumble, type GpState } from "../utils/gamepad";
 import type { AccentColors, App, ThemeColors } from "../types";
 
 type SizeBytes = number | "loading" | undefined;
@@ -41,6 +41,7 @@ interface GameDetailsModalProps {
   onDelete?: () => void;
   onResetCategory?: () => void;
   onClose: () => void;
+  hapticEnabled?: boolean;
   accent: AccentColors;
   theme: ThemeColors;
   isDark: boolean;
@@ -122,6 +123,7 @@ export function GameDetailsModal({
   onDelete,
   onResetCategory,
   onClose,
+  hapticEnabled = true,
   accent,
   theme,
   isDark,
@@ -275,7 +277,10 @@ export function GameDetailsModal({
         }
         if (state.Enter && !last.Enter) {
           if (focusIdxRef.current === 0) onPlay();
-          else if (controlsRevealed) actions[focusIdxRef.current - 1]?.onClick();
+          else if (controlsRevealed) {
+            rumble("confirm", hapticEnabled);
+            actions[focusIdxRef.current - 1]?.onClick();
+          }
         }
         if (state.Escape && !last.Escape) onClose();
         Object.assign(last, state);
@@ -284,7 +289,7 @@ export function GameDetailsModal({
     };
     rafId = requestAnimationFrame(poll);
     return () => cancelAnimationFrame(rafId);
-  }, [actions, controlsRevealed, focusCount, onClose, onPlay]);
+  }, [actions, controlsRevealed, focusCount, hapticEnabled, onClose, onPlay]);
 
   const metaItems = [
     { label: t("details.lastPlayed"), value: lastPlayedAt ? formatRelativeTime(lastPlayedAt, t("details.never")) : t("details.never") },

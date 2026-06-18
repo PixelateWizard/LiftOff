@@ -279,6 +279,7 @@ export default function App() {
     setCustomFolders,
   } = useCustomSources();
   const { playSound, playSoundAlt, playSoundGameStart, playAppLoadedSound, playLaunchSuccessSound } = useAudioFeedback(audioProfileRef);
+  const startupHapticsEnabledRef = useRef(true);
   const {
     gameArt,
     setGameArt,
@@ -298,6 +299,7 @@ export default function App() {
   } = useCustomArt();
   const { loading, splashExiting, isReadyRef, onLoaded, onLoadError } = useStartupBootstrap({
     onAppLoaded: playAppLoadedSound,
+    hapticEnabledRef: startupHapticsEnabledRef,
   });
   const {
     apps, setApps, appsRef, allAppsRef,
@@ -325,6 +327,7 @@ export default function App() {
     onScanKeyChange: refreshLibrary,
     autoScaleRef,
   });
+  startupHapticsEnabledRef.current = settings.haptic_feedback ?? true;
   const { updateStatus, updateInfo, checkForUpdates } = useUpdateCheck({
     appVersion: APP_VERSION,
     githubRepo: GITHUB_REPO,
@@ -1968,7 +1971,7 @@ export default function App() {
 
       <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} />
       <AppOverlays>
-      {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={closeLaunchOverlay} onSuccess={playLaunchSuccessSound} />}
+      {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={closeLaunchOverlay} onSuccess={playLaunchSuccessSound} hapticEnabled={settings.haptic_feedback ?? true} />}
       {closeRequest && (
         <ConfirmModal
           message={closeRequest.force
@@ -2004,7 +2007,8 @@ export default function App() {
           playtimeMinutes={detailsApp.playtime_minutes ?? undefined}
           sizeBytes={installSize[detailsApp.id] === null ? undefined : installSize[detailsApp.id]}
           installed={detailsApp.installed !== false}
-          onPlay={() => { triggerLaunch(detailsApp, recentRef.current); closeDetailsModal(); }}
+          hapticEnabled={settings.haptic_feedback ?? true}
+          onPlay={() => { triggerLaunch(detailsApp, recentRef.current); closeDetailsModal(false); }}
           onTogglePin={() => togglePin(detailsApp)}
           isPinned={pins.includes(detailsApp.id)}
           onToggleHidden={() => toggleHidden(detailsApp.id)}
@@ -2017,7 +2021,7 @@ export default function App() {
           runAsAdmin={getRunAsAdmin(detailsApp.id)}
           onChangeArt={() => {
             const app = detailsApp;
-            closeDetailsModal();
+            closeDetailsModal(false);
             setArtPickerMode("grid");
             artPickerModeRef.current = "grid";
             setArtPickerApp(app);
@@ -2025,7 +2029,7 @@ export default function App() {
           }}
           onChangeHeroArt={() => {
             const app = detailsApp;
-            closeDetailsModal();
+            closeDetailsModal(false);
             setArtPickerMode("hero");
             artPickerModeRef.current = "hero";
             setArtPickerApp(app);
@@ -2033,24 +2037,24 @@ export default function App() {
           }}
           onCollections={() => {
             const app = detailsApp;
-            closeDetailsModal();
+            closeDetailsModal(false);
             setColPickerApp(app);
             colPickerAppRef.current = app;
           }}
           onRename={() => {
             const app = detailsApp;
-            closeDetailsModal();
+            closeDetailsModal(false);
             setEditNameApp(app);
             editNameAppRef.current = app;
           }}
-          onMoveToApps={() => { applyCategoryOverride(detailsApp.id, "app", null); closeDetailsModal(); }}
+          onMoveToApps={() => { applyCategoryOverride(detailsApp.id, "app", null); closeDetailsModal(false); }}
           onDelete={detailsApp.id.startsWith("custom_") ? () => {
             const app = detailsApp;
-            closeDetailsModal();
+            closeDetailsModal(false);
             setConfirmDelete(app);
             confirmDeleteRef.current = app;
           } : undefined}
-          onResetCategory={categoryOverrides[detailsApp.id] ? () => { applyCategoryOverride(detailsApp.id, null, null); closeDetailsModal(); } : undefined}
+          onResetCategory={categoryOverrides[detailsApp.id] ? () => { applyCategoryOverride(detailsApp.id, null, null); closeDetailsModal(false); } : undefined}
           onClose={closeDetailsModal}
           accent={accent}
           theme={theme}

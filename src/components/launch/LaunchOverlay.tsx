@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AccentColors, App } from "../../types";
-import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
+import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, rumble, type GpState } from "../../utils/gamepad";
 
 type LaunchStatus = "launching" | "verifying" | "focused" | "running_unfocused" | "unconfirmed" | "failed";
 type FocusedAction = "focus" | "dismiss";
@@ -15,9 +15,10 @@ interface LaunchOverlayProps {
   accent: AccentColors;
   onDone: () => void;
   onSuccess?: () => void;
+  hapticEnabled?: boolean;
 }
 
-export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSuccess }: LaunchOverlayProps) {
+export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSuccess, hapticEnabled = true }: LaunchOverlayProps) {
   const { t } = useTranslation();
   const art = app?.app_type === "game" ? (customArt?.[app.id] || gameArt[app.id]) : null;
   const [status, setStatus] = useState<LaunchStatus>("launching");
@@ -80,6 +81,7 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSucce
       if (!mounted.current) return;
 
       success?.();
+      rumble("launch", hapticEnabled);
       setStatus("verifying");
 
       try {

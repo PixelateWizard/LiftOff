@@ -28,6 +28,7 @@ use windows::{
         OpenProcess, QueryFullProcessImageNameW, TerminateProcess, PROCESS_NAME_WIN32,
         PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE,
     },
+    Win32::UI::Input::XboxController::{XInputSetState, XINPUT_VIBRATION},
     Win32::UI::Shell::{
         SHGetFileInfoW, ShellExecuteW, SHFILEINFOW, SHGFI_FLAGS, SHGFI_ICON, SHGFI_LARGEICON,
     },
@@ -259,6 +260,8 @@ pub struct Settings {
     pub gamepad_btn_size: String,
     #[serde(default = "default_true")]
     pub gamepad_auto_detect: bool,
+    #[serde(default = "default_true")]
+    pub haptic_feedback: bool,
     #[serde(default = "default_topbar_show_bumpers")]
     pub topbar_show_bumpers: bool,
     #[serde(default = "default_surface_style")]
@@ -401,6 +404,7 @@ impl Default for Settings {
             gamepad_icons_theme_color: false,
             gamepad_btn_size: "small".to_string(),
             gamepad_auto_detect: true,
+            haptic_feedback: true,
             topbar_show_bumpers: false,
             surface_style: "clear".to_string(),
         }
@@ -1942,6 +1946,40 @@ fn get_recent_games() -> Vec<RecentEntry> {
 #[tauri::command]
 fn set_gamepad_ready() {
     GAMEPAD_READY.store(true, Ordering::Relaxed);
+}
+
+fn set_xinput_vibration(left_motor_speed: u16, right_motor_speed: u16) {
+    let vibration = XINPUT_VIBRATION {
+        wLeftMotorSpeed: left_motor_speed,
+        wRightMotorSpeed: right_motor_speed,
+    };
+
+    unsafe {
+        for user_index in 0..4 {
+            let _ = XInputSetState(user_index, &vibration);
+        }
+    }
+}
+
+#[tauri::command]
+fn native_startup_rumble(pattern: String) {
+    std::thread::spawn(move || match pattern.as_str() {
+        "startup" => {
+            set_xinput_vibration(0x3200, 0x1800);
+            std::thread::sleep(Duration::from_millis(380));
+            set_xinput_vibration(0, 0);
+        }
+        "startupReady" => {
+            set_xinput_vibration(0x6800, 0x4200);
+            std::thread::sleep(Duration::from_millis(130));
+            set_xinput_vibration(0, 0);
+            std::thread::sleep(Duration::from_millis(70));
+            set_xinput_vibration(0xb000, 0x8800);
+            std::thread::sleep(Duration::from_millis(300));
+            set_xinput_vibration(0, 0);
+        }
+        _ => {}
+    });
 }
 #[tauri::command]
 fn get_custom_art() -> HashMap<String, String> {
@@ -4992,6 +5030,7 @@ pub fn run() {
             get_recent_games,
             get_battery,
             set_gamepad_ready,
+            native_startup_rumble,
             get_settings,
             save_settings,
             clear_recents,

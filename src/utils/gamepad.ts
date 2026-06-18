@@ -143,3 +143,46 @@ export function detectPlatform(gpId: string): "ps" | "switch" | "xbox" | null {
       id.includes("microsoft")) return "xbox";
   return null;
 }
+
+export type HapticPattern =
+  | "tab"
+  | "confirm"
+  | "cancel"
+  | "startup"
+  | "startupReady"
+  | "launch";
+
+interface DualRumbleEffect {
+  duration: number;
+  weakMagnitude: number;
+  strongMagnitude: number;
+  startDelay?: number;
+}
+
+const HAPTIC_PATTERNS: Record<HapticPattern, DualRumbleEffect[]> = {
+  tab: [{ duration: 45, weakMagnitude: 0.24, strongMagnitude: 0.12 }],
+  confirm: [{ duration: 60, weakMagnitude: 0.4, strongMagnitude: 0.3 }],
+  cancel: [{ duration: 40, weakMagnitude: 0.2, strongMagnitude: 0.08 }],
+  startup: [{ duration: 420, weakMagnitude: 0.28, strongMagnitude: 0.12 }],
+  startupReady: [
+    { duration: 120, weakMagnitude: 0.48, strongMagnitude: 0.3 },
+    { startDelay: 150, duration: 260, weakMagnitude: 0.7, strongMagnitude: 0.58 },
+  ],
+  launch: [{ duration: 250, weakMagnitude: 0.7, strongMagnitude: 0.9 }],
+};
+
+export function rumble(pattern: HapticPattern, enabled = true): void {
+  if (!enabled) return;
+  const gp = getActiveGamepad();
+  const actuator = (gp as any)?.vibrationActuator;
+  if (!actuator) return;
+
+  for (const pulse of HAPTIC_PATTERNS[pattern]) {
+    actuator.playEffect("dual-rumble", {
+      startDelay: pulse.startDelay ?? 0,
+      duration: pulse.duration,
+      weakMagnitude: pulse.weakMagnitude,
+      strongMagnitude: pulse.strongMagnitude,
+    }).catch(() => {});
+  }
+}

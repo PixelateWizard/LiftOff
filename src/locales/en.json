@@ -267,6 +267,7 @@
     "version": "LiftOff v{{version}}",
     "gamepadPlatform": "Gamepad Icons",
     "gamepadAutoDetect": "Auto-detect Controller",
+    "hapticFeedback": "Controller Vibration",
     "gamepadIconsColored": "Colored Icons",
     "gamepadBtnSize": "Button Size",
     "checkUpdates": "Check for Updates",
