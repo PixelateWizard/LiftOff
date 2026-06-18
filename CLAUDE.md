@@ -1,9 +1,41 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Reverted cover image placeholders to SVG.
-- Copied original text-containing space images for all 12 accents to `public/assets/` as `liftoff_hero_<accent>_original.png`.
-- Set up hero image placeholders (`liftoff_hero_<accent>.png`) for all 12 accents in `public/assets/`.
+- Fix Xbox / UWP running-state detection for PID-less `shell:AppsFolder` launches.
+- Confirm package-backed targets by Application User Model ID package-family match instead of window title only.
+- Keep the change scoped to the Rust backend, then update `CHANGELOG.md` and the launch-detection handoff notes after validation.
+
+**Completed (this session - Xbox/UWP running detection):**
+- Added package-family AUMID matching for PID-less `shell:AppsFolder` launches in `get_running_launched` and `check_launch_focus`, so Xbox/Game Pass/GDK titles such as Control can confirm running state without title-matching their windows.
+- Kept process-AUMID enumeration lazy, only running while a tracked shell target exists, and extended PID-less launch reap grace from 60s to 180s.
+- Enabled the required `Win32_Storage_Packaging_Appx` Windows API feature for `GetApplicationUserModelId`.
+- Updated `CHANGELOG.md`.
+- Validated with `npm run build`, `cargo check`, and `git diff --check`; only the existing Vite chunk-size warning, Rust unused-helper warning, path canonicalization warning, and CRLF notices remain.
+
+**Completed (this session - Details two-stage controls):**
+- Reworked `GameDetailsModal` into a showcase-first state with hero, cover, metadata, Play, and a subtle animated down indicator.
+- Pressing down from Play, or clicking the indicator, reveals controls by collapsing the hero band, shrinking the cover into the details row, and sliding/fading the action grid into focus.
+- Pressing up from the first controls row collapses back to the showcase state; action focus and scroll behavior remain controller-owned inside the modal.
+- Tightened Xbox duplicate cleanup so desktop/start-menu shortcut shadows with the same normalized title as a real Xbox entry are removed, fixing the Abiotic Factor desktop shortcut duplicate case found in `custom_categories.json`.
+- Updated `CHANGELOG.md`.
+- Validated with `npm run build`, `cargo check`, and `git diff --check`; only the existing Vite chunk-size warning, Rust unused-helper warning, path canonicalization warning, and CRLF notices remain.
+
+**Completed (this session - Details layout polish):**
+- Reworked `GameDetailsModal` so the action grid spans the full lower modal width instead of only the right content column.
+- Reduced the hero band height and gave the action controls larger hit targets, spacing, and text sizing so they no longer feel pinned into the bottom edge.
+- Added surface-aware radii for the modal shell, media, chips, and buttons across Win9X, Material, Clear, Neon, Obsidian, Aero, and standard glass surfaces.
+- Updated `CHANGELOG.md`.
+- Validated with `npm run build` and `git diff --check`; only the existing Vite chunk-size warning and CRLF notices remain.
+
+**Completed (this session - PR2 Game Details modal):**
+- Added `GameDetailsModal` as a controller-isolated full details surface for Games, with hero/cover art, store badge, metadata chips, a primary Play action, and reused secondary handlers for pin/hide/admin/art/collections/rename/category/delete.
+- Changed Games gamepad behavior so `A` opens Details instead of launching directly, and Start/Menu is a no-op on Games while Apps keep the existing Start context menu.
+- Routed game right-click to Details and extracted `StoreBadge` into a shared UI component so cards and Details use the same badge implementation.
+- Fixed follow-up Details bugs: Details now blocks background gamepad navigation, scrolls its focused controls into view, removes the overlapping footer hints, and centers toggle knobs.
+- Added lazy `get_install_size` Tauri command with shared Steam library discovery, Steam `SizeOnDisk` manifest fast-path, propagated install directories for launcher-backed games, Xbox/Game Pass install-size support, and narrow suppression for duplicate custom/XboxGames shadow cards.
+- Added `details.*` locale keys in English and TODO French placeholders for moi952 follow-up.
+- Updated `CHANGELOG.md`.
+- Validated follow-up with `npm run build`, `cargo check`, and `git diff --check`. A plain Vite browser smoke was attempted, but the page cannot run outside Tauri because native `window.__TAURI__` APIs are absent.
 
 **Completed (this session - clean space backgrounds integration):**
 - Reverted the cover background changes to SVG placeholder style so cover images remain untouched.
@@ -1116,10 +1148,10 @@ Notable merged PRs from Moi that affect current architecture and settings:
 - Battery icon shows percent + charging indicator (lightning bolt + green color); polls every 10s
 - Hero section fully themed for light mode (no hardcoded dark colors, WCAG-compliant text)
 - Background clouds (light theme): 16 cloud instances drifting across full-height, behind all UI on every tab; toggled by `stars_enabled` setting
-- LaunchOverlay: shows "Launching…" then transitions to success (dismiss) or "Failed to launch" + Dismiss button based on `EnumWindows` window detection
+- LaunchOverlay: shows "Launching…" then transitions to success (dismiss) or "Failed to launch" + Dismiss button based on `EnumWindows` window detection, with Xbox/UWP `shell:AppsFolder` targets also confirmed by `GetApplicationUserModelId` package-family match.
 - Power modal: pressing B at the Home root opens controller-navigable Restart LiftOff / Exit LiftOff actions backed by Tauri `restart_app` and `exit_app` commands.
 - Launch window watcher: detects game window via PID (direct exe) or snapshot diff (Steam/BNet/UWP); brings window to front on success
-- Running-app lifecycle: launched apps/games are tracked for the current session via direct child PID when available and existing window/exe matching for launcher-mediated paths. Home/Games/Apps show Running badges, running hero games show Resume + Close, launching an already-running game focuses it via `try_focus_launched_app`, exited launched games can pull LiftOff back to the foreground via `focus_self`, and Close uses confirmed graceful `WM_CLOSE` before a second confirmed force-terminate path.
+- Running-app lifecycle: launched apps/games are tracked for the current session via direct child PID when available and existing window/exe matching for launcher-mediated paths. Xbox/UWP `shell:AppsFolder` targets are confirmed via live process AUMID package-family match (`get_running_launched` / `check_launch_focus`) instead of window title only, and that process-AUMID snapshot is built lazily only while a shell target is tracked. Home/Games/Apps show Running badges, running hero games show Resume + Close, launching an already-running game focuses it via `try_focus_launched_app`, exited launched games can pull LiftOff back to the foreground via `focus_self`, and Close uses confirmed graceful `WM_CLOSE` before a second confirmed force-terminate path.
 - Splash screen: no flash before CSS loads (inline opacity on all animated elements); localized status text below the dots reassures during longer startup scans without claiming real progress.
 - Recent cards show correct icons (looked up from allAppsRef)
 - Settings scroll margin accounts for sticky nav bar (80px top margin); last item not cut off (160px bottom padding)

@@ -419,6 +419,13 @@
       "noUninstalled": "Everything here is installed."
     }
   },
+  "details": {
+    "play": "Play",
+    "lastPlayed": "Last played",
+    "playtime": "Playtime",
+    "sizeOnDisk": "Size on disk",
+    "never": "Never played"
+  },
   "library": {
     "refreshing": "Refreshing library…",
     "scanning": "Scanning for apps and games"

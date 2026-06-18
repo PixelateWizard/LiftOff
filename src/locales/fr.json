@@ -420,6 +420,13 @@
       "noUninstalled": "TODO(fr) Everything here is installed."
     }
   },
+  "details": {
+    "play": "TODO(fr) Play",
+    "lastPlayed": "TODO(fr) Last played",
+    "playtime": "TODO(fr) Playtime",
+    "sizeOnDisk": "TODO(fr) Size on disk",
+    "never": "TODO(fr) Never played"
+  },
   "library": {
     "refreshing": "Actualisation…",
     "scanning": "Recherche d'apps et de jeux"

@@ -6,11 +6,10 @@ import i18n from "./i18n";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { IoMusicalNotesOutline } from "react-icons/io5";
-import { FaBattleNet, FaSteam, FaXbox } from "react-icons/fa6";
-import { SiEpicgames, SiGogdotcom } from "react-icons/si";
 import FileBrowser from "./components/FileBrowser";
 import GamepadKeyboard from "./components/GamepadKeyboard";
 import { GamepadBtn } from "./components/GamepadBtn";
+import { GameDetailsModal } from "./components/GameDetailsModal";
 import AddEntryModal from "./components/modals/AddEntryModal";
 import ConfirmModal from "./components/modals/ConfirmModal";
 import FolderManagerModal from "./components/modals/FolderManagerModal";
@@ -68,23 +67,7 @@ import {
   SURFACE_STYLE_OPTIONS, THEME_LOCKED_SETTINGS, THEME_BG_COLORS, THEME_OPTIONS,
   getRunAsAdmin, setRunAsAdmin,
 } from "./constants";
-import { CyberpunkCard, FocusRing } from "./components/ui";
-
-const STORE_ICONS = {
-  steam: FaSteam,
-  xbox: FaXbox,
-  battlenet: FaBattleNet,
-  gog: SiGogdotcom,
-  epic: SiEpicgames,
-};
-
-const STORE_LABELS = {
-  steam: "Steam",
-  xbox: "Xbox",
-  battlenet: "Battle.net",
-  gog: "GOG",
-  epic: "Epic Games",
-};
+import { CyberpunkCard, FocusRing, StoreBadge } from "./components/ui";
 
 const INSTALL_FILTERS = ["all", "installed", "notInstalled"];
 const GAMES_SORTS = ["recent", "az", "store"];
@@ -277,6 +260,9 @@ export default function App() {
     showColModalRef, colPickerAppRef, confirmDeleteRef, showFolderManagerRef,
     artPickerAppRef, artPickerModeRef, contextMenuRef, editNameAppRef, showPowerModalRef,
   } = useModalState();
+  const [detailsApp, setDetailsApp] = useState(null);
+  const detailsAppRef = useRef(null);
+  const [installSize, setInstallSize] = useState({});
   const {
     appCollections, setAppCollections, appCollectionsRef,
     appMemberships, setAppMemberships, appMembershipsRef,
@@ -422,6 +408,8 @@ export default function App() {
     closeLibraryActionsModal,
     closePowerModal,
     closeArtPicker,
+    openDetailsModal,
+    closeDetailsModal,
     openHideModal,
     openLibraryActionsModal,
     handleNav,
@@ -480,6 +468,7 @@ export default function App() {
     surfacePickerFocusIndexRef,
     artPickerAppRef,
     artPickerModeRef,
+    detailsAppRef,
     contextMenuRef,
     setShowHideModal,
     setShowLibraryActions,
@@ -493,6 +482,7 @@ export default function App() {
     setThemePickerFocusIndex,
     setSurfacePickerFocusIndex,
     setArtPickerApp,
+    setDetailsApp,
     playSoundGameStart,
     playSound,
     playSoundAlt,
@@ -768,6 +758,29 @@ export default function App() {
       .then((map) => { setCategoryOverrides(map); refreshLibrary(); })
       .catch(() => {});
   };
+
+  const recentAt = (id) => {
+    const hit = recentRef.current.find((entry) => entry.id === id);
+    return hit?.launched_at;
+  };
+
+  useEffect(() => {
+    if (!detailsApp || detailsApp.installed === false || !detailsApp.launch_path) return;
+    if (Object.prototype.hasOwnProperty.call(installSize, detailsApp.id)) return;
+    setInstallSize((prev) => ({ ...prev, [detailsApp.id]: "loading" }));
+    invoke("get_install_size", {
+      id: detailsApp.id,
+      launchPath: detailsApp.launch_path,
+      source: detailsApp.source ?? "",
+      installDir: detailsApp.install_dir ?? null,
+    })
+      .then((size) => {
+        setInstallSize((prev) => ({ ...prev, [detailsApp.id]: size == null ? null : size }));
+      })
+      .catch(() => {
+        setInstallSize((prev) => ({ ...prev, [detailsApp.id]: null }));
+      });
+  }, [detailsApp, installSize]);
 
   // Global styles
   useEffect(() => {
@@ -1511,46 +1524,6 @@ export default function App() {
     );
   };
 
-  const StoreBadge = ({ source, small = false }) => {
-    if (settings.show_store_badges === false) return null;
-    const Icon = STORE_ICONS[source];
-    if (!Icon) return null;
-
-    const glyph = small ? 13 : 15;
-    const pad = small ? 5 : 6;
-    const offset = small ? 6 : 8;
-    const square = surfaceStyle === "win9x" || resolvedTheme === "cyberpunk";
-
-    return (
-      <div
-        title={STORE_LABELS[source] || source}
-        aria-label={STORE_LABELS[source] || source}
-        style={{
-          position: "absolute",
-          right: offset,
-          bottom: offset,
-          zIndex: 3,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: glyph + pad * 2,
-          height: glyph + pad * 2,
-          borderRadius: square ? 0 : 8,
-          background: "rgba(0,0,0,0.55)",
-          backdropFilter: "blur(4px)",
-          WebkitBackdropFilter: "blur(4px)",
-          boxShadow: surfaceStyle === "material"
-            ? "0 2px 6px rgba(0,0,0,0.25)"
-            : "0 1px 4px rgba(0,0,0,0.45)",
-          color: "rgba(255,255,255,0.94)",
-          pointerEvents: "none",
-        }}
-      >
-        <Icon size={glyph} />
-      </div>
-    );
-  };
-
   const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, isRunning: cardRunning, onRightClick, calmMotion = false }) => {
     const art = customArt[app.id] || gameArt[app.id];
     const innerBase = art
@@ -1907,6 +1880,7 @@ export default function App() {
     focusIndexRef,
     focusIndex,
     triggerLaunch,
+    openDetails: openDetailsModal,
     recent,
     setContextMenu,
     COLS: effectiveAppCols,
@@ -2016,6 +1990,74 @@ export default function App() {
             }, 4800);
           }}
           onCancel={() => setCloseRequest(null)}
+        />
+      )}
+      {detailsApp && (
+        <GameDetailsModal
+          app={detailsApp}
+          heroAnimated={heroAnimated[detailsApp.id]}
+          heroStatic={customHeroArt[detailsApp.id] || heroStatic[detailsApp.id]}
+          coverArt={customArt[detailsApp.id] || gameArt[detailsApp.id]}
+          animatedHeroes={settings.animated_heroes}
+          effectsEnabled={settings.ui_motion !== false && !appPaused}
+          lastPlayedAt={Math.max(Number(recentAt(detailsApp.id) ?? 0), Number(detailsApp.last_played ?? 0)) || undefined}
+          playtimeMinutes={detailsApp.playtime_minutes ?? undefined}
+          sizeBytes={installSize[detailsApp.id] === null ? undefined : installSize[detailsApp.id]}
+          installed={detailsApp.installed !== false}
+          onPlay={() => { triggerLaunch(detailsApp, recentRef.current); closeDetailsModal(); }}
+          onTogglePin={() => togglePin(detailsApp)}
+          isPinned={pins.includes(detailsApp.id)}
+          onToggleHidden={() => toggleHidden(detailsApp.id)}
+          isHidden={hidden.includes(detailsApp.id)}
+          onRunAsAdminToggle={() => {
+            const enabled = getRunAsAdmin(detailsApp.id);
+            setRunAsAdmin(detailsApp.id, !enabled);
+            setAdminPrefsVersion((v) => v + 1);
+          }}
+          runAsAdmin={getRunAsAdmin(detailsApp.id)}
+          onChangeArt={() => {
+            const app = detailsApp;
+            closeDetailsModal();
+            setArtPickerMode("grid");
+            artPickerModeRef.current = "grid";
+            setArtPickerApp(app);
+            artPickerAppRef.current = app;
+          }}
+          onChangeHeroArt={() => {
+            const app = detailsApp;
+            closeDetailsModal();
+            setArtPickerMode("hero");
+            artPickerModeRef.current = "hero";
+            setArtPickerApp(app);
+            artPickerAppRef.current = app;
+          }}
+          onCollections={() => {
+            const app = detailsApp;
+            closeDetailsModal();
+            setColPickerApp(app);
+            colPickerAppRef.current = app;
+          }}
+          onRename={() => {
+            const app = detailsApp;
+            closeDetailsModal();
+            setEditNameApp(app);
+            editNameAppRef.current = app;
+          }}
+          onMoveToApps={() => { applyCategoryOverride(detailsApp.id, "app", null); closeDetailsModal(); }}
+          onDelete={detailsApp.id.startsWith("custom_") ? () => {
+            const app = detailsApp;
+            closeDetailsModal();
+            setConfirmDelete(app);
+            confirmDeleteRef.current = app;
+          } : undefined}
+          onResetCategory={categoryOverrides[detailsApp.id] ? () => { applyCategoryOverride(detailsApp.id, null, null); closeDetailsModal(); } : undefined}
+          onClose={closeDetailsModal}
+          accent={accent}
+          theme={theme}
+          isDark={isDark}
+          surfaceStyle={surfaceStyle}
+          glass={glass}
+          t={t}
         />
       )}
       {artPickerApp && (
@@ -2489,7 +2531,7 @@ export default function App() {
       )}
       </AppOverlays>
 
-      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || showSpotifyGuide || showSpotifyOverlay) ? "none" : "auto" }}>
+      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || showSpotifyGuide || showSpotifyOverlay || detailsApp) ? "none" : "auto" }}>
 
         {/* Topbar */}
         <AppHeader

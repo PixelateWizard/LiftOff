@@ -4,6 +4,7 @@ export interface App {
   name: string;
   app_type?: "game" | "app";
   source?: string;
+  install_dir?: string;
   launch_path?: string;
   icon_base64?: string;
   installed?: boolean;

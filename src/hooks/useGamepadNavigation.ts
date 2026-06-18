@@ -93,6 +93,7 @@ export interface UseGamepadNavigationOptions {
   editNameAppRef?: AnyRef<App | null>;
   artPickerAppRef?: AnyRef<App | null>;
   artPickerModeRef?: AnyRef<string>;
+  detailsAppRef?: AnyRef<App | null>;
   contextMenuRef?: AnyRef<unknown>;
   showPowerModalRef?: AnyRef<boolean>;
   showThemePickerRef?: AnyRef<boolean>;
@@ -114,6 +115,7 @@ export interface UseGamepadNavigationOptions {
   setThemePickerFocusIndex?: (value: number) => void;
   setSurfacePickerFocusIndex?: (value: number) => void;
   setArtPickerApp?: (app: App | null) => void;
+  setDetailsApp?: (app: App | null) => void;
 
   playSoundGameStart?: () => void;
   playSound?: () => void;
@@ -222,6 +224,8 @@ export interface GamepadNavigationResult {
   closeLibraryActionsModal: () => void;
   closePowerModal: () => void;
   closeArtPicker: () => void;
+  openDetailsModal: (app: App) => void;
+  closeDetailsModal: () => void;
   openHideModal: () => void;
   openLibraryActionsModal: () => void;
   handleNav: (key: string) => void;
@@ -330,6 +334,7 @@ export function useGamepadNavigation(
     editNameAppRef,
     artPickerAppRef,
     artPickerModeRef,
+    detailsAppRef = { current: null } as AnyRef<App | null>,
     contextMenuRef,
     showPowerModalRef = { current: false } as AnyRef<boolean>,
     showThemePickerRef = { current: false } as AnyRef<boolean>,
@@ -350,6 +355,7 @@ export function useGamepadNavigation(
     setThemePickerFocusIndex = noop as (value: number) => void,
     setSurfacePickerFocusIndex = noop as (value: number) => void,
     setArtPickerApp = noop as (app: App | null) => void,
+    setDetailsApp = noop as (app: App | null) => void,
     playSoundGameStart = noop,
     playSound = noop,
     playSoundAlt = noop,
@@ -546,6 +552,18 @@ export function useGamepadNavigation(
     setArtPickerApp(null); artPickerAppRef.current = null;
   };
 
+  const openDetailsModal = (app: App) => {
+    if (document.activeElement) (document.activeElement as HTMLElement).blur?.();
+    setDetailsApp(app);
+    detailsAppRef.current = app;
+  };
+
+  const closeDetailsModal = () => {
+    suppressHeldButtons();
+    setDetailsApp(null);
+    detailsAppRef.current = null;
+  };
+
 
   const switchTab = (newTab: string, direction?: "forward" | "back") => {
     const currentTab = tabRef.current;
@@ -639,6 +657,7 @@ export function useGamepadNavigation(
     || !!showSurfacePickerRef?.current
     || !!showSpotifyGuideRef.current
     || !!showSpotifyOverlayRef.current
+    || !!detailsAppRef.current
     || !!artPickerAppRef.current
     || !!contextMenuRef.current
     || !!searchOpenRef.current;
@@ -1003,7 +1022,8 @@ export function useGamepadNavigation(
     if (key === "BumperLeft")  { const _tabs = TABS as string[]; const i = _tabs.indexOf(currentTab); switchTab(_tabs[(i - 1 + _tabs.length) % _tabs.length], "back"); return; }
     if (key === "BumperRight") { const _tabs = TABS as string[]; const i = _tabs.indexOf(currentTab); switchTab(_tabs[(i + 1) % _tabs.length], "forward"); return; }
 
-    // BACK (Select) opens library actions menu; MENU (Start) opens context menu for focused card
+    // BACK (Select) opens library actions menu; MENU (Start) opens Apps context menu.
+    // Start/Menu is intentionally reserved on Games for the future bottom-bar revamp.
     if (key === "Select" && (currentTab === "Games" || currentTab === "Apps")) {
       openLibraryActionsModal(); return;
     }
@@ -1011,7 +1031,10 @@ export function useGamepadNavigation(
       onOpenSpotifyOverlay();
       return;
     }
-    if (key === "Start" && (currentTab === "Games" || currentTab === "Apps")) {
+    if (key === "Start" && currentTab === "Games") {
+      return;
+    }
+    if (key === "Start" && currentTab === "Apps") {
       const focusedApp = section === "pinned" ? fPinned[index] : section === "grid" ? fApps[index] : null;
       if (focusedApp) {
         const cx = Math.min(Math.floor(window.innerWidth / 2) - 90, window.innerWidth - 200);
@@ -1416,7 +1439,10 @@ export function useGamepadNavigation(
         if (ni < fPinned.length) { setFocusIndex(ni); focusIndexRef.current = ni; }
         else { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; }
       }
-      if (key === "Enter" && fPinned[index]) triggerLaunch(fPinned[index], rec);
+      if (key === "Enter" && fPinned[index]) {
+        if (currentTab === "Games") openDetailsModal(fPinned[index]);
+        else triggerLaunch(fPinned[index], rec);
+      }
       return;
     }
     if (section === "grid") {
@@ -1441,7 +1467,10 @@ export function useGamepadNavigation(
           }
         } else { const ni = index - cols; setFocusIndex(ni); focusIndexRef.current = ni; }
       }
-      if (key === "Enter" && fApps[index]) triggerLaunch(fApps[index], rec);
+      if (key === "Enter" && fApps[index]) {
+        if (currentTab === "Games") openDetailsModal(fApps[index]);
+        else triggerLaunch(fApps[index], rec);
+      }
       return;
     }
   };
@@ -1526,7 +1555,8 @@ export function useGamepadNavigation(
             && !editNameAppRef?.current
             && !showPowerModalRef?.current
             && !showSpotifyGuideRef.current
-            && !showSpotifyOverlayRef.current;
+            && !showSpotifyOverlayRef.current
+            && !detailsAppRef.current;
 
           // MENU (Start) gains a hold gesture when Spotify is connected:
           // hold to charge up and open the Spotify overlay (any tab); a tap
@@ -1760,6 +1790,8 @@ export function useGamepadNavigation(
     closeLibraryActionsModal,
     closePowerModal,
     closeArtPicker,
+    openDetailsModal,
+    closeDetailsModal,
     openHideModal,
     openLibraryActionsModal,
     handleNav,

@@ -6,7 +6,9 @@ fn main() {
         if let Ok(content) = std::fs::read_to_string(&env_path) {
             for line in content.lines() {
                 let line = line.trim();
-                if line.starts_with('#') || line.is_empty() { continue; }
+                if line.starts_with('#') || line.is_empty() {
+                    continue;
+                }
                 if let Some((k, v)) = line.split_once('=') {
                     let k = k.trim();
                     let v = v.trim().trim_matches('"');

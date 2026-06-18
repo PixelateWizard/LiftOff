@@ -57,6 +57,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
     focusIndexRef,
     focusIndex,
     triggerLaunch,
+    openDetails,
     recent,
     setContextMenu,
     COLS,
@@ -342,7 +343,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                         cardRef={focused ? focusedCardRef : null}
                         onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
                         onDoubleClick={() => triggerLaunch(app, recent)}
-                        onRightClick={(e, a) => { setContextMenu({ x: e.clientX, y: e.clientY, app: a }); }} />;
+                        onRightClick={(_e, a) => { openDetails?.(a); }} />;
                     })}
                   </div>
                 ) : appListView ? (
@@ -460,7 +461,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                       cardRef={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recent)}
-                      onRightClick={(e, a) => { setContextMenu({ x: e.clientX, y: e.clientY, app: a }); }} />;
+                      onRightClick={(_e, a) => { openDetails?.(a); }} />;
                   })}
                 </div>
               )
