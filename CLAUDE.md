@@ -1,9 +1,15 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Fix missing splash/startup rumble after real-device feedback.
-- Keep Web Gamepad haptics for normal in-app actions, but add a narrow native XInput splash fallback because the browser path is not firing during startup.
-- Keep tab/source/section ticks and quiet list/card scrolling unchanged.
+- Spike the live Steam QR-auth endpoints from `spike-steam-qr-endpoints.md`.
+- Confirmed the no-account transport smoke test against Valve's live API: POST with `input_protobuf_encoded` returned `HTTP 200`, `application/octet-stream`, `X-eresult: 1`, and an 83-byte protobuf containing a `https://s.team/q/1/...` challenge URL.
+- Full platform-token and owned-games verification still requires `protoc`/vendored Steam protobuf schemas plus Taylor's Steam account and mobile-app approval; no live credentials were generated or stored by the agent.
+
+**Completed (this session - Steam QR endpoint spike):**
+- Read `spike-steam-qr-endpoints.md` as the project proposal and ran the safe no-account endpoint smoke test.
+- Confirmed the transport question for PR 3a: `BeginAuthSessionViaQR/v1/` accepts POST form data with `input_protobuf_encoded` and returns raw protobuf bytes.
+- Found local blockers for the account-backed tests: `protoc`, `base64`, `qrencode`, and the SteamDatabase protobuf files are not available in this shell/repo, and Tests 1-3 require Taylor to scan/approve the QR with a real Steam mobile app.
+- Updated `CHANGELOG.md`.
 
 **Completed (this session - native startup haptics):**
 - Added a Windows/XInput `native_startup_rumble` Tauri command that pulses all XInput controller slots during splash startup and the stronger splash-finished cue.
@@ -60,10 +66,11 @@
 - Validated follow-up with `npm run build`, `cargo check`, and `git diff --check`. A plain Vite browser smoke was attempted, but the page cannot run outside Tauri because native `window.__TAURI__` APIs are absent.
 
 **Completed (this session - clean space backgrounds integration):**
-- Reverted the cover background changes to SVG placeholder style so cover images remain untouched.
-- Copied the 12 original (with text/buttons) space background PNGs into `public/assets/` as `liftoff_hero_<accent>_original.png` so the user can easily export them for regeneration.
-- Copied the remaining 7 accents' original space background PNGs to `liftoff_hero_<accent>.png` so they are fully wired up in the app as hero placeholders.
-- Updated `src/App.jsx` and `src/views/HomeView.tsx` to ensure only hero backgrounds load as PNGs while cover backgrounds stay as SVGs.
+- Generated and copied clean (text/button-free) space background PNGs for all 12 accent colors into `public/assets/` as `liftoff_hero_<accent>.png` to serve as hero backgrounds.
+- Reverted cover backgrounds to dynamic SVG placeholders so they remain clean and untouched.
+- Copied the 12 original generated text-containing space backgrounds to `public/assets/` as `liftoff_hero_<accent>_original.png` for user reference/regeneration.
+- Updated `GameDetailsModal` to use the accent space background PNGs as backup hero backgrounds when a game has no hero art, resolving the fallback cover dynamically using the new `accentName` prop.
+- Updated `src/App.jsx` and `src/views/HomeView.tsx` to load only hero backgrounds as PNGs while keeping covers as SVGs.
 
 **Completed (this session - semi-immersive theme rewrite):**
 - Redesigned the Semi-immersive theme in [HomeView.tsx](file:///c:/Users/taylo/ally-launcher/src/views/HomeView.tsx) to feature a full-bleed background influenced by the currently focused game/app card.

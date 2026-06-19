@@ -2057,6 +2057,7 @@ export default function App() {
           onResetCategory={categoryOverrides[detailsApp.id] ? () => { applyCategoryOverride(detailsApp.id, null, null); closeDetailsModal(false); } : undefined}
           onClose={closeDetailsModal}
           accent={accent}
+          accentName={settings.accent}
           theme={theme}
           isDark={isDark}
           surfaceStyle={surfaceStyle}

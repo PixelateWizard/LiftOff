@@ -43,6 +43,7 @@ interface GameDetailsModalProps {
   onClose: () => void;
   hapticEnabled?: boolean;
   accent: AccentColors;
+  accentName: string;
   theme: ThemeColors;
   isDark: boolean;
   surfaceStyle: string;
@@ -52,6 +53,10 @@ interface GameDetailsModalProps {
 
 const isAnimatedImageUrl = (url?: string) => /\.(gif|webp)(?:$|\?)/i.test(url ?? "");
 const isVideoUrl = (url?: string) => /\.(webm|mp4)(?:$|\?)/i.test(url ?? "");
+
+const PNG_ACCENTS = ["ember", "ocean", "neon", "rose", "midnight", "nova", "steel", "lunar", "atomic", "aqua", "sage", "copper"];
+const getHeroPlaceholder = (accent: string) =>
+  PNG_ACCENTS.includes(accent) ? `/assets/liftoff_hero_${accent}.png` : `/assets/liftoff_hero_${accent}.svg`;
 
 function normalizeEpochMs(value?: number) {
   if (!value) return undefined;
@@ -125,6 +130,7 @@ export function GameDetailsModal({
   onClose,
   hapticEnabled = true,
   accent,
+  accentName,
   theme,
   isDark,
   surfaceStyle,
@@ -138,7 +144,7 @@ export function GameDetailsModal({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const focusRefs = useRef<Array<HTMLButtonElement | null>>([]);
-  const coverFallback = "/assets/liftoff_cover_ember.svg";
+  const coverFallback = `/assets/liftoff_cover_${accentName}.svg`;
   const canAnimate = animatedHeroes !== "static" && effectsEnabled && !!heroAnimated;
   const heroMedia = canAnimate ? heroAnimated : heroStatic || heroAnimated;
   const renderVideo = canAnimate && isVideoUrl(heroAnimated);
@@ -389,7 +395,11 @@ export function GameDetailsModal({
             />
           )}
           {!heroMedia && (
-            <div style={{ position: "absolute", inset: 0, background: `linear-gradient(135deg, ${accent.glow}0.22), rgba(0,0,0,0.18))` }} />
+            <img
+              src={getHeroPlaceholder(accentName)}
+              alt=""
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" }}
+            />
           )}
           <div style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, ${isDark ? "rgba(0,0,0,0.76)" : "rgba(255,255,255,0.58)"} 0%, rgba(0,0,0,0.08) 45%, rgba(0,0,0,0.22) 100%)` }} />
           <div style={{ position: "absolute", inset: 0, background: `linear-gradient(0deg, ${isDark ? "rgba(13,12,14,0.98)" : "rgba(248,246,242,0.98)"} 0%, rgba(0,0,0,0) 46%)` }} />
