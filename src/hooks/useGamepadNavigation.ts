@@ -100,6 +100,7 @@ export interface UseGamepadNavigationOptions {
   showSurfacePickerRef?: AnyRef<boolean>;
   showSpotifyGuideRef?: AnyRef<boolean>;
   showSpotifyOverlayRef?: AnyRef<boolean>;
+  showSteamQrRef?: AnyRef<boolean>;
   themePickerFocusIndexRef?: AnyRef<number>;
   surfacePickerFocusIndexRef?: AnyRef<number>;
 
@@ -112,6 +113,9 @@ export interface UseGamepadNavigationOptions {
   onOpenSpotifyOverlay?: () => void;
   onSpotifyDisconnect?: () => void;
   spotifyConnectedRef?: AnyRef<boolean>;
+  onOpenSteamQr?: () => void;
+  onSteamDisconnect?: () => void;
+  steamConnectedRef?: AnyRef<boolean>;
   setThemePickerFocusIndex?: (value: number) => void;
   setSurfacePickerFocusIndex?: (value: number) => void;
   setArtPickerApp?: (app: App | null) => void;
@@ -341,6 +345,7 @@ export function useGamepadNavigation(
     showSurfacePickerRef = { current: false } as AnyRef<boolean>,
     showSpotifyGuideRef = { current: false } as AnyRef<boolean>,
     showSpotifyOverlayRef = { current: false } as AnyRef<boolean>,
+    showSteamQrRef = { current: false } as AnyRef<boolean>,
     themePickerFocusIndexRef = { current: 0 } as AnyRef<number>,
     surfacePickerFocusIndexRef = { current: 0 } as AnyRef<number>,
     setShowHideModal = noop as (value: boolean) => void,
@@ -352,6 +357,9 @@ export function useGamepadNavigation(
     onOpenSpotifyOverlay = noop,
     onSpotifyDisconnect = noop,
     spotifyConnectedRef = { current: false } as AnyRef<boolean>,
+    onOpenSteamQr = noop,
+    onSteamDisconnect = noop,
+    steamConnectedRef = { current: false } as AnyRef<boolean>,
     setThemePickerFocusIndex = noop as (value: number) => void,
     setSurfacePickerFocusIndex = noop as (value: number) => void,
     setArtPickerApp = noop as (app: App | null) => void,
@@ -666,6 +674,7 @@ export function useGamepadNavigation(
     || !!showSurfacePickerRef?.current
     || !!showSpotifyGuideRef.current
     || !!showSpotifyOverlayRef.current
+    || !!showSteamQrRef.current
     || !!detailsAppRef.current
     || !!artPickerAppRef.current
     || !!contextMenuRef.current
@@ -750,7 +759,7 @@ export function useGamepadNavigation(
       return;
     }
     // Modal intercepts all input via its own poll — main nav must not run
-    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current || showSpotifyGuideRef.current || showSpotifyOverlayRef.current) return;
+    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current || showSpotifyGuideRef.current || showSpotifyOverlayRef.current || showSteamQrRef.current) return;
 
     // Art picker open — only Escape closes it (user interacts via touch/mouse)
     if (artPickerAppRef.current) {
@@ -1178,6 +1187,11 @@ export function useGamepadNavigation(
         else if (item.type === "spotify") {
           if (spotifyConnectedRef.current) onSpotifyDisconnect();
           else onOpenSpotifyGuide();
+          haptic("confirm");
+        }
+        else if (item.type === "steam") {
+          if (steamConnectedRef.current) onSteamDisconnect();
+          else onOpenSteamQr();
           haptic("confirm");
         }
         else if (item.type === "refresh") { refreshLibrary(); haptic("confirm"); }
@@ -1620,6 +1634,7 @@ export function useGamepadNavigation(
             && !showPowerModalRef?.current
             && !showSpotifyGuideRef.current
             && !showSpotifyOverlayRef.current
+            && !showSteamQrRef.current
             && !detailsAppRef.current;
 
           // MENU (Start) gains a hold gesture when Spotify is connected:

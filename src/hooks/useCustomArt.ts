@@ -39,7 +39,8 @@ export function useCustomArt() {
 
   const fetchGameArt = useCallback(async (
     games: App[],
-    onProgress?: (done: number, total: number, lastName?: string) => void
+    onProgress?: (done: number, total: number, lastName?: string) => void,
+    options: { includeUninstalled?: boolean } = {}
   ) => {
     if (!games.length) return;
 
@@ -63,15 +64,21 @@ export function useCustomArt() {
       if (Object.keys(newStatic).length) setHeroStatic(prev => ({ ...prev, ...newStatic }));
     } catch {}
 
+    const networkGames = options.includeUninstalled ? games : games.filter(game => game.installed !== false);
     let done = 0;
-    const total = games.length;
+    const total = networkGames.length;
+    if (!networkGames.length) return;
     const BATCH = 4;
-    for (let i = 0; i < games.length; i += BATCH) {
+    for (let i = 0; i < networkGames.length; i += BATCH) {
       const batchGrid: ArtMap = {};
       const batchAnimated: ArtMap = {};
       const batchStatic: ArtMap = {};
-      await Promise.all(games.slice(i, i + BATCH).map(game =>
-        invoke<{ grid?: string; hero_animated?: string; hero_static?: string }>("fetch_game_art", { gameName: game.name })
+      await Promise.all(networkGames.slice(i, i + BATCH).map(game =>
+        invoke<{ grid?: string; hero_animated?: string; hero_static?: string }>("fetch_game_art", {
+          gameName: game.name,
+          source: game.source ?? null,
+          appid: game.steam_appid ?? null,
+        })
           .then(bundle => {
             if (bundle.grid) batchGrid[game.id] = toUrl(bundle.grid) ?? "";
             if (bundle.hero_animated) batchAnimated[game.id] = toUrl(bundle.hero_animated) ?? "";

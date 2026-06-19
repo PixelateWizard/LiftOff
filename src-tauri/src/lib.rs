@@ -77,7 +77,7 @@ fn set_frontend_active(active: bool) {
     FRONTEND_HAS_CONTROL.store(active, Ordering::Relaxed);
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct AppEntry {
     pub id: String,
     pub name: String,
@@ -89,6 +89,14 @@ pub struct AppEntry {
     pub install_dir: Option<String>,
     #[serde(default = "default_true")]
     pub installed: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub playtime_minutes: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_played: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub steam_appid: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub steam_icon_hash: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -606,11 +614,15 @@ fn download_file(
         return Some(path.to_string_lossy().into_owned());
     }
     let _ = std::fs::create_dir_all(dir);
-    let bytes = client
+    let response = client
         .get(url)
         .timeout(std::time::Duration::from_secs(60))
         .send()
-        .ok()?
+        .ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    let bytes = response
         .bytes()
         .ok()?;
     std::fs::write(&path, &bytes).ok()?;
@@ -741,6 +753,678 @@ fn save_settings_inner(settings: &Settings) {
     if let Ok(json) = serde_json::to_string(settings) {
         let _ = std::fs::write(path, json);
     }
+}
+
+// Steam QR sign-in ----------------------------------------------------------
+//
+// Auth uses Steam's HTTPS WebAPI protobuf endpoints, not the Steam CM socket
+// stack. The refresh token is stored only in Windows Credential Manager; local
+// JSON contains account metadata and owned-library cache entries only.
+
+const STEAM_KEYRING_SERVICE: &str = "com.taylo.liftoff.steam";
+const STEAM_QR_TIMEOUT_SECS: u64 = 180;
+const STEAM_WEBBROWSER_PLATFORM: u64 = 2;
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct SteamAccountMeta {
+    #[serde(default)]
+    pub account_name: String,
+    #[serde(default)]
+    pub steamid: String,
+    #[serde(default)]
+    pub owned_count: usize,
+    #[serde(default)]
+    pub updated_at: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct SteamStatus {
+    pub connected: bool,
+    pub account_name: Option<String>,
+    pub steamid: Option<String>,
+    pub owned_count: usize,
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct SteamLoginPayload {
+    pub account_name: String,
+    pub steamid: String,
+    pub owned_count: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct SteamOwnedGameCache {
+    pub appid: u32,
+    pub name: String,
+    #[serde(default)]
+    pub playtime_minutes: u32,
+    #[serde(default)]
+    pub rtime_last_played: i64,
+    #[serde(default)]
+    pub icon_hash: Option<String>,
+}
+
+struct SteamSession {
+    account_name: String,
+    steamid: String,
+    access_token: String,
+}
+
+#[derive(Default)]
+struct SteamBeginResponse {
+    client_id: u64,
+    challenge_url: String,
+    request_id: Vec<u8>,
+    interval: f32,
+}
+
+#[derive(Default)]
+struct SteamPollResponse {
+    new_client_id: u64,
+    new_challenge_url: String,
+    refresh_token: String,
+    access_token: String,
+    had_remote_interaction: bool,
+    account_name: String,
+}
+
+fn steam_account_path() -> std::path::PathBuf {
+    liftoff_dir().join("steam_account.json")
+}
+
+fn steam_owned_path() -> std::path::PathBuf {
+    liftoff_dir().join("steam_owned.json")
+}
+
+fn load_steam_account_meta() -> Option<SteamAccountMeta> {
+    let path = steam_account_path();
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+}
+
+fn save_steam_account_meta(meta: &SteamAccountMeta) {
+    let path = steam_account_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(json) = serde_json::to_string_pretty(meta) {
+        let _ = std::fs::write(path, json);
+    }
+}
+
+fn steam_refresh_entry(account: &str) -> keyring::Result<keyring::Entry> {
+    keyring::Entry::new(STEAM_KEYRING_SERVICE, &format!("steam-refresh-token:{account}"))
+}
+
+fn store_steam_refresh_token(account: &str, token: &str) -> keyring::Result<()> {
+    steam_refresh_entry(account)?.set_password(token)
+}
+
+fn load_steam_refresh_token(account: &str) -> Option<String> {
+    steam_refresh_entry(account).ok()?.get_password().ok()
+}
+
+fn clear_steam_refresh_token(account: &str) {
+    let _ = steam_refresh_entry(account).and_then(|entry| entry.delete_credential());
+}
+
+fn load_owned_steam_games() -> Vec<SteamOwnedGameCache> {
+    let path = steam_owned_path();
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+fn save_owned_steam_games(games: &[SteamOwnedGameCache]) {
+    let path = steam_owned_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(json) = serde_json::to_string_pretty(games) {
+        let _ = std::fs::write(path, json);
+    }
+}
+
+fn unix_now_i64() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs() as i64)
+        .unwrap_or_default()
+}
+
+fn proto_key(field: u32, wire_type: u8) -> u64 {
+    ((field as u64) << 3) | wire_type as u64
+}
+
+fn proto_varint(buf: &mut Vec<u8>, mut value: u64) {
+    while value >= 0x80 {
+        buf.push((value as u8) | 0x80);
+        value >>= 7;
+    }
+    buf.push(value as u8);
+}
+
+fn proto_field_varint(buf: &mut Vec<u8>, field: u32, value: u64) {
+    proto_varint(buf, proto_key(field, 0));
+    proto_varint(buf, value);
+}
+
+fn proto_field_i32(buf: &mut Vec<u8>, field: u32, value: i32) {
+    proto_field_varint(buf, field, value as i64 as u64);
+}
+
+fn proto_field_fixed64(buf: &mut Vec<u8>, field: u32, value: u64) {
+    proto_varint(buf, proto_key(field, 1));
+    buf.extend_from_slice(&value.to_le_bytes());
+}
+
+fn proto_field_string(buf: &mut Vec<u8>, field: u32, value: &str) {
+    proto_varint(buf, proto_key(field, 2));
+    proto_varint(buf, value.len() as u64);
+    buf.extend_from_slice(value.as_bytes());
+}
+
+fn proto_field_bytes(buf: &mut Vec<u8>, field: u32, value: &[u8]) {
+    proto_varint(buf, proto_key(field, 2));
+    proto_varint(buf, value.len() as u64);
+    buf.extend_from_slice(value);
+}
+
+fn build_steam_device_details() -> Vec<u8> {
+    let mut buf = Vec::new();
+    proto_field_string(&mut buf, 1, "LiftOff");
+    proto_field_varint(&mut buf, 2, STEAM_WEBBROWSER_PLATFORM);
+    proto_field_i32(&mut buf, 3, -1);
+    buf
+}
+
+fn build_steam_qr_begin_request() -> Vec<u8> {
+    let mut buf = Vec::new();
+    proto_field_string(&mut buf, 1, "LiftOff");
+    proto_field_varint(&mut buf, 2, STEAM_WEBBROWSER_PLATFORM);
+    proto_field_bytes(&mut buf, 3, &build_steam_device_details());
+    proto_field_string(&mut buf, 4, "Community");
+    buf
+}
+
+fn build_steam_poll_request(client_id: u64, request_id: &[u8]) -> Vec<u8> {
+    let mut buf = Vec::new();
+    proto_field_varint(&mut buf, 1, client_id);
+    proto_field_bytes(&mut buf, 2, request_id);
+    buf
+}
+
+fn build_steam_generate_access_request(refresh_token: &str, steamid: u64) -> Vec<u8> {
+    let mut buf = Vec::new();
+    proto_field_string(&mut buf, 1, refresh_token);
+    proto_field_fixed64(&mut buf, 2, steamid);
+    buf
+}
+
+fn read_proto_varint(data: &[u8], index: &mut usize) -> Option<u64> {
+    let mut shift = 0;
+    let mut value = 0u64;
+    while *index < data.len() && shift < 64 {
+        let byte = data[*index];
+        *index += 1;
+        value |= ((byte & 0x7f) as u64) << shift;
+        if byte & 0x80 == 0 {
+            return Some(value);
+        }
+        shift += 7;
+    }
+    None
+}
+
+fn read_proto_len(data: &[u8], index: &mut usize) -> Option<Vec<u8>> {
+    let len = read_proto_varint(data, index)? as usize;
+    if data.len().saturating_sub(*index) < len {
+        return None;
+    }
+    let value = data[*index..*index + len].to_vec();
+    *index += len;
+    Some(value)
+}
+
+fn skip_proto_field(data: &[u8], index: &mut usize, wire_type: u8) -> Option<()> {
+    match wire_type {
+        0 => {
+            read_proto_varint(data, index)?;
+        }
+        1 => *index = index.checked_add(8)?,
+        2 => {
+            let len = read_proto_varint(data, index)? as usize;
+            *index = index.checked_add(len)?;
+        }
+        5 => *index = index.checked_add(4)?,
+        _ => return None,
+    }
+    if *index <= data.len() { Some(()) } else { None }
+}
+
+fn decode_steam_begin_response(data: &[u8]) -> SteamBeginResponse {
+    let mut response = SteamBeginResponse::default();
+    let mut index = 0usize;
+    while index < data.len() {
+        let Some(key) = read_proto_varint(data, &mut index) else { break };
+        let field = (key >> 3) as u32;
+        let wire = (key & 0x7) as u8;
+        match (field, wire) {
+            (1, 0) => response.client_id = read_proto_varint(data, &mut index).unwrap_or_default(),
+            (2, 2) => {
+                response.challenge_url = String::from_utf8_lossy(
+                    &read_proto_len(data, &mut index).unwrap_or_default(),
+                )
+                .to_string();
+            }
+            (3, 2) => response.request_id = read_proto_len(data, &mut index).unwrap_or_default(),
+            (4, 5) => {
+                if data.len().saturating_sub(index) >= 4 {
+                    response.interval = f32::from_le_bytes([
+                        data[index],
+                        data[index + 1],
+                        data[index + 2],
+                        data[index + 3],
+                    ]);
+                    index += 4;
+                } else {
+                    break;
+                }
+            }
+            _ => {
+                if skip_proto_field(data, &mut index, wire).is_none() {
+                    break;
+                }
+            }
+        }
+    }
+    response
+}
+
+fn decode_steam_poll_response(data: &[u8]) -> SteamPollResponse {
+    let mut response = SteamPollResponse::default();
+    let mut index = 0usize;
+    while index < data.len() {
+        let Some(key) = read_proto_varint(data, &mut index) else { break };
+        let field = (key >> 3) as u32;
+        let wire = (key & 0x7) as u8;
+        match (field, wire) {
+            (1, 0) => response.new_client_id = read_proto_varint(data, &mut index).unwrap_or_default(),
+            (2, 2) => {
+                response.new_challenge_url = String::from_utf8_lossy(
+                    &read_proto_len(data, &mut index).unwrap_or_default(),
+                )
+                .to_string();
+            }
+            (3, 2) => {
+                response.refresh_token = String::from_utf8_lossy(
+                    &read_proto_len(data, &mut index).unwrap_or_default(),
+                )
+                .to_string();
+            }
+            (4, 2) => {
+                response.access_token = String::from_utf8_lossy(
+                    &read_proto_len(data, &mut index).unwrap_or_default(),
+                )
+                .to_string();
+            }
+            (5, 0) => response.had_remote_interaction = read_proto_varint(data, &mut index).unwrap_or(0) != 0,
+            (6, 2) => {
+                response.account_name = String::from_utf8_lossy(
+                    &read_proto_len(data, &mut index).unwrap_or_default(),
+                )
+                .to_string();
+            }
+            _ => {
+                if skip_proto_field(data, &mut index, wire).is_none() {
+                    break;
+                }
+            }
+        }
+    }
+    response
+}
+
+fn decode_steam_access_response(data: &[u8]) -> (String, Option<String>) {
+    let mut access_token = String::new();
+    let mut refresh_token = None;
+    let mut index = 0usize;
+    while index < data.len() {
+        let Some(key) = read_proto_varint(data, &mut index) else { break };
+        let field = (key >> 3) as u32;
+        let wire = (key & 0x7) as u8;
+        match (field, wire) {
+            (1, 2) => {
+                access_token = String::from_utf8_lossy(
+                    &read_proto_len(data, &mut index).unwrap_or_default(),
+                )
+                .to_string();
+            }
+            (2, 2) => {
+                refresh_token = Some(
+                    String::from_utf8_lossy(&read_proto_len(data, &mut index).unwrap_or_default())
+                        .to_string(),
+                );
+            }
+            _ => {
+                if skip_proto_field(data, &mut index, wire).is_none() {
+                    break;
+                }
+            }
+        }
+    }
+    (access_token, refresh_token.filter(|token| !token.is_empty()))
+}
+
+fn steam_auth_post(method: &str, request: Vec<u8>) -> Result<Vec<u8>, String> {
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(20))
+        .build()
+        .map_err(|_| "Steam auth client failed".to_string())?;
+    let url = format!(
+        "https://api.steampowered.com/IAuthenticationService/{}/v1/",
+        method
+    );
+    let encoded = general_purpose::STANDARD.encode(request);
+    let response = client
+        .post(url)
+        .form(&[("input_protobuf_encoded", encoded)])
+        .send()
+        .map_err(|_| "Steam auth request failed".to_string())?;
+    let status = response.status();
+    let eresult = response
+        .headers()
+        .get("x-eresult")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string());
+    let bytes = response
+        .bytes()
+        .map_err(|_| "Steam auth response failed".to_string())?;
+    if !status.is_success() {
+        return Err(format!("Steam auth HTTP {}", status.as_u16()));
+    }
+    if let Some(code) = eresult {
+        if code != "1" {
+            return Err(format!("Steam auth EResult {}", code));
+        }
+    }
+    Ok(bytes.to_vec())
+}
+
+fn jwt_steamid(access_token: &str) -> Result<String, String> {
+    let payload = access_token
+        .split('.')
+        .nth(1)
+        .ok_or_else(|| "Steam token payload missing".to_string())?;
+    let decoded = general_purpose::URL_SAFE_NO_PAD
+        .decode(payload)
+        .or_else(|_| general_purpose::URL_SAFE.decode(payload))
+        .map_err(|_| "Steam token payload decode failed".to_string())?;
+    let value: serde_json::Value = serde_json::from_slice(&decoded)
+        .map_err(|_| "Steam token payload parse failed".to_string())?;
+    value
+        .get("sub")
+        .and_then(|v| v.as_str())
+        .filter(|s| s.chars().all(|c| c.is_ascii_digit()))
+        .map(|s| s.to_string())
+        .ok_or_else(|| "Steam token steamid missing".to_string())
+}
+
+fn generate_steam_access_token(account: &str, steamid: &str) -> Result<SteamSession, String> {
+    let refresh_token = load_steam_refresh_token(account)
+        .ok_or_else(|| "Steam refresh token unavailable".to_string())?;
+    let steamid_u64 = steamid
+        .parse::<u64>()
+        .map_err(|_| "Steam account id invalid".to_string())?;
+    let response = steam_auth_post(
+        "GenerateAccessTokenForApp",
+        build_steam_generate_access_request(&refresh_token, steamid_u64),
+    )?;
+    let (access_token, new_refresh) = decode_steam_access_response(&response);
+    if access_token.is_empty() {
+        return Err("Steam access token unavailable".to_string());
+    }
+    if let Some(token) = new_refresh {
+        let _ = store_steam_refresh_token(account, &token);
+    }
+    Ok(SteamSession {
+        account_name: account.to_string(),
+        steamid: steamid.to_string(),
+        access_token,
+    })
+}
+
+fn fetch_owned_games_for_session(session: &SteamSession) -> Result<Vec<SteamOwnedGameCache>, String> {
+    #[derive(Deserialize)]
+    struct OwnedResponse {
+        response: OwnedBody,
+    }
+    #[derive(Deserialize, Default)]
+    struct OwnedBody {
+        #[serde(default)]
+        games: Vec<OwnedGame>,
+    }
+    #[derive(Deserialize)]
+    struct OwnedGame {
+        appid: u32,
+        name: String,
+        #[serde(default)]
+        playtime_forever: u32,
+        #[serde(default)]
+        rtime_last_played: i64,
+        #[serde(default)]
+        img_icon_url: Option<String>,
+    }
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|_| "Steam owned-games client failed".to_string())?;
+    let response = client
+        .get("https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/")
+        .query(&[
+            ("access_token", session.access_token.as_str()),
+            ("steamid", session.steamid.as_str()),
+            ("include_appinfo", "true"),
+            ("include_played_free_games", "true"),
+            ("format", "json"),
+        ])
+        .send()
+        .map_err(|_| "Steam owned-games request failed".to_string())?;
+    if !response.status().is_success() {
+        return Err(format!("Steam owned-games HTTP {}", response.status().as_u16()));
+    }
+    let parsed = response
+        .json::<OwnedResponse>()
+        .map_err(|_| "Steam owned-games response parse failed".to_string())?;
+    Ok(parsed
+        .response
+        .games
+        .into_iter()
+        .filter(|game| !game.name.trim().is_empty())
+        .map(|game| SteamOwnedGameCache {
+            appid: game.appid,
+            name: game.name,
+            playtime_minutes: game.playtime_forever,
+            rtime_last_played: game.rtime_last_played,
+            icon_hash: game.img_icon_url,
+        })
+        .collect())
+}
+
+fn cache_owned_games_for_session(session: &SteamSession) -> Result<Vec<SteamOwnedGameCache>, String> {
+    let games = fetch_owned_games_for_session(session)?;
+    save_owned_steam_games(&games);
+    save_steam_account_meta(&SteamAccountMeta {
+        account_name: session.account_name.clone(),
+        steamid: session.steamid.clone(),
+        owned_count: games.len(),
+        updated_at: unix_now_i64(),
+    });
+    Ok(games)
+}
+
+fn run_steam_qr_login(app: tauri::AppHandle) -> Result<SteamSession, String> {
+    let begin_bytes = steam_auth_post("BeginAuthSessionViaQR", build_steam_qr_begin_request())?;
+    let begin = decode_steam_begin_response(&begin_bytes);
+    if begin.client_id == 0 || begin.challenge_url.is_empty() || begin.request_id.is_empty() {
+        return Err("Steam QR challenge missing".to_string());
+    }
+    let _ = app.emit("steam-qr-url", begin.challenge_url.clone());
+    let interval = begin.interval.max(2.0).min(10.0);
+    let started = Instant::now();
+    let mut client_id = begin.client_id;
+    let mut sent_confirmed = false;
+
+    loop {
+        if started.elapsed() > Duration::from_secs(STEAM_QR_TIMEOUT_SECS) {
+            let _ = app.emit("steam-qr-expired", ());
+            return Err("expired".to_string());
+        }
+        std::thread::sleep(Duration::from_secs_f32(interval));
+        let poll_bytes = steam_auth_post(
+            "PollAuthSessionStatus",
+            build_steam_poll_request(client_id, &begin.request_id),
+        )?;
+        let poll = decode_steam_poll_response(&poll_bytes);
+        if poll.new_client_id != 0 {
+            client_id = poll.new_client_id;
+        }
+        if !poll.new_challenge_url.is_empty() {
+            let _ = app.emit("steam-qr-url", poll.new_challenge_url.clone());
+        }
+        if poll.had_remote_interaction && !sent_confirmed {
+            sent_confirmed = true;
+            let _ = app.emit("steam-qr-confirmed", ());
+        }
+        if !poll.refresh_token.is_empty() && !poll.access_token.is_empty() {
+            let steamid = jwt_steamid(&poll.access_token)?;
+            let account = if poll.account_name.trim().is_empty() {
+                steamid.clone()
+            } else {
+                poll.account_name
+            };
+            store_steam_refresh_token(&account, &poll.refresh_token)
+                .map_err(|_| "Steam token storage failed".to_string())?;
+            return Ok(SteamSession {
+                account_name: account,
+                steamid,
+                access_token: poll.access_token,
+            });
+        }
+    }
+}
+
+fn steam_status_inner() -> SteamStatus {
+    let Some(meta) = load_steam_account_meta() else {
+        return SteamStatus::default();
+    };
+    let connected = !meta.account_name.is_empty() && load_steam_refresh_token(&meta.account_name).is_some();
+    SteamStatus {
+        connected,
+        account_name: if meta.account_name.is_empty() { None } else { Some(meta.account_name) },
+        steamid: if meta.steamid.is_empty() { None } else { Some(meta.steamid) },
+        owned_count: meta.owned_count,
+        updated_at: if meta.updated_at > 0 { Some(meta.updated_at) } else { None },
+    }
+}
+
+fn emit_steam_account_changed(app: &tauri::AppHandle) {
+    let _ = app.emit("steam-account-changed", steam_status_inner());
+}
+
+fn merge_owned_steam_games(apps: &mut Vec<AppEntry>, installed: &[AppEntry]) {
+    let installed_ids: std::collections::HashSet<String> =
+        installed.iter().map(|app| app.id.clone()).collect();
+    for owned in load_owned_steam_games() {
+        let id = format!("steam://rungameid/{}", owned.appid);
+        if installed_ids.contains(&id) {
+            continue;
+        }
+        apps.push(AppEntry {
+            id: id.clone(),
+            name: owned.name,
+            icon_base64: None,
+            launch_path: id,
+            app_type: "game".to_string(),
+            source: "steam".to_string(),
+            install_dir: None,
+            installed: false,
+            playtime_minutes: Some(owned.playtime_minutes),
+            last_played: if owned.rtime_last_played > 0 { Some(owned.rtime_last_played) } else { None },
+            steam_appid: Some(owned.appid),
+            steam_icon_hash: owned.icon_hash,
+        });
+    }
+}
+
+#[tauri::command]
+fn steam_account_status() -> SteamStatus {
+    steam_status_inner()
+}
+
+#[tauri::command]
+fn steam_qr_begin(app_handle: tauri::AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        match run_steam_qr_login(app_handle.clone()) {
+            Ok(session) => {
+                let owned_count = cache_owned_games_for_session(&session)
+                    .map(|games| games.len())
+                    .unwrap_or_default();
+                let payload = SteamLoginPayload {
+                    account_name: session.account_name,
+                    steamid: session.steamid,
+                    owned_count,
+                };
+                let _ = app_handle.emit("steam-login-success", payload);
+                emit_steam_account_changed(&app_handle);
+            }
+            Err(error) if error == "expired" => {}
+            Err(_) => {
+                let _ = app_handle.emit("steam-login-error", "Steam sign-in failed");
+            }
+        }
+    });
+    Ok(())
+}
+
+#[tauri::command]
+fn fetch_steam_owned_games(app_handle: tauri::AppHandle) -> Result<(), String> {
+    let status = steam_status_inner();
+    let Some(account) = status.account_name else {
+        return Err("Steam account not connected".to_string());
+    };
+    let Some(steamid) = status.steamid else {
+        return Err("Steam account id missing".to_string());
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = generate_steam_access_token(&account, &steamid)
+            .and_then(|session| cache_owned_games_for_session(&session).map(|games| games.len()));
+        match result {
+            Ok(count) => {
+                let _ = app_handle.emit("steam-owned-refresh", count);
+                emit_steam_account_changed(&app_handle);
+            }
+            Err(_) => {
+                let _ = app_handle.emit("steam-login-error", "Steam library refresh failed");
+            }
+        }
+    });
+    Ok(())
+}
+
+#[tauri::command]
+fn steam_logout(app_handle: tauri::AppHandle) -> Result<(), String> {
+    if let Some(meta) = load_steam_account_meta() {
+        clear_steam_refresh_token(&meta.account_name);
+    }
+    let _ = std::fs::remove_file(steam_account_path());
+    let _ = std::fs::remove_file(steam_owned_path());
+    emit_steam_account_changed(&app_handle);
+    Ok(())
 }
 
 // Spotify integration -------------------------------------------------------
@@ -1651,6 +2335,7 @@ fn add_custom_app(
         source,
         install_dir: None,
         installed: true,
+        ..Default::default()
     };
     data.apps.push(entry.clone());
     save_custom_data(&data);
@@ -2310,7 +2995,7 @@ fn get_cached_art_bulk(game_names: Vec<String>) -> HashMap<String, GameArtBundle
 }
 
 #[tauri::command]
-fn fetch_game_art(game_name: String) -> GameArtBundle {
+fn fetch_game_art(game_name: String, source: Option<String>, appid: Option<u32>) -> GameArtBundle {
     let mut grid_cache = load_art_cache();
     let mut hero_static_cache = load_hero_cache();
     let mut hero_animated_cache = load_hero_animated_cache();
@@ -2341,6 +3026,66 @@ fn fetch_game_art(game_name: String) -> GameArtBundle {
             }
         }
     };
+
+    let is_steam = source
+        .as_deref()
+        .map(|value| value.eq_ignore_ascii_case("steam"))
+        .unwrap_or(false);
+    if is_steam {
+        if let Some(appid) = appid {
+            let steam_asset_urls = |filename: &str| -> [String; 2] {
+                [
+                    format!(
+                        "https://shared.cloudflare.steamstatic.com/store_item_assets/steam/apps/{}/{}",
+                        appid, filename
+                    ),
+                    format!(
+                        "https://cdn.cloudflare.steamstatic.com/steam/apps/{}/{}",
+                        appid, filename
+                    ),
+                ]
+            };
+            let try_download = |filename: &str, dir: &std::path::Path| -> Option<String> {
+                for url in steam_asset_urls(filename) {
+                    if let Some(path) = download_file(&client, &url, dir, &game_name) {
+                        return Some(path);
+                    }
+                }
+                None
+            };
+
+            let grid = if let Some(cached) = grid_cached.clone() {
+                cached
+            } else {
+                let path = try_download("library_600x900.jpg", &grid_art_dir()).unwrap_or_default();
+                grid_cache.insert(game_name.clone(), path.clone());
+                save_art_cache(&grid_cache);
+                path
+            };
+            let hero_static = if let Some(cached) = hero_static_cached.clone() {
+                cached
+            } else {
+                let path = try_download("library_hero.jpg", &hero_static_art_dir()).unwrap_or_default();
+                hero_static_cache.insert(game_name.clone(), path.clone());
+                save_hero_cache(&hero_static_cache);
+                path
+            };
+
+            if !grid.is_empty() && !hero_static.is_empty() {
+                if hero_animated_cached.is_none() {
+                    hero_animated_cache.insert(game_name.clone(), String::new());
+                    save_hero_animated_cache(&hero_animated_cache);
+                }
+                return GameArtBundle {
+                    grid: if grid.is_empty() { None } else { Some(grid) },
+                    hero_static: if hero_static.is_empty() { None } else { Some(hero_static) },
+                    hero_animated: hero_animated_cached.and_then(|cached| {
+                        if cached.is_empty() { None } else { Some(cached) }
+                    }),
+                };
+            }
+        }
+    }
 
     // One search call covers all three art types
     let search_url = format!(
@@ -2723,6 +3468,7 @@ fn scan_folder_recursive(
                     source: source.to_string(),
                     install_dir: None,
                     installed: true,
+                    ..Default::default()
                 });
             }
         }
@@ -2871,6 +3617,7 @@ fn scan_uwp_apps() -> Vec<AppEntry> {
                 Some(install_location.to_string())
             },
             installed: true,
+            ..Default::default()
         });
     }
     apps
@@ -3075,6 +3822,7 @@ fn scan_battlenet_games() -> Vec<AppEntry> {
             source: "battlenet".to_string(),
             install_dir: Some(install.to_string()),
             installed: true,
+            ..Default::default()
         });
     }
     games
@@ -3170,6 +3918,7 @@ fn scan_gog_games() -> Vec<AppEntry> {
             source: "gog".to_string(),
             install_dir: Some(install_dir.to_string()),
             installed: true,
+            ..Default::default()
         });
     }
 
@@ -3272,6 +4021,7 @@ fn scan_epic_games() -> Vec<AppEntry> {
             source: "epic".to_string(),
             install_dir: Some(install),
             installed: true,
+            ..Default::default()
         });
     }
 
@@ -3398,6 +4148,8 @@ fn scan_steam_games() -> Vec<AppEntry> {
                         source: "steam".to_string(),
                         install_dir: Some(format!("{}\\common\\{}", library, install_dir)),
                         installed: true,
+                        steam_appid: app_id.parse::<u32>().ok(),
+                        ..Default::default()
                     });
                 }
             }
@@ -3692,6 +4444,7 @@ fn get_apps() -> Vec<AppEntry> {
                 source: "desktop".to_string(),
                 install_dir: None,
                 installed: true,
+                ..Default::default()
             });
         }
     }
@@ -3712,7 +4465,9 @@ fn get_apps() -> Vec<AppEntry> {
 
     // 3. Steam Games scan (this adds the games, not the app)
     if settings.scan_steam {
-        apps.extend(scan_steam_games());
+        let installed = scan_steam_games();
+        apps.extend(installed.clone());
+        merge_owned_steam_games(&mut apps, &installed);
     }
 
     // 4. Battle.net Games scan
@@ -3806,6 +4561,7 @@ fn get_all_apps() -> Vec<AppEntry> {
                 source: "desktop".to_string(),
                 install_dir: None,
                 installed: true,
+                ..Default::default()
             });
         }
     }
@@ -3824,7 +4580,9 @@ fn get_all_apps() -> Vec<AppEntry> {
     }
 
     if settings.scan_steam {
-        apps.extend(scan_steam_games());
+        let installed = scan_steam_games();
+        apps.extend(installed.clone());
+        merge_owned_steam_games(&mut apps, &installed);
     }
 
     if settings.scan_battlenet {
@@ -5055,6 +5813,10 @@ pub fn run() {
             spotify_set_repeat,
             spotify_play_context,
             spotify_transfer,
+            steam_qr_begin,
+            steam_account_status,
+            steam_logout,
+            fetch_steam_owned_games,
             get_pins,
             toggle_pin,
             get_hidden,

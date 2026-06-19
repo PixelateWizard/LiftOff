@@ -58,6 +58,7 @@ import { useSpotify } from "./hooks/useSpotify";
 import { SpotifyConnectGuide } from "./components/spotify/SpotifyConnectGuide";
 import { SpotifyMiniBar } from "./components/spotify/SpotifyMiniBar";
 import { SpotifyOverlay } from "./components/spotify/SpotifyOverlay";
+import { SteamQrModal } from "./components/steam/SteamQrModal";
 import { AUDIO_PROFILES, resolveAudioProfile } from "./audio/audioProfiles";
 import { detectPlatform } from "./utils/gamepad";
 import {
@@ -169,6 +170,18 @@ export default function App() {
     setShowSpotifyOverlayState(value);
   };
   const spotifyConnectedRef = useRef(false);
+  const [showSteamQr, setShowSteamQrState] = useState(false);
+  const showSteamQrRef = useRef(false);
+  const setShowSteamQr = (value) => {
+    showSteamQrRef.current = value;
+    setShowSteamQrState(value);
+  };
+  const [steamStatus, setSteamStatus] = useState({ connected: false, owned_count: 0 });
+  const [steamQrUrl, setSteamQrUrl] = useState("");
+  const [steamQrPhase, setSteamQrPhase] = useState("idle");
+  const [steamQrError, setSteamQrError] = useState("");
+  const steamConnectedRef = useRef(false);
+  const steamStartupRefreshRef = useRef(false);
   const [themePickerFocusIndex, setThemePickerFocusIndexState] = useState(0);
   const themePickerFocusIndexRef = useRef(0);
   const setThemePickerFocusIndex = (value) => {
@@ -344,6 +357,92 @@ export default function App() {
   useEffect(() => {
     spotifyConnectedRef.current = !!spotify.status.connected;
   }, [spotify.status.connected]);
+  useEffect(() => {
+    steamConnectedRef.current = !!steamStatus.connected;
+  }, [steamStatus.connected]);
+
+  const refreshSteamStatus = () => {
+    invoke("steam_account_status")
+      .then((status) => setSteamStatus(status || { connected: false, owned_count: 0 }))
+      .catch(() => setSteamStatus({ connected: false, owned_count: 0 }));
+  };
+
+  const openSteamQr = () => {
+    setSteamQrUrl("");
+    setSteamQrError("");
+    setSteamQrPhase("starting");
+    setShowSteamQr(true);
+    invoke("steam_qr_begin").catch(() => {
+      setSteamQrPhase("error");
+      setSteamQrError(t("steam.qrError"));
+    });
+  };
+
+  const disconnectSteam = () => {
+    invoke("steam_logout")
+      .then(() => {
+        setSteamStatus({ connected: false, owned_count: 0 });
+        refreshLibrary();
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    refreshSteamStatus();
+    let disposed = false;
+    const unsubs = [];
+    const add = async () => {
+      unsubs.push(await listen("steam-qr-url", (event) => {
+        if (disposed) return;
+        setSteamQrUrl(String(event.payload || ""));
+        setSteamQrPhase("waiting");
+      }));
+      unsubs.push(await listen("steam-qr-confirmed", () => {
+        if (!disposed) setSteamQrPhase("confirmed");
+      }));
+      unsubs.push(await listen("steam-qr-expired", () => {
+        if (!disposed) setSteamQrPhase("expired");
+      }));
+      unsubs.push(await listen("steam-login-success", (event) => {
+        if (disposed) return;
+        const payload = event.payload || {};
+        setSteamStatus({
+          connected: true,
+          account_name: payload.account_name,
+          steamid: payload.steamid,
+          owned_count: payload.owned_count ?? 0,
+        });
+        setSteamQrPhase("success");
+        setShowSteamQr(false);
+        refreshLibrary();
+      }));
+      unsubs.push(await listen("steam-login-error", (event) => {
+        if (disposed) return;
+        setSteamQrError(String(event.payload || t("steam.qrError")));
+        setSteamQrPhase("error");
+      }));
+      unsubs.push(await listen("steam-account-changed", (event) => {
+        if (!disposed) setSteamStatus(event.payload || { connected: false, owned_count: 0 });
+      }));
+      unsubs.push(await listen("steam-owned-refresh", () => {
+        if (!disposed) {
+          refreshSteamStatus();
+          refreshLibrary();
+        }
+      }));
+    };
+    add().catch(() => {});
+    return () => {
+      disposed = true;
+      unsubs.forEach((unsub) => unsub());
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!steamStatus.connected || steamStartupRefreshRef.current) return;
+    steamStartupRefreshRef.current = true;
+    invoke("fetch_steam_owned_games").catch(() => {});
+  }, [steamStatus.connected]);
   const requestClose = (app) => {
     if (!app) return;
     setCloseRequest({ app, force: false });
@@ -467,6 +566,7 @@ export default function App() {
     showSurfacePickerRef,
     showSpotifyGuideRef,
     showSpotifyOverlayRef,
+    showSteamQrRef,
     themePickerFocusIndexRef,
     surfacePickerFocusIndexRef,
     artPickerAppRef,
@@ -482,6 +582,9 @@ export default function App() {
     onOpenSpotifyOverlay: () => setShowSpotifyOverlay(true),
     onSpotifyDisconnect: () => spotify.disconnect(),
     spotifyConnectedRef,
+    onOpenSteamQr: openSteamQr,
+    onSteamDisconnect: disconnectSteam,
+    steamConnectedRef,
     setThemePickerFocusIndex,
     setSurfacePickerFocusIndex,
     setArtPickerApp,
@@ -784,6 +887,12 @@ export default function App() {
         setInstallSize((prev) => ({ ...prev, [detailsApp.id]: null }));
       });
   }, [detailsApp, installSize]);
+
+  useEffect(() => {
+    if (!detailsApp || detailsApp.app_type !== "game") return;
+    if (gameArt[detailsApp.id] && (heroStatic[detailsApp.id] || heroAnimated[detailsApp.id])) return;
+    fetchGameArt([detailsApp], undefined, { includeUninstalled: true });
+  }, [detailsApp, gameArt, heroStatic, heroAnimated, fetchGameArt]);
 
   // Global styles
   useEffect(() => {
@@ -1204,12 +1313,9 @@ export default function App() {
       Math.floor(previousFocus.focusIndex / currentCols) === Math.floor(focusIndex / currentCols);
     scrollFocusRef.current = { tab, focusSection, focusIndex, gameSourceTab, appCollectionTab, cols: currentCols };
     const visiblePinnedAboveGrid = tab !== "Home"
-      && !(tab === "Games" && gameSourceTabRef.current !== "All")
-      && !(tab === "Apps" && appCollectionTabRef.current !== "All")
-      && pinsRef.current
-        .map(id => appsRef.current.find(a => a.id === id))
-        .filter(Boolean)
-        .some(a => tab === "Games" ? a.app_type === "game" : a.app_type === "app");
+      && pinnedAppsReactive.length > 0
+      && !(tab === "Games" && gameSourceTab !== "All")
+      && !(tab === "Apps" && appCollectionTab !== "All");
     const scrollToTop = (behavior = scrollBehavior) => {
       const scroller = tab === "Home" ? homeScrollRef.current : tabScrollRef.current;
       if (scroller) scroller.scrollTo({ top: 0, behavior });
@@ -1366,6 +1472,7 @@ export default function App() {
     apps,
     settings.ui_scale,
     currentCols,
+    pinnedAppsReactive.length,
     settings.topbar_background,
     settings.bottombar_background,
     settings.hide_bottom_bar
@@ -1738,6 +1845,9 @@ export default function App() {
       spotifyStatus={spotify.status}
       onOpenSpotifyGuide={() => setShowSpotifyGuide(true)}
       onSpotifyDisconnect={spotify.disconnect}
+      steamStatus={steamStatus}
+      onOpenSteamQr={openSteamQr}
+      onSteamDisconnect={disconnectSteam}
     />
   );
 
@@ -2147,6 +2257,20 @@ export default function App() {
         repeatSpeed={settings.repeat_speed}
         onClose={() => setShowSpotifyOverlay(false)}
       />
+      <SteamQrModal
+        open={showSteamQr}
+        phase={steamQrPhase}
+        qrUrl={steamQrUrl}
+        error={steamQrError}
+        accent={accent}
+        theme={theme}
+        isDark={isDark}
+        surfaceStyle={settings.surface_style ?? "glass"}
+        glass={glass}
+        onBegin={openSteamQr}
+        onClose={() => setShowSteamQr(false)}
+        t={t}
+      />
       {showFileBrowser && (
         <FileBrowser
           mode={showFileBrowser}
@@ -2536,7 +2660,7 @@ export default function App() {
       )}
       </AppOverlays>
 
-      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || showSpotifyGuide || showSpotifyOverlay || detailsApp) ? "none" : "auto" }}>
+      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || showSpotifyGuide || showSpotifyOverlay || showSteamQr || detailsApp) ? "none" : "auto" }}>
 
         {/* Topbar */}
         <AppHeader

@@ -129,6 +129,25 @@
       "generic": "{{message}}"
     }
   },
+  "steam": {
+    "title": "Steam account",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "connected": "Connected",
+    "notConnected": "Not connected",
+    "connectHint": "Scan a Steam mobile QR code to import owned games that are not installed.",
+    "connectedHint": "Owned library connected. {{count}} Steam games cached.",
+    "securityHint": "Refresh token is stored in Windows Credential Manager. LiftOff never stores your Steam password.",
+    "qrTitle": "Sign in to Steam",
+    "qrIntro": "Open the Steam mobile app, scan this code, and approve the sign-in request.",
+    "qrWaiting": "Waiting for Steam mobile approval...",
+    "qrStarting": "Requesting a fresh Steam QR code...",
+    "qrConfirmed": "Approved on mobile. Finishing sign-in...",
+    "qrExpired": "This code expired.",
+    "qrError": "Steam sign-in failed.",
+    "qrSecurity": "This read-only connection imports owned games and play history. No install actions are enabled in this release.",
+    "newCode": "Get a new code"
+  },
   "settings": {
     "sections": {
       "appearance": "Appearance",

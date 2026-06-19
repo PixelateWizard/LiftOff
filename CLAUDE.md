@@ -1,9 +1,23 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Spike the live Steam QR-auth endpoints from `spike-steam-qr-endpoints.md`.
-- Confirmed the no-account transport smoke test against Valve's live API: POST with `input_protobuf_encoded` returned `HTTP 200`, `application/octet-stream`, `X-eresult: 1`, and an 83-byte protobuf containing a `https://s.team/q/1/...` challenge URL.
-- Full platform-token and owned-games verification still requires `protoc`/vendored Steam protobuf schemas plus Taylor's Steam account and mobile-app approval; no live credentials were generated or stored by the agent.
+- Fix Games Not Installed filter gamepad top-scroll behavior.
+- When returning to the top of the Not Installed filtered Games grid with gamepad, the scroll position should reveal the Games toolbar above the grid instead of stopping with the toolbar hidden.
+- Keep the toolbar as a Right-Stick-owned utility zone; this is a scroll-position correction only.
+
+**Completed (this session - Games Not Installed toolbar top-scroll):**
+- Fixed the Games grid first-row scroll predicate so it only preserves pinned-above-grid scroll positioning when a pinned section is actually visible under the current source/install filter.
+- Returning to the top of the Not Installed filter with gamepad now clamps to the pane top and reveals the Games toolbar again, while the toolbar remains a separate Right-Stick-owned zone.
+- Updated `CHANGELOG.md`.
+- Validated with `npm.cmd run build` and `git diff --check`; only the existing Vite chunk-size warning and CRLF notices remain.
+
+**Completed (this session - PR3a native Steam QR sign-in):**
+- Added native Steam QR auth commands using HTTPS WebAPI protobuf requests for begin/poll/access-token refresh, with refresh tokens stored only in Windows Credential Manager and account/cache metadata stored in app data.
+- Added `steam_owned.json` owned-library caching and merged cached owned-but-uninstalled Steam titles into Games as `installed:false` entries with Steam appid, playtime, and last-played metadata while installed Steam manifest entries still win.
+- Added the Settings Steam account row, local QR modal via `qrcode.react`, Steam login/logout/status event plumbing, background owned-library refresh on startup, and library refresh after login/logout/cache updates.
+- Updated art loading so startup hydrates cached art for all games but only performs network art fetches for installed games by default; uninstalled Steam titles fetch art lazily from Details, with Steam CDN attempted before SGDB for uncached Steam appids.
+- Added English Steam strings and TODO French placeholders.
+- Validated with `npm.cmd run build`, `cargo check`, and `git diff --check`; only the existing Vite chunk-size warning, Rust path canonicalization warning, unused `is_our_window_focused` warning, and CRLF notices remain. Real Steam account/mobile approval is still required for end-to-end QR acceptance testing.
 
 **Completed (this session - Steam QR endpoint spike):**
 - Read `spike-steam-qr-endpoints.md` as the project proposal and ran the safe no-account endpoint smoke test.

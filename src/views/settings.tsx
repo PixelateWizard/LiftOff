@@ -11,6 +11,14 @@ import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, Cust
 import type { SpotifyStatus } from "../hooks/useSpotify";
 import { SPOTIFY_REDIRECT_URI } from "../components/spotify/constants";
 
+export interface SteamStatus {
+  connected: boolean;
+  account_name?: string;
+  steamid?: string;
+  owned_count?: number;
+  updated_at?: number;
+}
+
 // ── Section definitions ────────────────────────────────────────
 export const SETTINGS_SECTIONS = [
   { key: "appearance", labelKey: "settings.sections.appearance" },
@@ -182,6 +190,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     // ── Library ──────────────────────────────────────────────────
     D("sources", 1),
     { key: "scan_steam",     section: 1, label: t("settings.scanSteam"),     type: "toggle" },
+    { key: "steam_account",  section: 1, label: t("steam.title"),            type: "steam" },
     { key: "scan_xbox",      section: 1, label: t("settings.scanXbox"),      type: "toggle" },
     { key: "scan_uwp",       section: 1, label: t("settings.scanStoreApps"), type: "toggle" },
     { key: "scan_desktop",   section: 1, label: t("settings.scanDesktop"),   type: "toggle" },
@@ -337,6 +346,9 @@ export interface SettingsScreenProps {
   spotifyStatus?: SpotifyStatus;
   onOpenSpotifyGuide?: () => void;
   onSpotifyDisconnect?: () => void;
+  steamStatus?: SteamStatus;
+  onOpenSteamQr?: () => void;
+  onSteamDisconnect?: () => void;
 }
 
 export function SettingsScreen({
@@ -369,6 +381,9 @@ export function SettingsScreen({
   spotifyStatus,
   onOpenSpotifyGuide,
   onSpotifyDisconnect,
+  steamStatus,
+  onOpenSteamQr,
+  onSteamDisconnect,
 }: SettingsScreenProps) {
   const { t } = useTranslation();
   const { settingsRowGlass, accent, theme, isDark, glassEnabled, surfaceStyle, surface, resolvedTheme } = useTheme();
@@ -958,6 +973,56 @@ export function SettingsScreen({
               }}
             >
               {connected ? t("spotify.disconnect") : t("spotify.connect")}
+            </button>
+          </div>
+          {onyxRing}
+        </div>
+      );
+    }
+
+    if (item.type === "steam") {
+      const connected = !!steamStatus?.connected;
+      const ownedCount = steamStatus?.owned_count ?? 0;
+      return (
+        <div
+          key={item.key}
+          data-settings-row=""
+          className={focused ? "focused" : ""}
+          ref={rowRef}
+          style={{ ...rowStyle, gap: 18, alignItems: "stretch" }}
+          onClick={() => connected ? onSteamDisconnect?.() : onOpenSteamQr?.()}
+        >
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{item.label}</div>
+            <div style={{ fontSize: 11, color: theme.textDim, lineHeight: 1.45, marginTop: 3 }}>
+              {connected ? t("steam.connectedHint", { count: ownedCount }) : t("steam.connectHint")}
+            </div>
+            <div style={{ fontSize: 10, color: theme.textFaint, marginTop: 5 }}>
+              {t("steam.securityHint")}
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+            <span style={{ fontSize: 12, color: connected ? accent.primary : theme.textDim, fontWeight: connected ? 800 : 500, whiteSpace: "nowrap" }}>
+              {connected ? (steamStatus?.account_name || t("steam.connected")) : t("steam.notConnected")}
+            </span>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                connected ? onSteamDisconnect?.() : onOpenSteamQr?.();
+              }}
+              style={{
+                border: `1px solid ${connected ? "rgba(232,74,74,0.52)" : accent.primary}`,
+                background: connected ? "rgba(232,74,74,0.12)" : accent.primary,
+                color: connected ? "#ff8d8d" : accent.darkText ? "#161616" : "#fff",
+                borderRadius: isPixel || isCyber ? 0 : isMaterial ? 8 : 10,
+                padding: "8px 12px",
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {connected ? t("steam.disconnect") : t("steam.connect")}
             </button>
           </div>
           {onyxRing}

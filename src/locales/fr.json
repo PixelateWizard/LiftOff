@@ -129,6 +129,25 @@
       "generic": "{{message}}"
     }
   },
+  "steam": {
+    "title": "TODO(fr) Steam account",
+    "connect": "TODO(fr) Connect",
+    "disconnect": "TODO(fr) Disconnect",
+    "connected": "TODO(fr) Connected",
+    "notConnected": "TODO(fr) Not connected",
+    "connectHint": "TODO(fr) Scan a Steam mobile QR code to import owned games that are not installed.",
+    "connectedHint": "TODO(fr) Owned library connected. {{count}} Steam games cached.",
+    "securityHint": "TODO(fr) Refresh token is stored in Windows Credential Manager. LiftOff never stores your Steam password.",
+    "qrTitle": "TODO(fr) Sign in to Steam",
+    "qrIntro": "TODO(fr) Open the Steam mobile app, scan this code, and approve the sign-in request.",
+    "qrWaiting": "TODO(fr) Waiting for Steam mobile approval...",
+    "qrStarting": "TODO(fr) Requesting a fresh Steam QR code...",
+    "qrConfirmed": "TODO(fr) Approved on mobile. Finishing sign-in...",
+    "qrExpired": "TODO(fr) This code expired.",
+    "qrError": "TODO(fr) Steam sign-in failed.",
+    "qrSecurity": "TODO(fr) This read-only connection imports owned games and play history. No install actions are enabled in this release.",
+    "newCode": "TODO(fr) Get a new code"
+  },
   "settings": {
     "sections": {
       "appearance": "Apparence",

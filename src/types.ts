@@ -8,6 +8,10 @@ export interface App {
   launch_path?: string;
   icon_base64?: string;
   installed?: boolean;
+  playtime_minutes?: number;
+  last_played?: number;
+  steam_appid?: number;
+  steam_icon_hash?: string;
   installing?: boolean;
   installProgress?: number;
   runAsAdmin?: boolean;
@@ -242,6 +246,10 @@ export interface SettingsSpotifyItem extends SettingsItemBase {
   type: "spotify";
 }
 
+export interface SettingsSteamItem extends SettingsItemBase {
+  type: "steam";
+}
+
 export interface SettingsRefreshItem extends SettingsItemBase {
   type: "refresh";
 }
@@ -299,6 +307,7 @@ export type SettingsItem =
   | SettingsAccentItem
   | SettingsActionItem
   | SettingsSpotifyItem
+  | SettingsSteamItem
   | SettingsRefreshItem
   | SettingsUpdateItem
   | SettingsLinkItem
