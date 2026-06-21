@@ -145,8 +145,20 @@
     "qrConfirmed": "TODO(fr) Approved on mobile. Finishing sign-in...",
     "qrExpired": "TODO(fr) This code expired.",
     "qrError": "TODO(fr) Steam sign-in failed.",
-    "qrSecurity": "TODO(fr) This read-only connection imports owned games and play history. No install actions are enabled in this release.",
+    "qrSecurity": "TODO(fr) This connection imports owned games and play history. Install actions are handed off to the desktop Steam client.",
     "newCode": "TODO(fr) Get a new code"
+  },
+  "install": {
+    "install": "TODO(fr) Install",
+    "installing": "TODO(fr) Installing",
+    "uninstalling": "TODO(fr) Uninstalling",
+    "cancel": "TODO(fr) Cancel",
+    "uninstall": "TODO(fr) Uninstall",
+    "verify": "TODO(fr) Verify files",
+    "confirmUninstall": "TODO(fr) Uninstall {{name}}? Your saves stay in the cloud.",
+    "noClient": "TODO(fr) Steam isn't installed on this device. Install the Steam client to download games.",
+    "watchError": "TODO(fr) LiftOff couldn't confirm the Steam install state yet. Check Steam Downloads, then refresh the library.",
+    "generic": "TODO(fr) Steam couldn't start that action."
   },
   "settings": {
     "sections": {
@@ -178,7 +190,7 @@
     "showHeroCover": "Afficher la pochette sur l'accueil",
     "showRecentGamesOnly": "Jeux uniquement dans les récents",
     "showStoreBadges": "Afficher les badges de plateforme",
-    "showStoreBadgesDesc": "Afficher une petite icône de plateforme (Steam, Xbox, Battle.net, GOG, Epic) sur les jaquettes de jeux",
+    "showStoreBadgesDesc": "Afficher une petite icône de plateforme (Steam, Xbox, Battle.net, GOG, Epic, Cloud) sur les jaquettes de jeux",
     "showHomePinned": "Afficher les épinglés sur l'accueil",
     "homePinnedPos": "Position des apps épinglées",
     "accentColor": "Couleur d'accent",
@@ -579,6 +591,9 @@
     "addEntry": "Ajouter un jeu / une app",
     "addGame": "Ajouter un jeu",
     "addApp": "Ajouter une app",
+    "addCloudGame": "Add Cloud Game",
+    "cloudSearch": "Search cloud games",
+    "cloudEmpty": "No cloud games found.",
     "addFolder": "Ajouter un dossier à scanner",
     "path": "Chemin",
     "name": "Nom",

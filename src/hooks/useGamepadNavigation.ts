@@ -101,6 +101,7 @@ export interface UseGamepadNavigationOptions {
   showSpotifyGuideRef?: AnyRef<boolean>;
   showSpotifyOverlayRef?: AnyRef<boolean>;
   showSteamQrRef?: AnyRef<boolean>;
+  showCloudPickerRef?: AnyRef<boolean>;
   themePickerFocusIndexRef?: AnyRef<number>;
   surfacePickerFocusIndexRef?: AnyRef<number>;
 
@@ -346,6 +347,7 @@ export function useGamepadNavigation(
     showSpotifyGuideRef = { current: false } as AnyRef<boolean>,
     showSpotifyOverlayRef = { current: false } as AnyRef<boolean>,
     showSteamQrRef = { current: false } as AnyRef<boolean>,
+    showCloudPickerRef = { current: false } as AnyRef<boolean>,
     themePickerFocusIndexRef = { current: 0 } as AnyRef<number>,
     surfacePickerFocusIndexRef = { current: 0 } as AnyRef<number>,
     setShowHideModal = noop as (value: boolean) => void,
@@ -428,7 +430,14 @@ export function useGamepadNavigation(
     }
 
     const now = Date.now();
-    console.warn(`triggerLaunch @ ${new Date().toISOString()}`, app?.name, `(${now - lastLaunchTime.current}ms since last)`);
+    console.warn(`triggerLaunch @ ${new Date().toISOString()}`, {
+      name: app?.name,
+      id: app?.id,
+      source: app?.source ?? "",
+      appType: app?.app_type,
+      path: app?.launch_path,
+      sinceLastMs: now - lastLaunchTime.current,
+    });
     if (now < launchReturnCooldownUntil.current) {
       console.warn("triggerLaunch BLOCKED - waiting for return-to-LiftOff input cooldown");
       return;
@@ -675,6 +684,7 @@ export function useGamepadNavigation(
     || !!showSpotifyGuideRef.current
     || !!showSpotifyOverlayRef.current
     || !!showSteamQrRef.current
+    || !!showCloudPickerRef.current
     || !!detailsAppRef.current
     || !!artPickerAppRef.current
     || !!contextMenuRef.current
@@ -759,7 +769,7 @@ export function useGamepadNavigation(
       return;
     }
     // Modal intercepts all input via its own poll — main nav must not run
-    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current || showSpotifyGuideRef.current || showSpotifyOverlayRef.current || showSteamQrRef.current) return;
+    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current || showSpotifyGuideRef.current || showSpotifyOverlayRef.current || showSteamQrRef.current || showCloudPickerRef.current || detailsAppRef.current) return;
 
     // Art picker open — only Escape closes it (user interacts via touch/mouse)
     if (artPickerAppRef.current) {
@@ -791,20 +801,22 @@ export function useGamepadNavigation(
       && app.source !== "battlenet"
       && app.source !== "gog"
       && app.source !== "epic"
+      && app.source !== "cloud"
       && !customSourcesRef.current.includes(app.source);
     const getGameSourceTabs = () => {
       const hasSource = (source: string) => appsRef.current.some(a => a.app_type === "game" && a.source === source);
-      return [
+      return [...new Map([
         "All",
         ...(currentSettings.scan_steam !== false && hasSource("steam") ? ["Steam"] : []),
         ...(currentSettings.scan_xbox !== false && hasSource("xbox") ? ["Xbox"] : []),
         ...(currentSettings.scan_battlenet !== false && hasSource("battlenet") ? ["Battle.net"] : []),
         ...(currentSettings.scan_gog !== false && hasSource("gog") ? ["GOG"] : []),
         ...(currentSettings.scan_epic !== false && hasSource("epic") ? ["Epic"] : []),
+        ...(hasSource("cloud") ? ["Cloud"] : []),
         ...(appsRef.current.some(isOtherGameSource) ? ["Other"] : []),
         ...customSourcesRef.current,
         ...gameCollectionsRef.current.map(c => c.name),
-      ];
+      ].map(source => [source.toLocaleLowerCase(), source])).values()];
     };
 
     const filterByInstallState = (items: App[]) => items.filter((app) => {
@@ -833,6 +845,7 @@ export function useGamepadNavigation(
         if (src === "Battle.net")  return a.source === "battlenet";
         if (src === "GOG")  return a.source === "gog";
         if (src === "Epic") return a.source === "epic";
+        if (src === "Cloud") return a.source === "cloud";
         if (src === "Other") return isOtherGameSource(a);
         if (customSourcesRef.current.includes(src)) return a.source === src;
         const gameCol = gameCollectionsRef.current.find(c => c.name === src);
@@ -1635,6 +1648,7 @@ export function useGamepadNavigation(
             && !showSpotifyGuideRef.current
             && !showSpotifyOverlayRef.current
             && !showSteamQrRef.current
+            && !showCloudPickerRef.current
             && !detailsAppRef.current;
 
           // MENU (Start) gains a hold gesture when Spotify is connected:

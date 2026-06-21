@@ -1,10 +1,17 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { IoChevronDownOutline } from "react-icons/io5";
 import { StoreBadge } from "./ui/StoreBadge";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, rumble, type GpState } from "../utils/gamepad";
 import type { AccentColors, App, ThemeColors } from "../types";
 
 type SizeBytes = number | "loading" | undefined;
+interface InstallProgress {
+  appid?: string;
+  pct?: number;
+  bytesDone?: number;
+  bytesTotal?: number;
+  state?: string;
+}
 
 interface DetailAction {
   key: string;
@@ -26,7 +33,14 @@ interface GameDetailsModalProps {
   playtimeMinutes?: number;
   sizeBytes?: SizeBytes;
   installed: boolean;
+  canInstall?: boolean;
+  installProgress?: InstallProgress;
+  installError?: string;
   onPlay: () => void;
+  onInstall?: () => void;
+  onCancelInstall?: () => void;
+  onUninstall?: () => void;
+  onVerify?: () => void;
   onTogglePin: () => void;
   isPinned: boolean;
   onToggleHidden: () => void;
@@ -113,7 +127,14 @@ export function GameDetailsModal({
   playtimeMinutes,
   sizeBytes,
   installed,
+  canInstall = false,
+  installProgress,
+  installError,
   onPlay,
+  onInstall,
+  onCancelInstall,
+  onUninstall,
+  onVerify,
   onTogglePin,
   isPinned,
   onToggleHidden,
@@ -141,6 +162,12 @@ export function GameDetailsModal({
   const [videoReady, setVideoReady] = useState(false);
   const [controlsRevealed, setControlsRevealed] = useState(false);
   const focusIdxRef = useRef(0);
+  const controlsRevealedRef = useRef(false);
+  const focusCountRef = useRef(1);
+  const actionsRef = useRef<DetailAction[]>([]);
+  const primaryActionRef = useRef<() => void>(() => {});
+  const closeRef = useRef<() => void>(() => {});
+  const hapticEnabledRef = useRef(hapticEnabled);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const focusRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -171,8 +198,29 @@ export function GameDetailsModal({
     surfaceStyle === "obsidian" ? 10 :
     12;
   const chipRadius = isPixel ? 0 : surfaceStyle === "material" || surfaceStyle === "clear" ? 8 : 10;
+  const installing = !!installProgress && installProgress.state !== "complete";
+  const uninstalling = installProgress?.state === "uninstalling";
+  const installPct = Math.max(0, Math.min(100, Number(installProgress?.pct ?? 0)));
+  const installErrorText = installError ? t(`install.${installError}`, { defaultValue: t("install.generic") }) : "";
+
+  const handlePrimaryAction = useCallback(() => {
+    if (uninstalling) return;
+    if (installed) {
+      onPlay();
+      return;
+    }
+    if (installing) {
+      onCancelInstall?.();
+      return;
+    }
+    if (canInstall) {
+      onInstall?.();
+    }
+  }, [canInstall, installed, installing, onCancelInstall, onInstall, onPlay, uninstalling]);
 
   const actions = useMemo<DetailAction[]>(() => [
+    ...(installed && onVerify ? [{ key: "verify", label: t("install.verify"), onClick: onVerify }] : []),
+    ...(installed && onUninstall ? [{ key: "uninstall", label: t("install.uninstall"), onClick: onUninstall, danger: true }] : []),
     { key: "pin", label: t(isPinned ? "contextMenu.unpin" : "contextMenu.pin"), onClick: onTogglePin, checked: isPinned },
     { key: "hide", label: t(isHidden ? "contextMenu.show" : "contextMenu.hide"), onClick: onToggleHidden, checked: isHidden },
     {
@@ -204,26 +252,37 @@ export function GameDetailsModal({
     onResetCategory,
     onDelete,
     t,
+    installed,
+    onVerify,
+    onUninstall,
   ]);
 
   const focusCount = 1 + actions.length;
+  focusCountRef.current = focusCount;
+  actionsRef.current = actions;
+  primaryActionRef.current = handlePrimaryAction;
+  closeRef.current = onClose;
+  hapticEnabledRef.current = hapticEnabled;
 
   const setFocusedIndex = (index: number) => {
-    const bounded = Math.max(0, Math.min(focusCount - 1, index));
+    const bounded = Math.max(0, Math.min(focusCountRef.current - 1, index));
     setFocusIdx(bounded);
     focusIdxRef.current = bounded;
   };
 
   const revealControls = () => {
+    controlsRevealedRef.current = true;
     setControlsRevealed(true);
   };
 
   const collapseControls = () => {
+    controlsRevealedRef.current = false;
     setControlsRevealed(false);
     setFocusedIndex(0);
   };
 
   useEffect(() => {
+    controlsRevealedRef.current = false;
     setControlsRevealed(false);
     setFocusedIndex(0);
   }, [app.id]);
@@ -264,10 +323,10 @@ export function GameDetailsModal({
         const move = (next: number) => {
           setFocusedIndex(next);
         };
-        if (controlsRevealed && shouldHandleDirectionRepeat("ArrowRight", state, last, now, pressTime, repeating)) move(focusIdxRef.current + 1);
-        if (controlsRevealed && shouldHandleDirectionRepeat("ArrowLeft", state, last, now, pressTime, repeating)) move(focusIdxRef.current - 1);
+        if (controlsRevealedRef.current && shouldHandleDirectionRepeat("ArrowRight", state, last, now, pressTime, repeating)) move(focusIdxRef.current + 1);
+        if (controlsRevealedRef.current && shouldHandleDirectionRepeat("ArrowLeft", state, last, now, pressTime, repeating)) move(focusIdxRef.current - 1);
         if (shouldHandleDirectionRepeat("ArrowDown", state, last, now, pressTime, repeating)) {
-          if (!controlsRevealed && focusIdxRef.current === 0) {
+          if (!controlsRevealedRef.current && focusIdxRef.current === 0) {
             revealControls();
             move(1);
           } else {
@@ -275,27 +334,34 @@ export function GameDetailsModal({
           }
         }
         if (shouldHandleDirectionRepeat("ArrowUp", state, last, now, pressTime, repeating)) {
-          if (controlsRevealed && focusIdxRef.current > 0 && focusIdxRef.current <= cols) {
+          if (controlsRevealedRef.current && focusIdxRef.current > 0 && focusIdxRef.current <= cols) {
             collapseControls();
           } else {
             move(focusIdxRef.current <= cols ? 0 : focusIdxRef.current - cols);
           }
         }
         if (state.Enter && !last.Enter) {
-          if (focusIdxRef.current === 0) onPlay();
-          else if (controlsRevealed) {
-            rumble("confirm", hapticEnabled);
-            actions[focusIdxRef.current - 1]?.onClick();
+          if (focusIdxRef.current === 0) primaryActionRef.current();
+          else if (controlsRevealedRef.current) {
+            rumble("confirm", hapticEnabledRef.current);
+            actionsRef.current[focusIdxRef.current - 1]?.onClick();
           }
         }
-        if (state.Escape && !last.Escape) onClose();
+        if (state.Escape && !last.Escape) closeRef.current();
         Object.assign(last, state);
       }
       rafId = requestAnimationFrame(poll);
     };
     rafId = requestAnimationFrame(poll);
     return () => cancelAnimationFrame(rafId);
-  }, [actions, controlsRevealed, focusCount, hapticEnabled, onClose, onPlay]);
+  }, []);
+
+  const primaryLabel = installed
+    ? t("details.play")
+    : installing
+      ? (uninstalling ? t("install.uninstalling") : t("install.cancel"))
+      : t("install.install");
+  const primaryDisabled = !installed && (uninstalling || (!installing && !canInstall));
 
   const metaItems = [
     { label: t("details.lastPlayed"), value: lastPlayedAt ? formatRelativeTime(lastPlayedAt, t("details.never")) : t("details.never") },
@@ -488,8 +554,8 @@ export function GameDetailsModal({
 
             <button
               ref={(node) => { focusRefs.current[0] = node; }}
-              onClick={installed ? onPlay : undefined}
-              disabled={!installed}
+              onClick={primaryDisabled ? undefined : handlePrimaryAction}
+              disabled={primaryDisabled}
               onMouseEnter={() => setFocusedIndex(0)}
               style={{
                 alignSelf: "flex-start",
@@ -497,17 +563,42 @@ export function GameDetailsModal({
                 height: controlsRevealed ? 42 : 46,
                 borderRadius: controlRadius,
                 border: focusIdx === 0 ? `2px solid ${accent.primary}` : "1px solid transparent",
-                background: installed ? `linear-gradient(135deg, ${accent.primary}, ${accent.dark})` : "rgba(255,255,255,0.12)",
-                color: installed ? primaryText : theme.textFaint,
+                background: installed || (!primaryDisabled && !uninstalling) ? `linear-gradient(135deg, ${accent.primary}, ${accent.dark})` : "rgba(255,255,255,0.12)",
+                color: installed || (!primaryDisabled && !uninstalling) ? primaryText : theme.textFaint,
                 fontSize: 15,
                 fontWeight: 900,
-                cursor: installed ? "pointer" : "default",
+                cursor: primaryDisabled ? "default" : "pointer",
                 boxShadow: focusIdx === 0 ? `0 0 0 3px ${accent.glow}0.24), 0 10px 28px rgba(0,0,0,0.28)` : "0 6px 18px rgba(0,0,0,0.22)",
                 transition: "min-width 360ms cubic-bezier(0.16, 1, 0.3, 1), height 360ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 160ms ease, border-color 160ms ease",
               }}
             >
-              {t("details.play")}
+              {primaryLabel}
             </button>
+            {installing && (
+              <div style={{ width: controlsRevealed ? 170 : 220, display: "flex", flexDirection: "column", gap: 5 }}>
+                <div style={{
+                  height: 6,
+                  borderRadius: 999,
+                  overflow: "hidden",
+                  background: isDark ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.12)",
+                }}>
+                  <div style={{
+                    height: "100%",
+                    width: `${installPct}%`,
+                    background: `linear-gradient(90deg, ${accent.primary}, ${accent.light})`,
+                    transition: "width 180ms ease",
+                  }} />
+                </div>
+                <div style={{ fontSize: 11, color: theme.textFaint, fontWeight: 700 }}>
+                  {uninstalling ? t("install.uninstalling") : `${t("install.installing")} ${installPct}%`}
+                </div>
+              </div>
+            )}
+            {installErrorText && (
+              <div style={{ maxWidth: 360, fontSize: 12, lineHeight: 1.35, color: "#e85a5a", fontWeight: 650 }}>
+                {installErrorText}
+              </div>
+            )}
           </div>
 
           {!controlsRevealed && (

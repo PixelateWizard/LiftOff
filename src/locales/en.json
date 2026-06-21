@@ -145,8 +145,20 @@
     "qrConfirmed": "Approved on mobile. Finishing sign-in...",
     "qrExpired": "This code expired.",
     "qrError": "Steam sign-in failed.",
-    "qrSecurity": "This read-only connection imports owned games and play history. No install actions are enabled in this release.",
+    "qrSecurity": "This connection imports owned games and play history. Install actions are handed off to the desktop Steam client.",
     "newCode": "Get a new code"
+  },
+  "install": {
+    "install": "Install",
+    "installing": "Installing",
+    "uninstalling": "Uninstalling",
+    "cancel": "Cancel",
+    "uninstall": "Uninstall",
+    "verify": "Verify files",
+    "confirmUninstall": "Uninstall {{name}}? Your saves stay in the cloud.",
+    "noClient": "Steam isn't installed on this device. Install the Steam client to download games.",
+    "watchError": "LiftOff couldn't confirm the Steam install state yet. Check Steam Downloads, then refresh the library.",
+    "generic": "Steam couldn't start that action."
   },
   "settings": {
     "sections": {
@@ -178,7 +190,7 @@
     "showHeroCover": "Show Cover on Home",
     "showRecentGamesOnly": "Games Only in Recents",
     "showStoreBadges": "Show Store Badges",
-    "showStoreBadgesDesc": "Display a small store icon (Steam, Xbox, Battle.net, GOG, Epic) on game covers",
+    "showStoreBadgesDesc": "Display a small store icon (Steam, Xbox, Battle.net, GOG, Epic, Cloud) on game covers",
     "showHomePinned":"Show Pinned on Home",
     "homePinnedPos": "Pinned apps position",
     "accentColor": "Accent Color",
@@ -578,6 +590,9 @@
     "addEntry": "Add a game / app",
     "addGame": "Add a game",
     "addApp": "Add an app",
+    "addCloudGame": "Add Cloud Game",
+    "cloudSearch": "Search cloud games",
+    "cloudEmpty": "No cloud games found.",
     "addFolder": "Add a scan folder",
     "path": "Path",
     "name": "Name",

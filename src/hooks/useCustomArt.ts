@@ -55,9 +55,9 @@ export function useCustomArt() {
       games.forEach(game => {
         const b = bulk[game.name];
         if (!b) return;
-        if (b.grid) newGrid[game.id] = toUrl(b.grid) ?? "";
-        if (b.hero_animated) newAnimated[game.id] = toUrl(b.hero_animated) ?? "";
-        if (b.hero_static) newStatic[game.id] = toUrl(b.hero_static) ?? "";
+        newGrid[game.id] = toUrl(b.grid) ?? "";
+        newAnimated[game.id] = toUrl(b.hero_animated) ?? "";
+        newStatic[game.id] = toUrl(b.hero_static) ?? "";
       });
       if (Object.keys(newGrid).length) setGameArt(prev => ({ ...prev, ...newGrid }));
       if (Object.keys(newAnimated).length) setHeroAnimated(prev => ({ ...prev, ...newAnimated }));
@@ -80,12 +80,17 @@ export function useCustomArt() {
           appid: game.steam_appid ?? null,
         })
           .then(bundle => {
-            if (bundle.grid) batchGrid[game.id] = toUrl(bundle.grid) ?? "";
-            if (bundle.hero_animated) batchAnimated[game.id] = toUrl(bundle.hero_animated) ?? "";
-            if (bundle.hero_static) batchStatic[game.id] = toUrl(bundle.hero_static) ?? "";
+            batchGrid[game.id] = toUrl(bundle.grid) ?? "";
+            batchAnimated[game.id] = toUrl(bundle.hero_animated) ?? "";
+            batchStatic[game.id] = toUrl(bundle.hero_static) ?? "";
             onProgress?.(++done, total, game.name);
           })
-          .catch(() => { onProgress?.(++done, total, game.name); })
+          .catch(() => {
+            batchGrid[game.id] = "";
+            batchAnimated[game.id] = "";
+            batchStatic[game.id] = "";
+            onProgress?.(++done, total, game.name);
+          })
       ));
       if (Object.keys(batchGrid).length) setGameArt(prev => ({ ...prev, ...batchGrid }));
       if (Object.keys(batchAnimated).length) setHeroAnimated(prev => ({ ...prev, ...batchAnimated }));

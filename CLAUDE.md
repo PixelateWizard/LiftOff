@@ -1,9 +1,82 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Fix Games Not Installed filter gamepad top-scroll behavior.
-- When returning to the top of the Not Installed filtered Games grid with gamepad, the scroll position should reveal the Games toolbar above the grid instead of stopping with the toolbar hidden.
-- Keep the toolbar as a Right-Stick-owned utility zone; this is a scroll-position correction only.
+- Follow up the Cloud Games picker after live testing and implement the updated proposal.
+- Prevent Opera/Chromium kiosk child diagnostics from leaking into LiftOff's dev terminal and collapse duplicate Cloud source tabs to one canonical tab.
+- Replace the per-game Cloudbase seed scraper with the updated Cloudbase index + Xbox PDP sitemap join, then validate and update the changelog/handoff.
+
+**Completed (this session - Cloud Games live follow-up):**
+- Stopped directly spawned cloud kiosk browsers from inheriting LiftOff's stdin/stdout/stderr, so Opera/Chromium renderer, extension, task-manager, and USB diagnostics no longer spill into the Tauri dev terminal; LiftOff's own typed launch-result diagnostics remain visible.
+- Fixed duplicate Cloud source tabs by treating `cloud` as a built-in source in `useCustomSources` and case-insensitively deduping both rendered and gamepad source lists as a stale-data backstop.
+- Verified the updated seed builder against the live public sources: it loaded 11 Xbox PDP sitemap shards, indexed 36,621 unique slugs, resolved 20 of 30 recently-added Cloudbase titles, skipped 10 exact-slug misses without guessing, and wrote 44 verified bundled rows.
+- Updated the Cloud Games picker handoff/changelog wording from the superseded per-game resolver to the Cloudbase index + Xbox PDP sitemap join.
+- Validated with `npm.cmd run build`, `cargo check`, `node --check scripts/build-xcloud-seed.mjs`, a live `node scripts/build-xcloud-seed.mjs --new` run, and `git diff --check`; only the existing Vite chunk-size warning, Rust path canonicalization/unused-helper warning, and CRLF notices remain. A refreshed Tauri runtime and one Opera kiosk launch are still required to confirm the terminal stays quiet on the real browser path.
+
+**Completed (this session - Steam cancellation reconciliation and latency):**
+- Confirmed Steam logged MECCHA CHAMELEON as fully uninstalled but retained `appmanifest_4704690.acf` with `StateFlags 514`, `SizeOnDisk 0`, old byte counters, and an empty `common` folder; its `downloading/4704690` workspace was gone.
+- Changed Steam library scanning to ignore zero-`SizeOnDisk` partial manifests, so canceled/never-completed installs fall back to the owned-but-uninstalled entry instead of being promoted to installed merely because an `.acf` exists.
+- Changed uninstall completion to accept a missing manifest or zero `SizeOnDisk`, and changed the original install watcher to stop and emit uninstall completion when an observed download workspace disappears with no installed content, preventing stale install-progress events from reviving the canceled state.
+- Direct progress snapshots now suppress inactive partial manifests by requiring either installed content or Steam's live `downloading/{appid}` workspace, and frontend/backend polling was reduced from 750 ms to 250 ms for the lowest latency available from Steam's on-disk manifest updates.
+- Updated `CHANGELOG.md` and validated with `cargo test steam_install_progress_tests`, `npm.cmd run build`, and `git diff --check`; only the existing Rust unused-helper/path warning, Vite chunk-size warning, and CRLF notices remain. A refreshed Tauri runtime and one install/cancel retry are the final live confirmation.
+
+**Completed (this session - Steam install progress delivery):**
+- Inspected MECCHA CHAMELEON's live `appmanifest_4704690.acf` while LiftOff still showed 0%; Steam reported `869427056 / 2288461696` downloaded and `1028890276 / 2497874377` staged, confirming the parser had real nonzero data and event delivery was the remaining failure.
+- Added a registered `steam_install_progress` snapshot command and made active frontend installs poll it every 750 ms while retaining the existing watcher events for immediate updates.
+- Opening Details for an uninstalled Steam entry now queries the snapshot once and resumes the installing UI when Steam already has an active partial manifest, including after LiftOff is reopened mid-download.
+- Centralized frontend progress normalization/completion handling so event and polling paths update the same Details/tile state and trigger the same final library reconciliation.
+- Updated `CHANGELOG.md` and validated with `cargo test steam_install_progress_tests`, `npm.cmd run build`, and `git diff --check`; only the existing Rust unused-helper/path warning, Vite chunk-size warning, and CRLF notices remain. A refreshed Tauri runtime is required to load the new Rust command, then the active MECCHA install is the final live confirmation.
+
+**Completed (this session - MECCHA CHAMELEON Details controller input):**
+- Confirmed MECCHA CHAMELEON is an owned-but-uninstalled Steam entry (`appid 4704690`) with cached cover art but no hero result, unlike the installed Details entries that were still behaving normally.
+- Stopped `GameDetailsModal` from rebuilding its RAF gamepad poll and restarting the 20-frame opening suppression window whenever lazy art or inline parent callbacks cause a re-render; the persistent loop now reads current controls state, actions, primary action, close callback, focus count, and haptic setting through refs.
+- Recorded empty/failed grid and hero lookups as completed art checks and changed the Details lazy-fetch gate to use key presence, preventing missing hero art from retriggering a fetch on every parent render.
+- Preserved the showcase-first reveal, down-from-Play / up-from-controls choreography, current action ordering, and background input isolation.
+- Updated `CHANGELOG.md` and validated with `npm.cmd run build` plus `git diff --check`; only the existing Vite chunk-size warning and CRLF notices remain. A real gamepad retry on MECCHA CHAMELEON is still the final runtime confirmation.
+
+**Completed (this session - Steam install progress updates):**
+- Confirmed against local live Steam appmanifests that active installs expose both `BytesDownloaded` / `BytesToDownload` and `BytesStaged` / `BytesToStage`.
+- Changed the watcher to combine download and staging work, retain tenth-percent precision, and report the effective byte totals so Details and Games tiles continue advancing through the full install.
+- Added focused Rust coverage for staged installs and the download-only fallback, and updated `CHANGELOG.md`.
+- Validated with `cargo test steam_install_progress_tests`, `npm run build`, and `git diff --check`; only the existing Vite chunk-size warning and CRLF notices remain. Repository-wide `cargo fmt --check` is still blocked by an unrelated pre-existing cloud-kiosk formatting diff.
+
+**Completed (this session - Cloud Games kiosk profile isolation):**
+- Added a dedicated persistent LiftOff cloud browser profile under app data and passed it with `--user-data-dir` for cloud-source kiosk launches, preventing already-running Chromium browser sessions from turning the request into a normal tab and ignoring kiosk flags.
+- Kept the profile persistent per browser executable so Xbox/cloud sign-in may be required once in the kiosk profile but should remain available across future cloud launches.
+- Changed `launch_app` to return a typed launch result with mode, child PID, backend detail, and fallback reason, and logged that result from the frontend alongside the incoming app name/source/path.
+- Updated `CHANGELOG.md`.
+- Validated with `cargo check`, `npm run build`, and `git diff --check`; only the existing Rust path canonicalization warning, unused `is_our_window_focused` warning, Vite chunk-size warning, and CRLF notices remain.
+
+**Completed (this session - Cloud Games kiosk follow-up):**
+- Changed cloud-source browser launch from the mixed `--app=...` plus `--kiosk` form to Chromium's direct `--kiosk <url>` form with fullscreen, display-sized window, origin placement, and Edge fullscreen kiosk hints.
+- Stopped treating a generic `launcher.exe` as kiosk-capable by itself; Opera GX launcher registrations now resolve to a nearby `opera.exe` before kiosk flags are applied, otherwise LiftOff falls back to the normal URL launch path.
+- Added a dev-terminal fallback message when kiosk setup cannot run, so the next Tauri/dev test can distinguish browser detection failures from a kiosk window that opened but behaved incorrectly.
+- Updated `CHANGELOG.md`.
+- Validated with `cargo check`, `npm run build`, and `git diff --check`; only the existing Rust path canonicalization warning, unused `is_our_window_focused` warning, Vite chunk-size warning, and CRLF notices remain. Real Opera GX/kiosk visual behavior still needs a hands-on retry.
+
+**Completed (this session - Cloud Games kiosk launch):**
+- Initially added a `source == "cloud"` launch path that tried to spawn the detected default Chromium browser directly before falling back to the existing ShellExecute URL path; the follow-up above supersedes the launch flags after live testing showed kiosk mode did not visibly engage.
+- Implemented default browser detection with the existing `windows` crate registry APIs and no new crate, reading the https UserChoice ProgId plus command registrations, with an HKCR https command fallback for shells where the UserChoice key is unavailable.
+- Scoped kiosk mode to cloud-source `http://` / `https://` entries only, so manually added non-cloud web bookmarks still use normal browser chrome.
+- Confirmed the existing force-close path checks the tracked launched PID first, so kiosk-spawned cloud games can use the browser child PID without a new close-side special case.
+- Updated `CHANGELOG.md`.
+- Validated with `cargo check`, `npm run build`, and `git diff --check`; only the existing Rust path canonicalization warning, unused `is_our_window_focused` warning, Vite chunk-size warning, and CRLF notices remain. This shell did not expose the expected HKCU https UserChoice key or an Opera GX default-browser command, so real Opera GX/kiosk launch and force-close behavior still need hands-on validation on Taylor's browser setup.
+
+**Completed (this session - PR3b Steam install actions):**
+- Added `steam_install`, `steam_uninstall`, `steam_verify`, and `steam_watch_install` Tauri commands that validate Steam app IDs, require the desktop Steam client via `get_steam_install_path()`, and dispatch `steam://install`, `steam://uninstall`, and `steam://validate` through the same `explorer.exe` medium-integrity path used for `steam://rungameid` launches.
+- Added bounded `appmanifest_{appid}.acf` polling for Steam install and uninstall state, emitting `steam-install-progress`, `steam-install-done`, `steam-uninstall-done`, and `steam-install-error` events with progress data derived from expected `StateFlags`, `BytesDownloaded`, and `BytesToDownload` fields pending real-hardware validation.
+- Wired Details so uninstalled Steam games show Install, active installs show progress plus Cancel, installed Steam games expose Verify files and confirmed Uninstall, and no-Steam-client/watch failures show in-modal messages instead of failing silently.
+- Wired Games tiles to show the same install/uninstall progress overlay as Details, then flip local installed state and refresh the library when the watcher reports completion.
+- Updated English install strings, TODO French placeholders, Steam QR security copy, and `CHANGELOG.md`.
+- Validated with `npm.cmd run build`, `cargo check`, and `git diff --check`; only the existing Vite chunk-size warning, Rust path canonicalization warning, unused `is_our_window_focused` warning, and CRLF notices remain. Real Ally/Steam-client testing is still required to confirm the three Steam URIs, ACF field semantics, and Cancel-as-uninstall behavior.
+
+**Completed (this session - Cloud Games picker):**
+- Broadened indirect launch overlay detection so `http://` and `https://` launches with `child_pid == 0` fast-dismiss like other browser/URI handoffs, while direct `.exe` games still use the 15s window watcher.
+- Added bundled `xcloudGames.json` seed data plus a standalone `scripts/build-xcloud-seed.mjs` maintenance script; the later live follow-up replaced its original per-game resolver with a Cloudbase index + Xbox PDP sitemap join that writes exact verified matches only.
+- Added a Games-only "Add Cloud Game" Library Actions entry and `CloudGamePickerModal` with search, gamepad navigation, `A` select, `B` cancel, and `Y` on-screen keyboard search.
+- Cloud selections save through `add_custom_app` as deterministic `cloud:<slug>` game entries with `source: "cloud"`, `installed: true`, and `https://www.xbox.com/en-us/play/games/...` launch URLs.
+- Added first-class Cloud source filtering for the rendered Games source row and gamepad LT/RT navigation, plus a monochrome cloud badge that avoids Xbox/Microsoft iconography.
+- Updated `CHANGELOG.md`.
+- Validated with `npm.cmd run build`, `cargo check`, `node --check scripts/build-xcloud-seed.mjs`, and `git diff --check`; only the existing Vite chunk-size warning, Rust path canonicalization warning, unused `is_our_window_focused` warning, and CRLF notices remain.
 
 **Completed (this session - Games Not Installed toolbar top-scroll):**
 - Fixed the Games grid first-row scroll predicate so it only preserves pinned-above-grid scroll positioning when a pinned section is actually visible under the current source/install filter.
@@ -622,7 +695,7 @@ All animated theme backgrounds live in `src/components/backgrounds/` and are bar
 **Key data structures:**
 - `AppEntry` — `{ id, name, icon_base64, launch_path, app_type, source }`
   - `app_type`: `"game"` | `"app"`
-  - `source`: `"steam"` | `"xbox"` | `"uwp"` | `"desktop"` | `"battlenet"` | `"gog"` | `"epic"`
+  - `source`: `"steam"` | `"xbox"` | `"uwp"` | `"desktop"` | `"battlenet"` | `"gog"` | `"epic"` | `"cloud"`
 - `RecentEntry` — `{ id, name, launch_path, app_type, launched_at }` (no icon — look up via `allAppsRef` in frontend)
 - `BatteryInfo` — `{ percent: u32, charging: bool }`
 - `Settings` — accent/theme/background fields; scan toggles; launch/default-tab/repeat behavior; `animated_heroes` (`"static"` | `"animated"` | `"custom"`); `ui_scale` (Option<f32> in Rust; frontend fills auto-detected value); localization/time/status display fields; granular layout fields (`wide_layout`, `wide_topbar`, `wide_games`, `wide_apps`, `wide_settings`, `wide_bottombar`); Home fields (`home_mode`, `show_home_recents`, `show_recent_games_only`, `home_section_title_size`, `home_pinned_pos`, hero/collection/cover toggles); card scale/list fields (`home_cover_scale`, `game_cover_scale`, `app_cover_scale`, `app_list_view`, `app_list_cols`); bar/tab fields (`topbar_background`, `bottombar_background`, `hide_bottom_bar`, `nav_bumpers_pos`, `tabbar_show_buttons`, `tabbar_text_tabs`, `tabbar_with_background`, `tabbar_background_compact`, `tabbar_font_weight`, `tabbar_icon_mode`, `tabbar_label_case`, `bottombar_alignment`, `bottombar_compact`); Onyx fields (`onyx_top_light`, `onyx_flat_settings`); gamepad icon fields; `surface_style`.
@@ -682,7 +755,8 @@ Priority order of `else if` branches:
 - For direct exe spawns, the child PID is captured. For all indirect launches, `child_pid = 0`.
 - After spawning, a background thread handles the overlay dismiss:
   - **`app_type == "app"` with `child_pid == 0`** (i.e. `.lnk`, `shell:`, URI apps): waits 1.5 seconds then emits `"launch-success"` unconditionally. These apps are often already running in the tray, use indirect process spawning, or otherwise don't produce a detectable new window. Fast-dismiss avoids false "Failed" states.
-  - **All other cases** (direct exe apps with a PID, and all games): polls `poll_for_window(pid, existing, our_hwnd)` every 250ms for up to 15 seconds. On success: `SetForegroundWindow` + `ShowWindow(SW_SHOW)`, then emits `"launch-success"`. On timeout: emits `"launch-failed"`.
+  - **`http://` or `https://` launches with `child_pid == 0`**: waits 1.5 seconds then emits `"launch-success"` unconditionally, even when `app_type == "game"`, because browser-opened cloud bookmarks do not produce a reliable distinct game window to poll.
+  - **All other cases** (direct exe apps with a PID, and non-browser games): polls `poll_for_window(pid, existing, our_hwnd)` every 250ms for up to 15 seconds. On success: `SetForegroundWindow` + `ShowWindow(SW_SHOW)`, then emits `"launch-success"`. On timeout: emits `"launch-failed"`.
 - Frontend `LaunchOverlay` listens for both events and transitions between `"launching"` and `"failed"` states accordingly.
 
 **Important implementation notes:**
@@ -755,7 +829,7 @@ Priority order of `else if` branches:
 - `recentGames` — games-only recent list loaded from `recent_games.json`; drives the Home tab hero. Independent of `recent` so a user who mostly launches apps still sees games in the hero. Fallback on first install: `visible.filter(a => a.app_type === "game").slice(0, 6)`. Updated locally on game launch (prepend, dedup by id, cap 20).
 - `pins` — pinned app IDs
 - `hidden` — hidden app IDs
-- `gameSourceTab` — "All" | "Steam" | "Xbox" | "Bnet" | "Other" (Games tab sub-filter)
+- `gameSourceTab` — "All" | "Steam" | "Xbox" | "Battle.net" | "GOG" | "Epic" | "Cloud" | "Other" | custom source / collection name (Games tab sub-filter)
 - `showHideModal` — boolean (true while Manage modal is open)
 - `settings` — Settings object
 - `gameArt` — { [appId]: url } SGDB cover/grid art (600×900); url is a local asset:// path via `convertFileSrc`, or https:// fallback
@@ -1156,10 +1230,10 @@ Notable merged PRs from Moi that affect current architecture and settings:
 - `find_main_exe_in_dir` skips utility exes (error, report, helper, agent, etc.); prefers "launcher"-named exes
 - `.lnk` shortcuts launch via `ShellExecuteW("open")` — correctly passes embedded shortcut arguments (e.g. Discord's `Update.exe --processStart Discord.exe`); `cmd /C start` was dropping these arguments
 - URI launches (`://`) use `ShellExecuteW` — reliable for all protocol handlers
-- `.lnk` and other indirect app launches (`child_pid == 0`, `app_type == "app"`) use 1.5s fast-dismiss instead of 15s window watcher — avoids false "Failed" overlays for tray apps and already-running processes
-- Direct `.exe` apps and all games use full window-detection watcher with real success/fail feedback
+- `.lnk` and other indirect app launches (`child_pid == 0`, `app_type == "app"`) plus browser URL launches (`http://` / `https://`, `child_pid == 0`) use 1.5s fast-dismiss instead of the 15s window watcher — avoids false "Failed" overlays for tray apps, already-running processes, and cloud game bookmarks
+- Direct `.exe` apps and non-browser games use full window-detection watcher with real success/fail feedback
 - Single library scan on startup; auto-refresh when scan toggles change; manual Refresh Library button
-- Games source sub-tabs hide built-in sources when their scan toggle is off or no installed games exist for that source; Other also hides when no visible games exist outside built-in/custom sources; All, custom sources, and collections remain available.
+- Games source sub-tabs hide built-in sources when their scan toggle is off or no installed games exist for that source; Cloud shows when a `source: "cloud"` bookmark exists; Other also hides when no visible games exist outside built-in/custom sources; All, custom sources, and collections remain available.
 - Blocking overlay modal during library refresh
 - UWP/desktop/Steam icon extraction via `DrawIconEx` at 128px with jumbo/large fallback
 - No console window flash on launch (CREATE_NO_WINDOW everywhere)
@@ -1178,7 +1252,7 @@ Notable merged PRs from Moi that affect current architecture and settings:
 - `getBestGamepad()` skips non-controller HID devices (headset adapters, audio dongles) with <4 buttons
 - Non-standard controller D-pad via hat-switch axes[6]/axes[7] fallback in `readGpState`
 - Tab switching lands on first pinned item or first grid item
-- Source sub-tabs on Games tab (All/Steam/Xbox/Battle.net/GOG/Epic/Other) via LT/RT or d-pad
+- Source sub-tabs on Games tab (All/Steam/Xbox/Battle.net/GOG/Epic/Cloud/Other) via LT/RT or d-pad
 - Unified Manage modal with full gamepad nav, input isolation, bleed prevention
 - Settings: accent colors (WCAG-compliant in light mode for neon), theme, scan toggles (incl. Battle.net, GOG, and Epic), startup, repeat speed, controller test, Discord link, Hero Art Mode cycle (static/animated/custom), update channel cycle (Stable/Alpha-Beta), UI scale slider
 - Themes: Space/Sky/Plasma/Cinder/Wash are animated environments separate from Surface Style. Theme selection applies a default surface, but users can manually override Surface Style afterward.

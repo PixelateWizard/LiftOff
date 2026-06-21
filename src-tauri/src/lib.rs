@@ -8,6 +8,7 @@ use std::net::TcpListener;
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::process::CommandExt;
 use std::path::Path;
+use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -60,6 +61,15 @@ struct LaunchedTarget {
     source: String,
     pid: Option<u32>,
     launched_at: u64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LaunchAppResult {
+    launch_mode: String,
+    child_pid: Option<u32>,
+    detail: Option<String>,
+    fallback_reason: Option<String>,
 }
 
 static LAUNCHED: Mutex<Option<HashMap<String, LaunchedTarget>>> = Mutex::new(None);
@@ -622,9 +632,7 @@ fn download_file(
     if !response.status().is_success() {
         return None;
     }
-    let bytes = response
-        .bytes()
-        .ok()?;
+    let bytes = response.bytes().ok()?;
     std::fs::write(&path, &bytes).ok()?;
     Some(path.to_string_lossy().into_owned())
 }
@@ -855,7 +863,10 @@ fn save_steam_account_meta(meta: &SteamAccountMeta) {
 }
 
 fn steam_refresh_entry(account: &str) -> keyring::Result<keyring::Entry> {
-    keyring::Entry::new(STEAM_KEYRING_SERVICE, &format!("steam-refresh-token:{account}"))
+    keyring::Entry::new(
+        STEAM_KEYRING_SERVICE,
+        &format!("steam-refresh-token:{account}"),
+    )
 }
 
 fn store_steam_refresh_token(account: &str, token: &str) -> keyring::Result<()> {
@@ -1002,23 +1013,28 @@ fn skip_proto_field(data: &[u8], index: &mut usize, wire_type: u8) -> Option<()>
         5 => *index = index.checked_add(4)?,
         _ => return None,
     }
-    if *index <= data.len() { Some(()) } else { None }
+    if *index <= data.len() {
+        Some(())
+    } else {
+        None
+    }
 }
 
 fn decode_steam_begin_response(data: &[u8]) -> SteamBeginResponse {
     let mut response = SteamBeginResponse::default();
     let mut index = 0usize;
     while index < data.len() {
-        let Some(key) = read_proto_varint(data, &mut index) else { break };
+        let Some(key) = read_proto_varint(data, &mut index) else {
+            break;
+        };
         let field = (key >> 3) as u32;
         let wire = (key & 0x7) as u8;
         match (field, wire) {
             (1, 0) => response.client_id = read_proto_varint(data, &mut index).unwrap_or_default(),
             (2, 2) => {
-                response.challenge_url = String::from_utf8_lossy(
-                    &read_proto_len(data, &mut index).unwrap_or_default(),
-                )
-                .to_string();
+                response.challenge_url =
+                    String::from_utf8_lossy(&read_proto_len(data, &mut index).unwrap_or_default())
+                        .to_string();
             }
             (3, 2) => response.request_id = read_proto_len(data, &mut index).unwrap_or_default(),
             (4, 5) => {
@@ -1048,35 +1064,38 @@ fn decode_steam_poll_response(data: &[u8]) -> SteamPollResponse {
     let mut response = SteamPollResponse::default();
     let mut index = 0usize;
     while index < data.len() {
-        let Some(key) = read_proto_varint(data, &mut index) else { break };
+        let Some(key) = read_proto_varint(data, &mut index) else {
+            break;
+        };
         let field = (key >> 3) as u32;
         let wire = (key & 0x7) as u8;
         match (field, wire) {
-            (1, 0) => response.new_client_id = read_proto_varint(data, &mut index).unwrap_or_default(),
+            (1, 0) => {
+                response.new_client_id = read_proto_varint(data, &mut index).unwrap_or_default()
+            }
             (2, 2) => {
-                response.new_challenge_url = String::from_utf8_lossy(
-                    &read_proto_len(data, &mut index).unwrap_or_default(),
-                )
-                .to_string();
+                response.new_challenge_url =
+                    String::from_utf8_lossy(&read_proto_len(data, &mut index).unwrap_or_default())
+                        .to_string();
             }
             (3, 2) => {
-                response.refresh_token = String::from_utf8_lossy(
-                    &read_proto_len(data, &mut index).unwrap_or_default(),
-                )
-                .to_string();
+                response.refresh_token =
+                    String::from_utf8_lossy(&read_proto_len(data, &mut index).unwrap_or_default())
+                        .to_string();
             }
             (4, 2) => {
-                response.access_token = String::from_utf8_lossy(
-                    &read_proto_len(data, &mut index).unwrap_or_default(),
-                )
-                .to_string();
+                response.access_token =
+                    String::from_utf8_lossy(&read_proto_len(data, &mut index).unwrap_or_default())
+                        .to_string();
             }
-            (5, 0) => response.had_remote_interaction = read_proto_varint(data, &mut index).unwrap_or(0) != 0,
+            (5, 0) => {
+                response.had_remote_interaction =
+                    read_proto_varint(data, &mut index).unwrap_or(0) != 0
+            }
             (6, 2) => {
-                response.account_name = String::from_utf8_lossy(
-                    &read_proto_len(data, &mut index).unwrap_or_default(),
-                )
-                .to_string();
+                response.account_name =
+                    String::from_utf8_lossy(&read_proto_len(data, &mut index).unwrap_or_default())
+                        .to_string();
             }
             _ => {
                 if skip_proto_field(data, &mut index, wire).is_none() {
@@ -1093,15 +1112,16 @@ fn decode_steam_access_response(data: &[u8]) -> (String, Option<String>) {
     let mut refresh_token = None;
     let mut index = 0usize;
     while index < data.len() {
-        let Some(key) = read_proto_varint(data, &mut index) else { break };
+        let Some(key) = read_proto_varint(data, &mut index) else {
+            break;
+        };
         let field = (key >> 3) as u32;
         let wire = (key & 0x7) as u8;
         match (field, wire) {
             (1, 2) => {
-                access_token = String::from_utf8_lossy(
-                    &read_proto_len(data, &mut index).unwrap_or_default(),
-                )
-                .to_string();
+                access_token =
+                    String::from_utf8_lossy(&read_proto_len(data, &mut index).unwrap_or_default())
+                        .to_string();
             }
             (2, 2) => {
                 refresh_token = Some(
@@ -1116,7 +1136,10 @@ fn decode_steam_access_response(data: &[u8]) -> (String, Option<String>) {
             }
         }
     }
-    (access_token, refresh_token.filter(|token| !token.is_empty()))
+    (
+        access_token,
+        refresh_token.filter(|token| !token.is_empty()),
+    )
 }
 
 fn steam_auth_post(method: &str, request: Vec<u8>) -> Result<Vec<u8>, String> {
@@ -1197,7 +1220,9 @@ fn generate_steam_access_token(account: &str, steamid: &str) -> Result<SteamSess
     })
 }
 
-fn fetch_owned_games_for_session(session: &SteamSession) -> Result<Vec<SteamOwnedGameCache>, String> {
+fn fetch_owned_games_for_session(
+    session: &SteamSession,
+) -> Result<Vec<SteamOwnedGameCache>, String> {
     #[derive(Deserialize)]
     struct OwnedResponse {
         response: OwnedBody,
@@ -1235,7 +1260,10 @@ fn fetch_owned_games_for_session(session: &SteamSession) -> Result<Vec<SteamOwne
         .send()
         .map_err(|_| "Steam owned-games request failed".to_string())?;
     if !response.status().is_success() {
-        return Err(format!("Steam owned-games HTTP {}", response.status().as_u16()));
+        return Err(format!(
+            "Steam owned-games HTTP {}",
+            response.status().as_u16()
+        ));
     }
     let parsed = response
         .json::<OwnedResponse>()
@@ -1255,7 +1283,9 @@ fn fetch_owned_games_for_session(session: &SteamSession) -> Result<Vec<SteamOwne
         .collect())
 }
 
-fn cache_owned_games_for_session(session: &SteamSession) -> Result<Vec<SteamOwnedGameCache>, String> {
+fn cache_owned_games_for_session(
+    session: &SteamSession,
+) -> Result<Vec<SteamOwnedGameCache>, String> {
     let games = fetch_owned_games_for_session(session)?;
     save_owned_steam_games(&games);
     save_steam_account_meta(&SteamAccountMeta {
@@ -1322,13 +1352,26 @@ fn steam_status_inner() -> SteamStatus {
     let Some(meta) = load_steam_account_meta() else {
         return SteamStatus::default();
     };
-    let connected = !meta.account_name.is_empty() && load_steam_refresh_token(&meta.account_name).is_some();
+    let connected =
+        !meta.account_name.is_empty() && load_steam_refresh_token(&meta.account_name).is_some();
     SteamStatus {
         connected,
-        account_name: if meta.account_name.is_empty() { None } else { Some(meta.account_name) },
-        steamid: if meta.steamid.is_empty() { None } else { Some(meta.steamid) },
+        account_name: if meta.account_name.is_empty() {
+            None
+        } else {
+            Some(meta.account_name)
+        },
+        steamid: if meta.steamid.is_empty() {
+            None
+        } else {
+            Some(meta.steamid)
+        },
         owned_count: meta.owned_count,
-        updated_at: if meta.updated_at > 0 { Some(meta.updated_at) } else { None },
+        updated_at: if meta.updated_at > 0 {
+            Some(meta.updated_at)
+        } else {
+            None
+        },
     }
 }
 
@@ -1354,7 +1397,11 @@ fn merge_owned_steam_games(apps: &mut Vec<AppEntry>, installed: &[AppEntry]) {
             install_dir: None,
             installed: false,
             playtime_minutes: Some(owned.playtime_minutes),
-            last_played: if owned.rtime_last_played > 0 { Some(owned.rtime_last_played) } else { None },
+            last_played: if owned.rtime_last_played > 0 {
+                Some(owned.rtime_last_played)
+            } else {
+                None
+            },
             steam_appid: Some(owned.appid),
             steam_icon_hash: owned.icon_hash,
         });
@@ -1368,24 +1415,22 @@ fn steam_account_status() -> SteamStatus {
 
 #[tauri::command]
 fn steam_qr_begin(app_handle: tauri::AppHandle) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        match run_steam_qr_login(app_handle.clone()) {
-            Ok(session) => {
-                let owned_count = cache_owned_games_for_session(&session)
-                    .map(|games| games.len())
-                    .unwrap_or_default();
-                let payload = SteamLoginPayload {
-                    account_name: session.account_name,
-                    steamid: session.steamid,
-                    owned_count,
-                };
-                let _ = app_handle.emit("steam-login-success", payload);
-                emit_steam_account_changed(&app_handle);
-            }
-            Err(error) if error == "expired" => {}
-            Err(_) => {
-                let _ = app_handle.emit("steam-login-error", "Steam sign-in failed");
-            }
+    tauri::async_runtime::spawn_blocking(move || match run_steam_qr_login(app_handle.clone()) {
+        Ok(session) => {
+            let owned_count = cache_owned_games_for_session(&session)
+                .map(|games| games.len())
+                .unwrap_or_default();
+            let payload = SteamLoginPayload {
+                account_name: session.account_name,
+                steamid: session.steamid,
+                owned_count,
+            };
+            let _ = app_handle.emit("steam-login-success", payload);
+            emit_steam_account_changed(&app_handle);
+        }
+        Err(error) if error == "expired" => {}
+        Err(_) => {
+            let _ = app_handle.emit("steam-login-error", "Steam sign-in failed");
         }
     });
     Ok(())
@@ -2316,16 +2361,25 @@ fn add_custom_app(
     path: String,
     app_type: String,
     source: String,
+    id: Option<String>,
 ) -> Result<AppEntry, String> {
     let mut data = load_custom_data();
-    let id = format!(
-        "custom_{}",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis()
-    );
-    let icon = extract_icon_base64(&path);
+    let id = id
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| {
+            format!(
+                "custom_{}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis()
+            )
+        });
+    let icon = if path.starts_with("http://") || path.starts_with("https://") {
+        None
+    } else {
+        extract_icon_base64(&path)
+    };
     let entry = AppEntry {
         id,
         name,
@@ -2337,7 +2391,11 @@ fn add_custom_app(
         installed: true,
         ..Default::default()
     };
-    data.apps.push(entry.clone());
+    if let Some(existing) = data.apps.iter_mut().find(|app| app.id == entry.id) {
+        *existing = entry.clone();
+    } else {
+        data.apps.push(entry.clone());
+    }
     save_custom_data(&data);
     Ok(entry)
 }
@@ -2600,6 +2658,202 @@ fn get_screen_resolution() -> ScreenResolution {
             height: GetSystemMetrics(SM_CYSCREEN),
         }
     }
+}
+
+fn get_primary_display_resolution() -> (i32, i32) {
+    unsafe { (GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)) }
+}
+
+enum BrowserFamily {
+    Chromium,
+    Unsupported,
+}
+
+fn registry_string_value(
+    root: windows::Win32::System::Registry::HKEY,
+    subkey: &str,
+    value: Option<&str>,
+) -> Option<String> {
+    unsafe {
+        use windows::core::PCWSTR;
+        use windows::Win32::System::Registry::{
+            RegCloseKey, RegOpenKeyExW, RegQueryValueExW, HKEY, KEY_READ,
+        };
+
+        let wide_key: Vec<u16> = std::ffi::OsStr::new(subkey)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+        let wide_value = value.map(|name| {
+            std::ffi::OsStr::new(name)
+                .encode_wide()
+                .chain(std::iter::once(0))
+                .collect::<Vec<u16>>()
+        });
+        let value_ptr = wide_value
+            .as_ref()
+            .map(|name| PCWSTR(name.as_ptr()))
+            .unwrap_or_else(PCWSTR::null);
+        let mut hkey = HKEY::default();
+        if RegOpenKeyExW(root, PCWSTR(wide_key.as_ptr()), 0, KEY_READ, &mut hkey).is_err() {
+            return None;
+        }
+
+        let mut buf_len = 0u32;
+        let size_ok =
+            RegQueryValueExW(hkey, value_ptr, None, None, None, Some(&mut buf_len)).is_ok();
+        if !size_ok || buf_len < 2 {
+            let _ = RegCloseKey(hkey);
+            return None;
+        }
+
+        let mut buf = vec![0u8; buf_len as usize];
+        let ok = RegQueryValueExW(
+            hkey,
+            value_ptr,
+            None,
+            None,
+            Some(buf.as_mut_ptr()),
+            Some(&mut buf_len),
+        )
+        .is_ok();
+        let _ = RegCloseKey(hkey);
+        if !ok || buf_len < 2 {
+            return None;
+        }
+
+        let wchars: Vec<u16> = buf[..buf_len as usize]
+            .chunks_exact(2)
+            .map(|c| u16::from_le_bytes([c[0], c[1]]))
+            .collect();
+        let value = String::from_utf16_lossy(&wchars)
+            .trim_end_matches('\0')
+            .trim()
+            .to_string();
+        (!value.is_empty()).then_some(value)
+    }
+}
+
+fn browser_exe_from_command(command: &str) -> Option<String> {
+    let trimmed = command.trim();
+    if let Some(rest) = trimmed.strip_prefix('"') {
+        let end = rest.find('"')?;
+        let exe = rest[..end].trim();
+        return (!exe.is_empty()).then(|| exe.to_string());
+    }
+
+    let lower = trimmed.to_lowercase();
+    let exe_end = lower.find(".exe").map(|idx| idx + 4)?;
+    let exe = trimmed[..exe_end].trim().trim_matches('"');
+    (!exe.is_empty()).then(|| exe.to_string())
+}
+
+fn browser_exe_filename(exe_path: &str) -> String {
+    Path::new(exe_path)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or_default()
+        .to_lowercase()
+}
+
+fn resolve_browser_exe_for_kiosk(exe_path: &str) -> Option<String> {
+    let filename = browser_exe_filename(exe_path);
+    if filename != "launcher.exe" {
+        return Some(exe_path.to_string());
+    }
+
+    let path = Path::new(exe_path);
+    let lower_path = exe_path.to_lowercase();
+    let candidates = [
+        path.with_file_name("opera.exe"),
+        path.parent()
+            .and_then(|parent| parent.parent())
+            .map(|parent| parent.join("opera.exe"))
+            .unwrap_or_default(),
+    ];
+
+    if lower_path.contains("opera") {
+        return candidates
+            .iter()
+            .find(|candidate| candidate.exists())
+            .map(|candidate| candidate.to_string_lossy().into_owned());
+    }
+
+    None
+}
+
+fn get_default_browser_exe() -> Option<String> {
+    use windows::Win32::System::Registry::{HKEY_CLASSES_ROOT, HKEY_CURRENT_USER};
+
+    let command = if let Some(prog_id) = registry_string_value(
+        HKEY_CURRENT_USER,
+        "Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\https\\UserChoice",
+        Some("ProgId"),
+    ) {
+        let hkcu_command_key = format!("Software\\Classes\\{}\\shell\\open\\command", prog_id);
+        let hkcr_command_key = format!("{}\\shell\\open\\command", prog_id);
+        registry_string_value(HKEY_CURRENT_USER, &hkcu_command_key, None)
+            .or_else(|| registry_string_value(HKEY_CLASSES_ROOT, &hkcr_command_key, None))
+    } else {
+        registry_string_value(HKEY_CLASSES_ROOT, "https\\shell\\open\\command", None)
+    }?;
+    browser_exe_from_command(&command).and_then(|exe| resolve_browser_exe_for_kiosk(&exe))
+}
+
+fn cloud_kiosk_profile_dir(browser_exe: &str) -> std::path::PathBuf {
+    let profile_name = browser_exe_filename(browser_exe)
+        .trim_end_matches(".exe")
+        .replace(|ch: char| !ch.is_ascii_alphanumeric(), "_");
+    liftoff_dir()
+        .join("cloud-browser-profiles")
+        .join(if profile_name.is_empty() {
+            "chromium".to_string()
+        } else {
+            profile_name
+        })
+}
+
+fn classify_browser(exe_path: &str) -> BrowserFamily {
+    match browser_exe_filename(exe_path).as_str() {
+        "msedge.exe" | "chrome.exe" | "opera.exe" | "opera_gx.exe" | "brave.exe"
+        | "vivaldi.exe" => BrowserFamily::Chromium,
+        _ => BrowserFamily::Unsupported,
+    }
+}
+
+fn launch_cloud_game_kiosk(url: &str) -> Result<u32, String> {
+    if !(url.starts_with("http://") || url.starts_with("https://")) {
+        return Err("cloud kiosk launch requires an http(s) URL".to_string());
+    }
+
+    let browser_exe =
+        get_default_browser_exe().ok_or_else(|| "no default browser detected".to_string())?;
+    if !matches!(classify_browser(&browser_exe), BrowserFamily::Chromium) {
+        return Err("default browser doesn't support kiosk mode".to_string());
+    }
+
+    let (width, height) = get_primary_display_resolution();
+    let profile_dir = cloud_kiosk_profile_dir(&browser_exe);
+    std::fs::create_dir_all(&profile_dir)
+        .map_err(|e| format!("cloud kiosk profile unavailable: {}", e))?;
+    let child = std::process::Command::new(&browser_exe)
+        .arg("--kiosk")
+        .arg("--edge-kiosk-type=fullscreen")
+        .arg("--start-fullscreen")
+        .arg("--new-window")
+        .arg(format!("--window-size={},{}", width, height))
+        .arg("--window-position=0,0")
+        .arg("--no-first-run")
+        .arg(format!("--user-data-dir={}", profile_dir.to_string_lossy()))
+        .arg(url)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
+    Ok(child.id())
 }
 
 #[tauri::command]
@@ -3065,7 +3319,8 @@ fn fetch_game_art(game_name: String, source: Option<String>, appid: Option<u32>)
             let hero_static = if let Some(cached) = hero_static_cached.clone() {
                 cached
             } else {
-                let path = try_download("library_hero.jpg", &hero_static_art_dir()).unwrap_or_default();
+                let path =
+                    try_download("library_hero.jpg", &hero_static_art_dir()).unwrap_or_default();
                 hero_static_cache.insert(game_name.clone(), path.clone());
                 save_hero_cache(&hero_static_cache);
                 path
@@ -3078,9 +3333,17 @@ fn fetch_game_art(game_name: String, source: Option<String>, appid: Option<u32>)
                 }
                 return GameArtBundle {
                     grid: if grid.is_empty() { None } else { Some(grid) },
-                    hero_static: if hero_static.is_empty() { None } else { Some(hero_static) },
+                    hero_static: if hero_static.is_empty() {
+                        None
+                    } else {
+                        Some(hero_static)
+                    },
                     hero_animated: hero_animated_cached.and_then(|cached| {
-                        if cached.is_empty() { None } else { Some(cached) }
+                        if cached.is_empty() {
+                            None
+                        } else {
+                            Some(cached)
+                        }
                     }),
                 };
             }
@@ -3678,8 +3941,11 @@ fn get_steam_install_path() -> Option<String> {
                 }
             }
         }
-        None
     }
+    ["C:\\Program Files (x86)\\Steam", "C:\\Program Files\\Steam"]
+        .iter()
+        .find(|path| Path::new(path).join("Steam.exe").exists())
+        .map(|path| path.to_string())
 }
 
 fn steam_library_paths() -> Vec<String> {
@@ -3712,6 +3978,269 @@ fn steam_library_paths() -> Vec<String> {
         }
     }
     library_paths
+}
+
+fn dispatch_steam_uri(uri: &str) -> Result<(), String> {
+    std::process::Command::new("explorer.exe")
+        .arg(uri)
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn validate_steam_appid(appid: &str) -> Result<String, String> {
+    let trimmed = appid.trim();
+    if trimmed.is_empty() || !trimmed.chars().all(|ch| ch.is_ascii_digit()) {
+        return Err("Steam app id invalid".to_string());
+    }
+    Ok(trimmed.to_string())
+}
+
+#[derive(Clone)]
+struct SteamInstallManifest {
+    state_flags: u32,
+    size_on_disk: u64,
+    bytes_downloaded: u64,
+    bytes_to_download: u64,
+    bytes_staged: u64,
+    bytes_to_stage: u64,
+    download_active: bool,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct SteamInstallProgressPayload {
+    appid: String,
+    pct: f64,
+    bytes_done: u64,
+    bytes_total: u64,
+    state: String,
+}
+
+#[derive(Serialize, Clone)]
+struct SteamInstallDonePayload {
+    appid: String,
+}
+
+fn parse_steam_install_manifest(content: &str) -> SteamInstallManifest {
+    let mut manifest = SteamInstallManifest {
+        state_flags: 0,
+        size_on_disk: 0,
+        bytes_downloaded: 0,
+        bytes_to_download: 0,
+        bytes_staged: 0,
+        bytes_to_stage: 0,
+        download_active: false,
+    };
+    for line in content.lines() {
+        let line = line.trim();
+        let value = || extract_vdf_value(line).parse::<u64>().unwrap_or(0);
+        if line.starts_with("\"StateFlags\"") {
+            manifest.state_flags = value().min(u32::MAX as u64) as u32;
+        } else if line.starts_with("\"SizeOnDisk\"") {
+            manifest.size_on_disk = value();
+        } else if line.starts_with("\"BytesDownloaded\"") {
+            manifest.bytes_downloaded = value();
+        } else if line.starts_with("\"BytesToDownload\"") {
+            manifest.bytes_to_download = value();
+        } else if line.starts_with("\"BytesStaged\"") {
+            manifest.bytes_staged = value();
+        } else if line.starts_with("\"BytesToStage\"") {
+            manifest.bytes_to_stage = value();
+        }
+    }
+    manifest
+}
+
+fn read_steam_install_manifest(appid: &str) -> Option<SteamInstallManifest> {
+    steam_library_paths().into_iter().find_map(|library| {
+        let path = Path::new(&library).join(format!("appmanifest_{}.acf", appid));
+        std::fs::read_to_string(path)
+            .ok()
+            .map(|content| {
+                let mut manifest = parse_steam_install_manifest(&content);
+                manifest.download_active = Path::new(&library)
+                    .join("downloading")
+                    .join(appid)
+                    .exists();
+                manifest
+            })
+    })
+}
+
+fn steam_install_progress_payload(
+    appid: &str,
+    manifest: &SteamInstallManifest,
+) -> SteamInstallProgressPayload {
+    let complete = manifest.state_flags & 4 != 0
+        && manifest.size_on_disk > 0
+        && (manifest.bytes_to_download == 0
+            || manifest.bytes_downloaded >= manifest.bytes_to_download);
+    let (bytes_done, bytes_total) = if manifest.bytes_to_stage > 0 {
+        (
+            manifest
+                .bytes_downloaded
+                .saturating_add(manifest.bytes_staged),
+            manifest
+                .bytes_to_download
+                .saturating_add(manifest.bytes_to_stage),
+        )
+    } else {
+        (manifest.bytes_downloaded, manifest.bytes_to_download)
+    };
+    let pct = if complete {
+        100.0
+    } else if bytes_total > 0 {
+        ((bytes_done as f64 / bytes_total as f64) * 1000.0).round() / 10.0
+    } else {
+        0.0
+    }
+    .clamp(0.0, 100.0);
+    let state = if complete {
+        "complete"
+    } else if manifest.bytes_downloaded > 0 || manifest.bytes_to_download > 0 {
+        "downloading"
+    } else {
+        "pending"
+    };
+    SteamInstallProgressPayload {
+        appid: appid.to_string(),
+        pct,
+        bytes_done,
+        bytes_total,
+        state: state.to_string(),
+    }
+}
+
+#[tauri::command]
+fn steam_install_progress(appid: String) -> Result<Option<SteamInstallProgressPayload>, String> {
+    let appid = validate_steam_appid(&appid)?;
+    Ok(read_steam_install_manifest(&appid).and_then(|manifest| {
+        if !manifest.download_active && manifest.size_on_disk == 0 {
+            None
+        } else {
+            Some(steam_install_progress_payload(&appid, &manifest))
+        }
+    }))
+}
+
+#[cfg(test)]
+mod steam_install_progress_tests {
+    use super::{parse_steam_install_manifest, steam_install_progress_payload};
+
+    #[test]
+    fn combines_download_and_staging_work_for_live_install_progress() {
+        let manifest = parse_steam_install_manifest(
+            "\"StateFlags\" \"1538\"\n\"SizeOnDisk\" \"0\"\n\"BytesToDownload\" \"1000\"\n\"BytesDownloaded\" \"500\"\n\"BytesToStage\" \"4000\"\n\"BytesStaged\" \"1000\"",
+        );
+        let payload = steam_install_progress_payload("123", &manifest);
+
+        assert_eq!(payload.pct, 30.0);
+        assert_eq!(payload.bytes_done, 1500);
+        assert_eq!(payload.bytes_total, 5000);
+        assert_eq!(payload.state, "downloading");
+    }
+
+    #[test]
+    fn keeps_fractional_download_progress_without_staging_data() {
+        let manifest = parse_steam_install_manifest(
+            "\"StateFlags\" \"2\"\n\"BytesToDownload\" \"10000\"\n\"BytesDownloaded\" \"1234\"",
+        );
+        let payload = steam_install_progress_payload("123", &manifest);
+
+        assert_eq!(payload.pct, 12.3);
+        assert_eq!(payload.bytes_done, 1234);
+        assert_eq!(payload.bytes_total, 10000);
+    }
+}
+
+fn spawn_steam_install_watcher(app: tauri::AppHandle, appid: String) {
+    std::thread::spawn(move || {
+        let mut misses = 0u32;
+        let mut saw_active_download = false;
+        for _ in 0..4800 {
+            if let Some(manifest) = read_steam_install_manifest(&appid) {
+                misses = 0;
+                let payload = steam_install_progress_payload(&appid, &manifest);
+                let done = payload.state == "complete";
+                if done {
+                    let _ = app.emit("steam-install-progress", payload);
+                    let _ = app.emit("steam-install-done", SteamInstallDonePayload { appid });
+                    return;
+                }
+                if manifest.download_active {
+                    saw_active_download = true;
+                    let _ = app.emit("steam-install-progress", payload);
+                } else if saw_active_download && manifest.size_on_disk == 0 {
+                    let _ = app.emit("steam-uninstall-done", SteamInstallDonePayload { appid });
+                    return;
+                }
+            } else {
+                misses += 1;
+                if misses > 80 {
+                    let _ = app.emit("steam-install-error", SteamInstallDonePayload { appid });
+                    return;
+                }
+            }
+            std::thread::sleep(Duration::from_millis(250));
+        }
+        let _ = app.emit("steam-install-error", SteamInstallDonePayload { appid });
+    });
+}
+
+fn spawn_steam_uninstall_watcher(app: tauri::AppHandle, appid: String) {
+    std::thread::spawn(move || {
+        for _ in 0..240 {
+            if read_steam_install_manifest(&appid)
+                .map(|manifest| manifest.size_on_disk == 0)
+                .unwrap_or(true)
+            {
+                let _ = app.emit("steam-uninstall-done", SteamInstallDonePayload { appid });
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(250));
+        }
+        let _ = app.emit("steam-install-error", SteamInstallDonePayload { appid });
+    });
+}
+
+#[tauri::command]
+fn steam_install(app_handle: tauri::AppHandle, appid: String) -> Result<(), String> {
+    let appid = validate_steam_appid(&appid)?;
+    if get_steam_install_path().is_none() {
+        return Err("steam-client-missing".to_string());
+    }
+    dispatch_steam_uri(&format!("steam://install/{}", appid))?;
+    spawn_steam_install_watcher(app_handle, appid);
+    Ok(())
+}
+
+#[tauri::command]
+fn steam_uninstall(app_handle: tauri::AppHandle, appid: String) -> Result<(), String> {
+    let appid = validate_steam_appid(&appid)?;
+    if get_steam_install_path().is_none() {
+        return Err("steam-client-missing".to_string());
+    }
+    dispatch_steam_uri(&format!("steam://uninstall/{}", appid))?;
+    spawn_steam_uninstall_watcher(app_handle, appid);
+    Ok(())
+}
+
+#[tauri::command]
+fn steam_verify(appid: String) -> Result<(), String> {
+    let appid = validate_steam_appid(&appid)?;
+    if get_steam_install_path().is_none() {
+        return Err("steam-client-missing".to_string());
+    }
+    dispatch_steam_uri(&format!("steam://validate/{}", appid))
+}
+
+#[tauri::command]
+fn steam_watch_install(app_handle: tauri::AppHandle, appid: String) -> Result<(), String> {
+    let appid = validate_steam_appid(&appid)?;
+    spawn_steam_install_watcher(app_handle, appid);
+    Ok(())
 }
 
 fn battlenet_exec_code(uid: &str) -> Option<&'static str> {
@@ -4121,6 +4650,9 @@ fn scan_steam_games() -> Vec<AppEntry> {
                     continue;
                 }
                 if let Ok(content) = std::fs::read_to_string(&p) {
+                    if parse_steam_install_manifest(&content).size_on_disk == 0 {
+                        continue;
+                    }
                     let mut name = String::new();
                     let mut install_dir = String::new();
                     let mut app_id = String::new();
@@ -5432,7 +5964,7 @@ async fn launch_app(
     source: String,
     run_as_admin: Option<bool>,
     app_handle: tauri::AppHandle,
-) -> Result<(), String> {
+) -> Result<LaunchAppResult, String> {
     let id_for_tracking = id.clone();
     let name_for_tracking = name.clone();
     let path_for_tracking = path.clone();
@@ -5483,8 +6015,31 @@ async fn launch_app(
     // child_pid: Some(pid) when we spawn the game directly (allows precise matching);
     // None for launcher-mediated paths where the game process is a grandchild.
     let child_pid: u32;
+    let mut launch_mode = "direct".to_string();
+    let mut launch_detail: Option<String> = None;
+    let mut fallback_reason: Option<String> = None;
+    let cloud_kiosk_pid = if source.eq_ignore_ascii_case("cloud") {
+        match launch_cloud_game_kiosk(&path) {
+            Ok(pid) => {
+                launch_mode = "cloud-kiosk".to_string();
+                launch_detail = get_default_browser_exe()
+                    .map(|browser| format!("{} pid={}", browser, pid));
+                Some(pid)
+            }
+            Err(error) => {
+                eprintln!("Cloud kiosk launch fallback: {}", error);
+                launch_mode = "cloud-url-fallback".to_string();
+                fallback_reason = Some(error);
+                None
+            }
+        }
+    } else {
+        None
+    };
 
-    if let Some(rest) = path.strip_prefix("bnet-exec:") {
+    if let Some(pid) = cloud_kiosk_pid {
+        child_pid = pid;
+    } else if let Some(rest) = path.strip_prefix("bnet-exec:") {
         // "bnet-exec:{exe_path}|{code}" — Battle.net.exe --exec="launch CODE"
         if let Some((exe, code)) = rest.split_once('|') {
             std::process::Command::new(exe)
@@ -5494,17 +6049,15 @@ async fn launch_app(
                 .map_err(|e| e.to_string())?;
         }
         // BNet spawns the game as a separate process; use snapshot-diff approach.
+        launch_mode = "battlenet".to_string();
         child_pid = 0;
     } else if path.starts_with("steam://") {
         // Route through explorer.exe so the launch is always dispatched at
         // Medium integrity (normal user level), even when LiftOff is elevated.
         // This keeps tools like AnyFSE, which hook into game launches at
         // normal integrity, able to intercept the launch correctly.
-        std::process::Command::new("explorer.exe")
-            .arg(&path)
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        dispatch_steam_uri(&path)?;
+        launch_mode = "steam-uri".to_string();
         child_pid = 0;
     } else if path.starts_with("com.epicgames.launcher://") {
         // Epic's registered URL protocol must be opened through ShellExecute.
@@ -5535,6 +6088,7 @@ async fn launch_app(
                 ));
             }
         }
+        launch_mode = "epic-uri".to_string();
         child_pid = 0;
     } else if path.starts_with("shell:") {
         // shell:AppsFolder\{aumid} — UWP / Xbox Game Pass titles.
@@ -5544,6 +6098,7 @@ async fn launch_app(
             .creation_flags(CREATE_NO_WINDOW)
             .spawn()
             .map_err(|e| e.to_string())?;
+        launch_mode = "shell-uri".to_string();
         child_pid = 0;
     } else if path.to_lowercase().ends_with(".lnk") {
         // Windows shortcut — ShellExecuteW with "open" lets Windows resolve the
@@ -5567,6 +6122,7 @@ async fn launch_app(
                 SW_SHOWNORMAL,
             );
         }
+        launch_mode = "shortcut".to_string();
         child_pid = 0;
     } else if path.contains("://") {
         // ShellExecuteW for other URI schemes (https://, etc.)
@@ -5587,6 +6143,9 @@ async fn launch_app(
                 windows::core::PCWSTR::null(),
                 SW_SHOWNORMAL,
             );
+        }
+        if !source.eq_ignore_ascii_case("cloud") {
+            launch_mode = "url".to_string();
         }
         child_pid = 0;
     } else {
@@ -5615,6 +6174,7 @@ async fn launch_app(
                 );
             }
             // PID not recoverable from ShellExecute; fast-dismiss after delay.
+            launch_mode = "elevated".to_string();
             child_pid = 0;
         } else {
             let child = std::process::Command::new(&path)
@@ -5622,6 +6182,8 @@ async fn launch_app(
                 .spawn()
                 .map_err(|e| e.to_string())?;
             child_pid = child.id();
+            launch_mode = "direct".to_string();
+            launch_detail = Some(format!("pid={}", child_pid));
         }
     }
 
@@ -5652,10 +6214,10 @@ async fn launch_app(
     // window to detect), we fast-dismiss after a short delay — the window watcher
     // can't find these reliably (already-running tray apps, indirect spawns, etc.).
     //
-    // For direct .exe spawns we have a real PID and can do proper detection.
-    // Games always use the full watcher regardless of launch path.
     let handle = app_handle.clone();
-    let is_lnk_or_indirect = child_pid == 0 && app_type == "app";
+    let is_http_uri_launch =
+        child_pid == 0 && (path.starts_with("http://") || path.starts_with("https://"));
+    let is_lnk_or_indirect = (child_pid == 0 && app_type == "app") || is_http_uri_launch;
     std::thread::spawn(move || {
         if is_lnk_or_indirect {
             std::thread::sleep(std::time::Duration::from_millis(1500));
@@ -5733,7 +6295,12 @@ async fn launch_app(
         let _ = handle.emit("launch-success", ());
     });
 
-    Ok(())
+    Ok(LaunchAppResult {
+        launch_mode,
+        child_pid: (child_pid != 0).then_some(child_pid),
+        detail: launch_detail,
+        fallback_reason,
+    })
 }
 
 fn is_our_window_focused() -> bool {
@@ -5817,6 +6384,11 @@ pub fn run() {
             steam_account_status,
             steam_logout,
             fetch_steam_owned_games,
+            steam_install,
+            steam_uninstall,
+            steam_verify,
+            steam_watch_install,
+            steam_install_progress,
             get_pins,
             toggle_pin,
             get_hidden,

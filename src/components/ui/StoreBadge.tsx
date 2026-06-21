@@ -9,6 +9,7 @@ const STORE_ICONS = {
   battlenet: FaBattleNet,
   gog: SiGogdotcom,
   epic: SiEpicgames,
+  cloud: CloudIcon,
 };
 
 const STORE_LABELS: Record<string, string> = {
@@ -17,7 +18,22 @@ const STORE_LABELS: Record<string, string> = {
   battlenet: "Battle.net",
   gog: "GOG",
   epic: "Epic Games",
+  cloud: "Cloud",
 };
+
+function CloudIcon({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7.5 18.5h9a4.2 4.2 0 0 0 .5-8.36A6.1 6.1 0 0 0 5.4 8.05 5.3 5.3 0 0 0 7.5 18.5Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 interface StoreBadgeProps {
   source?: string;
@@ -69,4 +85,3 @@ export function StoreBadge({ source, small = false, inline = false }: StoreBadge
     </div>
   );
 }
-

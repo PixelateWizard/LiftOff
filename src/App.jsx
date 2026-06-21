@@ -1,6 +1,6 @@
 //Copyright (C) 2025 Taylor Denby
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "./i18n";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
@@ -19,6 +19,7 @@ import ModalShell from "./components/modals/ModalShell";
 import ContextMenuModal from "./components/modals/ContextMenuModal";
 import HideModal from "./components/modals/HideModal";
 import LibraryActionsModal from "./components/modals/LibraryActionsModal";
+import CloudGamePickerModal from "./components/modals/CloudGamePickerModal";
 import EditNameModal from "./components/modals/EditNameModal";
 import PowerModal from "./components/modals/PowerModal";
 import { SettingsScreen, buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "./views/settings";
@@ -72,6 +73,12 @@ import { CyberpunkCard, FocusRing, StoreBadge } from "./components/ui";
 
 const INSTALL_FILTERS = ["all", "installed", "notInstalled"];
 const GAMES_SORTS = ["recent", "az", "store"];
+const steamAppIdFor = (app) => {
+  if (!app) return null;
+  if (app.steam_appid != null) return String(app.steam_appid);
+  const raw = `${app.id ?? ""} ${app.launch_path ?? ""}`;
+  return raw.match(/steam:\/\/rungameid\/(\d+)/i)?.[1] ?? null;
+};
 
 export default function App() {
   useAppFocusPause();
@@ -176,6 +183,12 @@ export default function App() {
     showSteamQrRef.current = value;
     setShowSteamQrState(value);
   };
+  const [showCloudPicker, setShowCloudPickerState] = useState(false);
+  const showCloudPickerRef = useRef(false);
+  const setShowCloudPicker = (value) => {
+    showCloudPickerRef.current = value;
+    setShowCloudPickerState(value);
+  };
   const [steamStatus, setSteamStatus] = useState({ connected: false, owned_count: 0 });
   const [steamQrUrl, setSteamQrUrl] = useState("");
   const [steamQrPhase, setSteamQrPhase] = useState("idle");
@@ -276,6 +289,9 @@ export default function App() {
   const [detailsApp, setDetailsApp] = useState(null);
   const detailsAppRef = useRef(null);
   const [installSize, setInstallSize] = useState({});
+  const [installProgress, setInstallProgress] = useState({});
+  const [installErrors, setInstallErrors] = useState({});
+  const [steamUninstallRequest, setSteamUninstallRequest] = useState(null);
   const {
     appCollections, setAppCollections, appCollectionsRef,
     appMemberships, setAppMemberships, appMembershipsRef,
@@ -330,6 +346,10 @@ export default function App() {
     onLoaded,
     onLoadError,
   });
+  const refreshLibraryRef = useRef(refreshLibrary);
+  useEffect(() => {
+    refreshLibraryRef.current = refreshLibrary;
+  }, [refreshLibrary]);
   const {
     settings,
     settingsRef,
@@ -567,6 +587,7 @@ export default function App() {
     showSpotifyGuideRef,
     showSpotifyOverlayRef,
     showSteamQrRef,
+    showCloudPickerRef,
     themePickerFocusIndexRef,
     surfacePickerFocusIndexRef,
     artPickerAppRef,
@@ -870,6 +891,158 @@ export default function App() {
     return hit?.launched_at;
   };
 
+  const patchLibraryApp = useCallback((id, patch) => {
+    const applyPatch = (app) => {
+      if (!app || app.id !== id) return app;
+      const nextPatch = typeof patch === "function" ? patch(app) : patch;
+      return { ...app, ...nextPatch };
+    };
+    setApps((prev) => {
+      const next = prev.map(applyPatch);
+      appsRef.current = next;
+      return next;
+    });
+    allAppsRef.current = allAppsRef.current.map(applyPatch);
+    setDetailsApp((prev) => {
+      const next = applyPatch(prev);
+      detailsAppRef.current = next;
+      return next;
+    });
+  }, [allAppsRef, appsRef]);
+
+  const setInstallProgressForApp = useCallback((id, progress) => {
+    setInstallProgress((prev) => ({ ...prev, [id]: progress }));
+    patchLibraryApp(id, { installing: true, installProgress: progress.pct ?? 0 });
+  }, [patchLibraryApp]);
+
+  const clearInstallProgressForApp = useCallback((id) => {
+    setInstallProgress((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    patchLibraryApp(id, { installing: false, installProgress: undefined });
+  }, [patchLibraryApp]);
+
+  const setInstallErrorForApp = useCallback((id, code) => {
+    setInstallErrors((prev) => ({ ...prev, [id]: code }));
+  }, []);
+
+  const clearInstallErrorForApp = useCallback((id) => {
+    setInstallErrors((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
+
+  const startSteamInstall = useCallback((app) => {
+    const appid = steamAppIdFor(app);
+    if (!appid) return;
+    const id = `steam://rungameid/${appid}`;
+    clearInstallErrorForApp(id);
+    setInstallProgressForApp(id, { appid, pct: 0, bytesDone: 0, bytesTotal: 0, state: "pending" });
+    invoke("steam_install", { appid }).catch((error) => {
+      clearInstallProgressForApp(id);
+      patchLibraryApp(id, { installing: false, installProgress: undefined });
+      setInstallErrorForApp(id, String(error).includes("steam-client-missing") ? "noClient" : "generic");
+    });
+  }, [clearInstallErrorForApp, clearInstallProgressForApp, patchLibraryApp, setInstallErrorForApp, setInstallProgressForApp]);
+
+  const cancelSteamInstall = useCallback((app) => {
+    const appid = steamAppIdFor(app);
+    if (!appid) return;
+    const id = `steam://rungameid/${appid}`;
+    setInstallProgressForApp(id, { appid, pct: installProgress[id]?.pct ?? 0, bytesDone: installProgress[id]?.bytesDone ?? 0, bytesTotal: installProgress[id]?.bytesTotal ?? 0, state: "uninstalling" });
+    invoke("steam_uninstall", { appid }).catch((error) => {
+      setInstallErrorForApp(id, String(error).includes("steam-client-missing") ? "noClient" : "generic");
+    });
+  }, [installProgress, setInstallErrorForApp, setInstallProgressForApp]);
+
+  const runSteamUninstall = useCallback((app) => {
+    const appid = steamAppIdFor(app);
+    if (!appid) return;
+    const id = `steam://rungameid/${appid}`;
+    clearInstallErrorForApp(id);
+    setInstallProgressForApp(id, { appid, pct: 0, bytesDone: 0, bytesTotal: 0, state: "uninstalling" });
+    invoke("steam_uninstall", { appid }).catch((error) => {
+      clearInstallProgressForApp(id);
+      setInstallErrorForApp(id, String(error).includes("steam-client-missing") ? "noClient" : "generic");
+    });
+  }, [clearInstallErrorForApp, clearInstallProgressForApp, setInstallErrorForApp, setInstallProgressForApp]);
+
+  const verifySteamInstall = useCallback((app) => {
+    const appid = steamAppIdFor(app);
+    if (!appid) return;
+    const id = `steam://rungameid/${appid}`;
+    clearInstallErrorForApp(id);
+    invoke("steam_verify", { appid }).catch((error) => {
+      setInstallErrorForApp(id, String(error).includes("steam-client-missing") ? "noClient" : "generic");
+    });
+  }, [clearInstallErrorForApp, setInstallErrorForApp]);
+
+  const applySteamProgress = useCallback((payload) => {
+    if (!payload) return;
+    const appid = String(payload.appid ?? payload.appId ?? "");
+    if (!appid) return;
+    const id = `steam://rungameid/${appid}`;
+    const progress = {
+      appid,
+      pct: Number(payload.pct ?? 0),
+      bytesDone: Number(payload.bytesDone ?? payload.bytes_done ?? 0),
+      bytesTotal: Number(payload.bytesTotal ?? payload.bytes_total ?? 0),
+      state: String(payload.state ?? "downloading"),
+    };
+    if (progress.state === "complete") {
+      clearInstallProgressForApp(id);
+      patchLibraryApp(id, { installed: true, installing: false, installProgress: undefined });
+      refreshLibraryRef.current();
+      return;
+    }
+    clearInstallErrorForApp(id);
+    setInstallProgressForApp(id, progress);
+  }, [clearInstallErrorForApp, clearInstallProgressForApp, patchLibraryApp, setInstallProgressForApp]);
+
+  const watchedSteamAppIds = useMemo(() => Object.values(installProgress)
+    .filter((progress) => progress?.appid && progress.state !== "uninstalling" && progress.state !== "complete")
+    .map((progress) => String(progress.appid))
+    .sort()
+    .join(","), [installProgress]);
+
+  useEffect(() => {
+    if (!watchedSteamAppIds) return;
+    let disposed = false;
+    const appids = watchedSteamAppIds.split(",").filter(Boolean);
+    const poll = () => {
+      appids.forEach((appid) => {
+        invoke("steam_install_progress", { appid })
+          .then((payload) => {
+            if (!disposed) applySteamProgress(payload);
+          })
+          .catch(() => {});
+      });
+    };
+    poll();
+    const timer = window.setInterval(poll, 250);
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, [applySteamProgress, watchedSteamAppIds]);
+
+  useEffect(() => {
+    if (!detailsApp || detailsApp.installed !== false || detailsApp.source !== "steam") return;
+    const appid = steamAppIdFor(detailsApp);
+    if (!appid || installProgress[detailsApp.id]) return;
+    invoke("steam_install_progress", { appid })
+      .then((payload) => {
+        const bytesTotal = Number(payload?.bytesTotal ?? payload?.bytes_total ?? 0);
+        const state = String(payload?.state ?? "");
+        if (bytesTotal > 0 && state !== "complete") applySteamProgress(payload);
+      })
+      .catch(() => {});
+  }, [applySteamProgress, detailsApp, installProgress]);
+
   useEffect(() => {
     if (!detailsApp || detailsApp.installed === false || !detailsApp.launch_path) return;
     if (Object.prototype.hasOwnProperty.call(installSize, detailsApp.id)) return;
@@ -889,8 +1062,54 @@ export default function App() {
   }, [detailsApp, installSize]);
 
   useEffect(() => {
+    let disposed = false;
+    const unsubs = [];
+    const bind = async () => {
+      unsubs.push(await listen("steam-install-progress", (event) => {
+        applySteamProgress(event.payload ?? {});
+      }));
+      unsubs.push(await listen("steam-install-done", (event) => {
+        const payload = event.payload ?? {};
+        const appid = String(payload.appid ?? payload.appId ?? "");
+        if (!appid) return;
+        const id = `steam://rungameid/${appid}`;
+        clearInstallProgressForApp(id);
+        patchLibraryApp(id, { installed: true, installing: false, installProgress: undefined });
+        refreshLibraryRef.current();
+      }));
+      unsubs.push(await listen("steam-uninstall-done", (event) => {
+        const payload = event.payload ?? {};
+        const appid = String(payload.appid ?? payload.appId ?? "");
+        if (!appid) return;
+        const id = `steam://rungameid/${appid}`;
+        clearInstallProgressForApp(id);
+        patchLibraryApp(id, { installed: false, install_dir: undefined, installing: false, installProgress: undefined });
+        refreshLibraryRef.current();
+      }));
+      unsubs.push(await listen("steam-install-error", (event) => {
+        const payload = event.payload ?? {};
+        const appid = String(payload.appid ?? payload.appId ?? "");
+        if (!appid) return;
+        const id = `steam://rungameid/${appid}`;
+        clearInstallProgressForApp(id);
+        setInstallErrorForApp(id, "watchError");
+      }));
+      if (disposed) {
+        while (unsubs.length) unsubs.pop()?.();
+      }
+    };
+    bind();
+    return () => {
+      disposed = true;
+      while (unsubs.length) unsubs.pop()?.();
+    };
+  }, [applySteamProgress, clearInstallProgressForApp, patchLibraryApp, setInstallErrorForApp]);
+
+  useEffect(() => {
     if (!detailsApp || detailsApp.app_type !== "game") return;
-    if (gameArt[detailsApp.id] && (heroStatic[detailsApp.id] || heroAnimated[detailsApp.id])) return;
+    const artChecked = [gameArt, heroStatic, heroAnimated]
+      .every((artMap) => Object.prototype.hasOwnProperty.call(artMap, detailsApp.id));
+    if (artChecked) return;
     fetchGameArt([detailsApp], undefined, { includeUninstalled: true });
   }, [detailsApp, gameArt, heroStatic, heroAnimated, fetchGameArt]);
 
@@ -1233,6 +1452,7 @@ export default function App() {
     && a.source !== "battlenet"
     && a.source !== "gog"
     && a.source !== "epic"
+    && a.source !== "cloud"
     && !customSources.includes(a.source);
 
   const isInstalled = (app) => app?.installed !== false;
@@ -1261,6 +1481,7 @@ export default function App() {
     if (gameSourceTab === "Battle.net")  return a.source === "battlenet";
     if (gameSourceTab === "GOG")  return a.source === "gog";
     if (gameSourceTab === "Epic") return a.source === "epic";
+    if (gameSourceTab === "Cloud") return a.source === "cloud";
     if (gameSourceTab === "Other") return isOtherGameSource(a);
     if (customSources.includes(gameSourceTab)) return a.source === gameSourceTab;
     const gameCol = gameCollections.find(c => c.name === gameSourceTab);
@@ -1636,6 +1857,9 @@ export default function App() {
 
   const GameCard = ({ app, focused, onClick, onDoubleClick, cardRef, isPinned, isRunning: cardRunning, onRightClick, calmMotion = false }) => {
     const art = customArt[app.id] || gameArt[app.id];
+    const installState = installProgress[app.id];
+    const installing = !!installState && installState.state !== "complete";
+    const installPct = Math.max(0, Math.min(100, Number(installState?.pct ?? 0)));
     const innerBase = art
       ? { background: "transparent", backdropFilter: "none", WebkitBackdropFilter: "none" }
       : glass;
@@ -1668,6 +1892,50 @@ export default function App() {
           <RunningBadge show={cardRunning} />
           <PinBadge isPinned={isPinned} />
           <StoreBadge source={app.source} />
+          {installing && (
+            <div style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 4,
+              pointerEvents: "none",
+              background: "linear-gradient(180deg, rgba(0,0,0,0.22), rgba(0,0,0,0.56))",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 12,
+              boxSizing: "border-box",
+            }}>
+              <div style={{
+                borderRadius: 999,
+                padding: "6px 10px",
+                background: "rgba(0,0,0,0.68)",
+                border: "1px solid rgba(255,255,255,0.18)",
+                color: "white",
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                boxShadow: "0 10px 24px rgba(0,0,0,0.35)",
+              }}>
+                {installState.state === "uninstalling" ? t("install.uninstalling") : `${t("install.installing")} ${installPct}%`}
+              </div>
+              <div style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 5,
+                background: "rgba(255,255,255,0.18)",
+              }}>
+                <div style={{
+                  width: `${installPct}%`,
+                  height: "100%",
+                  background: `linear-gradient(90deg, ${accent.primary}, ${accent.light})`,
+                  transition: "width 180ms ease",
+                }} />
+              </div>
+            </div>
+          )}
           {focused && !isOnyx && resolvedTheme !== "cyberpunk" && (
             <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, pointerEvents: "none" }} />
           )}
@@ -1757,18 +2025,20 @@ export default function App() {
   const _showBattlenet = settings.scan_battlenet !== false && _hasSource("battlenet");
   const _showGog       = settings.scan_gog       !== false && _hasSource("gog");
   const _showEpic      = settings.scan_epic      !== false && _hasSource("epic");
+  const _showCloud     = _hasSource("cloud");
   const _showOther     = apps.some(isOtherGameSource);
-  const _hdrSources = [
+  const _hdrSources = [...new Map([
     "All",
     ...(_showSteam     ? ["Steam"]      : []),
     ...(_showXbox      ? ["Xbox"]       : []),
     ...(_showBattlenet ? ["Battle.net"] : []),
     ...(_showGog       ? ["GOG"]        : []),
     ...(_showEpic      ? ["Epic"]       : []),
+    ...(_showCloud     ? ["Cloud"]      : []),
     ...(_showOther     ? ["Other"]      : []),
     ...customSources,
     ...gameCollections.map(c => c.name),
-  ];
+  ].map(source => [source.toLocaleLowerCase(), source])).values()];
   const _hdrSourceKey = _hdrSources.join("|");
   useEffect(() => {
     if (!_hdrSources.includes(gameSourceTab) || !_hdrSources.includes(gameSourceTabRef.current)) {
@@ -2105,6 +2375,18 @@ export default function App() {
           onCancel={() => setCloseRequest(null)}
         />
       )}
+      {steamUninstallRequest && (
+        <ConfirmModal
+          message={t("install.confirmUninstall", { name: steamUninstallRequest.name })}
+          confirmLabel={t("install.uninstall")}
+          onConfirm={() => {
+            const app = steamUninstallRequest;
+            setSteamUninstallRequest(null);
+            runSteamUninstall(app);
+          }}
+          onCancel={() => setSteamUninstallRequest(null)}
+        />
+      )}
       {detailsApp && (
         <GameDetailsModal
           app={detailsApp}
@@ -2117,8 +2399,15 @@ export default function App() {
           playtimeMinutes={detailsApp.playtime_minutes ?? undefined}
           sizeBytes={installSize[detailsApp.id] === null ? undefined : installSize[detailsApp.id]}
           installed={detailsApp.installed !== false}
+          canInstall={detailsApp.source === "steam" && !!steamAppIdFor(detailsApp)}
+          installProgress={installProgress[detailsApp.id]}
+          installError={installErrors[detailsApp.id]}
           hapticEnabled={settings.haptic_feedback ?? true}
           onPlay={() => { triggerLaunch(detailsApp, recentRef.current); closeDetailsModal(false); }}
+          onInstall={() => startSteamInstall(detailsApp)}
+          onCancelInstall={() => cancelSteamInstall(detailsApp)}
+          onUninstall={() => setSteamUninstallRequest(detailsApp)}
+          onVerify={() => verifySteamInstall(detailsApp)}
           onTogglePin={() => togglePin(detailsApp)}
           isPinned={pins.includes(detailsApp.id)}
           onToggleHidden={() => toggleHidden(detailsApp.id)}
@@ -2233,10 +2522,29 @@ export default function App() {
         <LibraryActionsModal
           tab={tab}
           onAddFile={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("file"); showFileBrowserRef.current = "file"; }}
+          onAddCloud={() => setShowCloudPicker(true)}
           onAddFolder={() => { setAddAppType(tab === "Games" ? "game" : "app"); setShowFileBrowser("folder"); showFileBrowserRef.current = "folder"; }}
           onManage={openHideModal}
           onCollections={() => { setShowColModal(true); showColModalRef.current = true; }}
           onClose={closeLibraryActionsModal}
+        />
+      )}
+      {showCloudPicker && (
+        <CloudGamePickerModal
+          onConfirm={(selected) => {
+            const launchPath = `https://www.xbox.com/en-us/play/games/${selected.slug}/${selected.productId}`;
+            invoke("add_custom_app", {
+              id: `cloud:${selected.slug}`,
+              name: selected.name,
+              path: launchPath,
+              appType: "game",
+              source: "cloud",
+            }).then(() => {
+              setShowCloudPicker(false);
+              refreshLibrary();
+            });
+          }}
+          onClose={() => setShowCloudPicker(false)}
         />
       )}
       {showPowerModal && (
@@ -2336,7 +2644,7 @@ export default function App() {
 
             // Single entry: track custom source name unless it's a collection name
             if (isGameType && result.source) {
-              const BUILTIN = new Set(["Steam","Xbox","Battle.net","GOG","Epic","Other","steam","xbox","battlenet","gog","epic","desktop","uwp"]);
+              const BUILTIN = new Set(["Steam","Xbox","Battle.net","GOG","Epic","Cloud","Other","steam","xbox","battlenet","gog","epic","cloud","desktop","uwp"]);
               const isColName = gameCollectionsRef.current.some(c => c.name === result.source);
               if (!BUILTIN.has(result.source) && !isColName) {
                 setCustomSources(prev => prev.includes(result.source) ? prev : [...prev, result.source]);
@@ -2660,7 +2968,7 @@ export default function App() {
       )}
       </AppOverlays>
 
-      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || showSpotifyGuide || showSpotifyOverlay || showSteamQr || detailsApp) ? "none" : "auto" }}>
+      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || showSpotifyGuide || showSpotifyOverlay || showSteamQr || showCloudPicker || detailsApp) ? "none" : "auto" }}>
 
         {/* Topbar */}
         <AppHeader

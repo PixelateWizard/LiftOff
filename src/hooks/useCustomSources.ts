@@ -21,17 +21,14 @@ export interface CustomSourcesData {
 }
 
 const BUILTIN_SOURCES = new Set([
-  "Steam",
-  "Xbox",
-  "Battle.net",
-  "GOG",
-  "Epic",
-  "Other",
   "steam",
   "xbox",
+  "battle.net",
   "battlenet",
   "gog",
   "epic",
+  "cloud",
+  "other",
   "desktop",
   "uwp",
 ]);
@@ -40,7 +37,9 @@ function getCustomSources(data: CustomData): string[] {
   return [...new Set([
     ...data.apps.map(a => a.source),
     ...data.folders.map(f => f.source),
-  ])].filter((source): source is string => !!source && !BUILTIN_SOURCES.has(source));
+  ])].filter((source): source is string =>
+    !!source && !BUILTIN_SOURCES.has(source.toLocaleLowerCase())
+  );
 }
 
 export function useCustomSources(): CustomSourcesData {

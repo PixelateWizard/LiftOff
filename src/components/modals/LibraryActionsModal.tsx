@@ -7,13 +7,28 @@ import { useTheme } from "../../contexts/ThemeContext";
 interface Props {
   tab: string;
   onAddFile: () => void;
+  onAddCloud?: () => void;
   onAddFolder: () => void;
   onManage: () => void;
   onCollections: () => void;
   onClose: () => void;
 }
 
-export default function LibraryActionsModal({ tab, onAddFile, onAddFolder, onManage, onCollections, onClose }: Props) {
+function CloudIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7.5 18.5h9a4.2 4.2 0 0 0 .5-8.36A6.1 6.1 0 0 0 5.4 8.05 5.3 5.3 0 0 0 7.5 18.5Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export default function LibraryActionsModal({ tab, onAddFile, onAddCloud, onAddFolder, onManage, onCollections, onClose }: Props) {
   const { accent, theme, isDark } = useTheme();
   const { t } = useTranslation();
   const [focusIdx, setFocusIdx] = useState(0);
@@ -33,6 +48,12 @@ export default function LibraryActionsModal({ tab, onAddFile, onAddFolder, onMan
       ),
       action: onAddFile,
     },
+    ...(isGames && onAddCloud ? [{
+      key: "add_cloud",
+      label: t("addEntry.addCloudGame"),
+      icon: <CloudIcon />,
+      action: onAddCloud,
+    }] : []),
     {
       key: "add_folder",
       label: t("addEntry.addFolder"),
