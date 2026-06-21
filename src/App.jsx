@@ -2447,7 +2447,7 @@ export default function App() {
             editNameAppRef.current = app;
           }}
           onMoveToApps={() => { applyCategoryOverride(detailsApp.id, "app", null); closeDetailsModal(false); }}
-          onDelete={detailsApp.id.startsWith("custom_") ? () => {
+          onDelete={(detailsApp.id.startsWith("custom_") || detailsApp.id.startsWith("cloud:")) ? () => {
             const app = detailsApp;
             closeDetailsModal(false);
             setConfirmDelete(app);

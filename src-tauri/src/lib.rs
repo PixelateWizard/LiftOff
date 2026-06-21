@@ -2,7 +2,7 @@
 
 use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::os::windows::ffi::OsStrExt;
@@ -11,7 +11,7 @@ use std::path::Path;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::Emitter;
 use tauri::Manager;
 use tauri_plugin_autostart::MacosLauncher;
@@ -43,6 +43,10 @@ use windows::{
 
 const SGDB_KEY: &str = env!("SGDB_API_KEY");
 const RECENTS_MAX: usize = 10;
+const XCLOUD_REMOTE_URL: &str =
+    "https://raw.githubusercontent.com/PixelateWizard/LiftOff/main/src/data/xcloudGames.json";
+const XCLOUD_BUNDLED_JSON: &str = include_str!("../../src/data/xcloudGames.json");
+const XCLOUD_REFRESH_INTERVAL_SECS: u64 = 24 * 60 * 60;
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 /// PNG size for embedded icons. UI tiles are ~48px; 128px gives headroom for high-DPI / focus scale
@@ -528,6 +532,184 @@ fn recent_games_path() -> std::path::PathBuf {
 }
 fn custom_names_path() -> std::path::PathBuf {
     liftoff_dir().join("custom_names.json")
+}
+
+fn xcloud_cache_path() -> std::path::PathBuf {
+    liftoff_dir().join("xcloud_games_cache.json")
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct XCloudGameEntry {
+    name: String,
+    slug: String,
+    product_id: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct XCloudCache {
+    fetched_at: u64,
+    games: Vec<XCloudGameEntry>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct XCloudListResponse {
+    games: Vec<XCloudGameEntry>,
+    fetched_at: Option<u64>,
+    source: String,
+    refresh_error: Option<String>,
+}
+
+fn unix_timestamp() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+}
+
+fn valid_xcloud_slug(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 160
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+}
+
+fn valid_xcloud_product_id(value: &str) -> bool {
+    (8..=20).contains(&value.len())
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric())
+}
+
+fn validated_xcloud_entries(entries: Vec<XCloudGameEntry>) -> Vec<XCloudGameEntry> {
+    let mut seen_slugs = HashSet::new();
+    let mut seen_products = HashSet::new();
+    let mut valid = Vec::new();
+    for mut entry in entries {
+        entry.name = entry.name.trim().to_string();
+        entry.slug = entry.slug.trim().to_string();
+        entry.product_id = entry.product_id.trim().to_string();
+        if entry.name.is_empty()
+            || entry.name.len() > 200
+            || !valid_xcloud_slug(&entry.slug)
+            || !valid_xcloud_product_id(&entry.product_id)
+            || !seen_slugs.insert(entry.slug.clone())
+            || !seen_products.insert(entry.product_id.clone())
+        {
+            eprintln!(
+                "Ignoring invalid or duplicate xCloud seed entry: {}",
+                entry.name
+            );
+            continue;
+        }
+        valid.push(entry);
+    }
+    valid.sort_by(|left, right| left.name.to_lowercase().cmp(&right.name.to_lowercase()));
+    valid
+}
+
+fn bundled_xcloud_games() -> Vec<XCloudGameEntry> {
+    serde_json::from_str::<Vec<XCloudGameEntry>>(XCLOUD_BUNDLED_JSON)
+        .map(validated_xcloud_entries)
+        .unwrap_or_default()
+}
+
+fn read_xcloud_cache() -> Option<XCloudCache> {
+    let raw = std::fs::read_to_string(xcloud_cache_path()).ok()?;
+    let mut cache = serde_json::from_str::<XCloudCache>(&raw).ok()?;
+    cache.games = validated_xcloud_entries(cache.games);
+    (!cache.games.is_empty()).then_some(cache)
+}
+
+fn write_xcloud_cache(cache: &XCloudCache) -> Result<(), String> {
+    let path = xcloud_cache_path();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    let json = serde_json::to_string_pretty(cache).map_err(|error| error.to_string())?;
+    std::fs::write(path, json).map_err(|error| error.to_string())
+}
+
+async fn fetch_xcloud_games() -> Result<Vec<XCloudGameEntry>, String> {
+    let response = reqwest::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .user_agent("LiftOff xCloud list refresh/1.0")
+        .build()
+        .map_err(|error| error.to_string())?
+        .get(XCLOUD_REMOTE_URL)
+        .send()
+        .await
+        .map_err(|error| error.to_string())?
+        .error_for_status()
+        .map_err(|error| error.to_string())?;
+    let entries = response
+        .json::<Vec<XCloudGameEntry>>()
+        .await
+        .map_err(|error| error.to_string())?;
+    let games = validated_xcloud_entries(entries);
+    if games.is_empty() {
+        return Err("The downloaded xCloud list contained no valid games.".to_string());
+    }
+    Ok(games)
+}
+
+async fn load_xcloud_games(force_refresh: bool) -> XCloudListResponse {
+    let cache = read_xcloud_cache();
+    let cache_is_fresh = cache.as_ref().is_some_and(|cached| {
+        unix_timestamp().saturating_sub(cached.fetched_at) < XCLOUD_REFRESH_INTERVAL_SECS
+    });
+    if cache_is_fresh && !force_refresh {
+        let cached = cache.expect("fresh cache must exist");
+        return XCloudListResponse {
+            games: cached.games,
+            fetched_at: Some(cached.fetched_at),
+            source: "cache".to_string(),
+            refresh_error: None,
+        };
+    }
+
+    match fetch_xcloud_games().await {
+        Ok(games) => {
+            let fetched_at = unix_timestamp();
+            let cache = XCloudCache {
+                fetched_at,
+                games: games.clone(),
+            };
+            let refresh_error = write_xcloud_cache(&cache).err();
+            XCloudListResponse {
+                games,
+                fetched_at: Some(fetched_at),
+                source: "remote".to_string(),
+                refresh_error,
+            }
+        }
+        Err(error) => {
+            eprintln!("xCloud list refresh failed: {error}");
+            if let Some(cached) = cache {
+                XCloudListResponse {
+                    games: cached.games,
+                    fetched_at: Some(cached.fetched_at),
+                    source: "stale-cache".to_string(),
+                    refresh_error: Some(error),
+                }
+            } else {
+                XCloudListResponse {
+                    games: bundled_xcloud_games(),
+                    fetched_at: None,
+                    source: "bundled".to_string(),
+                    refresh_error: Some(error),
+                }
+            }
+        }
+    }
+}
+
+#[tauri::command]
+async fn get_xcloud_games(force: bool) -> XCloudListResponse {
+    load_xcloud_games(force).await
 }
 
 fn load_custom_names() -> std::collections::HashMap<String, String> {
@@ -6423,7 +6605,8 @@ pub fn run() {
             delete_game_collection,
             rename_game_collection,
             get_game_memberships,
-            set_game_memberships
+            set_game_memberships,
+            get_xcloud_games
         ])
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
@@ -6431,6 +6614,9 @@ pub fn run() {
             OUR_HWND.store(hwnd.0 as isize, Ordering::Relaxed);
             let _ = window.set_focus();
             start_gamepad_listener(app.handle().clone());
+            tauri::async_runtime::spawn(async {
+                let _ = load_xcloud_games(false).await;
+            });
             Ok(())
         })
         .run(tauri::generate_context!())

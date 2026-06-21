@@ -1,9 +1,15 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Follow up the Cloud Games picker after live testing and implement the updated proposal.
-- Prevent Opera/Chromium kiosk child diagnostics from leaking into LiftOff's dev terminal and collapse duplicate Cloud source tabs to one canonical tab.
-- Replace the per-game Cloudbase seed scraper with the updated Cloudbase index + Xbox PDP sitemap join, then validate and update the changelog/handoff.
+- No active implementation task. PR-D cloud-list auto-refresh is complete pending hands-on offline/manual-refresh and GitHub Actions permission checks.
+
+**Completed (this session - Cloud list auto-refresh):**
+- Paginated the Cloudbase discovery pass through `/page/N/` until the first duplicate-only page and added a weekly/manual GitHub Actions workflow that rebuilds and commits `xcloudGames.json` only when it changes.
+- Added a validated daily GitHub JSON cache under LiftOff app data, a bundled `include_str!` fallback, a non-blocking startup refresh, and a picker command that reports source, timestamp, and refresh failure without making the modal depend on the network.
+- Added picker refresh controls for pointer, keyboard, and gamepad (`X`), plus loading/fallback and last-updated status while retaining the bundled list for immediate rendering.
+- Made Cloud Details source-aware: cloud bookmarks can be removed locally with a clear label and no longer expose Steam Verify/Uninstall or Run as Administrator; all organizational actions remain available.
+- Live seed validation loaded 11 Xbox sitemap shards and 63 Cloudbase pages, discovered 1,845 Cloudbase entries, and wrote 1,495 unique verified rows. Palworld was discovered but skipped because its Cloudbase slug has no exact Microsoft sitemap match; the builder continues to avoid guessed product IDs.
+- Validated with the production frontend build, `cargo check`, `node --check scripts/build-xcloud-seed.mjs`, a live full seed refresh, JSON uniqueness checks, and `git diff --check`. Remaining hands-on checks are offline picker refresh behavior and enabling read/write GitHub Actions workflow permissions for direct pushes.
 
 **Completed (this session - Cloud Games live follow-up):**
 - Stopped directly spawned cloud kiosk browsers from inheriting LiftOff's stdin/stdout/stderr, so Opera/Chromium renderer, extension, task-manager, and USB diagnostics no longer spill into the Tauri dev terminal; LiftOff's own typed launch-result diagnostics remain visible.

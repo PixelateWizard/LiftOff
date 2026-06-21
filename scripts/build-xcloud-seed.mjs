@@ -11,6 +11,7 @@ const SOURCE_URL = process.argv.includes("--new")
   : "https://cloudbase.gg/xbox-cloud-games/";
 const USER_AGENT = "LiftOff xCloud seed builder/1.0 (+manual maintenance by app owner)";
 const DELAY_MS = 750;
+const MAX_DISCOVERY_PAGES = 100;
 const SITEMAP_BASE = "https://www.xbox.com/sitemap/pdp-en-US-sitemap-";
 const MAX_SITEMAP_SHARDS = 20; // safety cap; loop stops as soon as a shard 404s
 
@@ -45,6 +46,32 @@ function discoverGames(html) {
     const name = stripTags(match[3]);
     if (!slug || !name || name.length > 120) continue;
     if (!bySlug.has(slug)) bySlug.set(slug, { name, slug });
+  }
+  return [...bySlug.values()];
+}
+
+async function discoverAllGames(baseUrl) {
+  const bySlug = new Map();
+  for (let page = 1; page <= MAX_DISCOVERY_PAGES; page++) {
+    const url = page === 1 ? baseUrl : `${baseUrl}page/${page}/`;
+    let html;
+    try {
+      html = await fetchText(url);
+    } catch (error) {
+      console.log(`Discovery page ${page} failed (${error.message}) - stopping`);
+      break;
+    }
+
+    const games = discoverGames(html);
+    let added = 0;
+    for (const game of games) {
+      if (bySlug.has(game.slug)) continue;
+      bySlug.set(game.slug, game);
+      added++;
+    }
+    console.log(`Discovered page ${page}: ${games.length} games, ${added} new (total: ${bySlug.size})`);
+    if (games.length === 0 || added === 0) break;
+    await sleep(DELAY_MS);
   }
   return [...bySlug.values()];
 }
@@ -107,8 +134,7 @@ const rowsByProduct = new Map(existing.map((row) => [row.productId, row]));
 console.log("Building Xbox product index from sitemap...");
 const xboxIndex = await buildXboxIndex();
 
-const indexHtml = await fetchText(SOURCE_URL);
-const games = discoverGames(indexHtml);
+const games = await discoverAllGames(SOURCE_URL);
 console.log(`\nDiscovered ${games.length} Cloudbase game pages from ${SOURCE_URL}`);
 
 for (const game of games) {

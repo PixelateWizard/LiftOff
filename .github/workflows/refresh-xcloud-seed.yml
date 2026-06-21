@@ -1,0 +1,35 @@
+name: Refresh xCloud seed list
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-xcloud-seed
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Refresh seed
+        run: node scripts/build-xcloud-seed.mjs
+      - name: Commit updated seed
+        run: |
+          if git diff --quiet -- src/data/xcloudGames.json; then
+            echo "xCloud seed is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/xcloudGames.json
+          git commit -m "chore: refresh xCloud seed list"
+          git push

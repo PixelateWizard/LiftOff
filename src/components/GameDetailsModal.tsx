@@ -202,6 +202,7 @@ export function GameDetailsModal({
   const uninstalling = installProgress?.state === "uninstalling";
   const installPct = Math.max(0, Math.min(100, Number(installProgress?.pct ?? 0)));
   const installErrorText = installError ? t(`install.${installError}`, { defaultValue: t("install.generic") }) : "";
+  const isCloud = app.source?.toLowerCase() === "cloud";
 
   const handlePrimaryAction = useCallback(() => {
     if (uninstalling) return;
@@ -219,24 +220,24 @@ export function GameDetailsModal({
   }, [canInstall, installed, installing, onCancelInstall, onInstall, onPlay, uninstalling]);
 
   const actions = useMemo<DetailAction[]>(() => [
-    ...(installed && onVerify ? [{ key: "verify", label: t("install.verify"), onClick: onVerify }] : []),
-    ...(installed && onUninstall ? [{ key: "uninstall", label: t("install.uninstall"), onClick: onUninstall, danger: true }] : []),
+    ...(installed && onVerify && !isCloud ? [{ key: "verify", label: t("install.verify"), onClick: onVerify }] : []),
+    ...(installed && onUninstall && !isCloud ? [{ key: "uninstall", label: t("install.uninstall"), onClick: onUninstall, danger: true }] : []),
     { key: "pin", label: t(isPinned ? "contextMenu.unpin" : "contextMenu.pin"), onClick: onTogglePin, checked: isPinned },
     { key: "hide", label: t(isHidden ? "contextMenu.show" : "contextMenu.hide"), onClick: onToggleHidden, checked: isHidden },
-    {
+    ...(!isCloud ? [{
       key: "admin",
       label: "Run as Administrator",
       sublabel: "Game will request elevated privileges via UAC on launch",
       onClick: onRunAsAdminToggle,
       checked: runAsAdmin,
-    },
+    }] : []),
     { key: "art", label: t("contextMenu.changeArt"), onClick: onChangeArt },
     { key: "hero", label: t("contextMenu.changeHeroArt"), onClick: onChangeHeroArt },
     { key: "collections", label: t("contextMenu.collections"), onClick: onCollections },
     { key: "rename", label: t("contextMenu.rename"), onClick: onRename },
     { key: "move", label: t("contextMenu.moveToApps"), onClick: onMoveToApps },
     ...(onResetCategory ? [{ key: "reset", label: t("contextMenu.resetCategory"), onClick: onResetCategory }] : []),
-    ...(onDelete ? [{ key: "delete", label: t("contextMenu.delete"), onClick: onDelete, danger: true }] : []),
+    ...(onDelete ? [{ key: "delete", label: t(isCloud ? "contextMenu.removeCloudGame" : "contextMenu.delete"), onClick: onDelete, danger: true }] : []),
   ], [
     isPinned,
     isHidden,
@@ -255,6 +256,7 @@ export function GameDetailsModal({
     installed,
     onVerify,
     onUninstall,
+    isCloud,
   ]);
 
   const focusCount = 1 + actions.length;
