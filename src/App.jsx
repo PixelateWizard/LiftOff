@@ -941,7 +941,7 @@ export default function App() {
     if (!appid) return;
     const id = `steam://rungameid/${appid}`;
     clearInstallErrorForApp(id);
-    setInstallProgressForApp(id, { appid, pct: 0, bytesDone: 0, bytesTotal: 0, state: "pending" });
+    setInstallProgressForApp(id, { appid, pct: 0, bytesDone: 0, bytesTotal: 0, state: "pending", phase: "preparing", live: true });
     invoke("steam_install", { appid }).catch((error) => {
       clearInstallProgressForApp(id);
       patchLibraryApp(id, { installing: false, installProgress: undefined });
@@ -992,6 +992,8 @@ export default function App() {
       bytesDone: Number(payload.bytesDone ?? payload.bytes_done ?? 0),
       bytesTotal: Number(payload.bytesTotal ?? payload.bytes_total ?? 0),
       state: String(payload.state ?? "downloading"),
+      phase: String(payload.phase ?? "downloading"),
+      live: payload.live === true,
     };
     if (progress.state === "complete") {
       clearInstallProgressForApp(id);
@@ -1023,7 +1025,7 @@ export default function App() {
       });
     };
     poll();
-    const timer = window.setInterval(poll, 250);
+    const timer = window.setInterval(poll, 1000);
     return () => {
       disposed = true;
       window.clearInterval(timer);
@@ -1121,6 +1123,7 @@ export default function App() {
       "@keyframes appFadeIn     { from { opacity: 0; } to { opacity: 1; } }",
       "@keyframes heroArtFade   { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: scale(1); } }",
       "@keyframes spin          { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }",
+      "@keyframes steamInstallIndeterminate { 0% { transform: translateX(-110%); } 50% { transform: translateX(90%); } 100% { transform: translateX(280%); } }",
       "@keyframes bgStarTwinkle { 0%, 100% { opacity: 0.08; transform: scale(1); } 50% { opacity: 0.35; transform: scale(1.2); } }",
       "@keyframes cloudDrift    { from { transform: translateX(110vw); } to { transform: translateX(-110vw); } }",
       "@keyframes plasmaFlow    { 0% { transform: translate3d(-4%, -2%, 0) rotate(-8deg) scale(1.04); } 50% { transform: translate3d(4%, 2%, 0) rotate(7deg) scale(1.10); } 100% { transform: translate3d(-4%, -2%, 0) rotate(-8deg) scale(1.04); } }",
@@ -1860,6 +1863,16 @@ export default function App() {
     const installState = installProgress[app.id];
     const installing = !!installState && installState.state !== "complete";
     const installPct = Math.max(0, Math.min(100, Number(installState?.pct ?? 0)));
+    const installPhase = installState?.phase ?? "downloading";
+    const liveInstall = installState?.live === true;
+    const indeterminateInstall = liveInstall || installState?.state === "uninstalling";
+    const installPhaseLabel = installPhase === "preparing"
+      ? "install.preparing"
+      : installPhase === "staging"
+        ? "install.staging"
+        : installPhase === "paused"
+          ? "install.paused"
+          : "install.downloading";
     const innerBase = art
       ? { background: "transparent", backdropFilter: "none", WebkitBackdropFilter: "none" }
       : glass;
@@ -1917,7 +1930,11 @@ export default function App() {
                 textTransform: "uppercase",
                 boxShadow: "0 10px 24px rgba(0,0,0,0.35)",
               }}>
-                {installState.state === "uninstalling" ? t("install.uninstalling") : `${t("install.installing")} ${installPct}%`}
+                {installState.state === "uninstalling"
+                  ? t("install.uninstalling")
+                  : liveInstall
+                    ? t(installPhaseLabel)
+                    : `${t(installPhaseLabel)} ${installPct}%`}
               </div>
               <div style={{
                 position: "absolute",
@@ -1928,10 +1945,16 @@ export default function App() {
                 background: "rgba(255,255,255,0.18)",
               }}>
                 <div style={{
-                  width: `${installPct}%`,
+                  width: indeterminateInstall ? "36%" : `${installPct}%`,
                   height: "100%",
-                  background: `linear-gradient(90deg, ${accent.primary}, ${accent.light})`,
+                  background: indeterminateInstall
+                    ? `linear-gradient(90deg, ${accent.primary}, ${accent.light})`
+                    : `linear-gradient(90deg, ${accent.primary} 0%, ${accent.light} 40%, rgba(255,255,255,0.9) 50%, ${accent.light} 60%, ${accent.primary} 100%)`,
+                  backgroundSize: indeterminateInstall ? undefined : "220% 100%",
                   transition: "width 180ms ease",
+                  ...(settings.ui_motion !== false
+                    ? { animation: indeterminateInstall ? "steamInstallIndeterminate 1.15s ease-in-out infinite" : undefined }
+                    : {}),
                 }} />
               </div>
             </div>
@@ -2765,7 +2788,11 @@ export default function App() {
           message={t('confirm.deleteApp', { name: confirmDelete.name })}
           onConfirm={() => {
             invoke("remove_custom_app", { id: confirmDelete.id }).then(() => {
-              setApps(prev => prev.filter(a => a.id !== confirmDelete.id));
+              setApps(prev => {
+                const next = prev.filter(a => a.id !== confirmDelete.id);
+                appsRef.current = next;
+                return next;
+              });
               allAppsRef.current = allAppsRef.current.filter(a => a.id !== confirmDelete.id);
               setConfirmDelete(null); confirmDeleteRef.current = null;
             });

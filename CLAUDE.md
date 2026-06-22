@@ -1,7 +1,23 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- No active implementation task. PR-D cloud-list auto-refresh is complete pending hands-on offline/manual-refresh and GitHub Actions permission checks.
+- Correct the real-hardware Steam progress follow-up: active installs must not remain Allocating for their full run or present a long-stale ACF checkpoint such as 0.1% as live progress.
+- Fix Cancel on a partial Steam install so LiftOff waits for the active download workspace to disappear instead of firing an immediate uninstall-complete event while Steam's confirmation prompt is still open.
+- Preserve the authoritative installed-state predicate and honest, non-estimated progress; validate focused Rust tests, Rust/frontend builds, and reconcile `CHANGELOG.md` plus this handoff to the final behavior.
+
+**Completed (this session - Steam install progress v2 Tasks A-C + hardware follow-up):**
+- Confirmed from Steam's live log that Outlast 2 sustained roughly 244-263 Mbps while its appmanifest percentage remained at a stale checkpoint; active ACF byte counters cannot honestly be presented as live progress on this Steam client.
+- Restored a bounded tail read of Steam's public `content_log.txt` for phase/activity only. Allocation, downloading, and staging now use an indeterminate active bar without a percentage; paused/stopped work shows the exact saved ACF checkpoint. No filesystem-size estimation, interpolation, private IPC, or new dependency was introduced.
+- Kept one Playnite-modeled installed authority: Steam's FullyInstalled bit, nonzero `SizeOnDisk`, and an existing `common/{installdir}` directory must all agree across snapshots, watcher completion, and library scans.
+- Fixed partial-install Cancel so its watcher waits for `downloading/{appid}` to disappear instead of immediately treating the not-yet-installed manifest as uninstall-complete while Steam's confirmation prompt is open.
+- Confirmed Windows recorded the reported 22:32 LiftOff failure as `AppHangB1`, not a process crash; moved filesystem snapshot work off Tauri's command thread, reduced frontend polling from 250 ms to one second, and removed redundant watcher progress events while retaining completion events.
+- Added English and TODO French paused strings plus nine focused Rust tests covering ACF math, installed authority, content-log transitions, paused checkpoints, stale counters, and the partial-cancel gate. Tasks D and E remain untouched.
+- Validated with `cargo test steam_install_progress_tests` (9 passed), `cargo check`, `npm.cmd run build`, and `git diff --check`; only the existing Rust path/unused-helper warning, Vite chunk-size warning, and CRLF notices remain. `cargo fmt --check` still reports only the two unrelated pre-existing Cloud formatting differences.
+
+**Completed (this session - Cloud removal controller selection):**
+- Confirmed the delete confirmation updated rendered `apps` state and `allAppsRef`, but left `appsRef.current` holding the pre-delete array used by gamepad selection.
+- Updated `appsRef.current` inside the same functional state update that removes the bookmark, keeping the visible grid and controller selection source atomic while preserving the current focus index so the shifted-in card remains selected.
+- Updated `CHANGELOG.md` and validated with `npm run build` plus `git diff --check`; only the existing Vite chunk-size warning and CRLF notices remain. One hands-on gamepad removal/selection retry is the final runtime confirmation.
 
 **Completed (this session - Cloud list auto-refresh):**
 - Paginated the Cloudbase discovery pass through `/page/N/` until the first duplicate-only page and added a weekly/manual GitHub Actions workflow that rebuilds and commits `xcloudGames.json` only when it changes.

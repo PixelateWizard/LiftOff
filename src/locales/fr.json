@@ -151,6 +151,10 @@
   "install": {
     "install": "TODO(fr) Install",
     "installing": "TODO(fr) Installing",
+    "preparing": "TODO(fr) Allocation de l'espace disque…",
+    "downloading": "TODO(fr) Téléchargement…",
+    "staging": "TODO(fr) Installation…",
+    "paused": "TODO(fr) En pause à",
     "uninstalling": "TODO(fr) Uninstalling",
     "cancel": "TODO(fr) Cancel",
     "uninstall": "TODO(fr) Uninstall",

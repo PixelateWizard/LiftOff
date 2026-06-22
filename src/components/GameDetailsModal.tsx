@@ -11,6 +11,8 @@ interface InstallProgress {
   bytesDone?: number;
   bytesTotal?: number;
   state?: string;
+  phase?: string;
+  live?: boolean;
 }
 
 interface DetailAction {
@@ -200,6 +202,16 @@ export function GameDetailsModal({
   const chipRadius = isPixel ? 0 : surfaceStyle === "material" || surfaceStyle === "clear" ? 8 : 10;
   const installing = !!installProgress && installProgress.state !== "complete";
   const uninstalling = installProgress?.state === "uninstalling";
+  const installPhase = installProgress?.phase ?? "downloading";
+  const liveInstall = installProgress?.live === true;
+  const indeterminateInstall = liveInstall || uninstalling;
+  const installPhaseLabel = installPhase === "preparing"
+    ? "install.preparing"
+    : installPhase === "staging"
+      ? "install.staging"
+      : installPhase === "paused"
+        ? "install.paused"
+        : "install.downloading";
   const installPct = Math.max(0, Math.min(100, Number(installProgress?.pct ?? 0)));
   const installErrorText = installError ? t(`install.${installError}`, { defaultValue: t("install.generic") }) : "";
   const isCloud = app.source?.toLowerCase() === "cloud";
@@ -586,13 +598,23 @@ export function GameDetailsModal({
                 }}>
                   <div style={{
                     height: "100%",
-                    width: `${installPct}%`,
-                    background: `linear-gradient(90deg, ${accent.primary}, ${accent.light})`,
+                    width: indeterminateInstall ? "36%" : `${installPct}%`,
+                    background: indeterminateInstall
+                      ? `linear-gradient(90deg, ${accent.primary}, ${accent.light})`
+                      : `linear-gradient(90deg, ${accent.primary} 0%, ${accent.light} 40%, rgba(255,255,255,0.9) 50%, ${accent.light} 60%, ${accent.primary} 100%)`,
+                    backgroundSize: indeterminateInstall ? undefined : "220% 100%",
                     transition: "width 180ms ease",
+                    ...(effectsEnabled
+                      ? { animation: indeterminateInstall ? "steamInstallIndeterminate 1.15s ease-in-out infinite" : undefined }
+                      : {}),
                   }} />
                 </div>
                 <div style={{ fontSize: 11, color: theme.textFaint, fontWeight: 700 }}>
-                  {uninstalling ? t("install.uninstalling") : `${t("install.installing")} ${installPct}%`}
+                  {uninstalling
+                    ? t("install.uninstalling")
+                    : liveInstall
+                      ? t(installPhaseLabel)
+                      : `${t(installPhaseLabel)} ${installPct}%`}
                 </div>
               </div>
             )}

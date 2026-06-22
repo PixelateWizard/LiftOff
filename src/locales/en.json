@@ -151,6 +151,10 @@
   "install": {
     "install": "Install",
     "installing": "Installing",
+    "preparing": "Allocating disk space…",
+    "downloading": "Downloading…",
+    "staging": "Installing…",
+    "paused": "Paused at",
     "uninstalling": "Uninstalling",
     "cancel": "Cancel",
     "uninstall": "Uninstall",

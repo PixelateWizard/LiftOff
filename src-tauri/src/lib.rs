@@ -3,7 +3,7 @@
 use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::net::TcpListener;
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::process::CommandExt;
@@ -4188,6 +4188,8 @@ struct SteamInstallManifest {
     bytes_staged: u64,
     bytes_to_stage: u64,
     download_active: bool,
+    installdir: String,
+    library_path: String,
 }
 
 #[derive(Serialize, Clone)]
@@ -4198,6 +4200,8 @@ struct SteamInstallProgressPayload {
     bytes_done: u64,
     bytes_total: u64,
     state: String,
+    phase: String,
+    live: bool,
 }
 
 #[derive(Serialize, Clone)]
@@ -4214,6 +4218,8 @@ fn parse_steam_install_manifest(content: &str) -> SteamInstallManifest {
         bytes_staged: 0,
         bytes_to_stage: 0,
         download_active: false,
+        installdir: String::new(),
+        library_path: String::new(),
     };
     for line in content.lines() {
         let line = line.trim();
@@ -4230,35 +4236,91 @@ fn parse_steam_install_manifest(content: &str) -> SteamInstallManifest {
             manifest.bytes_staged = value();
         } else if line.starts_with("\"BytesToStage\"") {
             manifest.bytes_to_stage = value();
+        } else if line.starts_with("\"installdir\"") {
+            manifest.installdir = extract_vdf_value(line);
         }
     }
     manifest
 }
 
+const STEAM_STATE_FULLY_INSTALLED: u32 = 4;
+
+fn steam_is_installed(state_flags: u32, size_on_disk: u64, install_dir_present: bool) -> bool {
+    state_flags & STEAM_STATE_FULLY_INSTALLED != 0 && size_on_disk > 0 && install_dir_present
+}
+
+fn steam_install_dir_present(manifest: &SteamInstallManifest) -> bool {
+    !manifest.installdir.is_empty()
+        && Path::new(&manifest.library_path)
+            .join("common")
+            .join(&manifest.installdir)
+            .is_dir()
+}
+
 fn read_steam_install_manifest(appid: &str) -> Option<SteamInstallManifest> {
     steam_library_paths().into_iter().find_map(|library| {
         let path = Path::new(&library).join(format!("appmanifest_{}.acf", appid));
-        std::fs::read_to_string(path)
-            .ok()
-            .map(|content| {
-                let mut manifest = parse_steam_install_manifest(&content);
-                manifest.download_active = Path::new(&library)
-                    .join("downloading")
-                    .join(appid)
-                    .exists();
-                manifest
-            })
+        std::fs::read_to_string(path).ok().map(|content| {
+            let mut manifest = parse_steam_install_manifest(&content);
+            manifest.library_path = library.clone();
+            manifest.download_active = Path::new(&library).join("downloading").join(appid).exists();
+            manifest
+        })
     })
+}
+
+fn parse_steam_install_log_phase(content: &str, appid: &str) -> Option<&'static str> {
+    let app_marker = format!("AppID {} App update changed :", appid);
+    for line in content.lines().rev() {
+        if !line.contains(&app_marker) {
+            continue;
+        }
+        if line.contains("None") || line.contains("Stopping") {
+            return Some("paused");
+        }
+        if line.contains("Preallocating")
+            || line.contains("Reconfiguring")
+            || line.contains("Verifying Installed")
+        {
+            return Some("preparing");
+        }
+        if line.contains("Committing")
+            || (line.contains("Staging") && !line.contains("Downloading"))
+        {
+            return Some("staging");
+        }
+        if line.contains("Downloading") {
+            return Some("downloading");
+        }
+    }
+    None
+}
+
+fn steam_install_log_phase(appid: &str) -> Option<&'static str> {
+    let log_path = Path::new(&get_steam_install_path()?)
+        .join("logs")
+        .join("content_log.txt");
+    let mut file = std::fs::File::open(log_path).ok()?;
+    let len = file.metadata().ok()?.len();
+    const LOG_TAIL_BYTES: u64 = 256 * 1024;
+    file.seek(SeekFrom::Start(len.saturating_sub(LOG_TAIL_BYTES)))
+        .ok()?;
+    let mut bytes = Vec::with_capacity(len.min(LOG_TAIL_BYTES) as usize);
+    file.read_to_end(&mut bytes).ok()?;
+    parse_steam_install_log_phase(&String::from_utf8_lossy(&bytes), appid)
 }
 
 fn steam_install_progress_payload(
     appid: &str,
     manifest: &SteamInstallManifest,
+    install_dir_present: bool,
+    log_phase: Option<&str>,
 ) -> SteamInstallProgressPayload {
-    let complete = manifest.state_flags & 4 != 0
-        && manifest.size_on_disk > 0
-        && (manifest.bytes_to_download == 0
-            || manifest.bytes_downloaded >= manifest.bytes_to_download);
+    let complete = steam_is_installed(
+        manifest.state_flags,
+        manifest.size_on_disk,
+        install_dir_present,
+    );
     let (bytes_done, bytes_total) = if manifest.bytes_to_stage > 0 {
         (
             manifest
@@ -4274,11 +4336,29 @@ fn steam_install_progress_payload(
     let pct = if complete {
         100.0
     } else if bytes_total > 0 {
-        ((bytes_done as f64 / bytes_total as f64) * 1000.0).round() / 10.0
+        (((bytes_done as f64 / bytes_total as f64) * 1000.0).round() / 10.0).min(99.9)
     } else {
         0.0
     }
     .clamp(0.0, 100.0);
+    let fallback_phase = if complete {
+        "complete"
+    } else if manifest.bytes_to_stage > 0
+        && manifest.bytes_downloaded >= manifest.bytes_to_download
+        && manifest.bytes_staged < manifest.bytes_to_stage
+    {
+        "staging"
+    } else if manifest.bytes_downloaded > 0 {
+        "downloading"
+    } else {
+        "preparing"
+    };
+    let phase = if complete {
+        "complete"
+    } else {
+        log_phase.unwrap_or(fallback_phase)
+    };
+    let live = !complete && matches!(phase, "preparing" | "downloading" | "staging");
     let state = if complete {
         "complete"
     } else if manifest.bytes_downloaded > 0 || manifest.bytes_to_download > 0 {
@@ -4292,36 +4372,61 @@ fn steam_install_progress_payload(
         bytes_done,
         bytes_total,
         state: state.to_string(),
+        phase: phase.to_string(),
+        live,
     }
 }
 
-#[tauri::command]
-fn steam_install_progress(appid: String) -> Result<Option<SteamInstallProgressPayload>, String> {
-    let appid = validate_steam_appid(&appid)?;
-    Ok(read_steam_install_manifest(&appid).and_then(|manifest| {
-        if !manifest.download_active && manifest.size_on_disk == 0 {
+fn steam_install_progress_snapshot(appid: &str) -> Option<SteamInstallProgressPayload> {
+    read_steam_install_manifest(appid).and_then(|manifest| {
+        let install_dir_present = steam_install_dir_present(&manifest);
+        let installed = steam_is_installed(
+            manifest.state_flags,
+            manifest.size_on_disk,
+            install_dir_present,
+        );
+        if !manifest.download_active && !installed && manifest.size_on_disk == 0 {
             None
         } else {
-            Some(steam_install_progress_payload(&appid, &manifest))
+            Some(steam_install_progress_payload(
+                appid,
+                &manifest,
+                install_dir_present,
+                steam_install_log_phase(appid),
+            ))
         }
-    }))
+    })
+}
+
+#[tauri::command]
+async fn steam_install_progress(
+    appid: String,
+) -> Result<Option<SteamInstallProgressPayload>, String> {
+    let appid = validate_steam_appid(&appid)?;
+    tauri::async_runtime::spawn_blocking(move || Ok(steam_install_progress_snapshot(&appid)))
+        .await
+        .map_err(|e| format!("Steam progress task failed: {e}"))?
 }
 
 #[cfg(test)]
 mod steam_install_progress_tests {
-    use super::{parse_steam_install_manifest, steam_install_progress_payload};
+    use super::{
+        parse_steam_install_log_phase, parse_steam_install_manifest,
+        steam_install_progress_payload, steam_is_installed, steam_uninstall_is_complete,
+    };
 
     #[test]
-    fn combines_download_and_staging_work_for_live_install_progress() {
+    fn download_and_staging_progress_uses_real_acf_counters() {
         let manifest = parse_steam_install_manifest(
             "\"StateFlags\" \"1538\"\n\"SizeOnDisk\" \"0\"\n\"BytesToDownload\" \"1000\"\n\"BytesDownloaded\" \"500\"\n\"BytesToStage\" \"4000\"\n\"BytesStaged\" \"1000\"",
         );
-        let payload = steam_install_progress_payload("123", &manifest);
+        let payload = steam_install_progress_payload("123", &manifest, false, None);
 
         assert_eq!(payload.pct, 30.0);
         assert_eq!(payload.bytes_done, 1500);
         assert_eq!(payload.bytes_total, 5000);
         assert_eq!(payload.state, "downloading");
+        assert_eq!(payload.phase, "downloading");
     }
 
     #[test]
@@ -4329,11 +4434,94 @@ mod steam_install_progress_tests {
         let manifest = parse_steam_install_manifest(
             "\"StateFlags\" \"2\"\n\"BytesToDownload\" \"10000\"\n\"BytesDownloaded\" \"1234\"",
         );
-        let payload = steam_install_progress_payload("123", &manifest);
+        let payload = steam_install_progress_payload("123", &manifest, false, None);
 
         assert_eq!(payload.pct, 12.3);
         assert_eq!(payload.bytes_done, 1234);
         assert_eq!(payload.bytes_total, 10000);
+    }
+
+    #[test]
+    fn zero_download_bytes_reports_preparing_phase() {
+        let manifest = parse_steam_install_manifest(
+            "\"StateFlags\" \"1026\"\n\"SizeOnDisk\" \"0\"\n\"BytesToDownload\" \"10000\"\n\"BytesDownloaded\" \"0\"",
+        );
+        let payload = steam_install_progress_payload("123", &manifest, false, None);
+
+        assert_eq!(payload.phase, "preparing");
+        assert_eq!(payload.pct, 0.0);
+    }
+
+    #[test]
+    fn installed_requires_flag_size_and_present_dir() {
+        assert!(steam_is_installed(4, 12_772_699_651, true));
+        assert!(!steam_is_installed(4, 12_772_699_651, false));
+        assert!(!steam_is_installed(2, 12_772_699_651, true));
+        assert!(!steam_is_installed(4, 0, true));
+        assert!(steam_is_installed(6, 12_772_699_651, true));
+    }
+
+    #[test]
+    fn completion_payload_matches_installed_check() {
+        let manifest = parse_steam_install_manifest(
+            "\"StateFlags\" \"4\"\n\"SizeOnDisk\" \"12772699651\"\n\"BytesToDownload\" \"0\"\n\"BytesDownloaded\" \"0\"",
+        );
+        let payload = steam_install_progress_payload("620", &manifest, true, None);
+
+        assert_eq!(payload.state, "complete");
+        assert_eq!(payload.phase, "complete");
+        assert_eq!(payload.pct, 100.0);
+    }
+
+    #[test]
+    fn stale_counters_do_not_force_complete_without_dir() {
+        let manifest = parse_steam_install_manifest(
+            "\"StateFlags\" \"514\"\n\"SizeOnDisk\" \"0\"\n\"BytesToDownload\" \"2288461696\"\n\"BytesDownloaded\" \"869427056\"",
+        );
+        let payload = steam_install_progress_payload("4704690", &manifest, false, None);
+
+        assert_ne!(payload.state, "complete");
+        assert!(payload.pct < 100.0);
+    }
+
+    #[test]
+    fn latest_decisive_content_log_phase_wins() {
+        let log = "[1] AppID 414700 App update changed : Running Update,Preallocating,\n\
+[2] AppID 414700 App update changed : Running Update,\n\
+[3] AppID 414700 App update changed : Running Update,Downloading,Staging,";
+        assert_eq!(
+            parse_steam_install_log_phase(log, "414700"),
+            Some("downloading")
+        );
+    }
+
+    #[test]
+    fn stopped_content_log_phase_is_not_live() {
+        let log = "[1] AppID 414700 App update changed : Running Update,Downloading,Staging,\n\
+[2] AppID 414700 App update changed : Running Update,Stopping,\n\
+[3] AppID 414700 App update changed : None";
+        let manifest = parse_steam_install_manifest(
+            "\"StateFlags\" \"514\"\n\"BytesToDownload\" \"1000\"\n\"BytesDownloaded\" \"100\"",
+        );
+        let phase = parse_steam_install_log_phase(log, "414700");
+        let payload = steam_install_progress_payload("414700", &manifest, false, phase);
+
+        assert_eq!(payload.phase, "paused");
+        assert!(!payload.live);
+        assert_eq!(payload.pct, 10.0);
+    }
+
+    #[test]
+    fn partial_cancel_waits_for_download_workspace_to_disappear() {
+        let mut manifest = parse_steam_install_manifest(
+            "\"StateFlags\" \"514\"\n\"SizeOnDisk\" \"0\"\n\"BytesToDownload\" \"1000\"",
+        );
+        manifest.download_active = true;
+        assert!(!steam_uninstall_is_complete(Some(&manifest), true));
+
+        manifest.download_active = false;
+        assert!(steam_uninstall_is_complete(Some(&manifest), true));
+        assert!(steam_uninstall_is_complete(None, true));
     }
 }
 
@@ -4344,17 +4532,19 @@ fn spawn_steam_install_watcher(app: tauri::AppHandle, appid: String) {
         for _ in 0..4800 {
             if let Some(manifest) = read_steam_install_manifest(&appid) {
                 misses = 0;
-                let payload = steam_install_progress_payload(&appid, &manifest);
-                let done = payload.state == "complete";
-                if done {
-                    let _ = app.emit("steam-install-progress", payload);
+                let install_dir_present = steam_install_dir_present(&manifest);
+                let installed = steam_is_installed(
+                    manifest.state_flags,
+                    manifest.size_on_disk,
+                    install_dir_present,
+                );
+                if installed {
                     let _ = app.emit("steam-install-done", SteamInstallDonePayload { appid });
                     return;
                 }
                 if manifest.download_active {
                     saw_active_download = true;
-                    let _ = app.emit("steam-install-progress", payload);
-                } else if saw_active_download && manifest.size_on_disk == 0 {
+                } else if saw_active_download {
                     let _ = app.emit("steam-uninstall-done", SteamInstallDonePayload { appid });
                     return;
                 }
@@ -4365,19 +4555,32 @@ fn spawn_steam_install_watcher(app: tauri::AppHandle, appid: String) {
                     return;
                 }
             }
-            std::thread::sleep(Duration::from_millis(250));
+            std::thread::sleep(Duration::from_millis(500));
         }
         let _ = app.emit("steam-install-error", SteamInstallDonePayload { appid });
     });
 }
 
-fn spawn_steam_uninstall_watcher(app: tauri::AppHandle, appid: String) {
+fn steam_uninstall_is_complete(
+    manifest: Option<&SteamInstallManifest>,
+    cancelling_download: bool,
+) -> bool {
+    match manifest {
+        None => true,
+        Some(manifest) if cancelling_download => !manifest.download_active,
+        Some(manifest) => !steam_is_installed(
+            manifest.state_flags,
+            manifest.size_on_disk,
+            steam_install_dir_present(manifest),
+        ),
+    }
+}
+
+fn spawn_steam_uninstall_watcher(app: tauri::AppHandle, appid: String, cancelling_download: bool) {
     std::thread::spawn(move || {
         for _ in 0..240 {
-            if read_steam_install_manifest(&appid)
-                .map(|manifest| manifest.size_on_disk == 0)
-                .unwrap_or(true)
-            {
+            let manifest = read_steam_install_manifest(&appid);
+            if steam_uninstall_is_complete(manifest.as_ref(), cancelling_download) {
                 let _ = app.emit("steam-uninstall-done", SteamInstallDonePayload { appid });
                 return;
             }
@@ -4404,8 +4607,17 @@ fn steam_uninstall(app_handle: tauri::AppHandle, appid: String) -> Result<(), St
     if get_steam_install_path().is_none() {
         return Err("steam-client-missing".to_string());
     }
+    let cancelling_download = read_steam_install_manifest(&appid)
+        .map(|manifest| {
+            !steam_is_installed(
+                manifest.state_flags,
+                manifest.size_on_disk,
+                steam_install_dir_present(&manifest),
+            )
+        })
+        .unwrap_or(false);
     dispatch_steam_uri(&format!("steam://uninstall/{}", appid))?;
-    spawn_steam_uninstall_watcher(app_handle, appid);
+    spawn_steam_uninstall_watcher(app_handle, appid, cancelling_download);
     Ok(())
 }
 
@@ -4832,7 +5044,13 @@ fn scan_steam_games() -> Vec<AppEntry> {
                     continue;
                 }
                 if let Ok(content) = std::fs::read_to_string(&p) {
-                    if parse_steam_install_manifest(&content).size_on_disk == 0 {
+                    let mut manifest = parse_steam_install_manifest(&content);
+                    manifest.library_path = library.clone();
+                    if !steam_is_installed(
+                        manifest.state_flags,
+                        manifest.size_on_disk,
+                        steam_install_dir_present(&manifest),
+                    ) {
                         continue;
                     }
                     let mut name = String::new();
