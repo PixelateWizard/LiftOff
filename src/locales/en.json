@@ -262,6 +262,11 @@
     "wideSettings": "Settings",
     "wideBottombar": "Bottom Bar",
     "homeMode": "Home mode",
+    "homeModeValues": {
+      "normal": "Legacy",
+      "semi": "Normal",
+      "immersive": "Immersive"
+    },
     "homeSectionTitleSize": "Section title size",
     "showHomeRecents": "Show recently played",
     "heroContentPos": "Hero content position",

@@ -38,7 +38,9 @@ interface GameDetailsModalProps {
   canInstall?: boolean;
   installProgress?: InstallProgress;
   installError?: string;
+  running?: boolean;
   onPlay: () => void;
+  onCloseGame?: () => void;
   onInstall?: () => void;
   onCancelInstall?: () => void;
   onUninstall?: () => void;
@@ -132,7 +134,9 @@ export function GameDetailsModal({
   canInstall = false,
   installProgress,
   installError,
+  running = false,
   onPlay,
+  onCloseGame,
   onInstall,
   onCancelInstall,
   onUninstall,
@@ -214,7 +218,9 @@ export function GameDetailsModal({
         : "install.downloading";
   const installPct = Math.max(0, Math.min(100, Number(installProgress?.pct ?? 0)));
   const installErrorText = installError ? t(`install.${installError}`, { defaultValue: t("install.generic") }) : "";
-  const isCloud = app.source?.toLowerCase() === "cloud";
+  const source = app.source?.toLowerCase() ?? "";
+  const isCloud = source === "cloud";
+  const isSteam = source === "steam";
 
   const handlePrimaryAction = useCallback(() => {
     if (uninstalling) return;
@@ -232,8 +238,9 @@ export function GameDetailsModal({
   }, [canInstall, installed, installing, onCancelInstall, onInstall, onPlay, uninstalling]);
 
   const actions = useMemo<DetailAction[]>(() => [
-    ...(installed && onVerify && !isCloud ? [{ key: "verify", label: t("install.verify"), onClick: onVerify }] : []),
-    ...(installed && onUninstall && !isCloud ? [{ key: "uninstall", label: t("install.uninstall"), onClick: onUninstall, danger: true }] : []),
+    ...(running && onCloseGame ? [{ key: "close-game", label: t("home.close"), onClick: onCloseGame, danger: true }] : []),
+    ...(installed && onVerify && isSteam ? [{ key: "verify", label: t("install.verify"), onClick: onVerify }] : []),
+    ...(installed && onUninstall && isSteam ? [{ key: "uninstall", label: t("install.uninstall"), onClick: onUninstall, danger: true }] : []),
     { key: "pin", label: t(isPinned ? "contextMenu.unpin" : "contextMenu.pin"), onClick: onTogglePin, checked: isPinned },
     { key: "hide", label: t(isHidden ? "contextMenu.show" : "contextMenu.hide"), onClick: onToggleHidden, checked: isHidden },
     ...(!isCloud ? [{
@@ -269,6 +276,9 @@ export function GameDetailsModal({
     onVerify,
     onUninstall,
     isCloud,
+    isSteam,
+    running,
+    onCloseGame,
   ]);
 
   const focusCount = 1 + actions.length;
@@ -370,11 +380,13 @@ export function GameDetailsModal({
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  const primaryLabel = installed
-    ? t("details.play")
-    : installing
-      ? (uninstalling ? t("install.uninstalling") : t("install.cancel"))
-      : t("install.install");
+  const primaryLabel = running
+    ? t("home.resume")
+    : installed
+      ? t("details.play")
+      : installing
+        ? (uninstalling ? t("install.uninstalling") : t("install.cancel"))
+        : t("install.install");
   const primaryDisabled = !installed && (uninstalling || (!installing && !canInstall));
 
   const metaItems = [

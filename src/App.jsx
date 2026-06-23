@@ -381,6 +381,20 @@ export default function App() {
     steamConnectedRef.current = !!steamStatus.connected;
   }, [steamStatus.connected]);
 
+  const resolveDetailsApp = useCallback((app) => {
+    if (!app) return null;
+    const fullApp = allAppsRef.current.find((entry) => entry.id === app.id)
+      || appsRef.current.find((entry) => entry.id === app.id);
+    return fullApp ? { ...app, ...fullApp } : app;
+  }, [allAppsRef, appsRef]);
+
+  const setResolvedDetailsApp = useCallback((app) => {
+    const next = resolveDetailsApp(app);
+    setDetailsApp(next);
+    detailsAppRef.current = next;
+    return next;
+  }, [resolveDetailsApp]);
+
   const refreshSteamStatus = () => {
     invoke("steam_account_status")
       .then((status) => setSteamStatus(status || { connected: false, owned_count: 0 }))
@@ -609,7 +623,7 @@ export default function App() {
     setThemePickerFocusIndex,
     setSurfacePickerFocusIndex,
     setArtPickerApp,
-    setDetailsApp,
+    setDetailsApp: setResolvedDetailsApp,
     playSoundGameStart,
     playSound,
     playSoundAlt,
@@ -660,6 +674,9 @@ export default function App() {
     }
     utilityChromeRef.current = {
       enter: () => {
+        if (tabScrollRef.current) {
+          tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
+        }
         setFocusSection("viewbar");
         focusSectionRef.current = "viewbar";
         setViewbarIndex(viewbarIndexRef.current);
@@ -1054,6 +1071,7 @@ export default function App() {
       launchPath: detailsApp.launch_path,
       source: detailsApp.source ?? "",
       installDir: detailsApp.install_dir ?? null,
+      steamAppid: detailsApp.steam_appid ?? null,
     })
       .then((size) => {
         setInstallSize((prev) => ({ ...prev, [detailsApp.id]: size == null ? null : size }));
@@ -2422,15 +2440,21 @@ export default function App() {
           playtimeMinutes={detailsApp.playtime_minutes ?? undefined}
           sizeBytes={installSize[detailsApp.id] === null ? undefined : installSize[detailsApp.id]}
           installed={detailsApp.installed !== false}
-          canInstall={detailsApp.source === "steam" && !!steamAppIdFor(detailsApp)}
+          canInstall={String(detailsApp.source ?? "").toLowerCase() === "steam" && !!steamAppIdFor(detailsApp)}
           installProgress={installProgress[detailsApp.id]}
           installError={installErrors[detailsApp.id]}
+          running={isRunning(detailsApp.id)}
           hapticEnabled={settings.haptic_feedback ?? true}
           onPlay={() => { triggerLaunch(detailsApp, recentRef.current); closeDetailsModal(false); }}
+          onCloseGame={() => {
+            const app = detailsApp;
+            closeDetailsModal(false);
+            setCloseRequest({ app, force: false });
+          }}
           onInstall={() => startSteamInstall(detailsApp)}
           onCancelInstall={() => cancelSteamInstall(detailsApp)}
-          onUninstall={() => setSteamUninstallRequest(detailsApp)}
-          onVerify={() => verifySteamInstall(detailsApp)}
+          onUninstall={String(detailsApp.source ?? "").toLowerCase() === "steam" ? () => setSteamUninstallRequest(detailsApp) : undefined}
+          onVerify={String(detailsApp.source ?? "").toLowerCase() === "steam" ? () => verifySteamInstall(detailsApp) : undefined}
           onTogglePin={() => togglePin(detailsApp)}
           isPinned={pins.includes(detailsApp.id)}
           onToggleHidden={() => toggleHidden(detailsApp.id)}
@@ -2903,7 +2927,7 @@ export default function App() {
                         <GameCard key={app.id} app={app} focused={focused} isPinned={isPinned}
                           cardRef={focused ? searchFocusedCardRef : null}
                           onClick={() => { setSearchFocusIndex(i); searchFocusIndexRef.current = i; if (searchModeRef.current !== "results") switchSearchMode("results"); }}
-                          onDoubleClick={() => { closeSearch(); triggerLaunch(app, recentRef.current); }}
+                          onDoubleClick={() => { closeSearch(); openDetailsModal(app); }}
                         />
                       );
                     }
@@ -3061,6 +3085,7 @@ export default function App() {
             setFocusIndex={setFocusIndex}
             focusIndexRef={focusIndexRef}
             triggerLaunch={triggerLaunch}
+            onOpenDetails={openDetailsModal}
             recentRef={recentRef}
             t={t}
             AppIcon={AppIcon}

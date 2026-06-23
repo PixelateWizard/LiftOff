@@ -324,7 +324,7 @@ fn default_bottombar_compact() -> String {
     "off".to_string()
 }
 fn default_home_mode() -> String {
-    "normal".to_string()
+    "semi".to_string()
 }
 fn default_home_section_title_size() -> String {
     "small".to_string()
@@ -387,7 +387,7 @@ impl Default for Settings {
             wide_apps: false,
             wide_settings: false,
             cinematic_home: false,
-            home_mode: "normal".to_string(),
+            home_mode: "semi".to_string(),
             home_section_title_size: "small".to_string(),
             show_home_recents: true,
             hero_content_pos: "bottom".to_string(),
@@ -5097,10 +5097,31 @@ fn is_xboxgames_path(value: &str) -> bool {
         .contains(":\\xboxgames\\")
 }
 
-fn steam_manifest_size(id: &str, launch_path: &str) -> Option<u64> {
-    let app_id = id
-        .strip_prefix("steam://rungameid/")
-        .or_else(|| launch_path.strip_prefix("steam://rungameid/"))?;
+fn steam_app_id_for_size(id: &str, launch_path: &str, steam_appid: Option<u32>) -> Option<String> {
+    if let Some(appid) = steam_appid {
+        return Some(appid.to_string());
+    }
+
+    for value in [id, launch_path] {
+        let lower = value.to_ascii_lowercase();
+        let Some(index) = lower.find("steam://rungameid/") else {
+            continue;
+        };
+        let start = index + "steam://rungameid/".len();
+        let appid: String = value[start..]
+            .chars()
+            .take_while(|ch| ch.is_ascii_digit())
+            .collect();
+        if !appid.is_empty() {
+            return Some(appid);
+        }
+    }
+
+    None
+}
+
+fn steam_manifest_size(id: &str, launch_path: &str, steam_appid: Option<u32>) -> Option<u64> {
+    let app_id = steam_app_id_for_size(id, launch_path, steam_appid)?;
     for library in steam_library_paths() {
         let manifest = Path::new(&library).join(format!("appmanifest_{}.acf", app_id));
         let Ok(content) = std::fs::read_to_string(manifest) else {
@@ -5119,6 +5140,18 @@ fn steam_manifest_size(id: &str, launch_path: &str) -> Option<u64> {
         }
     }
     None
+}
+
+fn install_size_candidates(dir: &str, source: &str) -> Vec<std::path::PathBuf> {
+    let root = Path::new(dir).to_path_buf();
+    let mut candidates = Vec::new();
+    let content = root.join("Content");
+
+    if source.eq_ignore_ascii_case("xbox") || source.eq_ignore_ascii_case("uwp") || content.exists() {
+        candidates.push(content);
+    }
+    candidates.push(root);
+    candidates
 }
 
 fn resolve_install_dir(
@@ -5231,14 +5264,29 @@ fn get_install_size(
     launch_path: String,
     source: String,
     install_dir: Option<String>,
+    steam_appid: Option<u32>,
 ) -> Option<u64> {
     if source.eq_ignore_ascii_case("steam") {
-        if let Some(size) = steam_manifest_size(&id, &launch_path) {
+        if let Some(size) = steam_manifest_size(&id, &launch_path, steam_appid) {
             return Some(size);
         }
     }
     let dir = resolve_install_dir(&id, &launch_path, &source, install_dir.as_deref())?;
-    dir_size(Path::new(&dir))
+    let mut zero_size = false;
+    for candidate in install_size_candidates(&dir, &source) {
+        let Some(size) = dir_size(&candidate) else {
+            continue;
+        };
+        if size > 0 {
+            return Some(size);
+        }
+        zero_size = true;
+    }
+    if zero_size {
+        Some(0)
+    } else {
+        None
+    }
 }
 
 fn normalize_game_name_for_dedupe(name: &str) -> String {

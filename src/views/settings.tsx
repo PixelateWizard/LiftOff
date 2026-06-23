@@ -84,12 +84,19 @@ function getCategorySummary(idx: number, settings: Settings, t: TFunction): stri
       return `${themeLabel} · ${surfaceLabel}`;
     }
     case 1:
-      return String(t(`settings.values.${settings.home_mode ?? "normal"}`));
+      return settingValueLabel("home_mode", settings.home_mode ?? "normal", t);
     case 2:
       return `${Math.round((settings.ui_scale ?? 1) * 100)}%`;
     default:
       return "";
   }
+}
+
+function settingValueLabel(key: string, value: string, t: TFunction): string {
+  if (key === "home_mode") {
+    return String(t(`settings.homeModeValues.${value}`, String(t(`settings.values.${value}`, value))));
+  }
+  return String(t(`settings.values.${value}`, value));
 }
 
 function CategoryIcon({ index, focused }: { index: number; focused: boolean }) {
@@ -815,7 +822,7 @@ export function SettingsScreen({
             <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
               onClick={() => updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length])}>◀</span>
             <span style={{ fontSize: 12, color: accent.primary, fontWeight: 600 }}>
-              {String(t(`settings.values.${curVal}`, curVal))}
+              {settingValueLabel(item.key, curVal, t)}
             </span>
             <span style={{ fontSize: 10, color: theme.textDim, cursor: "pointer", userSelect: "none" }}
               onClick={() => updateSetting(item.key, opts[(cur + 1) % opts.length])}>▶</span>

@@ -56,6 +56,7 @@ export function HomeView(props: HomeViewProps) {
     setFocusIndex,
     focusIndexRef,
     triggerLaunch,
+    onOpenDetails,
     recentRef,
     t,
     AppIcon,
@@ -522,6 +523,10 @@ export function HomeView(props: HomeViewProps) {
           ? "radial-gradient(ellipse 46% 42% at 16% 72%, rgba(0,0,0,0.34) 0%, rgba(0,0,0,0.18) 34%, transparent 68%)"
           : "radial-gradient(ellipse 46% 42% at 16% 72%, rgba(39,27,18,0.18) 0%, rgba(39,27,18,0.09) 34%, transparent 68%)")
       : "transparent";
+    const activateSemiEntry = (app: any) => {
+      if (app.app_type === "game") onOpenDetails?.(app);
+      else triggerLaunch(app, recentRef.current);
+    };
     const renderSemiHeroCard = (app: any, i: number) => {
       const focused = focusSec === "hero" && heroIdx === i;
       const isPinned = pins.includes(app.id);
@@ -539,9 +544,9 @@ export function HomeView(props: HomeViewProps) {
 
       return (
         <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
-          onClick={select}
+          onClick={() => { select(); if (app.app_type === "game") onOpenDetails?.(app); }}
           onMouseEnter={select}
-          onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+          onDoubleClick={app.app_type === "game" ? undefined : () => activateSemiEntry(app)}
           style={wrapperStyle}>
           <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ position: "absolute", inset: 0, borderRadius: surfaceCardRadius, overflow: "hidden", transition: "border-color 0.15s ease, box-shadow 0.15s ease",
             border: `1px solid ${focused && !isOnyx ? (surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)") : (surfaceStyle === "material" ? "var(--material-border-subtle)" : "rgba(255,255,255,0.08)")}`,
@@ -575,9 +580,9 @@ export function HomeView(props: HomeViewProps) {
       if (app.app_type === "game" || art) {
         return (
           <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
-            onClick={select}
+            onClick={() => { select(); if (app.app_type === "game") onOpenDetails?.(app); }}
             onMouseEnter={select}
-            onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+            onDoubleClick={app.app_type === "game" ? undefined : () => activateSemiEntry(app)}
             style={wrapperStyle}>
             <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ position: "absolute", inset: 0, borderRadius: surfaceCardRadius, overflow: "hidden", transition: "border-color 0.15s ease, box-shadow 0.15s ease",
               border: `1px solid ${focused && !isOnyx ? (surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)") : (surfaceStyle === "material" ? "var(--material-border-subtle)" : "rgba(255,255,255,0.08)")}`,
@@ -632,9 +637,8 @@ export function HomeView(props: HomeViewProps) {
       if (app.app_type === "game") {
         return (
           <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
-            onClick={select}
+            onClick={() => { select(); onOpenDetails?.(app); }}
             onMouseEnter={select}
-            onDoubleClick={() => triggerLaunch(app, recentRef.current)}
             style={{ flexShrink: 0, width: semiCardW, height: semiCardH, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative" }}>
             <div style={{ position: "absolute", inset: 0, borderRadius: surfaceCardRadius, overflow: "hidden", transition: "box-shadow 0.15s ease",
               outline: (focused && !isOnyx) ? `2px solid ${accent.primary}` : "2px solid transparent",
@@ -660,7 +664,7 @@ export function HomeView(props: HomeViewProps) {
         <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
           onClick={select}
           onMouseEnter={select}
-          onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+          onDoubleClick={() => activateSemiEntry(app)}
           style={{ ...glass, flexShrink: 0, width: semiCardW, height: semiCardH, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative",
             outline: focused && !isOnyx ? `2px solid ${accent.primary}` : "2px solid transparent",
             outlineOffset: "2px",
@@ -881,8 +885,8 @@ export function HomeView(props: HomeViewProps) {
                       idleBoxShadow={idlePinned.boxShadow}
                       idleColor={idlePinned.color}
                       activeTextColor={activeTextColor}
-                      onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
-                      onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                      onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; if (app.app_type === "game") onOpenDetails?.(app); }}
+                      onDoubleClick={app.app_type === "game" ? undefined : () => triggerLaunch(app, recentRef.current)}
                     />
                   );
                 })}
@@ -1090,8 +1094,8 @@ export function HomeView(props: HomeViewProps) {
                 const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
                 return (
                   <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
-                    onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
-                    onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                    onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; if (app.app_type === "game") onOpenDetails?.(app); }}
+                    onDoubleClick={app.app_type === "game" ? undefined : () => triggerLaunch(app, recentRef.current)}
                     style={{
                       display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
                       flexShrink: 0, cursor: "pointer", borderRadius: surfaceCardRadius, transition: "all 0.15s ease",
@@ -1293,8 +1297,8 @@ export function HomeView(props: HomeViewProps) {
                   return (
                     // Outer wrapper — no overflow:hidden so ring can extend with gap
                     <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
-                      onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
-                      onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                      onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; onOpenDetails?.(app); }}
+                      onDoubleClick={undefined}
                       style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative", transition: "transform 0.15s ease",
                         transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" }}>
                       {/* Inner content — overflow:hidden clips the art */}
@@ -1399,8 +1403,8 @@ export function HomeView(props: HomeViewProps) {
                         data-card=""
                         className={focused ? "focused" : ""}
                         ref={focused ? focusedCardRef : null}
-                        onClick={() => { setFocusSection("home_collections"); focusSectionRef.current = "home_collections"; setHomeColFocusRow(rowIdx); homeColFocusRowRef.current = rowIdx; setHomeColFocusCol(colIdx); homeColFocusColRef.current = colIdx; }}
-                        onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                        onClick={() => { setFocusSection("home_collections"); focusSectionRef.current = "home_collections"; setHomeColFocusRow(rowIdx); homeColFocusRowRef.current = rowIdx; setHomeColFocusCol(colIdx); homeColFocusColRef.current = colIdx; onOpenDetails?.(app); }}
+                        onDoubleClick={undefined}
                         style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative",
                           scrollMarginTop: "120px",
                         }}>
@@ -1485,8 +1489,8 @@ export function HomeView(props: HomeViewProps) {
                           return (
                             <div key={app.id}
                               ref={recFocused ? focusedCardRef : null}
-                              onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
-                              onDoubleClick={() => triggerLaunch(app, recentRef.current)}
+                              onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; if (app.app_type === "game") onOpenDetails?.(app); }}
+                              onDoubleClick={app.app_type === "game" ? undefined : () => triggerLaunch(app, recentRef.current)}
                               style={{ position: "relative", flexShrink: 0, width: CARD_W, height: CARD_H }}>
                               <div style={{
                                 position: "absolute", inset: 0, overflow: "hidden", cursor: "pointer",

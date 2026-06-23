@@ -263,6 +263,11 @@
     "wideSettings": "Paramètres",
     "wideBottombar": "Barre inférieure",
     "homeMode": "Mode accueil",
+    "homeModeValues": {
+      "normal": "Legacy",
+      "semi": "Normal",
+      "immersive": "Immersif"
+    },
     "homeSectionTitleSize": "Taille des titres de section",
     "showHomeRecents": "Afficher les jeux récents",
     "heroContentPos": "Position du contenu hero",

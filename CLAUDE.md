@@ -1,9 +1,45 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Correct the real-hardware Steam progress follow-up: active installs must not remain Allocating for their full run or present a long-stale ACF checkpoint such as 0.1% as live progress.
-- Fix Cancel on a partial Steam install so LiftOff waits for the active download workspace to disappear instead of firing an immediate uninstall-complete event while Steam's confirmation prompt is still open.
-- Preserve the authoritative installed-state predicate and honest, non-estimated progress; validate focused Rust tests, Rust/frontend builds, and reconcile `CHANGELOG.md` plus this handoff to the final behavior.
+- Polish the Right Stick Games toolbar reveal without disturbing the recent Home mode, Details, search, and Steam install work.
+- When Right Stick enters the Games toolbar from a scrolled grid, smoothly scroll the Games scroller to the top so the movement is visible.
+
+## 🐛 Active Bugs
+
+- The indeterminate install bar at the bottom of a game card in the Games library restarts/glitches whenever gamepad focus moves to another card. Deferred; do not fix as part of Tasks D/E.
+
+**Completed (this session - toolbar reveal and search Details follow-up):**
+- Right Stick toolbar entry now smoothly scrolls the Games scroll container to the top before focusing `viewbar`, so the toolbar is visibly revealed even when the grid was scrolled down.
+- Search result activation now opens Game Details for game results from both controller/keyboard confirm and pointer double-click; app results keep launching directly.
+- Updated `CHANGELOG.md`; validated with `npm run build` and `git diff --check`. Only the existing Vite chunk-size warning and CRLF notices remain.
+
+**Completed (this session - smooth toolbar reveal polish):**
+- Changed the Right Stick Games toolbar reveal from an instant top snap to a smooth top scroll so users can see the grid move up to the toolbar.
+- Updated `CHANGELOG.md`; validated with `npm run build` and `git diff --check`. Only the existing Vite chunk-size warning and CRLF notices remain.
+
+**Completed (this session - Home mode/default and controller focus updates):**
+- Renamed the Home mode picker without changing stored values: `normal` now displays as Legacy, `semi` displays as Normal, and `immersive` remains Immersive. Fresh frontend and Rust defaults now use `home_mode: "semi"` so the new Normal/semi-immersive Home is the default.
+- Scoped Home mode labels through `settings.homeModeValues` so shared values like repeat speed `normal` still display as Normal elsewhere.
+- Extended Details-first Home game-card activation to Legacy, Normal/semi-immersive, and Immersive shelves/drawers for pointer and gamepad selection; app cards still launch directly, and the non-card hero CTA path still launches/resumes.
+- Updated Games controller routing so Right Stick left/right immediately enters and moves within the toolbar, Right Stick down exits, RB/LB and LT/RT leave toolbar focus through their normal tab/source actions, and D-pad/left-stick navigation exits to pinned/grid instead of treating subtabs as a reachable row.
+- Removed joystick entry into source subtabs from top-row pinned/grid navigation; source and collection subtabs remain available through LT/RT and pointer selection.
+- Updated `CHANGELOG.md`; validated with `npm run build`, `cargo check`, and `git diff --check`. Only the existing Vite chunk-size warning, Rust path canonicalization / unused-helper warnings, and CRLF notices remain. Hands-on gamepad confirmation should verify RS-right toolbar entry/move, D-pad/left-stick toolbar exit, RB/LB tab switch from toolbar, and Home game cards opening Details in each Home mode.
+
+**Completed (this session - Details source recovery and file sizes):**
+- Fixed Details opening from Home/recent/history entries by resolving the lightweight entry back to the full live library record before storing `detailsApp`; this restores missing `source`, `install_dir`, `steam_appid`, and installed-state metadata for entries such as Cloud bookmarks, Steam games, and Xbox/Game Pass games.
+- Updated `useGamepadNavigation` so the enriched Details entry remains in `detailsAppRef` instead of being overwritten by the raw recent entry after opening.
+- Changed Details action gating so Verify files and Steam Uninstall are Steam-only actions, preventing Xbox/Game Pass and Cloud entries from showing Steam controls.
+- Passed `steam_appid` into the lazy install-size Tauri command, and changed the backend lookup to use it directly before falling back to parsing `steam://rungameid/...` IDs/paths.
+- Made install-size resolution try package `Content` folders as an additional candidate for Xbox/UWP-style install directories, so package roots that expose a content subfolder have another chance to report size before the metadata row is hidden.
+- Updated `CHANGELOG.md`; validated with `npm.cmd run build` and `cargo check`. Only the existing Vite chunk-size warning plus the existing Rust path canonicalization / unused-helper warnings remain. Hands-on verification should reopen Details for AdventureQuest Worlds, Control PCGP, and at least one Cloud bookmark from the same path where the issue was observed.
+
+**Completed (this session - Tasks D and E):**
+- Semi-immersive Home game activation now routes gamepad A/Enter through the existing `openDetailsModal` wrapper for hero/recent-game, pinned, recents, and collection sections; app entries retain direct launch and other Home modes remain unchanged.
+- Semi-immersive mouse game cards preserve hover/click focus and background-art sync, then open Details on click. App cards preserve the prior click-to-focus and double-click-to-launch interaction.
+- `GameDetailsModal` now accepts live running state, labels its primary action Resume while running, and inserts a danger-styled Close action first in the revealed action grid.
+- Details Close dismisses the modal before opening the established `closeRequest` confirmation, preserving the existing graceful `WM_CLOSE` attempt, delayed running check, and force-close escalation.
+- Added the requested Active Bugs section and recorded the Games-card indeterminate-bar focus animation restart as deferred; no fix for that bug was attempted here.
+- Updated `CHANGELOG.md`; validated twice with `npm.cmd run build` and with `git diff --check`. Only the existing Vite chunk-size warning and CRLF notices remain; hands-on gamepad confirmation is still required.
 
 **Completed (this session - Steam install progress v2 Tasks A-C + hardware follow-up):**
 - Confirmed from Steam's live log that Outlast 2 sustained roughly 244-263 Mbps while its appmanifest percentage remained at a stale checkpoint; active ACF byte counters cannot honestly be presented as live progress on this Steam client.
@@ -11,7 +47,7 @@
 - Kept one Playnite-modeled installed authority: Steam's FullyInstalled bit, nonzero `SizeOnDisk`, and an existing `common/{installdir}` directory must all agree across snapshots, watcher completion, and library scans.
 - Fixed partial-install Cancel so its watcher waits for `downloading/{appid}` to disappear instead of immediately treating the not-yet-installed manifest as uninstall-complete while Steam's confirmation prompt is open.
 - Confirmed Windows recorded the reported 22:32 LiftOff failure as `AppHangB1`, not a process crash; moved filesystem snapshot work off Tauri's command thread, reduced frontend polling from 250 ms to one second, and removed redundant watcher progress events while retaining completion events.
-- Added English and TODO French paused strings plus nine focused Rust tests covering ACF math, installed authority, content-log transitions, paused checkpoints, stale counters, and the partial-cancel gate. Tasks D and E remain untouched.
+- Added English and TODO French paused strings plus nine focused Rust tests covering ACF math, installed authority, content-log transitions, paused checkpoints, stale counters, and the partial-cancel gate. Tasks D and E were untouched in that Steam pass and are now completed in the follow-up above.
 - Validated with `cargo test steam_install_progress_tests` (9 passed), `cargo check`, `npm.cmd run build`, and `git diff --check`; only the existing Rust path/unused-helper warning, Vite chunk-size warning, and CRLF notices remain. `cargo fmt --check` still reports only the two unrelated pre-existing Cloud formatting differences.
 
 **Completed (this session - Cloud removal controller selection):**
