@@ -1,12 +1,18 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Fix the new Rust/Cargo Dependabot alerts reported after GitHub rescanned `src-tauri/Cargo.lock`.
-- Prefer targeted lockfile/package updates, preserve the npm fix, and validate the Tauri build surface before updating release notes.
+- Fix the Tauri npm/Rust version mismatch introduced by the Rust Dependabot update.
+- Align npm Tauri packages with the Rust Tauri 2.11 line, then document how the final two upstream-pinned Dependabot alerts should be handled.
 
 ## 🐛 Active Bugs
 
 - The indeterminate install bar at the bottom of a game card in the Games library restarts/glitches whenever gamepad focus moves to another card. Deferred; do not fix as part of Tasks D/E.
+
+**Completed (this session - Tauri npm/Rust alignment follow-up):**
+- Fixed the `tauri dev` package-version mismatch caused by Rust `tauri@2.11.3` being paired with npm `@tauri-apps/api@2.10.1` and `@tauri-apps/cli@2.10.1`.
+- Pinned npm Tauri packages to matching compatible versions: `@tauri-apps/api@2.11.1`, `@tauri-apps/cli@2.11.3`, and `@tauri-apps/plugin-opener@2.5.4`.
+- `tauri info` now reports Rust `tauri@2.11.3`, npm CLI `2.11.3`, npm API `2.11.1`, and opener plugin `2.5.4` on both Rust and JS sides.
+- Updated `CHANGELOG.md`; validated with `npm.cmd run tauri -- info`, `npm.cmd run build`, `cargo check`, `npm.cmd audit --json`, and `git diff --check`. Only the existing Vite chunk-size warning, Rust unused-helper warning, path canonicalization warning, and CRLF notices remain.
 
 **Completed (this session - Rust Dependabot alert follow-up):**
 - GitHub reported 14 new open Rust/Cargo Dependabot alerts after rescanning `src-tauri/Cargo.lock`: OpenSSL, rustls-webpki, Tauri, rand, and glib.
