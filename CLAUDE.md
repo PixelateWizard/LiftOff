@@ -1,18 +1,24 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Fix Dependabot/security dependency alerts with the smallest safe package updates.
-- Preserve current launcher behavior and validate frontend/Rust dependency changes before updating release notes.
+- Fix the new Rust/Cargo Dependabot alerts reported after GitHub rescanned `src-tauri/Cargo.lock`.
+- Prefer targeted lockfile/package updates, preserve the npm fix, and validate the Tauri build surface before updating release notes.
 
 ## 🐛 Active Bugs
 
 - The indeterminate install bar at the bottom of a game card in the Games library restarts/glitches whenever gamepad focus moves to another card. Deferred; do not fix as part of Tasks D/E.
 
+**Completed (this session - Rust Dependabot alert follow-up):**
+- GitHub reported 14 new open Rust/Cargo Dependabot alerts after rescanning `src-tauri/Cargo.lock`: OpenSSL, rustls-webpki, Tauri, rand, and glib.
+- Updated the actionable lockfile set to `tauri@2.11.3`, `tauri-build@2.6.3`, `tauri-runtime@2.11.3`, `tauri-runtime-wry@2.11.3`, `tauri-utils@2.9.3`, `openssl@0.10.81`, `rustls-webpki@0.103.13`, `rand@0.8.6`, and `tauri-plugin-opener@2.5.4`.
+- Confirmed two remaining alert sources are upstream-pinned in the current all-target Tauri graph: Linux GTK/WebKit dependencies require `glib ^0.18`, and `tauri-utils -> kuchikiki -> selectors -> phf_codegen` requires `rand ^0.7`. Forced updates to `glib@0.20.0` and `rand@0.8.6` were rejected by Cargo's version solver for those paths.
+- Updated `CHANGELOG.md`; validated with `cargo check`, `npm.cmd audit --json`, and `git diff --check`. Only the existing Rust unused-helper warning and CRLF notices remain. The remaining `glib` and `rand@0.7.3` GitHub alerts need an upstream Tauri dependency update or explicit Dependabot dismissal as non-actionable for the Windows build.
+
 **Completed (this session - Dependabot dependency alerts):**
 - Queried GitHub Dependabot alerts for `PixelateWizard/LiftOff`; all four open alerts were npm `package-lock.json` dev/build-tool advisories for Vite, Babel, and esbuild.
 - Updated the npm lockfile to `vite@7.3.5`, `@babel/core@7.29.7`, and patched related Babel/browser metadata packages.
 - Added a narrow npm `overrides.esbuild` pin to `0.28.1` because the current Vite 7 line still declares `esbuild ^0.27.0`; avoided a Vite 8 migration for this security-only pass.
-- Updated `CHANGELOG.md`; validated with `npm.cmd audit --json`, `npm.cmd ls vite esbuild @babel/core`, `npm.cmd run build`, and `git diff --check`. Only the existing Vite chunk-size warning and CRLF notices remain. `cargo audit` is not installed locally, but GitHub reported no open Cargo Dependabot alerts.
+- Updated `CHANGELOG.md`; validated with `npm.cmd audit --json`, `npm.cmd ls vite esbuild @babel/core`, `npm.cmd run build`, and `git diff --check`. Only the existing Vite chunk-size warning and CRLF notices remained. A later GitHub rescan surfaced the Rust/Cargo alerts handled in the follow-up above.
 
 **Completed (this session - toolbar reveal and search Details follow-up):**
 - Right Stick toolbar entry now smoothly scrolls the Games scroll container to the top before focusing `viewbar`, so the toolbar is visibly revealed even when the grid was scrolled down.

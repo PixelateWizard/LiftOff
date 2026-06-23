@@ -57,6 +57,7 @@
 - **Framed content removal** - removed the experimental Framed Content setting and wrapper, returning Games, Apps, and Settings to their normal full content layout.
 
 ### Fixed
+- **Rust Dependabot dependency alerts** - updated the Tauri/Rust lockfile to patched `tauri`, OpenSSL, rustls-webpki, and rand 0.8 releases, clearing the actionable runtime alerts while preserving the current Tauri 2 line. Two remaining lockfile alerts are upstream-pinned in Tauri's current all-target graph: Linux GTK keeps `glib 0.18`, and Tauri's HTML utility build path keeps `rand 0.7`.
 - **Dependabot dependency alerts** - updated the npm build-tooling lockfile to patched Vite and Babel versions, and pinned `esbuild` to the advisory-fixed `0.28.1` via npm overrides so the Windows dev-server file-read alerts are cleared without moving LiftOff to Vite 8.
 - **Details metadata/action source recovery** - opening Details from Home/recent entries now resolves the lightweight history item back to the full library record before rendering, preserving source, install directory, Steam app ID, and installed state. This restores size-on-disk lookup for Steam and Xbox entries reached from recents and prevents Cloud/Xbox games from inheriting Steam-only Details actions.
 - **Steam-only Details actions** - Verify files and Steam Uninstall now render only for real Steam entries, so Xbox/Game Pass and Cloud games keep their source-appropriate Details controls.
