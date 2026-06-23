@@ -1,12 +1,18 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Polish the Right Stick Games toolbar reveal without disturbing the recent Home mode, Details, search, and Steam install work.
-- When Right Stick enters the Games toolbar from a scrolled grid, smoothly scroll the Games scroller to the top so the movement is visible.
+- Fix Dependabot/security dependency alerts with the smallest safe package updates.
+- Preserve current launcher behavior and validate frontend/Rust dependency changes before updating release notes.
 
 ## 🐛 Active Bugs
 
 - The indeterminate install bar at the bottom of a game card in the Games library restarts/glitches whenever gamepad focus moves to another card. Deferred; do not fix as part of Tasks D/E.
+
+**Completed (this session - Dependabot dependency alerts):**
+- Queried GitHub Dependabot alerts for `PixelateWizard/LiftOff`; all four open alerts were npm `package-lock.json` dev/build-tool advisories for Vite, Babel, and esbuild.
+- Updated the npm lockfile to `vite@7.3.5`, `@babel/core@7.29.7`, and patched related Babel/browser metadata packages.
+- Added a narrow npm `overrides.esbuild` pin to `0.28.1` because the current Vite 7 line still declares `esbuild ^0.27.0`; avoided a Vite 8 migration for this security-only pass.
+- Updated `CHANGELOG.md`; validated with `npm.cmd audit --json`, `npm.cmd ls vite esbuild @babel/core`, `npm.cmd run build`, and `git diff --check`. Only the existing Vite chunk-size warning and CRLF notices remain. `cargo audit` is not installed locally, but GitHub reported no open Cargo Dependabot alerts.
 
 **Completed (this session - toolbar reveal and search Details follow-up):**
 - Right Stick toolbar entry now smoothly scrolls the Games scroll container to the top before focusing `viewbar`, so the toolbar is visibly revealed even when the grid was scrolled down.

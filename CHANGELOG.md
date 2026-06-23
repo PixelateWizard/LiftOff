@@ -57,6 +57,7 @@
 - **Framed content removal** - removed the experimental Framed Content setting and wrapper, returning Games, Apps, and Settings to their normal full content layout.
 
 ### Fixed
+- **Dependabot dependency alerts** - updated the npm build-tooling lockfile to patched Vite and Babel versions, and pinned `esbuild` to the advisory-fixed `0.28.1` via npm overrides so the Windows dev-server file-read alerts are cleared without moving LiftOff to Vite 8.
 - **Details metadata/action source recovery** - opening Details from Home/recent entries now resolves the lightweight history item back to the full library record before rendering, preserving source, install directory, Steam app ID, and installed state. This restores size-on-disk lookup for Steam and Xbox entries reached from recents and prevents Cloud/Xbox games from inheriting Steam-only Details actions.
 - **Steam-only Details actions** - Verify files and Steam Uninstall now render only for real Steam entries, so Xbox/Game Pass and Cloud games keep their source-appropriate Details controls.
 - **Install-size lookup resilience** - the lazy size-on-disk command now accepts Steam app IDs directly for manifest `SizeOnDisk` lookup and tries package `Content` folders as an additional candidate for Xbox/UWP-style install directories before hiding the size metadata row.
