@@ -5,6 +5,7 @@ import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, rumble, type 
 import type { AccentColors, App, ThemeColors } from "../types";
 
 type SizeBytes = number | "loading" | undefined;
+type DownloadBytes = number | undefined;
 interface InstallProgress {
   appid?: string;
   pct?: number;
@@ -34,6 +35,7 @@ interface GameDetailsModalProps {
   lastPlayedAt?: number;
   playtimeMinutes?: number;
   sizeBytes?: SizeBytes;
+  downloadBytes?: DownloadBytes;
   installed: boolean;
   canInstall?: boolean;
   installProgress?: InstallProgress;
@@ -130,6 +132,7 @@ export function GameDetailsModal({
   lastPlayedAt,
   playtimeMinutes,
   sizeBytes,
+  downloadBytes,
   installed,
   canInstall = false,
   installProgress,
@@ -380,22 +383,26 @@ export function GameDetailsModal({
     return () => cancelAnimationFrame(rafId);
   }, []);
 
+  const installLabel = downloadBytes != null
+    ? `${t("install.install")} (${formatBytes(downloadBytes)})`
+    : t("install.install");
   const primaryLabel = running
     ? t("home.resume")
     : installed
       ? t("details.play")
       : installing
         ? (uninstalling ? t("install.uninstalling") : t("install.cancel"))
-        : t("install.install");
+        : installLabel;
   const primaryDisabled = !installed && (uninstalling || (!installing && !canInstall));
 
   const metaItems = [
     { label: t("details.lastPlayed"), value: lastPlayedAt ? formatRelativeTime(lastPlayedAt, t("details.never")) : t("details.never") },
     ...(typeof playtimeMinutes === "number" ? [{ label: t("details.playtime"), value: formatPlaytime(playtimeMinutes) }] : []),
-    ...(sizeBytes !== undefined ? [{
+    ...(installed && sizeBytes !== undefined ? [{
       label: t("details.sizeOnDisk"),
       value: sizeBytes === "loading" ? t("common.loading", { defaultValue: "Loading..." }) : formatBytes(sizeBytes),
     }] : []),
+    ...(!installed && downloadBytes != null ? [{ label: t("details.downloadSize"), value: formatBytes(downloadBytes) }] : []),
   ];
 
   return (

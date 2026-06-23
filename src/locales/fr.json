@@ -466,6 +466,7 @@
     "lastPlayed": "TODO(fr) Last played",
     "playtime": "TODO(fr) Playtime",
     "sizeOnDisk": "TODO(fr) Size on disk",
+    "downloadSize": "TODO(fr) Download size",
     "never": "TODO(fr) Never played"
   },
   "library": {

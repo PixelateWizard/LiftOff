@@ -1,12 +1,30 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Fix the uninstalled-game art backfill regression where blank art attempts can block later Details-modal retries.
-- Preserve the stable missing-art modal behavior while letting Details recover art when Change Art can find valid options.
+- Move the current `CHANGELOG.md` Unreleased notes under Alpha 5.
+- Update app-owned version metadata to `v2.0.0-alpha-5` while leaving website-facing files unchanged.
 
 ## 🐛 Active Bugs
 
 - The indeterminate install bar at the bottom of a game card in the Games library restarts/glitches whenever gamepad focus moves to another card. Deferred; do not fix as part of Tasks D/E.
+
+**Completed (this session - Alpha 5 release rebucket/version bump):**
+- Moved the full `CHANGELOG.md` Unreleased body into `## [2.0.0-alpha-5] - Alpha 5`, leaving `## Unreleased` empty for future work and normalizing the Alpha 5 section into Added / Changed / Fixed groups.
+- Updated app-owned version metadata to `2.0.0-alpha-5` in `APP_VERSION`, npm package metadata/lockfile, Tauri config, and Cargo metadata/lockfile.
+- Left website-facing files unchanged per request; `CLAUDE.md` now documents that alpha-only version bumps should not update the website.
+- Validated with `npm.cmd run build`, `npm.cmd run tauri -- info`, `cargo check`, and `git diff --check`. Only the existing Vite chunk-size warning, Rust path/unused-helper warnings, and CRLF notices remained.
+
+**Completed (this session - Steam download size estimates):**
+- Added a std-only `steam_appinfo` backend reader for Steam `appcache/appinfo.vdf` versions 39-41, summing public Windows non-DLC depot `manifests.public.size` values for a fail-safe not-installed-game size estimate.
+- Registered `get_steam_download_size` and mirrored the existing Details lazy size lookup with separate frontend `downloadSize` state, leaving installed games on the existing `get_install_size` / Size on disk path.
+- Details now shows a localized Download size metadata tile and appends the formatted size to the Install button when the local Steam cache resolves a value; parse misses or absent Steam cache hide the slot without a spinner.
+- Updated `CHANGELOG.md`; validated with `cargo test steam_appinfo`, `cargo check`, `npm.cmd run build`, and `git diff --check`. Only the existing Rust path/unused-helper warnings, Vite chunk-size warning, and CRLF notices remained. Hands-on Ally verification should compare several not-installed Steam Details sizes against Steam's install dialog and confirm absent/missing appinfo entries collapse cleanly.
+
+**Completed (this session - Steam download size parser follow-up):**
+- Reproduced the all-blank size issue against the real local Steam `appcache/appinfo.vdf`: v41 parsed correctly, but depot sizes were under `manifests.public.size` / `download` rather than the handoff's depot-root `maxsize`.
+- Updated the parser to prefer `manifests.public.size`, keep `maxsize` and `download` as fallbacks, and added a unit test for the real public-manifest schema.
+- Live diagnostic before cleanup resolved sample app IDs from the local cache, including MECCHA CHAMELEON `4704690` as `2574170180` bytes.
+- Updated `CHANGELOG.md`; validated with `cargo test steam_appinfo`, `cargo check`, `npm.cmd run build`, and `git diff --check`. Only the existing Rust path/unused-helper warnings, Vite chunk-size warning, and CRLF notices remained. Refresh the Tauri runtime and reopen a not-installed Steam Details modal to verify the row appears in UI.
 
 **Completed (this session - uninstalled art retry recovery):**
 - Fixed the art regression where `get_cached_art_bulk` cache misses were mirrored into frontend `gameArt`/hero maps as `""`, causing the new backfill to skip uninstalled games and causing Details to think art had already been checked.
@@ -633,7 +651,7 @@
 
 - **Stack:** Tauri 2, Rust (`src-tauri/src/lib.rs`), React (`src/App.jsx`)
 - **Identifier:** `com.taylo.liftoff`
-- **Version:** `2.0.0-alpha.4.1` (APP_VERSION in constants.ts) / `2.0.0-alpha.4.1` (tauri.conf.json — update both together on release; also update Cargo.toml, Cargo.lock, package.json, package-lock.json, docs/index.html, CHANGELOG.md)
+- **Version:** `2.0.0-alpha-5` (APP_VERSION in constants.ts) / `2.0.0-alpha-5` (tauri.conf.json — update both together on release; also update Cargo.toml, Cargo.lock, package.json, package-lock.json, CHANGELOG.md; do not update the website for alpha-only versions)
 - **Installer:** NSIS bundle at `src-tauri/target/release/bundle/nsis/`
 - **Dev command:** `npm run dev` (frontend) + `cargo tauri dev`
 - **Build:** `cargo tauri build` → use NSIS installer for testing, not raw `.exe`
@@ -906,7 +924,7 @@ Priority order of `else if` branches:
 ## Frontend (`src/App.jsx`)
 
 ### Constants (top of file)
-- `APP_VERSION = "2.0.0-alpha.4.1"` — compared against GitHub Releases API for update checks
+- `APP_VERSION = "2.0.0-alpha-5"` — compared against GitHub Releases API for update checks
 - `GITHUB_REPO = "PixelateWizard/LiftOff"` — used for update check and releases link
 
 ### State

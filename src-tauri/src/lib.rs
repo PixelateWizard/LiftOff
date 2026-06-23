@@ -41,6 +41,8 @@ use windows::{
     },
 };
 
+mod steam_appinfo;
+
 const SGDB_KEY: &str = env!("SGDB_API_KEY");
 const RECENTS_MAX: usize = 10;
 const XCLOUD_REMOTE_URL: &str =
@@ -5319,6 +5321,11 @@ fn get_install_size(
     }
 }
 
+#[tauri::command]
+fn get_steam_download_size(appid: u32) -> Option<u64> {
+    steam_appinfo::steam_download_size(appid)
+}
+
 fn normalize_game_name_for_dedupe(name: &str) -> String {
     name.chars()
         .filter(|c| c.is_ascii_alphanumeric())
@@ -6820,6 +6827,7 @@ pub fn run() {
             get_apps,
             get_all_apps,
             get_install_size,
+            get_steam_download_size,
             launch_app,
             check_launch_focus,
             try_focus_launched_app,

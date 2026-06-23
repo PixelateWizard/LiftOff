@@ -290,6 +290,7 @@ export default function App() {
   const [detailsApp, setDetailsApp] = useState(null);
   const detailsAppRef = useRef(null);
   const [installSize, setInstallSize] = useState({});
+  const [downloadSize, setDownloadSize] = useState({});
   const [installProgress, setInstallProgress] = useState({});
   const [installErrors, setInstallErrors] = useState({});
   const [steamUninstallRequest, setSteamUninstallRequest] = useState(null);
@@ -1085,6 +1086,21 @@ export default function App() {
         setInstallSize((prev) => ({ ...prev, [detailsApp.id]: null }));
       });
   }, [detailsApp, installSize]);
+
+  useEffect(() => {
+    if (!detailsApp || detailsApp.installed !== false) return;
+    if (String(detailsApp.source ?? "").toLowerCase() !== "steam") return;
+    if (Object.prototype.hasOwnProperty.call(downloadSize, detailsApp.id)) return;
+    const appid = Number(steamAppIdFor(detailsApp));
+    if (!Number.isFinite(appid) || appid <= 0) return;
+    invoke("get_steam_download_size", { appid })
+      .then((size) => {
+        setDownloadSize((prev) => ({ ...prev, [detailsApp.id]: size == null ? null : size }));
+      })
+      .catch(() => {
+        setDownloadSize((prev) => ({ ...prev, [detailsApp.id]: null }));
+      });
+  }, [detailsApp, downloadSize]);
 
   useEffect(() => {
     let disposed = false;
@@ -2468,6 +2484,11 @@ export default function App() {
           lastPlayedAt={Math.max(Number(recentAt(detailsApp.id) ?? 0), Number(detailsApp.last_played ?? 0)) || undefined}
           playtimeMinutes={detailsApp.playtime_minutes ?? undefined}
           sizeBytes={installSize[detailsApp.id] === null ? undefined : installSize[detailsApp.id]}
+          downloadBytes={
+            detailsApp.installed === false && downloadSize[detailsApp.id] != null
+              ? downloadSize[detailsApp.id]
+              : undefined
+          }
           installed={detailsApp.installed !== false}
           canInstall={String(detailsApp.source ?? "").toLowerCase() === "steam" && !!steamAppIdFor(detailsApp)}
           installProgress={installProgress[detailsApp.id]}

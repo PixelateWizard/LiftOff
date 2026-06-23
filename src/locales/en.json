@@ -465,6 +465,7 @@
     "lastPlayed": "Last played",
     "playtime": "Playtime",
     "sizeOnDisk": "Size on disk",
+    "downloadSize": "Download size",
     "never": "Never played"
   },
   "library": {
