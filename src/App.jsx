@@ -42,6 +42,7 @@ import { SteamGridArtPickerModal } from "./components/art/SteamGridArtPickerModa
 import { useSurfaceTheme } from "./theme/surfaces";
 import { useAppSettings } from "./hooks/useAppSettings";
 import { useAudioFeedback } from "./hooks/useAudioFeedback";
+import { useArtBackfill } from "./hooks/useArtBackfill";
 import { useCollections } from "./hooks/useCollections";
 import { useCustomArt } from "./hooks/useCustomArt";
 import { useCustomSources } from "./hooks/useCustomSources";
@@ -326,6 +327,10 @@ export default function App() {
     fetchGameArt,
     clearGameArt,
   } = useCustomArt();
+  // Mirror gameArt into a ref so the background art backfill can read the latest
+  // resolved set without re-subscribing on every art update.
+  const gameArtRef = useRef(gameArt);
+  useEffect(() => { gameArtRef.current = gameArt; }, [gameArt]);
   const { loading, splashExiting, isReadyRef, onLoaded, onLoadError } = useStartupBootstrap({
     onAppLoaded: playAppLoadedSound,
     hapticEnabledRef: startupHapticsEnabledRef,
@@ -1125,12 +1130,23 @@ export default function App() {
     };
   }, [applySteamProgress, clearInstallProgressForApp, patchLibraryApp, setInstallErrorForApp]);
 
+  const detailsArtForceAttemptRef = useRef("");
+  useEffect(() => {
+    if (!detailsApp) {
+      detailsArtForceAttemptRef.current = "";
+    }
+  }, [detailsApp]);
+
   useEffect(() => {
     if (!detailsApp || detailsApp.app_type !== "game") return;
+    const hasCoverArt = Boolean(gameArt[detailsApp.id]);
     const artChecked = [gameArt, heroStatic, heroAnimated]
       .every((artMap) => Object.prototype.hasOwnProperty.call(artMap, detailsApp.id));
-    if (artChecked) return;
-    fetchGameArt([detailsApp], undefined, { includeUninstalled: true });
+    if (artChecked && hasCoverArt) return;
+    const forceRefresh = artChecked && detailsArtForceAttemptRef.current !== detailsApp.id;
+    if (artChecked && !forceRefresh) return;
+    if (forceRefresh) detailsArtForceAttemptRef.current = detailsApp.id;
+    fetchGameArt([detailsApp], undefined, { includeUninstalled: true, forceRefresh });
   }, [detailsApp, gameArt, heroStatic, heroAnimated, fetchGameArt]);
 
   // Global styles
@@ -1513,6 +1529,19 @@ export default function App() {
     () => sortGamesForView(filterByInstallState(gamesSourceFilteredApps)),
     [gamesSourceFilteredApps, installFilter, gamesSort, recentRank]
   );
+  // Ids in the order the user currently sees them (current tab/filter/sort).
+  // The backfill fills these first so on-screen tiles resolve before off-screen ones.
+  const priorityIdsRef = useRef([]);
+  useEffect(() => {
+    priorityIdsRef.current = gamesFilteredApps.map((a) => a.id);
+  }, [gamesFilteredApps]);
+  useArtBackfill({
+    appsRef,
+    gameArtRef,
+    priorityIdsRef,
+    fetchGameArt,
+    enabled: !loading,
+  });
   const libraryAppsFilteredApps = useMemo(() => apps.filter((a) => {
     if (a.app_type !== "app") return false;
     if (appCollectionTab === "All") return true;

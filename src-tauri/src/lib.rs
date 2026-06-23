@@ -3431,23 +3431,53 @@ fn get_cached_art_bulk(game_names: Vec<String>) -> HashMap<String, GameArtBundle
 }
 
 #[tauri::command]
-fn fetch_game_art(game_name: String, source: Option<String>, appid: Option<u32>) -> GameArtBundle {
+fn fetch_game_art(
+    game_name: String,
+    source: Option<String>,
+    appid: Option<u32>,
+    force_refresh: Option<bool>,
+) -> GameArtBundle {
     let mut grid_cache = load_art_cache();
     let mut hero_static_cache = load_hero_cache();
     let mut hero_animated_cache = load_hero_animated_cache();
 
-    let grid_cached = grid_cache.get(&game_name).cloned();
-    let hero_static_cached = hero_static_cache.get(&game_name).cloned();
-    let hero_animated_cached = hero_animated_cache.get(&game_name).cloned();
+    let force_refresh = force_refresh.unwrap_or(false);
+    let grid_cached_raw = grid_cache.get(&game_name).cloned();
+    let hero_static_cached_raw = hero_static_cache.get(&game_name).cloned();
+    let hero_animated_cached_raw = hero_animated_cache.get(&game_name).cloned();
+    let has_real_art = |cached: &Option<String>| {
+        cached
+            .as_deref()
+            .map(|value| !value.is_empty())
+            .unwrap_or(false)
+    };
 
-    // All three checked (sentinel "" or real URL) — zero API calls
-    if grid_cached.is_some() && hero_static_cached.is_some() && hero_animated_cached.is_some() {
+    // Normal fetches respect blank sentinels; recovery fetches can retry stale blanks.
+    if (has_real_art(&grid_cached_raw)
+        && has_real_art(&hero_static_cached_raw)
+        && has_real_art(&hero_animated_cached_raw))
+        || (!force_refresh
+            && grid_cached_raw.is_some()
+            && hero_static_cached_raw.is_some()
+            && hero_animated_cached_raw.is_some())
+    {
         return GameArtBundle {
-            grid: grid_cached.filter(|s| !s.is_empty()),
-            hero_animated: hero_animated_cached.filter(|s| !s.is_empty()),
-            hero_static: hero_static_cached.filter(|s| !s.is_empty()),
+            grid: grid_cached_raw.filter(|s| !s.is_empty()),
+            hero_animated: hero_animated_cached_raw.filter(|s| !s.is_empty()),
+            hero_static: hero_static_cached_raw.filter(|s| !s.is_empty()),
         };
     }
+
+    let refresh_empty = |cached: Option<String>| {
+        if force_refresh && cached.as_deref() == Some("") {
+            None
+        } else {
+            cached
+        }
+    };
+    let grid_cached = refresh_empty(grid_cached_raw);
+    let hero_static_cached = refresh_empty(hero_static_cached_raw);
+    let hero_animated_cached = refresh_empty(hero_animated_cached_raw);
 
     let client = match reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(10))

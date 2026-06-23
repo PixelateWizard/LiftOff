@@ -40,7 +40,7 @@ export function useCustomArt() {
   const fetchGameArt = useCallback(async (
     games: App[],
     onProgress?: (done: number, total: number, lastName?: string) => void,
-    options: { includeUninstalled?: boolean } = {}
+    options: { includeUninstalled?: boolean; forceRefresh?: boolean } = {}
   ) => {
     if (!games.length) return;
 
@@ -55,9 +55,12 @@ export function useCustomArt() {
       games.forEach(game => {
         const b = bulk[game.name];
         if (!b) return;
-        newGrid[game.id] = toUrl(b.grid) ?? "";
-        newAnimated[game.id] = toUrl(b.hero_animated) ?? "";
-        newStatic[game.id] = toUrl(b.hero_static) ?? "";
+        const grid = toUrl(b.grid);
+        const animated = toUrl(b.hero_animated);
+        const stat = toUrl(b.hero_static);
+        if (grid) newGrid[game.id] = grid;
+        if (animated) newAnimated[game.id] = animated;
+        if (stat) newStatic[game.id] = stat;
       });
       if (Object.keys(newGrid).length) setGameArt(prev => ({ ...prev, ...newGrid }));
       if (Object.keys(newAnimated).length) setHeroAnimated(prev => ({ ...prev, ...newAnimated }));
@@ -78,6 +81,7 @@ export function useCustomArt() {
           gameName: game.name,
           source: game.source ?? null,
           appid: game.steam_appid ?? null,
+          forceRefresh: options.forceRefresh ?? false,
         })
           .then(bundle => {
             batchGrid[game.id] = toUrl(bundle.grid) ?? "";

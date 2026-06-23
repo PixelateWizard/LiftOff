@@ -1,12 +1,23 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Fix the Tauri npm/Rust version mismatch introduced by the Rust Dependabot update.
-- Align npm Tauri packages with the Rust Tauri 2.11 line, then document how the final two upstream-pinned Dependabot alerts should be handled.
+- Fix the uninstalled-game art backfill regression where blank art attempts can block later Details-modal retries.
+- Preserve the stable missing-art modal behavior while letting Details recover art when Change Art can find valid options.
 
 ## 🐛 Active Bugs
 
 - The indeterminate install bar at the bottom of a game card in the Games library restarts/glitches whenever gamepad focus moves to another card. Deferred; do not fix as part of Tasks D/E.
+
+**Completed (this session - uninstalled art retry recovery):**
+- Fixed the art regression where `get_cached_art_bulk` cache misses were mirrored into frontend `gameArt`/hero maps as `""`, causing the new backfill to skip uninstalled games and causing Details to think art had already been checked.
+- Added a `forceRefresh` option to `fetchGameArt` / `fetch_game_art` so the background backfill and a one-shot Details recovery can retry stale blank backend sentinels while normal startup fetches still respect those sentinels.
+- Details now retries once when a game has been marked checked but still has no cover art, preserving the previous missing-hero stability fix without leaving the modal permanently blank.
+- Updated `CHANGELOG.md`; validated with `npm.cmd run build`, `cargo check`, and `git diff --check`. Only the existing Vite chunk-size warning, Rust unused-helper/path warnings, and CRLF notices remained. Hands-on verification should retry a not-installed Steam game whose Change Art picker has options and confirm grid art plus Details cover recover after a refreshed Tauri runtime.
+
+**Completed (this session - uninstalled art backfill):**
+- Added a frontend-only `useArtBackfill` hook that waits until startup loading finishes, then resolves owned-but-uninstalled game art in small idle chunks.
+- Backfill prioritizes the current Games view order before scanning the rest of the library, skips entries with any existing art attempt sentinel, and reuses the existing `fetchGameArt(..., { includeUninstalled: true })` path for grid and hero assets.
+- Updated `CHANGELOG.md`; validated with `npm.cmd run build` and `git diff --check`. Only the existing Vite chunk-size warning and CRLF notices remained. Hands-on Ally verification should confirm cold-start timing, small-wave art fill, responsive gamepad scrolling, and Steam-CDN-first behavior for uninstalled Steam entries.
 
 **Completed (this session - Tauri npm/Rust alignment follow-up):**
 - Fixed the `tauri dev` package-version mismatch caused by Rust `tauri@2.11.3` being paired with npm `@tauri-apps/api@2.10.1` and `@tauri-apps/cli@2.10.1`.
