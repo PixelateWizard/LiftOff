@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- **Non-installed Games visibility toggle** - Library settings now include a toggle for showing owned-but-not-installed Steam games in the Games tab. Fresh settings hide those entries until a Steam account has connected once, then enable them by default; when hidden, the Games grid/source tabs and Right-Stick toolbar focus operate on installed games only while keeping the sticky sort control available.
+
 ## [2.0.0-alpha-5] - Alpha 5
 
 ### Added

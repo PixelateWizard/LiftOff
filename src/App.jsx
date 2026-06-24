@@ -379,6 +379,10 @@ export default function App() {
   });
   const gamesSort = GAMES_SORTS.includes(settings.games_sort) ? settings.games_sort : "recent";
   gamesSortRef.current = gamesSort;
+  const showUninstalledGames = settings.show_uninstalled_games === true;
+  const showInstallToolbarFilters = showUninstalledGames;
+  const viewbarSortIndex = showInstallToolbarFilters ? INSTALL_FILTERS.length : 0;
+  const viewbarItemCount = viewbarSortIndex + 1;
   const spotify = useSpotify();
   useEffect(() => {
     spotifyConnectedRef.current = !!spotify.status.connected;
@@ -386,6 +390,21 @@ export default function App() {
   useEffect(() => {
     steamConnectedRef.current = !!steamStatus.connected;
   }, [steamStatus.connected]);
+  useEffect(() => {
+    if (!steamStatus.connected || settings.steam_owned_library_seen) return;
+    updateSettingsBatch({
+      steam_owned_library_seen: true,
+      show_uninstalled_games: true,
+    });
+  }, [steamStatus.connected, settings.steam_owned_library_seen, updateSettingsBatch]);
+  useEffect(() => {
+    if (!showUninstalledGames && installFilterRef.current !== "all") {
+      setInstallFilter("all");
+    }
+    if (viewbarIndexRef.current >= viewbarItemCount) {
+      setViewbarIndex(viewbarSortIndex);
+    }
+  }, [showUninstalledGames, viewbarItemCount, viewbarSortIndex]);
 
   const resolveDetailsApp = useCallback((app) => {
     if (!app) return null;
@@ -689,10 +708,10 @@ export default function App() {
         playSound();
       },
       move: (dir) => {
-        const next = Math.max(0, Math.min(3, viewbarIndexRef.current + dir));
+        const next = Math.max(0, Math.min(viewbarItemCount - 1, viewbarIndexRef.current + dir));
         if (next === viewbarIndexRef.current) return;
         setViewbarIndex(next);
-        if (next < 3) {
+        if (showInstallToolbarFilters && next < viewbarSortIndex) {
           setSortOpen(false);
           setInstallFilter(INSTALL_FILTERS[next]);
           setFocusIndex(0);
@@ -701,7 +720,7 @@ export default function App() {
         playSound();
       },
       activate: () => {
-        if (viewbarIndexRef.current === 3) {
+        if (viewbarIndexRef.current === viewbarSortIndex) {
           const currentSortIndex = Math.max(0, GAMES_SORTS.indexOf(gamesSortRef.current));
           setSortKbIndex(currentSortIndex);
           setSortOpen((open) => !open);
@@ -714,6 +733,7 @@ export default function App() {
           && pinsRef.current.some((id) => {
             const app = allAppsRef.current.find((entry) => entry.id === id);
             if (!app || app.app_type !== "game") return false;
+            if (!showUninstalledGames && app.installed === false) return false;
             if (installFilterRef.current === "installed") return app.installed !== false;
             if (installFilterRef.current === "notInstalled") return app.installed === false;
             return true;
@@ -729,7 +749,7 @@ export default function App() {
     return () => {
       if (utilityChromeRef.current) utilityChromeRef.current = null;
     };
-  }, [tab, playSound]);
+  }, [tab, playSound, showInstallToolbarFilters, showUninstalledGames, viewbarItemCount, viewbarSortIndex]);
   const surfaceStyle = (THEME_LOCKED_SETTINGS[resolvedTheme]?.surface_style ?? settings.surface_style) ?? "glass";
   const glassEnabled = surfaceStyle !== "clear";
   const isMaterial = surfaceStyle === "material";
@@ -1509,7 +1529,10 @@ export default function App() {
     && !customSources.includes(a.source);
 
   const isInstalled = (app) => app?.installed !== false;
+  const isVisibleGameForLibrary = (app) =>
+    app?.app_type === "game" && (showUninstalledGames || isInstalled(app));
   const filterByInstallState = (items) => items.filter((app) => {
+    if (!showUninstalledGames) return isInstalled(app);
     if (installFilter === "installed") return isInstalled(app);
     if (installFilter === "notInstalled") return !isInstalled(app);
     return true;
@@ -1528,7 +1551,7 @@ export default function App() {
   });
 
   const gamesSourceFilteredApps = useMemo(() => apps.filter((a) => {
-    if (a.app_type !== "game") return false;
+    if (!isVisibleGameForLibrary(a)) return false;
     if (gameSourceTab === "Steam") return a.source === "steam";
     if (gameSourceTab === "Xbox")  return a.source === "xbox";
     if (gameSourceTab === "Battle.net")  return a.source === "battlenet";
@@ -1540,10 +1563,10 @@ export default function App() {
     const gameCol = gameCollections.find(c => c.name === gameSourceTab);
     if (gameCol) return (gameMemberships[a.id] || []).includes(gameCol.id);
     return true;
-  }), [apps, customSources, gameCollections, gameMemberships, gameSourceTab]);
+  }), [apps, customSources, gameCollections, gameMemberships, gameSourceTab, showUninstalledGames]);
   const gamesFilteredApps = useMemo(
     () => sortGamesForView(filterByInstallState(gamesSourceFilteredApps)),
-    [gamesSourceFilteredApps, installFilter, gamesSort, recentRank]
+    [gamesSourceFilteredApps, installFilter, gamesSort, recentRank, showUninstalledGames]
   );
   // Ids in the order the user currently sees them (current tab/filter/sort).
   // The backfill fills these first so on-screen tiles resolve before off-screen ones.
@@ -1577,7 +1600,7 @@ export default function App() {
     .filter(a => pane === "Home" ? true : pane === "Games" ? a.app_type === "game" : a.app_type === "app");
   const gamesPinnedApps = useMemo(
     () => sortGamesForView(filterByInstallState(pinnedAppsFor("Games"))),
-    [appCollectionTab, apps, pins, installFilter, gamesSort, recentRank]
+    [appCollectionTab, apps, pins, installFilter, gamesSort, recentRank, showUninstalledGames]
   );
   const appsPinnedApps = useMemo(() => pinnedAppsFor("Apps"), [appCollectionTab, apps, pins]);
   const pinnedAppsReactive = tab === "Games" ? gamesPinnedApps : tab === "Apps" ? appsPinnedApps : pinnedAppsFor("Home");
@@ -2105,14 +2128,14 @@ export default function App() {
   const batteryBoltStroke = isDark ? "rgba(255,255,255,0.70)" : "rgba(255,255,255,0.82)";
   const batteryWidth = battery > 0 ? `${battery}%` : "72%";
 
-  const _hasSource = (key) => apps.some(a => a.source === key && a.app_type === "game");
+  const _hasSource = (key) => apps.some(a => a.source === key && isVisibleGameForLibrary(a));
   const _showSteam     = settings.scan_steam     !== false && _hasSource("steam");
   const _showXbox      = settings.scan_xbox      !== false && _hasSource("xbox");
   const _showBattlenet = settings.scan_battlenet !== false && _hasSource("battlenet");
   const _showGog       = settings.scan_gog       !== false && _hasSource("gog");
   const _showEpic      = settings.scan_epic      !== false && _hasSource("epic");
   const _showCloud     = _hasSource("cloud");
-  const _showOther     = apps.some(isOtherGameSource);
+  const _showOther     = apps.some(a => isVisibleGameForLibrary(a) && isOtherGameSource(a));
   const _hdrSources = [...new Map([
     "All",
     ...(_showSteam     ? ["Steam"]      : []),
@@ -2320,6 +2343,8 @@ export default function App() {
     gameSourceTabs: _hdrSources,
     installFilter,
     setInstallFilter,
+    showInstallToolbarFilters,
+    viewbarSortIndex,
     viewbarFocus: focusSection === "viewbar",
     viewbarIndex,
     setViewbarIndex,

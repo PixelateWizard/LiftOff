@@ -795,6 +795,9 @@ export function useGamepadNavigation(
         ? Math.max(1, settingsRef.current.app_list_cols ?? 1)
         : Math.max(2, Math.round(COLS / (settingsRef.current.app_cover_scale ?? 1.0)));
     const currentSettings = settingsRef.current;
+    const showUninstalledGames = currentSettings.show_uninstalled_games === true;
+    const viewbarSortIndex = showUninstalledGames ? INSTALL_FILTERS.length : 0;
+    const viewbarItemCount = viewbarSortIndex + 1;
     const isOtherGameSource = (app: App) =>
       app.app_type === "game"
       && app.source !== "steam"
@@ -804,8 +807,10 @@ export function useGamepadNavigation(
       && app.source !== "epic"
       && app.source !== "cloud"
       && !customSourcesRef.current.includes(app.source);
+    const isVisibleGameForLibrary = (app: App) =>
+      app.app_type === "game" && (showUninstalledGames || isInstalled(app));
     const getGameSourceTabs = () => {
-      const hasSource = (source: string) => appsRef.current.some(a => a.app_type === "game" && a.source === source);
+      const hasSource = (source: string) => appsRef.current.some(a => a.source === source && isVisibleGameForLibrary(a));
       return [...new Map([
         "All",
         ...(currentSettings.scan_steam !== false && hasSource("steam") ? ["Steam"] : []),
@@ -814,13 +819,14 @@ export function useGamepadNavigation(
         ...(currentSettings.scan_gog !== false && hasSource("gog") ? ["GOG"] : []),
         ...(currentSettings.scan_epic !== false && hasSource("epic") ? ["Epic"] : []),
         ...(hasSource("cloud") ? ["Cloud"] : []),
-        ...(appsRef.current.some(isOtherGameSource) ? ["Other"] : []),
+        ...(appsRef.current.some(a => isVisibleGameForLibrary(a) && isOtherGameSource(a)) ? ["Other"] : []),
         ...customSourcesRef.current,
         ...gameCollectionsRef.current.map(c => c.name),
       ].map(source => [source.toLocaleLowerCase(), source])).values()];
     };
 
     const filterByInstallState = (items: App[]) => items.filter((app) => {
+      if (!showUninstalledGames) return isInstalled(app);
       if (installFilterRef.current === "installed") return isInstalled(app);
       if (installFilterRef.current === "notInstalled") return !isInstalled(app);
       return true;
@@ -839,7 +845,7 @@ export function useGamepadNavigation(
     let fApps = allApps.filter(a => {
       if (currentTab === "Home" || currentTab === "All") return true;
       if (currentTab === "Games") {
-        if (a.app_type !== "game") return false;
+        if (!isVisibleGameForLibrary(a)) return false;
         const src = gameSourceTabRef.current;
         if (src === "Steam") return a.source === "steam";
         if (src === "Xbox")  return a.source === "xbox";
@@ -888,6 +894,7 @@ export function useGamepadNavigation(
       && currentPins.some(id => {
         const app = allApps.find(a => a.id === id);
         if (!app || app.app_type !== "game") return false;
+        if (!showUninstalledGames && !isInstalled(app)) return false;
         if (installFilter === "installed") return isInstalled(app);
         if (installFilter === "notInstalled") return !isInstalled(app);
         return true;
@@ -908,7 +915,7 @@ export function useGamepadNavigation(
       }
       setGameSourceTab(next); gameSourceTabRef.current = next;
       setInstallFilter("all");
-      setViewbarIndex(0);
+      setViewbarIndex(showUninstalledGames ? 0 : viewbarSortIndex);
       setSortOpen(false);
       focusLibraryCards(next, "all");
       playSound();
@@ -1000,6 +1007,10 @@ export function useGamepadNavigation(
     // ══ END SEARCH OVERLAY ════════════════════════════════════════
 
     if (section === "viewbar" && currentTab === "Games") {
+      if (viewbarIndexRef.current >= viewbarItemCount) {
+        setViewbarIndex(viewbarSortIndex);
+        viewbarIndexRef.current = viewbarSortIndex;
+      }
       if (key === "TriggerLeft") { cycleGameSource(-1); return; }
       if (key === "TriggerRight") { cycleGameSource(1); return; }
       if (key === "BumperLeft" || key === "BumperRight") {
@@ -1038,7 +1049,7 @@ export function useGamepadNavigation(
         return;
       }
       if (key === "Enter") {
-        if (viewbarIndexRef.current < 3) {
+        if (showUninstalledGames && viewbarIndexRef.current < viewbarSortIndex) {
           setInstallFilter(INSTALL_FILTERS[viewbarIndexRef.current] ?? "all");
           haptic("confirm");
         } else {

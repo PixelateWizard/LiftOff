@@ -28,6 +28,8 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
     gameSourceTabs,
     installFilter,
     setInstallFilter,
+    showInstallToolbarFilters = true,
+    viewbarSortIndex,
     viewbarFocus,
     viewbarIndex,
     setViewbarIndex,
@@ -107,7 +109,8 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                 boxShadow: active ? (surfaceStyle === "material" ? "var(--material-shadow-medium)" : `0 2px 10px ${accent.glow}0.35)`) : (surfaceStyle === "material" ? "var(--material-shadow-low)" : "none"),
                 display: "flex", alignItems: "center", justifyContent: "center",
               });
-              const installFilterItems = ["all", "installed", "notInstalled"];
+              const installFilterItems = showInstallToolbarFilters ? ["all", "installed", "notInstalled"] : [];
+              const sortButtonIndex = viewbarSortIndex ?? installFilterItems.length;
               const sortItems = ["recent", "az", "store"];
               const toolbarRadius = resolvedTheme === "cyberpunk" || isPixel ? 0 : surfaceStyle === "material" ? 8 : 12;
               const toolbarFocused = viewbarFocus;
@@ -248,44 +251,46 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                 <span style={{ display: "flex", alignItems: "center", gap: 6, color: theme.textDim, fontSize: 11, fontWeight: 700, flex: "0 0 auto" }}>
                   <GamepadBtn btn="RS" label={t("grid.filter.dock")} style={{ gap: 5, fontSize: 11 }} />
                 </span>
-                <div
-                  role="tablist"
-                  aria-label={t("grid.filter.dock")}
-                  style={{
-                    display: "flex",
-                    gap: 4,
-                    padding: 3,
-                    borderRadius: resolvedTheme === "cyberpunk" || isPixel ? 0 : 9,
-                    background: isDark ? "rgba(0,0,0,0.22)" : "rgba(0,0,0,0.045)",
-                    flex: "0 1 auto",
-                    minWidth: 0,
-                  }}
-                >
-                  {installFilterItems.map((key, i) => {
-                    const selected = installFilter === key;
-                    const focused = viewbarFocus && viewbarIndex === i;
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        role="tab"
-                        aria-selected={selected}
-                        onClick={() => {
-                          setViewbarIndex(i);
-                          setInstallFilter(key);
-                          setFocusSection("viewbar");
-                          focusSectionRef.current = "viewbar";
-                          setFocusIndex(0);
-                          focusIndexRef.current = 0;
-                          setSortOpen(false);
-                        }}
-                        style={viewbarBtnStyle(selected, focused)}
-                      >
-                        {t(`grid.filter.${key}`)}
-                      </button>
-                    );
-                  })}
-                </div>
+                {installFilterItems.length > 0 && (
+                  <div
+                    role="tablist"
+                    aria-label={t("grid.filter.dock")}
+                    style={{
+                      display: "flex",
+                      gap: 4,
+                      padding: 3,
+                      borderRadius: resolvedTheme === "cyberpunk" || isPixel ? 0 : 9,
+                      background: isDark ? "rgba(0,0,0,0.22)" : "rgba(0,0,0,0.045)",
+                      flex: "0 1 auto",
+                      minWidth: 0,
+                    }}
+                  >
+                    {installFilterItems.map((key, i) => {
+                      const selected = installFilter === key;
+                      const focused = viewbarFocus && viewbarIndex === i;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          role="tab"
+                          aria-selected={selected}
+                          onClick={() => {
+                            setViewbarIndex(i);
+                            setInstallFilter(key);
+                            setFocusSection("viewbar");
+                            focusSectionRef.current = "viewbar";
+                            setFocusIndex(0);
+                            focusIndexRef.current = 0;
+                            setSortOpen(false);
+                          }}
+                          style={viewbarBtnStyle(selected, focused)}
+                        >
+                          {t(`grid.filter.${key}`)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <span style={{ fontSize: 12, color: theme.textDim, fontWeight: 700, flex: "0 0 auto" }}>
                   {t("grid.count", { count: visibleGameCount })}
                 </span>
@@ -293,13 +298,13 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                   <button
                     type="button"
                     onClick={() => {
-                      setViewbarIndex(3);
+                      setViewbarIndex(sortButtonIndex);
                       setFocusSection("viewbar");
                       focusSectionRef.current = "viewbar";
                       setSortKbIndex(Math.max(0, sortItems.indexOf(gamesSort)));
                       setSortOpen((open) => !open);
                     }}
-                    style={viewbarBtnStyle(false, viewbarFocus && viewbarIndex === 3)}
+                    style={viewbarBtnStyle(false, viewbarFocus && viewbarIndex === sortButtonIndex)}
                   >
                     {t("grid.sort.label")}: {t(`grid.sort.${gamesSort}`)} v
                   </button>

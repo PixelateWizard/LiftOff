@@ -167,6 +167,10 @@ pub struct Settings {
     pub scan_gog: bool,
     #[serde(default = "default_true")]
     pub scan_epic: bool,
+    #[serde(default)]
+    pub show_uninstalled_games: bool,
+    #[serde(default)]
+    pub steam_owned_library_seen: bool,
     pub repeat_speed: String,
     pub launch_at_startup: bool,
     #[serde(
@@ -372,6 +376,8 @@ impl Default for Settings {
             scan_battlenet: true,
             scan_gog: true,
             scan_epic: true,
+            show_uninstalled_games: false,
+            steam_owned_library_seen: false,
             repeat_speed: "normal".to_string(),
             launch_at_startup: false,
             animated_heroes: "animated".to_string(),

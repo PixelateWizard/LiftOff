@@ -287,6 +287,7 @@
     "scanBattlenet": "Scanner Battle.net",
     "scanGog": "Scanner GOG",
     "scanEpic": "Scanner Epic Games",
+    "showUninstalledGames": "TODO(fr) Show not-installed Steam games",
     "refreshLibrary": "Actualiser la bibliothèque",
     "customFolders": "Dossiers de scan personnalisés",
     "noCustomFolders": "Aucun dossier personnalisé configuré",

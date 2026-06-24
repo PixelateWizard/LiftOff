@@ -198,6 +198,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     D("sources", 1),
     { key: "scan_steam",     section: 1, label: t("settings.scanSteam"),     type: "toggle" },
     { key: "steam_account",  section: 1, label: t("steam.title"),            type: "steam" },
+    { key: "show_uninstalled_games", section: 1, label: t("settings.showUninstalledGames"), type: "toggle" },
     { key: "scan_xbox",      section: 1, label: t("settings.scanXbox"),      type: "toggle" },
     { key: "scan_uwp",       section: 1, label: t("settings.scanStoreApps"), type: "toggle" },
     { key: "scan_desktop",   section: 1, label: t("settings.scanDesktop"),   type: "toggle" },

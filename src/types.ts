@@ -88,6 +88,8 @@ export interface Settings {
   scan_battlenet: boolean;
   scan_gog: boolean;
   scan_epic: boolean;
+  show_uninstalled_games: boolean;
+  steam_owned_library_seen: boolean;
   repeat_speed: RepeatSpeed;
   launch_at_startup: boolean;
   animated_heroes: AnimatedHeroes;

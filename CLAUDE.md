@@ -1,8 +1,8 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Move the current `CHANGELOG.md` Unreleased notes under Alpha 5.
-- Update app-owned version metadata to `v2.0.0-alpha-5` while leaving website-facing files unchanged.
+- Add a Library settings toggle for showing owned-but-not-installed games in the Games library.
+- Default to hiding non-installed games until Steam has connected once, then showing them by default; keep grid, toolbar sort, and Right-Stick focus behavior correct when they are hidden.
 
 ## 🐛 Active Bugs
 

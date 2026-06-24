@@ -286,6 +286,7 @@
     "scanBattlenet": "Scan Battle.net",
     "scanGog": "Scan GOG",
     "scanEpic": "Scan Epic Games",
+    "showUninstalledGames": "Show not-installed Steam games",
     "refreshLibrary": "Refresh Library",
     "customFolders": "Custom scan folders",
     "noCustomFolders": "No custom folders configured",
