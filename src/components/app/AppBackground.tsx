@@ -16,15 +16,19 @@ interface AppBackgroundProps {
   isMaterial: boolean;
   surfaceStyle: string;
   appPaused?: boolean;
+  windowFocused?: boolean;
 }
 
-export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1, bgGlow2, isDark, isMaterial, surfaceStyle, appPaused = false }: AppBackgroundProps) {
+export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1, bgGlow2, isDark, isMaterial, surfaceStyle, appPaused = false, windowFocused = true }: AppBackgroundProps) {
   const lofiMusicRef = useRef<HTMLAudioElement | null>(null);
   const lofiVideoRef = useRef<HTMLVideoElement | null>(null);
   const washPink = accent.glow;
   const isLofi = resolvedTheme === "lofi";
   const effectsEnabled = settings.stars_enabled !== false;
   const lofiEffectsEnabled = isLofi && effectsEnabled;
+  // Pause JS-driven background effects when the window is unfocused or a launch
+  // is in progress, so RAF loops stop burning GPU time on frames no one sees.
+  const effectsActive = effectsEnabled && windowFocused && !appPaused;
 
   useEffect(() => {
     if (!lofiMusicRef.current) {
@@ -204,9 +208,9 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
       )}
       {resolvedTheme === "aurora" && <AuroraBg accent={accent} />}
       {resolvedTheme === "synthwave" && <SynthwaveBg accent={accent} />}
-      {resolvedTheme === "cyberpunk" && <CyberpunkBg accent={accent} effectsEnabled={effectsEnabled} />}
+      {resolvedTheme === "cyberpunk" && <CyberpunkBg accent={accent} effectsEnabled={effectsActive} />}
       {resolvedTheme === "forest" && <ForestBg accent={accent} />}
-      {resolvedTheme === "webcore" && <WebcoreBg accent={accent} effectsEnabled={effectsEnabled} />}
+      {resolvedTheme === "webcore" && <WebcoreBg accent={accent} effectsEnabled={effectsActive} />}
       {surfaceStyle === "aero" && (
         <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none",
           background: isDark

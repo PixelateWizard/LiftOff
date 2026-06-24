@@ -1197,6 +1197,22 @@ export default function App() {
   useEffect(() => {
     const style = document.createElement("style");
     style.id = "app-global-styles";
+    // Animated theme/background element classes. Shared by the "static effects"
+    // freeze rule and the "window unfocused" pause rule below so the two lists
+    // cannot drift apart when a theme adds a new animated element.
+    const bgAnimClasses = [
+      ".bg-star", ".bg-cloud",
+      ".theme-plasma-layer", ".theme-plasma-spark",
+      ".theme-cinder-layer", ".theme-cinder-particle",
+      ".theme-wash-static", ".theme-wash-float",
+      ".theme-aurora-b1", ".theme-aurora-b2", ".theme-aurora-b3", ".theme-aurora-b4", ".theme-aurora-shimmer",
+      ".theme-synthwave-sun", ".theme-synthwave-horizon",
+      ".theme-cyberpunk-glow", ".theme-cyberpunk-glow-2", ".theme-cyberpunk-horizon",
+      ".theme-cyberpunk-flicker-1", ".theme-cyberpunk-flicker-2", ".theme-cyberpunk-scan", ".theme-cyberpunk-rain",
+      ".theme-forest-moonbeam", ".theme-forest-fog", ".theme-forest-fog-2", ".theme-forest-firefly", ".theme-forest-firefly-wrapper",
+      ".theme-webcore-ghost-0", ".theme-webcore-ghost-1", ".theme-webcore-ghost-2", ".theme-webcore-ghost-3", ".theme-webcore-cursor",
+    ];
+    const prefixedBgAnim = (prefix) => bgAnimClasses.map(c => `${prefix} ${c}`).join(", ");
     style.textContent = [
       "@keyframes appFadeIn     { from { opacity: 0; } to { opacity: 1; } }",
       "@keyframes heroArtFade   { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: scale(1); } }",
@@ -1309,7 +1325,10 @@ export default function App() {
       ".theme-webcore-ghost-2 { animation:webGhostFloat2 22s ease-in-out infinite, webWinFlicker2 24s ease-in-out infinite; animation-delay:-8s; }",
       ".theme-webcore-ghost-3 { animation:webGhostFloat3 25s ease-in-out infinite, webWinFlicker3 30s ease-in-out infinite; animation-delay:-12s; }",
       ".theme-webcore-cursor { animation:webCursorBlink 1.1s step-end infinite; }",
-      `[data-effects="static"] .bg-star, [data-effects="static"] .bg-cloud, [data-effects="static"] .theme-plasma-layer, [data-effects="static"] .theme-plasma-spark, [data-effects="static"] .theme-cinder-layer, [data-effects="static"] .theme-cinder-particle, [data-effects="static"] .theme-wash-static, [data-effects="static"] .theme-wash-float, [data-effects="static"] .theme-aurora-b1, [data-effects="static"] .theme-aurora-b2, [data-effects="static"] .theme-aurora-b3, [data-effects="static"] .theme-aurora-b4, [data-effects="static"] .theme-aurora-shimmer, [data-effects="static"] .theme-synthwave-sun, [data-effects="static"] .theme-synthwave-horizon, [data-effects="static"] .theme-cyberpunk-glow, [data-effects="static"] .theme-cyberpunk-glow-2, [data-effects="static"] .theme-cyberpunk-horizon, [data-effects="static"] .theme-cyberpunk-flicker-1, [data-effects="static"] .theme-cyberpunk-flicker-2, [data-effects="static"] .theme-cyberpunk-scan, [data-effects="static"] .theme-cyberpunk-rain, [data-effects="static"] .theme-forest-moonbeam, [data-effects="static"] .theme-forest-fog, [data-effects="static"] .theme-forest-fog-2, [data-effects="static"] .theme-forest-firefly, [data-effects="static"] .theme-forest-firefly-wrapper, [data-effects="static"] .theme-webcore-ghost-0, [data-effects="static"] .theme-webcore-ghost-1, [data-effects="static"] .theme-webcore-ghost-2, [data-effects="static"] .theme-webcore-ghost-3, [data-effects="static"] .theme-webcore-cursor { animation: none !important; }`,
+      `${prefixedBgAnim('[data-effects="static"]')} { animation: none !important; }`,
+      // Pause (not reset) theme animations while LiftOff is unfocused so the GPU
+      // is not rendering background frames no one is looking at. Resumes on refocus.
+      `${prefixedBgAnim('[data-focus="blurred"]')} { animation-play-state: paused !important; }`,
       ".app-launch-paused *:not(.launch-overlay):not(.launch-overlay *) { animation-play-state: paused !important; transition-property: none !important; }",
       "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-static, .theme-wash-float, .theme-aurora-b1, .theme-aurora-b2, .theme-aurora-b3, .theme-aurora-b4, .theme-aurora-shimmer, .theme-synthwave-sun, .theme-synthwave-horizon, .theme-cyberpunk-glow, .theme-cyberpunk-glow-2, .theme-cyberpunk-horizon, .theme-cyberpunk-flicker-1, .theme-cyberpunk-flicker-2, .theme-cyberpunk-scan, .theme-cyberpunk-rain, .theme-forest-moonbeam, .theme-forest-fog, .theme-forest-fog-2, .theme-forest-firefly, .theme-webcore-ghost-0, .theme-webcore-ghost-1, .theme-webcore-ghost-2, .theme-webcore-ghost-3, .theme-webcore-cursor, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } }",
       "html, body { overflow-x: hidden; }",
@@ -2466,9 +2485,9 @@ export default function App() {
     <ThemeProvider value={themeValue}>
     <SettingsProvider value={settingsValue}>
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
-    <div data-theme={resolvedTheme} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} data-effects={settings.stars_enabled === false ? "static" : "animated"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, "--accent-pulse": `${accent.glow}0.22)`, "--header-height": `${headerHeightVal}px`, "--bottom-bar-height": `${bottomBarHeightVal}px`, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
+    <div data-theme={resolvedTheme} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} data-effects={settings.stars_enabled === false ? "static" : "animated"} data-focus={windowFocused ? "active" : "blurred"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, "--accent-pulse": `${accent.glow}0.22)`, "--header-height": `${headerHeightVal}px`, "--bottom-bar-height": `${bottomBarHeightVal}px`, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
 
-      <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} />
+      <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} windowFocused={windowFocused} />
       <AppOverlays>
       {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={closeLaunchOverlay} onSuccess={playLaunchSuccessSound} hapticEnabled={settings.haptic_feedback ?? true} />}
       {closeRequest && (

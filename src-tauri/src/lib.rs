@@ -297,6 +297,8 @@ pub struct Settings {
     pub topbar_show_bumpers: bool,
     #[serde(default = "default_surface_style")]
     pub surface_style: String,
+    #[serde(default = "default_true")]
+    pub hide_on_launch: bool,
 }
 
 fn default_language() -> String {
@@ -441,6 +443,7 @@ impl Default for Settings {
             haptic_feedback: true,
             topbar_show_bumpers: false,
             surface_style: "clear".to_string(),
+            hide_on_launch: true,
         }
     }
 }
@@ -3378,6 +3381,27 @@ fn exit_app(app: tauri::AppHandle) {
 #[tauri::command]
 fn restart_app(app: tauri::AppHandle) {
     app.restart();
+}
+
+// Hide the WebView2 window shortly after a game launch handoff so its D3D
+// compositor allocations are released before the game initializes its own
+// device. This reduces GPU/VRAM contention that can trigger a TDR
+// (DXGI_ERROR_DEVICE_RESET) on shared-GPU handhelds such as the ROG Ally.
+#[tauri::command]
+fn hide_for_launch(window: tauri::WebviewWindow) {
+    std::thread::spawn(move || {
+        // Brief delay so the launch overlay "Launching..." text is visible
+        // before the window disappears.
+        std::thread::sleep(std::time::Duration::from_millis(400));
+        let _ = window.hide();
+    });
+}
+
+// Restore and focus the WebView2 window after returning from a launched game.
+#[tauri::command]
+fn show_after_launch(window: tauri::WebviewWindow) {
+    let _ = window.show();
+    let _ = window.set_focus();
 }
 
 #[derive(Serialize)]
@@ -6857,6 +6881,8 @@ pub fn run() {
             clear_recents,
             exit_app,
             restart_app,
+            hide_for_launch,
+            show_after_launch,
             clear_art_cache,
             set_frontend_active,
             open_osk,

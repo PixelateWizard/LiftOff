@@ -452,6 +452,11 @@ export function useGamepadNavigation(
     setLaunchingApp(app); launchingAppRef.current = app;
     haptic("confirm");
     launchApp(app).catch((err) => console.warn("launch_app failed", err));
+    // Hide WebView2 after launch handoff to release GPU/D3D resources for the game.
+    // Addresses TDR (DXGI_ERROR_DEVICE_RESET) on shared-GPU handhelds like ROG Ally.
+    if (settingsRef?.current?.hide_on_launch !== false) {
+      invoke("hide_for_launch").catch(() => {});
+    }
     const updated = [app, ...rec.filter(r => r.id !== app.id)].slice(0, 10);
     setRecent(updated); recentRef.current = updated;
     if (app.app_type === "game") {
@@ -464,6 +469,9 @@ export function useGamepadNavigation(
   const triggerLaunch = useRef((app, rec) => _triggerLaunchRef.current(app, rec)).current;
 
   const closeLaunchOverlay = () => {
+    // Restore WebView2 window before clearing launch state.
+    invoke("show_after_launch").catch(() => {});
+
     const gp = getBestGamepad();
     if (gp) {
       const s = readGpState(gp);
@@ -1749,6 +1757,11 @@ export function useGamepadNavigation(
       if (pauseCheckTimer !== undefined) {
         window.clearTimeout(pauseCheckTimer);
         pauseCheckTimer = undefined;
+      }
+      // If LiftOff was hidden for a launch and focus returns unexpectedly
+      // (e.g. crashed game), ensure the window is visible again.
+      if (launchingAppRef.current) {
+        invoke("show_after_launch").catch(() => {});
       }
       lastKnownFocused = true;
       setWindowFocused(true);

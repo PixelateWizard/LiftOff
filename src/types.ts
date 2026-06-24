@@ -172,6 +172,7 @@ export interface Settings {
   gamepad_auto_detect: boolean;
   haptic_feedback: boolean;
   surface_style: string;
+  hide_on_launch: boolean;
 }
 
 /** Custom folder entry from the backend */

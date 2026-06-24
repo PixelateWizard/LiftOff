@@ -84,6 +84,13 @@ export function AsciiRain({
     let raf = 0;
     const draw = () => {
       const { textColor: tc, bgColor: bg, fontSize: fs, speed: sp, characters: chars } = propsRef.current;
+      // Frozen (speed 0, e.g. unfocused/paused): skip all canvas work so the
+      // GPU isn't redrawing a static frame every tick. Keep a light RAF alive
+      // so the rain resumes immediately when speed returns to nonzero.
+      if (!sp) {
+        raf = requestAnimationFrame(draw);
+        return;
+      }
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
 

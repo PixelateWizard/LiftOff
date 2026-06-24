@@ -155,6 +155,7 @@ export const DEFAULT_SETTINGS = {
   gamepad_btn_size: "small", gamepad_auto_detect: true, haptic_feedback: true,
   surface_style: "clear",
   onyx_top_light: true,
+  hide_on_launch: true,
 } as const;
 
 export type AccentKey = keyof typeof ACCENTS;
