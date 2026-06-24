@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { IoChevronDownOutline } from "react-icons/io5";
+import { IoChevronBackOutline, IoChevronDownOutline, IoChevronForwardOutline, IoCloseOutline, IoPlay } from "react-icons/io5";
 import { StoreBadge } from "./ui/StoreBadge";
+import { useStoreMetadata } from "../hooks/useStoreMetadata";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, rumble, type GpState } from "../utils/gamepad";
-import type { AccentColors, App, ThemeColors } from "../types";
+import type { AccentColors, App, StoreMovie, StoreScreenshot, ThemeColors } from "../types";
 
 type SizeBytes = number | "loading" | undefined;
 type DownloadBytes = number | undefined;
@@ -24,6 +25,10 @@ interface DetailAction {
   checked?: boolean;
   sublabel?: string;
 }
+
+type StoreMediaItem =
+  | { type: "trailer"; movie: StoreMovie; thumb: string; title: string }
+  | { type: "shot"; screenshot: StoreScreenshot; thumb: string; title: string };
 
 interface GameDetailsModalProps {
   app: App;
@@ -62,6 +67,7 @@ interface GameDetailsModalProps {
   onResetCategory?: () => void;
   onClose: () => void;
   hapticEnabled?: boolean;
+  storeMetaEnabled?: boolean;
   accent: AccentColors;
   accentName: string;
   theme: ThemeColors;
@@ -122,6 +128,15 @@ function formatBytes(bytes: number) {
   return `${value >= 10 || unit === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unit]}`;
 }
 
+function normalizeMediaUrl(url?: string | null) {
+  if (!url) return undefined;
+  return url.startsWith("http://") ? `https://${url.slice("http://".length)}` : url;
+}
+
+function movieSource(movie: StoreMovie) {
+  return normalizeMediaUrl(movie.mp4 || movie.webm || movie.hlsH264 || movie.dashH264 || movie.dashAv1);
+}
+
 export function GameDetailsModal({
   app,
   heroAnimated,
@@ -159,6 +174,7 @@ export function GameDetailsModal({
   onResetCategory,
   onClose,
   hapticEnabled = true,
+  storeMetaEnabled = true,
   accent,
   accentName,
   theme,
@@ -180,6 +196,38 @@ export function GameDetailsModal({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const focusRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const overlayVideoRef = useRef<HTMLVideoElement | null>(null);
+  const source = app.source?.toLowerCase() ?? "";
+  const isCloud = source === "cloud";
+  const isSteam = source === "steam";
+  const steamAppId = app.steam_appid != null ? String(app.steam_appid) : undefined;
+  const store = useStoreMetadata(app.source, steamAppId, storeMetaEnabled && isSteam);
+  const movies: StoreMovie[] = store.data?.movies ?? [];
+  const screenshots = store.data?.screenshots ?? [];
+  const shortDescription = store.data?.shortDescription ?? "";
+  const mediaItems = useMemo<StoreMediaItem[]>(() => [
+    ...movies.map((movie, index) => ({
+      type: "trailer" as const,
+      movie,
+      thumb: movie.thumbnail,
+      title: movie.name || `${t("details.trailer", { defaultValue: "Trailer" })} ${index + 1}`,
+    })),
+    ...screenshots.map((screenshot, index) => ({
+      type: "shot" as const,
+      screenshot,
+      thumb: screenshot.thumb,
+      title: `${t("details.screenshot", { defaultValue: "Screenshot" })} ${index + 1}`,
+    })),
+  ], [movies, screenshots, t]);
+  const mediaCount = mediaItems.length;
+  const hasStoreContent = isSteam && (shortDescription.trim().length > 0 || mediaCount > 0);
+  const [activeTab, setActiveTab] = useState<"details" | "manage">("details");
+  const activeTabRef = useRef<"details" | "manage">("details");
+  const [overlay, setOverlay] = useState<{ index: number } | null>(null);
+  const overlayRef = useRef<typeof overlay>(null);
+  const hasStoreContentRef = useRef(hasStoreContent);
+  const mediaCountRef = useRef(mediaCount);
+  const mediaItemsRef = useRef(mediaItems);
   const coverFallback = `/assets/liftoff_cover_${accentName}.svg`;
   const canAnimate = animatedHeroes !== "static" && effectsEnabled && !!heroAnimated;
   const heroMedia = canAnimate ? heroAnimated : heroStatic || heroAnimated;
@@ -207,6 +255,36 @@ export function GameDetailsModal({
     surfaceStyle === "obsidian" ? 10 :
     12;
   const chipRadius = isPixel ? 0 : surfaceStyle === "material" || surfaceStyle === "clear" ? 8 : 10;
+  const mediaTileStyle = (focused: boolean): CSSProperties => ({
+    position: "relative",
+    flex: "0 0 auto",
+    width: 240,
+    height: 135,
+    borderRadius: mediaRadius,
+    overflow: "hidden",
+    cursor: "pointer",
+    padding: 0,
+    border: `2px solid ${focused ? accent.primary : "transparent"}`,
+    boxShadow: focused ? `0 0 0 3px ${accent.glow}0.25)` : "none",
+    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)",
+    transition: "border-color 120ms ease, box-shadow 120ms ease",
+  });
+  const mediaThumbStyle: CSSProperties = {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    display: "block",
+  };
+  const playBadgeStyle: CSSProperties = {
+    position: "absolute",
+    inset: 0,
+    display: "grid",
+    placeItems: "center",
+    fontSize: 30,
+    color: "#fff",
+    textShadow: "0 2px 8px rgba(0,0,0,0.6)",
+    background: "rgba(0,0,0,0.18)",
+  };
   const installing = !!installProgress && installProgress.state !== "complete";
   const uninstalling = installProgress?.state === "uninstalling";
   const installPhase = installProgress?.phase ?? "downloading";
@@ -221,9 +299,6 @@ export function GameDetailsModal({
         : "install.downloading";
   const installPct = Math.max(0, Math.min(100, Number(installProgress?.pct ?? 0)));
   const installErrorText = installError ? t(`install.${installError}`, { defaultValue: t("install.generic") }) : "";
-  const source = app.source?.toLowerCase() ?? "";
-  const isCloud = source === "cloud";
-  const isSteam = source === "steam";
 
   const handlePrimaryAction = useCallback(() => {
     if (uninstalling) return;
@@ -284,7 +359,21 @@ export function GameDetailsModal({
     onCloseGame,
   ]);
 
-  const focusCount = 1 + actions.length;
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  useEffect(() => { overlayRef.current = overlay; }, [overlay]);
+  useEffect(() => { hasStoreContentRef.current = hasStoreContent; }, [hasStoreContent]);
+  useEffect(() => { mediaCountRef.current = mediaCount; }, [mediaCount]);
+  useEffect(() => { mediaItemsRef.current = mediaItems; }, [mediaItems]);
+
+  useEffect(() => {
+    if (!hasStoreContent) return;
+    const next = controlsRevealedRef.current ? "manage" : "details";
+    activeTabRef.current = next;
+    setActiveTab(next);
+  }, [hasStoreContent]);
+
+  const tabItemCount = hasStoreContent && activeTab === "details" ? mediaCount : actions.length;
+  const focusCount = 1 + tabItemCount;
   focusCountRef.current = focusCount;
   actionsRef.current = actions;
   primaryActionRef.current = handlePrimaryAction;
@@ -312,6 +401,8 @@ export function GameDetailsModal({
     controlsRevealedRef.current = false;
     setControlsRevealed(false);
     setFocusedIndex(0);
+    setActiveTab("details");
+    setOverlay(null);
   }, [app.id]);
 
   useEffect(() => {
@@ -332,6 +423,11 @@ export function GameDetailsModal({
   }, [focusIdx]);
 
   useEffect(() => {
+    if (activeTab !== "details" || !scrollRef.current) return;
+    scrollRef.current.scrollTop = 0;
+  }, [activeTab, controlsRevealed, app.id]);
+
+  useEffect(() => {
     const last: Partial<GpState> = {};
     const pressTime: Record<string, number> = {};
     const repeating: Record<string, boolean> = {};
@@ -346,22 +442,76 @@ export function GameDetailsModal({
       const gp = getBestGamepad();
       if (gp) {
         const state = readGpState(gp);
-        const cols = 3;
+        if (overlayRef.current) {
+          const ov = overlayRef.current;
+          const item = mediaItemsRef.current[ov.index];
+          if (state.Enter && !last.Enter && item?.type === "trailer") {
+            const video = overlayVideoRef.current;
+            if (video) {
+              if (video.paused) video.play().catch(() => {});
+              else video.pause();
+            }
+          }
+          if (shouldHandleDirectionRepeat("ArrowRight", state, last, now, pressTime, repeating)) {
+            const count = Math.max(1, mediaItemsRef.current.length);
+            setOverlay({ index: (ov.index + 1) % count });
+          }
+          if (shouldHandleDirectionRepeat("ArrowLeft", state, last, now, pressTime, repeating)) {
+            const count = Math.max(1, mediaItemsRef.current.length);
+            setOverlay({ index: (ov.index - 1 + count) % count });
+          }
+          if (state.Escape && !last.Escape) setOverlay(null);
+          Object.assign(last, state);
+          rafId = requestAnimationFrame(poll);
+          return;
+        }
+
+        if (controlsRevealedRef.current && hasStoreContentRef.current) {
+          const switchTab = () => {
+            const next = activeTabRef.current === "details" ? "manage" : "details";
+            activeTabRef.current = next;
+            setActiveTab(next);
+            setFocusedIndex(next === "details" ? 0 : 1);
+            rumble("tab", hapticEnabledRef.current);
+          };
+          if (state.BumperLeft && !last.BumperLeft) switchTab();
+          if (state.BumperRight && !last.BumperRight) switchTab();
+        }
+
+        const detailsMode = hasStoreContentRef.current && activeTabRef.current === "details";
+        const cols = detailsMode ? Math.max(1, mediaCountRef.current) : 3;
         const move = (next: number) => {
           setFocusedIndex(next);
         };
-        if (controlsRevealedRef.current && shouldHandleDirectionRepeat("ArrowRight", state, last, now, pressTime, repeating)) move(focusIdxRef.current + 1);
-        if (controlsRevealedRef.current && shouldHandleDirectionRepeat("ArrowLeft", state, last, now, pressTime, repeating)) move(focusIdxRef.current - 1);
+        if (controlsRevealedRef.current && shouldHandleDirectionRepeat("ArrowRight", state, last, now, pressTime, repeating)) {
+          if (detailsMode && focusIdxRef.current > 0) {
+            move(Math.min(mediaCountRef.current, focusIdxRef.current + 1));
+          } else {
+            move(focusIdxRef.current + 1);
+          }
+        }
+        if (controlsRevealedRef.current && shouldHandleDirectionRepeat("ArrowLeft", state, last, now, pressTime, repeating)) {
+          if (detailsMode && focusIdxRef.current > 0) {
+            move(Math.max(1, focusIdxRef.current - 1));
+          } else {
+            move(focusIdxRef.current - 1);
+          }
+        }
         if (shouldHandleDirectionRepeat("ArrowDown", state, last, now, pressTime, repeating)) {
           if (!controlsRevealedRef.current && focusIdxRef.current === 0) {
             revealControls();
+            // Land focus on the first controls-row item (clamped to 0 only when
+            // there is no focusable item below Play, e.g. a description-only
+            // Details tab). Keeping focus on Play here would both leave focus on
+            // the Play button and break the Up-to-collapse handler below, which
+            // only collapses when focus is past index 0.
             move(1);
           } else {
             move(focusIdxRef.current === 0 ? 1 : focusIdxRef.current + cols);
           }
         }
         if (shouldHandleDirectionRepeat("ArrowUp", state, last, now, pressTime, repeating)) {
-          if (controlsRevealedRef.current && focusIdxRef.current > 0 && focusIdxRef.current <= cols) {
+          if (controlsRevealedRef.current && focusIdxRef.current <= cols) {
             collapseControls();
           } else {
             move(focusIdxRef.current <= cols ? 0 : focusIdxRef.current - cols);
@@ -371,7 +521,12 @@ export function GameDetailsModal({
           if (focusIdxRef.current === 0) primaryActionRef.current();
           else if (controlsRevealedRef.current) {
             rumble("confirm", hapticEnabledRef.current);
-            actionsRef.current[focusIdxRef.current - 1]?.onClick();
+            if (detailsMode) {
+              const index = focusIdxRef.current - 1;
+              if (mediaItemsRef.current[index]) setOverlay({ index });
+            } else {
+              actionsRef.current[focusIdxRef.current - 1]?.onClick();
+            }
           }
         }
         if (state.Escape && !last.Escape) closeRef.current();
@@ -394,6 +549,16 @@ export function GameDetailsModal({
         ? (uninstalling ? t("install.uninstalling") : t("install.cancel"))
         : installLabel;
   const primaryDisabled = !installed && (uninstalling || (!installing && !canInstall));
+  const overlayItem = overlay ? mediaItems[overlay.index] : null;
+  const overlayMovieSrc = overlayItem?.type === "trailer" ? movieSource(overlayItem.movie) : undefined;
+
+  useEffect(() => {
+    if (overlayItem?.type !== "trailer") return;
+    const timer = window.setTimeout(() => {
+      overlayVideoRef.current?.play().catch(() => {});
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [overlayItem]);
 
   const metaItems = [
     { label: t("details.lastPlayed"), value: lastPlayedAt ? formatRelativeTime(lastPlayedAt, t("details.never")) : t("details.never") },
@@ -404,6 +569,77 @@ export function GameDetailsModal({
     }] : []),
     ...(!installed && downloadBytes != null ? [{ label: t("details.downloadSize"), value: formatBytes(downloadBytes) }] : []),
   ];
+
+  const actionGrid = (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+        alignContent: "start",
+        gap: 10,
+      }}
+    >
+      {actions.map((action, idx) => {
+        const focused = focusIdx === idx + 1;
+        return (
+          <button
+            key={action.key}
+            ref={(node) => { focusRefs.current[idx + 1] = node; }}
+            onClick={action.onClick}
+            onMouseEnter={() => setFocusedIndex(idx + 1)}
+            style={{
+              minHeight: action.sublabel ? 64 : 50,
+              borderRadius: controlRadius,
+              border: focused ? `2px solid ${action.danger ? "#e85a5a" : accent.primary}` : `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+              background: focused
+                ? (action.danger ? "rgba(232,90,90,0.16)" : `${accent.glow}0.20)`)
+                : surfaceStyle === "material" ? "var(--material-elevation-1)" : (isDark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.60)"),
+              color: action.danger ? "#e85a5a" : theme.text,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+              textAlign: "left",
+              padding: "10px 12px",
+              cursor: "pointer",
+              fontWeight: 750,
+              fontSize: 13,
+            }}
+          >
+            <span style={{ minWidth: 0 }}>
+              <span style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{action.label}</span>
+              {action.sublabel && (
+                <span style={{ display: "block", marginTop: 3, fontSize: 11, lineHeight: 1.15, color: theme.textFaint, fontWeight: 500 }}>{action.sublabel}</span>
+              )}
+            </span>
+            {typeof action.checked === "boolean" && (
+              <span style={{
+                width: 34,
+                height: 20,
+                borderRadius: 999,
+                flexShrink: 0,
+                padding: 2,
+                boxSizing: "border-box",
+                display: "inline-flex",
+                alignItems: "center",
+                background: action.checked ? accent.primary : (isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.14)"),
+              }}>
+                <span style={{
+                  display: "block",
+                  width: 14,
+                  height: 14,
+                  borderRadius: "50%",
+                  background: action.checked ? primaryText : "rgba(255,255,255,0.88)",
+                  transform: action.checked ? "translateX(14px)" : "translateX(0)",
+                  transition: "transform 120ms ease",
+                }} />
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div
@@ -508,17 +744,17 @@ export function GameDetailsModal({
           position: "relative",
           flex: 1,
           minHeight: 0,
-          padding: controlsRevealed ? "14px 34px 28px 34px" : "0 34px 32px 34px",
+          padding: controlsRevealed ? "12px 34px 24px 34px" : "0 34px 32px 34px",
           display: "grid",
-          gridTemplateColumns: controlsRevealed ? "116px minmax(0, 1fr)" : "180px minmax(0, 1fr)",
+          gridTemplateColumns: controlsRevealed ? "104px minmax(0, 1fr)" : "180px minmax(0, 1fr)",
           gridTemplateRows: controlsRevealed ? "auto minmax(0, 1fr)" : "1fr auto",
           columnGap: 28,
-          rowGap: controlsRevealed ? 18 : 12,
+          rowGap: controlsRevealed ? 10 : 12,
           transition: "grid-template-columns 360ms cubic-bezier(0.16, 1, 0.3, 1), padding 360ms cubic-bezier(0.16, 1, 0.3, 1), row-gap 360ms cubic-bezier(0.16, 1, 0.3, 1)",
         }}>
-          <div style={{ position: "relative", minHeight: controlsRevealed ? 116 : 218, transition: "min-height 360ms cubic-bezier(0.16, 1, 0.3, 1)" }}>
+          <div style={{ position: "relative", minHeight: controlsRevealed ? 132 : 218, transition: "min-height 360ms cubic-bezier(0.16, 1, 0.3, 1)" }}>
             <div style={{
-              width: controlsRevealed ? 96 : 164,
+              width: controlsRevealed ? 88 : 164,
               aspectRatio: "2/3",
               borderRadius: mediaRadius,
               overflow: "hidden",
@@ -549,7 +785,7 @@ export function GameDetailsModal({
             alignSelf: controlsRevealed ? "start" : "center",
             display: "flex",
             flexDirection: "column",
-            gap: controlsRevealed ? 10 : 16,
+            gap: controlsRevealed ? 8 : 16,
             paddingTop: controlsRevealed ? 0 : 20,
             transition: "gap 360ms cubic-bezier(0.16, 1, 0.3, 1), padding 360ms cubic-bezier(0.16, 1, 0.3, 1)",
           }}>
@@ -585,11 +821,17 @@ export function GameDetailsModal({
               ))}
             </div>
 
-            <button
-              ref={(node) => { focusRefs.current[0] = node; }}
-              onClick={primaryDisabled ? undefined : handlePrimaryAction}
-              disabled={primaryDisabled}
-              onMouseEnter={() => setFocusedIndex(0)}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexWrap: "wrap",
+            }}>
+              <button
+                ref={(node) => { focusRefs.current[0] = node; }}
+                onClick={primaryDisabled ? undefined : handlePrimaryAction}
+                disabled={primaryDisabled}
+                onMouseEnter={() => setFocusedIndex(0)}
               style={{
                 alignSelf: "flex-start",
                 minWidth: controlsRevealed ? 142 : 180,
@@ -606,7 +848,79 @@ export function GameDetailsModal({
               }}
             >
               {primaryLabel}
-            </button>
+              </button>
+              {hasStoreContent && controlsRevealed && (
+                <div
+                  role="tablist"
+                  aria-label={t("details.storeTabs", { defaultValue: "Store details tabs" })}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span style={{
+                    minWidth: 30,
+                    height: 22,
+                    borderRadius: chipRadius,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 10,
+                    fontWeight: 900,
+                    color: theme.textFaint,
+                    border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"}`,
+                    background: isDark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.48)",
+                  }}>LB</span>
+                  {(["details", "manage"] as const).map((tab) => {
+                    const selected = activeTab === tab;
+                    return (
+                      <button
+                        key={tab}
+                        role="tab"
+                        aria-selected={selected}
+                        onClick={() => {
+                          revealControls();
+                          activeTabRef.current = tab;
+                          setActiveTab(tab);
+                          setFocusedIndex(tab === "details" ? 0 : 1);
+                        }}
+                        style={{
+                          height: 32,
+                          borderRadius: controlRadius,
+                          padding: "0 14px",
+                          cursor: "pointer",
+                          border: selected ? `2px solid ${accent.primary}` : `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"}`,
+                          background: selected
+                            ? `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`
+                            : surfaceStyle === "material" ? "var(--material-elevation-1)" : (isDark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.52)"),
+                          color: selected ? primaryText : theme.text,
+                          fontSize: 12,
+                          fontWeight: 900,
+                          boxShadow: selected ? `0 0 0 3px ${accent.glow}0.16)` : "none",
+                        }}
+                      >
+                        {t(tab === "details" ? "details.tabDetails" : "details.tabManage")}
+                      </button>
+                    );
+                  })}
+                  <span style={{
+                    minWidth: 30,
+                    height: 22,
+                    borderRadius: chipRadius,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 10,
+                    fontWeight: 900,
+                    color: theme.textFaint,
+                    border: `1px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"}`,
+                    background: isDark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.48)",
+                  }}>RB</span>
+                </div>
+              )}
+            </div>
             {installing && (
               <div style={{ width: controlsRevealed ? 170 : 220, display: "flex", flexDirection: "column", gap: 5 }}>
                 <div style={{
@@ -649,7 +963,7 @@ export function GameDetailsModal({
               type="button"
               onClick={() => {
                 revealControls();
-                setFocusedIndex(1);
+                setFocusedIndex(hasStoreContent && activeTab === "details" ? 0 : 1);
               }}
               aria-label={t("common.more", { defaultValue: "More" })}
               style={{
@@ -678,13 +992,11 @@ export function GameDetailsModal({
             ref={scrollRef}
             style={{
               gridColumn: "1 / -1",
-              display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-              alignContent: "start",
-              gap: 10,
+              display: "block",
               overflowY: "auto",
               minHeight: 0,
-              maxHeight: controlsRevealed ? 330 : 0,
+              height: controlsRevealed ? "100%" : 0,
+              maxHeight: controlsRevealed ? "none" : 0,
               padding: controlsRevealed ? "0 4px 2px 0" : 0,
               scrollPaddingBlock: 10,
               opacity: controlsRevealed ? 1 : 0,
@@ -693,67 +1005,131 @@ export function GameDetailsModal({
               transition: "max-height 360ms cubic-bezier(0.16, 1, 0.3, 1), padding 360ms cubic-bezier(0.16, 1, 0.3, 1), opacity 280ms ease, transform 360ms cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           >
-            {actions.map((action, idx) => {
-              const focused = focusIdx === idx + 1;
-              return (
-                <button
-                  key={action.key}
-                  ref={(node) => { focusRefs.current[idx + 1] = node; }}
-                  onClick={action.onClick}
-                  onMouseEnter={() => setFocusedIndex(idx + 1)}
-                  style={{
-                    minHeight: action.sublabel ? 64 : 50,
-                    borderRadius: controlRadius,
-                    border: focused ? `2px solid ${action.danger ? "#e85a5a" : accent.primary}` : `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-                    background: focused
-                      ? (action.danger ? "rgba(232,90,90,0.16)" : `${accent.glow}0.20)`)
-                      : surfaceStyle === "material" ? "var(--material-elevation-1)" : (isDark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.60)"),
-                    color: action.danger ? "#e85a5a" : theme.text,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 10,
-                    textAlign: "left",
-                    padding: "10px 12px",
-                    cursor: "pointer",
-                    fontWeight: 750,
-                    fontSize: 13,
-                  }}
-                >
-                  <span style={{ minWidth: 0 }}>
-                    <span style={{ display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{action.label}</span>
-                    {action.sublabel && (
-                      <span style={{ display: "block", marginTop: 3, fontSize: 11, lineHeight: 1.15, color: theme.textFaint, fontWeight: 500 }}>{action.sublabel}</span>
+            {hasStoreContent ? (
+              activeTab === "details" ? (
+                  <div>
+                    {shortDescription && (
+                      <>
+                        <div style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.55, marginBottom: 8 }}>
+                          {t("details.about")}
+                        </div>
+                        <p style={{ fontSize: 15, lineHeight: 1.55, margin: "0 0 18px", maxWidth: 900, color: theme.text }}>
+                          {shortDescription}
+                        </p>
+                      </>
                     )}
-                  </span>
-                  {typeof action.checked === "boolean" && (
-                    <span style={{
-                      width: 34,
-                      height: 20,
-                      borderRadius: 999,
-                      flexShrink: 0,
-                      padding: 2,
-                      boxSizing: "border-box",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      background: action.checked ? accent.primary : (isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.14)"),
-                    }}>
-                      <span style={{
-                        display: "block",
-                        width: 14,
-                        height: 14,
-                        borderRadius: "50%",
-                        background: action.checked ? primaryText : "rgba(255,255,255,0.88)",
-                        transform: action.checked ? "translateX(14px)" : "translateX(0)",
-                        transition: "transform 120ms ease",
-                      }} />
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                    {mediaCount > 0 && (
+                      <>
+                        <div style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.55, marginBottom: 8 }}>
+                          {t("details.media")}
+                        </div>
+                        <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>
+                          {mediaItems.map((item, index) => (
+                            <button
+                              key={`${item.type}-${item.type === "trailer" ? item.movie.id || index : index}`}
+                              ref={(node) => { focusRefs.current[1 + index] = node; }}
+                              onClick={() => {
+                                setFocusedIndex(1 + index);
+                                setOverlay({ index });
+                              }}
+                              aria-label={item.title}
+                              style={mediaTileStyle(focusIdx === 1 + index)}
+                            >
+                              <img src={normalizeMediaUrl(item.thumb)} alt="" style={mediaThumbStyle} />
+                              {item.type === "trailer" && <span style={playBadgeStyle}><IoPlay /></span>}
+                              <span style={{
+                                position: "absolute",
+                                left: 8,
+                                bottom: 7,
+                                minWidth: 24,
+                                height: 22,
+                                borderRadius: chipRadius,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: "0 7px",
+                                boxSizing: "border-box",
+                                color: "#fff",
+                                background: "rgba(0,0,0,0.58)",
+                                fontSize: 11,
+                                fontWeight: 900,
+                              }}>{index + 1}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ) : actionGrid
+            ) : actionGrid}
           </div>
         </div>
+        {overlay && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 50,
+              background: "rgba(0,0,0,0.94)",
+              display: "grid",
+              placeItems: "center",
+              padding: 32,
+            }}
+            onClick={() => setOverlay(null)}
+          >
+            {overlayItem?.type === "trailer" && (
+              overlayMovieSrc ? (
+                <video
+                  key={overlayMovieSrc}
+                  ref={overlayVideoRef}
+                  src={overlayMovieSrc}
+                  controls
+                  autoPlay
+                  playsInline
+                  preload="auto"
+                  onCanPlay={() => overlayVideoRef.current?.play().catch(() => {})}
+                  onClick={(event) => event.stopPropagation()}
+                  style={{ width: "min(1040px, 92%)", aspectRatio: "16/9", borderRadius: mediaRadius, background: "#000" }}
+                />
+              ) : (
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  style={{
+                    width: "min(1040px, 92%)",
+                    aspectRatio: "16/9",
+                    borderRadius: mediaRadius,
+                    overflow: "hidden",
+                    position: "relative",
+                    background: "#000",
+                    display: "grid",
+                    placeItems: "center",
+                    color: "rgba(255,255,255,0.72)",
+                    fontWeight: 800,
+                  }}
+                >
+                  {overlayItem.thumb && <img src={normalizeMediaUrl(overlayItem.thumb)} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.45 }} />}
+                  <span style={{ position: "relative" }}>{t("details.trailerUnavailable", { defaultValue: "Trailer unavailable" })}</span>
+                </div>
+              )
+            )}
+            {overlayItem?.type === "shot" && (
+              <img
+                src={normalizeMediaUrl(overlayItem.screenshot.full)}
+                alt=""
+                onClick={(event) => event.stopPropagation()}
+                style={{ width: "min(1100px, 94%)", maxHeight: "86%", objectFit: "contain", borderRadius: mediaRadius }}
+              />
+            )}
+            <span style={{ position: "absolute", top: 18, right: 22, fontSize: 26, color: "rgba(255,255,255,0.85)" }}>
+              <IoCloseOutline />
+            </span>
+            {mediaItems.length > 1 && (
+              <div style={{ position: "absolute", bottom: 24, color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
+                <IoChevronBackOutline style={{ verticalAlign: "middle" }} /> {overlay.index + 1} / {mediaItems.length} <IoChevronForwardOutline style={{ verticalAlign: "middle" }} />
+              </div>
+            )}
+          </div>
+        )}
       </section>
     </div>
   );

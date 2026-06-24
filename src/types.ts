@@ -43,6 +43,39 @@ export interface AccentColors {
   lightDarkText?: boolean;
 }
 
+export interface StoreScreenshot {
+  thumb: string;
+  full: string;
+}
+
+export interface StoreMovie {
+  id: string;
+  name: string;
+  thumbnail: string;
+  mp4?: string | null;
+  webm?: string | null;
+  hlsH264?: string | null;
+  dashH264?: string | null;
+  dashAv1?: string | null;
+}
+
+export interface StoreMetadata {
+  cacheVersion?: number;
+  source: string;
+  appId: string;
+  shortDescription: string;
+  aboutHtml: string;
+  developers: string[];
+  publishers: string[];
+  genres: string[];
+  releaseDate?: string | null;
+  headerImage?: string | null;
+  background?: string | null;
+  screenshots: StoreScreenshot[];
+  movies: StoreMovie[];
+  fetchedAt: number;
+}
+
 // ── Settings value union types ─────────────────────────────────
 
 export type ThemeMode        =
@@ -88,6 +121,7 @@ export interface Settings {
   scan_battlenet: boolean;
   scan_gog: boolean;
   scan_epic: boolean;
+  fetch_store_metadata: boolean;
   show_uninstalled_games: boolean;
   steam_owned_library_seen: boolean;
   repeat_speed: RepeatSpeed;

@@ -3,7 +3,13 @@
 ## Unreleased
 
 ### Added
+- **Steam store info in Game Details** - Game Details now shows Steam store page info when available, with the short description, a numbered trailer/screenshot media row, and the existing action grid. After controls are revealed, a compact Details / Manage tab strip with LB/RB badges appears beside Play; LB/RB switches tabs, media opens fullscreen with B returning one level to the modal, and non-Steam games, offline/error cases, or disabled store metadata keep the old no-tab action grid.
+- **Store metadata layer with Steam provider** - LiftOff now has backend-only, on-demand store metadata plumbing for Steam games, fetching descriptions, screenshots, and trailers from Steam's public appdetails endpoint into a normalized cached shape. Results are cached locally for 14 days under app data, exposed through the new `fetch_store_metadata` Tauri command, and gated behind a default-on `fetch_store_metadata` setting.
 - **Non-installed Games visibility toggle** - Library settings now include a toggle for showing owned-but-not-installed Steam games in the Games tab. Fresh settings hide those entries until a Steam account has connected once, then enable them by default; when hidden, the Games grid/source tabs and Right-Stick toolbar focus operate on installed games only while keeping the sticky sort control available.
+
+### Fixed
+- **Game Details reveal focus and collapse** - pressing down from Play to reveal the Game Details controls now lands focus on the first controls-row item (first media tile or first action) instead of staying on the Play button, and pressing up from that first row reliably collapses back to the showcase view. Previously the reveal kept focus on Play in store-content Details mode, which also broke the up-to-collapse gesture because it only triggered when focus was past Play.
+- **Game Details store media follow-up** - trailers now use HTTPS-normalized media URLs or Steam's current HLS/DASH manifest fields and play inside the fullscreen overlay, old cached trailer entries without playable URLs are refreshed through a store-metadata cache schema bump, trailers and screenshots share one numbered gamepad carousel, media-row left/right navigation can no longer land on the header Play button as an invisible item, the Details / Manage tabs stay hidden in the collapsed showcase but visible after reveal without shortening the content pane, and art pickers launched from Details return to the same Details modal on B/cancel instead of dropping back to the grid.
 
 ## [2.0.0-alpha-5] - Alpha 5
 

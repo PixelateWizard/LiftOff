@@ -463,6 +463,10 @@
   },
   "details": {
     "play": "Play",
+    "about": "About",
+    "media": "Media",
+    "tabDetails": "Details",
+    "tabManage": "Manage",
     "lastPlayed": "Last played",
     "playtime": "Playtime",
     "sizeOnDisk": "Size on disk",

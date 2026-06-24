@@ -464,6 +464,10 @@
   },
   "details": {
     "play": "TODO(fr) Play",
+    "about": "TODO(fr) About",
+    "media": "TODO(fr) Media",
+    "tabDetails": "TODO(fr) Details",
+    "tabManage": "TODO(fr) Manage",
     "lastPlayed": "TODO(fr) Last played",
     "playtime": "TODO(fr) Playtime",
     "sizeOnDisk": "TODO(fr) Size on disk",

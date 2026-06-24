@@ -1,12 +1,29 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Add a Library settings toggle for showing owned-but-not-installed games in the Games library.
-- Default to hiding non-installed games until Steam has connected once, then showing them by default; keep grid, toolbar sort, and Right-Stick focus behavior correct when they are hidden.
+- Fixed Game Details two-stage reveal focus: pressing down from Play now lands focus on the first controls-row item (first media tile / first action) instead of staying on Play, and pressing up from the first row reliably collapses back to the showcase. Root cause was the reveal handler forcing `move(0)` in store-content Details mode, which kept focus on Play and disabled the up-to-collapse handler (it only fired when focus was past index 0). Reveal now uses `move(1)` (clamped), and the up-collapse condition was relaxed from `> 0 && <= cols` to `<= cols`. Validated with `npm.cmd run build` (only the existing Vite chunk-size warning). Hands-on gamepad confirmation on a Steam game with store content is still recommended.
+- Completed Game Details store media fixes: Steam trailer manifest URLs are cached/refreshed, and media-row gamepad left/right stays within visible media tiles.
 
 ## 🐛 Active Bugs
 
 - The indeterminate install bar at the bottom of a game card in the Games library restarts/glitches whenever gamepad focus moves to another card. Deferred; do not fix as part of Tasks D/E.
+
+**Completed (this session - store metadata frontend):**
+- Added a session-cached `useStoreMetadata` hook that calls the new `fetch_store_metadata` Tauri command only for Steam games when `settings.fetch_store_metadata` is enabled.
+- Game Details now shows a visible Details / Manage tab strip with LB/RB badges after the controls are revealed whenever Steam store content is available. Details shows the plain short description plus one numbered media row that includes trailers before screenshots; Manage keeps the existing action grid.
+- Fullscreen trailer and screenshot overlays are owned by the modal's persistent gamepad poll. A toggles trailer playback, left/right cycles through the unified media list, and B closes only the overlay back to the modal. Trailer URLs are normalized to HTTPS and auto-play from the overlay video element.
+- The collapsed showcase view hides the store tabs so the initial Play/cover/metadata composition stays clean. In revealed mode, Play and the tabs share the same compact header row, and first reveal keeps the Details scroll area at the top instead of jumping straight to media.
+- Steam store trailers now capture the current `hls_h264`, `dash_h264`, and `dash_av1` manifest fields when direct MP4/WebM URLs are absent. Store metadata cache versioning invalidates older movie entries that only cached `mp4: null` / `webm: null`.
+- Gamepad left/right inside the Details media rail clamps to the visible media tile range instead of allowing item 1 to move left onto the header Play button.
+- Change Art / Change Hero Art launched from Details now returns to that game's Details modal when the art picker closes, including B/cancel from the picker. Context-menu art pickers keep their old grid-return behavior.
+- Added store metadata TS types plus English and TODO French Details labels; updated `CHANGELOG.md`.
+- Layout/media follow-ups validated with `npm.cmd run build`, `cargo check`, and `git diff --check`; only the existing Vite chunk-size warning, Rust unused-helper/path warning, and CRLF notices remained.
+- Validated with `npm.cmd run build`, `cargo check`, and `git diff --check`; only the existing Vite chunk-size warning, Rust unused-helper/path warning, and CRLF notices remained. Hands-on Ally verification should open Details on Steam installed and uninstalled games, test visible LB/RB tabs, trailer playback, unified media left/right navigation, art-picker B return, and confirm non-Steam Details still shows the old action grid.
+
+**Completed (this session - store metadata backend plumbing):**
+- Added `src-tauri/src/store_metadata.rs` with normalized store metadata types, a Steam `appdetails` provider, 14-day JSON cache under `LiftOff/store_metadata/steam/`, and a cache-first on-demand fetch path.
+- Registered the `fetch_store_metadata` Tauri command and added a default-on `fetch_store_metadata` settings gate across Rust settings/defaults plus the TypeScript settings mirror/defaults. No frontend modal/UI rendering was added.
+- Validated with `npm.cmd run build`, `cargo check`, `cargo build`, and `cargo clippy`. Remaining output is the existing Vite chunk-size warning, existing Rust `is_our_window_focused` unused-helper warning, and pre-existing clippy warnings in `steam_appinfo.rs` / `lib.rs`. `cargo fmt --check` still reports the repo's pre-existing `lib.rs` formatting drift; the new store metadata module was formatted directly with Rust 2021.
 
 **Completed (this session - Alpha 5 release rebucket/version bump):**
 - Moved the full `CHANGELOG.md` Unreleased body into `## [2.0.0-alpha-5] - Alpha 5`, leaving `## Unreleased` empty for future work and normalizing the Alpha 5 section into Added / Changed / Fixed groups.
@@ -1343,6 +1360,8 @@ Notable merged PRs from Moi that affect current architecture and settings:
 - UWP/desktop/Steam icon extraction via `DrawIconEx` at 128px with jumbo/large fallback
 - No console window flash on launch (CREATE_NO_WINDOW everywhere)
 - Game art: `fetch_game_art` returns `{ grid, hero_static, hero_animated }` — one SGDB search + two hero fetches; all three downloaded to disk (`art/grid/`, `art/hero_static/`, `art/hero_animated/`) and served via `asset://`; zero API calls when all cached
+- Store metadata: `fetch_store_metadata` is backend-only plumbing for on-demand, one-game-at-a-time store page metadata. Steam v1 uses the public appdetails endpoint for descriptions, screenshots, and trailers; responses cache under `store_metadata/steam/<appid>.json` for 14 days and are gated by `settings.fetch_store_metadata`. Do not bulk pre-cache the library because Steam rate-limits the endpoint.
+- Game Details store info: when Steam store metadata is available, the collapsed showcase view still shows only cover, metadata, Play, and the reveal affordance. After controls are revealed, a compact Details / Manage tab strip with LB/RB badges sits inline with Play so it is discoverable without shortening the content pane. Details shows the plain short description and one numbered media row with trailers before screenshots; Manage is the existing action grid. Fullscreen media is one modal layer deep, trailers auto-play from HTTPS-normalized URLs or Steam's HLS/DASH manifest URLs, left/right cycles every trailer and screenshot in the same carousel, and B returns to Details instead of closing to the grid. The media rail clamps left/right navigation to visible media tiles so it cannot land on Play as an invisible item. Change Art / Change Hero Art opened from Details returns to the same Details modal when the art picker closes; context-menu art still returns to the grid. Non-Steam games, failed/offline metadata, and disabled store metadata show the original action grid with no tabs.
 - Art fetched in batches of 4 with live progress shown in cache-clear status overlay
 - Animated hero banners (.webm/.mp4/.webp/.gif) controlled by `animated_heroes` setting (`"static"` | `"animated"` | `"custom"`); per-game preference stored in `heroCustomType` localStorage
 - Hero media handling: video heroes stay mounted with `preload="auto"` and only the active hero calls `play()`; inactive videos explicitly `pause()`. GIF/WebP heroes are treated as animated image media and have their `src` removed while paused. Home owns this playback against the actual rendered hero list, and focus/blur/launch pause state stops both video and animated-image hero paths.

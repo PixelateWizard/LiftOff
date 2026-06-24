@@ -289,6 +289,7 @@ export default function App() {
   } = useModalState();
   const [detailsApp, setDetailsApp] = useState(null);
   const detailsAppRef = useRef(null);
+  const artPickerReturnDetailsRef = useRef(null);
   const [installSize, setInstallSize] = useState({});
   const [downloadSize, setDownloadSize] = useState({});
   const [installProgress, setInstallProgress] = useState({});
@@ -419,6 +420,13 @@ export default function App() {
     detailsAppRef.current = next;
     return next;
   }, [resolveDetailsApp]);
+
+  useEffect(() => {
+    if (artPickerApp || !artPickerReturnDetailsRef.current) return;
+    const app = artPickerReturnDetailsRef.current;
+    artPickerReturnDetailsRef.current = null;
+    setResolvedDetailsApp(app);
+  }, [artPickerApp, setResolvedDetailsApp]);
 
   const refreshSteamStatus = () => {
     invoke("steam_account_status")
@@ -2542,6 +2550,7 @@ export default function App() {
           runAsAdmin={getRunAsAdmin(detailsApp.id)}
           onChangeArt={() => {
             const app = detailsApp;
+            artPickerReturnDetailsRef.current = app;
             closeDetailsModal(false);
             setArtPickerMode("grid");
             artPickerModeRef.current = "grid";
@@ -2550,6 +2559,7 @@ export default function App() {
           }}
           onChangeHeroArt={() => {
             const app = detailsApp;
+            artPickerReturnDetailsRef.current = app;
             closeDetailsModal(false);
             setArtPickerMode("hero");
             artPickerModeRef.current = "hero";
@@ -2583,6 +2593,7 @@ export default function App() {
           isDark={isDark}
           surfaceStyle={surfaceStyle}
           glass={glass}
+          storeMetaEnabled={settings.fetch_store_metadata !== false}
           t={t}
         />
       )}
@@ -3236,9 +3247,9 @@ export default function App() {
                 },
               }]
             : []),
-          { label: t('contextMenu.changeArt'), action: () => { setArtPickerMode("grid"); artPickerModeRef.current = "grid"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } },
+          { label: t('contextMenu.changeArt'), action: () => { artPickerReturnDetailsRef.current = null; setArtPickerMode("grid"); artPickerModeRef.current = "grid"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } },
           ...(contextMenu.app.app_type === "game"
-            ? [{ label: t('contextMenu.changeHeroArt'), action: () => { setArtPickerMode("hero"); artPickerModeRef.current = "hero"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
+            ? [{ label: t('contextMenu.changeHeroArt'), action: () => { artPickerReturnDetailsRef.current = null; setArtPickerMode("hero"); artPickerModeRef.current = "hero"; setArtPickerApp(contextMenu.app); artPickerAppRef.current = contextMenu.app; setContextMenu(null); contextMenuRef.current = null; } }]
             : []),
           { label: t('contextMenu.collections'), action: () => { setColPickerApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },
           { label: t('contextMenu.rename'), action: () => { setEditNameApp(contextMenu.app); setContextMenu(null); contextMenuRef.current = null; } },

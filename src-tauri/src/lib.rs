@@ -42,6 +42,7 @@ use windows::{
 };
 
 mod steam_appinfo;
+mod store_metadata;
 
 const SGDB_KEY: &str = env!("SGDB_API_KEY");
 const RECENTS_MAX: usize = 10;
@@ -167,6 +168,8 @@ pub struct Settings {
     pub scan_gog: bool,
     #[serde(default = "default_true")]
     pub scan_epic: bool,
+    #[serde(default = "default_true")]
+    pub fetch_store_metadata: bool,
     #[serde(default)]
     pub show_uninstalled_games: bool,
     #[serde(default)]
@@ -376,6 +379,7 @@ impl Default for Settings {
             scan_battlenet: true,
             scan_gog: true,
             scan_epic: true,
+            fetch_store_metadata: true,
             show_uninstalled_games: false,
             steam_owned_library_seen: false,
             repeat_speed: "normal".to_string(),
@@ -6881,6 +6885,7 @@ pub fn run() {
             steam_verify,
             steam_watch_install,
             steam_install_progress,
+            store_metadata::fetch_store_metadata,
             get_pins,
             toggle_pin,
             get_hidden,
