@@ -1,7 +1,7 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed the second-stage Control/Game Pass Resume focus fallback: `focus_game_window` now uses the standard synthetic ALT foreground-lock unlock before `SetForegroundWindow` / `SetActiveWindow` / `SetFocus`, scoped only to returning focus to the game and not to raising LiftOff. This targets the hardware-tested case where Resume visually shows Control but Windows still withholds the input-active state until a touchscreen tap. Updated `CHANGELOG.md`; validated with `cargo check`, `npm.cmd run build`, `rustfmt --edition 2021 --check src\fse_watcher.rs src\lib.rs`, and `git diff --check`. Only the existing Rust path canonicalization warning, unused `is_our_window_focused` warning, Vite chunk-size warning, and CRLF notices remained. Hands-on Ally validation should retest launch Control, native summon, Resume, and immediate gamepad input without touching the screen.
+- Completed the Onyx-only focused-card outline fix for the Games and Apps grids. Onyx card wrappers now allow the animated focus ring to paint outside the virtualized card bounds, while every non-Onyx theme keeps the existing `contentVisibility` / `containIntrinsicSize` behavior and focus styling. Updated `CHANGELOG.md`; validated with `npm.cmd run build` and `git diff --check`. Browser-only visual rendering was blocked by missing Tauri runtime APIs (`window.__TAURI__`), so hands-on Ally/Tauri verification should confirm the Onyx focus ring on focused Games and Apps grid cards.
 
 ## 🐛 Active Bugs
 

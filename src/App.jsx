@@ -2048,7 +2048,7 @@ export default function App() {
         style={{
           position: "relative", borderRadius: cardRadius, aspectRatio: "2/3",
           cursor: "pointer", transition: calmMotion ? "box-shadow 0.12s ease, transform 0.08s ease" : "box-shadow 0.15s ease, transform 0.15s ease",
-          contentVisibility: "auto", containIntrinsicSize: "auto 240px",
+          ...(isOnyx ? { overflow: "visible" } : { contentVisibility: "auto", containIntrinsicSize: "auto 240px" }),
           ...(focused ? { transform: calmMotion ? "scale(1.02)" : "scale(1.04) translateY(-1px)" } : {}),
         }}
       >

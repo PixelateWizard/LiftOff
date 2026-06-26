@@ -400,7 +400,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                           onDoubleClick={() => triggerLaunch(app, recent)}
                           onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
                           style={{ position: "relative", borderRadius: appCardRadius, aspectRatio: "1", cursor: "pointer", transition: "box-shadow 0.12s ease, transform 0.08s ease",
-                            contentVisibility: "auto", containIntrinsicSize: "auto 160px",
+                            ...(isOnyx ? { overflow: "visible" } : { contentVisibility: "auto", containIntrinsicSize: "auto 160px" }),
                             ...(focused ? { transform: "scale(1.025)" } : {}),
                           }}>
                           {/* Inner content — overflow:hidden clips art */}
@@ -521,7 +521,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                       onDoubleClick={() => triggerLaunch(app, recent)}
                       onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
                       style={{ position: "relative", borderRadius: appGridCardRadius, aspectRatio: "1", cursor: "pointer", transition: "box-shadow 0.12s ease, transform 0.08s ease",
-                        contentVisibility: "auto", containIntrinsicSize: "auto 160px",
+                        ...(isOnyx ? { overflow: "visible" } : { contentVisibility: "auto", containIntrinsicSize: "auto 160px" }),
                         ...(focused ? { transform: "scale(1.025)" } : {}),
                       }}>
                       {/* Inner content — overflow:hidden clips art */}
