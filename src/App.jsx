@@ -53,7 +53,6 @@ import { useSearchState } from "./hooks/useSearchState";
 import { useFseSession } from "./hooks/useFseSession";
 import { useGamepadNavigation } from "./hooks/useGamepadNavigation";
 import { useStartupBootstrap } from "./hooks/useStartupBootstrap";
-import { useSummonCombo } from "./hooks/useSummonCombo";
 import { useSystemStatus } from "./hooks/useSystemStatus";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { useAppFocusPause } from "./hooks/useAppFocusPause";
@@ -537,7 +536,8 @@ export default function App() {
   const { sessionActive: fseSessionActive } = useFseSession();
   const [fseHintVisible, setFseHintVisible] = useState(false);
   const [fseHintShortcut, setFseHintShortcut] = useState(fseReturnShortcut);
-  useSummonCombo(fseSessionActive, fseReturnShortcut);
+  // Summon while hidden is handled natively in fse_watcher.rs; hidden WebView
+  // polling cannot reliably fire while gameplay owns the foreground.
   useEffect(() => {
     const unsubs = [];
     let disposed = false;

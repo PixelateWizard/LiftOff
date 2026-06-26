@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -11,12 +11,18 @@ use windows::Win32::Graphics::Gdi::{
     GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
 };
 #[cfg(windows)]
+use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
+#[cfg(windows)]
+use windows::Win32::UI::Input::KeyboardAndMouse::{
+    keybd_event, SetActiveWindow, SetFocus, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VK_MENU,
+};
+#[cfg(windows)]
 use windows::Win32::UI::Input::XboxController::{XInputGetState, XINPUT_STATE};
 #[cfg(windows)]
 use windows::Win32::UI::WindowsAndMessaging::{
-    BringWindowToTop, GetForegroundWindow, GetWindowRect, IsWindow, IsWindowVisible,
-    SetForegroundWindow, SetWindowPos, ShowWindow, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOMOVE,
-    SWP_NOSIZE, SWP_SHOWWINDOW, SW_RESTORE, SW_SHOW,
+    BringWindowToTop, GetForegroundWindow, GetWindowRect, GetWindowThreadProcessId, IsIconic,
+    IsWindow, IsWindowVisible, SetForegroundWindow, SetWindowPos, ShowWindow, HWND_NOTOPMOST,
+    HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_RESTORE, SW_SHOW,
 };
 
 const POLL_INTERVAL_MS: u64 = 250;
@@ -36,6 +42,7 @@ const MAIN_WINDOW_LABEL: &str = "main";
 #[derive(Default)]
 pub struct FseWatch {
     current: Mutex<Option<Arc<AtomicBool>>>,
+    preferred_game_hwnd: AtomicIsize,
 }
 
 impl FseWatch {
@@ -45,16 +52,39 @@ impl FseWatch {
                 token.store(true, Ordering::SeqCst);
             }
         }
+        self.preferred_game_hwnd.store(0, Ordering::SeqCst);
     }
 
-    fn install(&self) -> Arc<AtomicBool> {
+    fn install(&self, preferred_game_hwnd: Option<isize>) -> Arc<AtomicBool> {
         let token = Arc::new(AtomicBool::new(false));
+        self.preferred_game_hwnd
+            .store(preferred_game_hwnd.unwrap_or(0), Ordering::SeqCst);
         if let Ok(mut guard) = self.current.lock() {
             if let Some(old) = guard.replace(token.clone()) {
                 old.store(true, Ordering::SeqCst);
             }
         }
         token
+    }
+
+    fn prefer_game_window(&self, hwnd: isize) -> bool {
+        if hwnd == 0 {
+            return false;
+        }
+        let active = self
+            .current
+            .lock()
+            .map(|guard| guard.is_some())
+            .unwrap_or(false);
+        if active {
+            self.preferred_game_hwnd.store(hwnd, Ordering::SeqCst);
+        }
+        active
+    }
+
+    #[cfg(windows)]
+    fn preferred_game_hwnd(&self) -> Option<HWND> {
+        hwnd_from_value(self.preferred_game_hwnd.load(Ordering::SeqCst))
     }
 }
 
@@ -78,9 +108,64 @@ fn window_hwnd(window: &tauri::WebviewWindow, fallback: isize) -> Option<HWND> {
 }
 
 #[cfg(windows)]
+// Briefly attach to the foreground thread so SetForegroundWindow is not
+// downgraded to an internal-focus-only taskbar flash while a game owns focus.
+fn force_foreground_window(hwnd: HWND, unlock_foreground: bool) {
+    unsafe {
+        if IsIconic(hwnd).as_bool() {
+            let _ = ShowWindow(hwnd, SW_RESTORE);
+        } else {
+            let _ = ShowWindow(hwnd, SW_SHOW);
+        }
+
+        let foreground = GetForegroundWindow();
+        let our_thread = GetCurrentThreadId();
+        let fg_thread = if hwnd_value(foreground) == 0 {
+            0
+        } else {
+            GetWindowThreadProcessId(foreground, None)
+        };
+        let target_thread = GetWindowThreadProcessId(hwnd, None);
+
+        let attached = fg_thread != 0
+            && fg_thread != our_thread
+            && AttachThreadInput(our_thread, fg_thread, true).as_bool();
+        let attached_target = target_thread != 0
+            && target_thread != our_thread
+            && target_thread != fg_thread
+            && AttachThreadInput(our_thread, target_thread, true).as_bool();
+
+        let _ = BringWindowToTop(hwnd);
+        if unlock_foreground {
+            tap_alt_key_for_foreground_unlock();
+        }
+        let _ = SetForegroundWindow(hwnd);
+        let _ = SetActiveWindow(hwnd);
+        let _ = SetFocus(Some(hwnd));
+
+        if attached_target {
+            let _ = AttachThreadInput(our_thread, target_thread, false);
+        }
+        if attached {
+            let _ = AttachThreadInput(our_thread, fg_thread, false);
+        }
+    }
+}
+
+#[cfg(windows)]
+fn tap_alt_key_for_foreground_unlock() {
+    unsafe {
+        keybd_event(VK_MENU.0 as u8, 0, KEYBD_EVENT_FLAGS(0), 0);
+        keybd_event(VK_MENU.0 as u8, 0, KEYEVENTF_KEYUP, 0);
+    }
+    std::thread::sleep(Duration::from_millis(20));
+}
+
+#[cfg(windows)]
 fn raise_window(hwnd: HWND) {
     unsafe {
-        let _ = ShowWindow(hwnd, SW_RESTORE);
+        // Put LiftOff in the always-on-top band first so it can sit above a
+        // topmost fullscreen game, then force activation through the foreground lock.
         let _ = SetWindowPos(
             hwnd,
             Some(HWND_TOPMOST),
@@ -90,9 +175,8 @@ fn raise_window(hwnd: HWND) {
             0,
             SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
         );
-        let _ = BringWindowToTop(hwnd);
-        let _ = SetForegroundWindow(hwnd);
     }
+    force_foreground_window(hwnd, false);
 }
 
 #[cfg(windows)]
@@ -112,20 +196,9 @@ fn clear_topmost(hwnd: HWND) {
 
 #[cfg(windows)]
 fn focus_game_window(hwnd: HWND) {
+    force_foreground_window(hwnd, true);
     unsafe {
-        let _ = ShowWindow(hwnd, SW_SHOW);
-        let _ = SetWindowPos(
-            hwnd,
-            Some(HWND_TOPMOST),
-            0,
-            0,
-            0,
-            0,
-            SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
-        );
-        let _ = BringWindowToTop(hwnd);
-        let _ = SetForegroundWindow(hwnd);
-        std::thread::sleep(Duration::from_millis(60));
+        // The game owns the foreground but should not stay pinned above LiftOff.
         let _ = SetWindowPos(
             hwnd,
             Some(HWND_NOTOPMOST),
@@ -135,7 +208,6 @@ fn focus_game_window(hwnd: HWND) {
             0,
             SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
         );
-        let _ = SetForegroundWindow(hwnd);
     }
 }
 
@@ -224,12 +296,10 @@ pub fn start_fse_watch(
 
     #[cfg(windows)]
     {
-        let cancel = app.state::<FseWatch>().install();
+        let cancel = app.state::<FseWatch>().install(preferred_game_hwnd);
         let _ = app.emit("fse:watch-started", shortcut.clone());
-        let preferred_game_hwnd_value = preferred_game_hwnd.unwrap_or(0);
 
         std::thread::spawn(move || {
-            let preferred_game_hwnd = hwnd_from_value(preferred_game_hwnd_value);
             let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
                 let _ = app.emit("fse:no-foreground", ());
                 return;
@@ -258,12 +328,16 @@ pub fn start_fse_watch(
                     break fg;
                 }
 
+                let preferred_game_hwnd = app.state::<FseWatch>().preferred_game_hwnd();
                 if let Some(preferred) = preferred_game_hwnd {
-                    let preferred_ready = unsafe {
+                    // Resume/focus-recovery hands us the exact game window. Trust
+                    // that target instead of waiting on a fullscreen heuristic that
+                    // can flicker while the game is still settling.
+                    let preferred_alive = unsafe {
                         IsWindow(Some(preferred)).as_bool() && IsWindowVisible(preferred).as_bool()
-                    } && is_fullscreen_like(preferred);
+                    };
 
-                    if preferred_ready {
+                    if preferred_alive {
                         focus_game_window(preferred);
                         let started = preferred_ready_since.get_or_insert_with(Instant::now);
                         if started.elapsed()
@@ -277,6 +351,16 @@ pub fn start_fse_watch(
                 }
 
                 if Instant::now() >= deadline {
+                    let preferred_game_hwnd = app.state::<FseWatch>().preferred_game_hwnd();
+                    if let Some(preferred) = preferred_game_hwnd {
+                        let preferred_alive = unsafe {
+                            IsWindow(Some(preferred)).as_bool()
+                                && IsWindowVisible(preferred).as_bool()
+                        };
+                        if preferred_alive {
+                            break preferred;
+                        }
+                    }
                     let _ = app.emit("fse:no-foreground", ());
                     app.state::<FseWatch>().cancel();
                     return;
@@ -353,6 +437,19 @@ pub fn start_fse_watch(
             let _ = app.emit("fse:restored", ());
             app.state::<FseWatch>().cancel();
         });
+    }
+}
+
+pub fn prefer_game_window(app: &AppHandle, game_hwnd: isize) -> bool {
+    #[cfg(windows)]
+    {
+        app.state::<FseWatch>().prefer_game_window(game_hwnd)
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = (app, game_hwnd);
+        false
     }
 }
 

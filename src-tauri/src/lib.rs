@@ -6520,6 +6520,7 @@ async fn launch_app(
     let watch_name = name.clone();
     let watch_path = path.clone();
     let watch_source = source.clone();
+    let watch_is_game = app_type == "game";
     let mut recents = load_recents();
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -6826,6 +6827,24 @@ async fn launch_app(
                 }
             }
 
+            // 3) UWP/Game Pass foreground fallback: package titles often do not
+            // title-match the store name, but their foreground process AUMID is
+            // enough to identify the live game window for FSE handoff.
+            if let Some(target_aumid) = watch_path.strip_prefix("shell:AppsFolder\\") {
+                let foreground_hwnd = unsafe { GetForegroundWindow() };
+                let foreground_value = foreground_hwnd.0 as isize;
+                if foreground_value != 0 && foreground_value != our_hwnd {
+                    if let Some(foreground_aumid) = foreground_process_aumid() {
+                        if aumid_family(&foreground_aumid)
+                            .eq_ignore_ascii_case(aumid_family(target_aumid))
+                        {
+                            found = foreground_value;
+                            break;
+                        }
+                    }
+                }
+            }
+
             // Advance to the game phase after a short grace even without a window yet,
             // so the overlay does not sit on "Launching Steam…" indefinitely.
             if phase_is_steam && started.elapsed() >= std::time::Duration::from_secs(2) {
@@ -6840,6 +6859,19 @@ async fn launch_app(
         }
 
         if found != 0 {
+            let fse_was_active = fse_watcher::prefer_game_window(&handle, found);
+            if !fse_was_active && watch_is_game && load_settings_inner().hide_on_launch {
+                let foreground_matches_found = unsafe { GetForegroundWindow().0 as isize == found };
+                if foreground_matches_found {
+                    let settings = load_settings_inner();
+                    fse_watcher::start_fse_watch(
+                        handle.clone(),
+                        our_hwnd,
+                        settings.fse_return_shortcut,
+                        Some(found),
+                    );
+                }
+            }
             unsafe {
                 let hwnd = windows::Win32::Foundation::HWND(found as _);
                 let _ = SetForegroundWindow(hwnd);
