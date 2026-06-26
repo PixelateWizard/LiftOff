@@ -1,6 +1,53 @@
 let _lastActiveIdx = null;
+let _gamepadInputSuspended = false;
+let _resumeWhenReleasedRaf = null;
+let _resumeWhenReleasedTimer = null;
+
+export function setGamepadInputSuspended(suspended) {
+  _gamepadInputSuspended = suspended;
+  if (suspended) stopAllRumble();
+}
+
+export function isGamepadInputSuspended() {
+  return _gamepadInputSuspended;
+}
+
+function anyGamepadButtonPressed() {
+  return Array.from(navigator.getGamepads())
+    .filter(Boolean)
+    .some(gp => gp.buttons.some(button => button.pressed));
+}
+
+export function suspendGamepadInputUntilButtonsReleased(timeoutMs = 5000) {
+  if (_resumeWhenReleasedRaf != null) cancelAnimationFrame(_resumeWhenReleasedRaf);
+  if (_resumeWhenReleasedTimer != null) window.clearTimeout(_resumeWhenReleasedTimer);
+  _resumeWhenReleasedRaf = null;
+  _resumeWhenReleasedTimer = null;
+  setGamepadInputSuspended(true);
+
+  const finish = () => {
+    if (_resumeWhenReleasedRaf != null) cancelAnimationFrame(_resumeWhenReleasedRaf);
+    if (_resumeWhenReleasedTimer != null) window.clearTimeout(_resumeWhenReleasedTimer);
+    _resumeWhenReleasedRaf = null;
+    _resumeWhenReleasedTimer = null;
+    setGamepadInputSuspended(false);
+  };
+
+  const tick = () => {
+    if (!anyGamepadButtonPressed()) {
+      finish();
+      return;
+    }
+    _resumeWhenReleasedRaf = requestAnimationFrame(tick);
+  };
+
+  _resumeWhenReleasedTimer = window.setTimeout(finish, timeoutMs);
+  tick();
+}
 
 export function getActiveGamepad() {
+  if (_gamepadInputSuspended) return null;
+
   const all = Array.from(navigator.getGamepads());
   const valid = all
     .map((g, i) => ({ g, i }))
@@ -31,13 +78,18 @@ export function getActiveGamepad() {
   return best.g;
 }
 
-export function getBestGamepad() {
+export function getRawBestGamepad() {
   const gps = Array.from(navigator.getGamepads()).filter(Boolean);
   return (
     gps.find(gp => gp.mapping === "standard" && gp.axes.length >= 4) ||
     gps.find(gp => gp.buttons.length >= 4    && gp.axes.length >= 4) ||
     gps[0] || null
   );
+}
+
+export function getBestGamepad() {
+  if (_gamepadInputSuspended) return null;
+  return getRawBestGamepad();
 }
 
 export function readGpState(gp) {
@@ -127,7 +179,7 @@ const HAPTIC_PATTERNS = {
 };
 
 export function rumble(pattern, enabled = true) {
-  if (!enabled) return;
+  if (!enabled || _gamepadInputSuspended) return;
   const gp = getActiveGamepad();
   const actuator = gp?.vibrationActuator;
   if (!actuator) return;
@@ -139,5 +191,19 @@ export function rumble(pattern, enabled = true) {
       weakMagnitude: pulse.weakMagnitude,
       strongMagnitude: pulse.strongMagnitude,
     }).catch(() => {});
+  }
+}
+
+export function stopAllRumble() {
+  const pads = Array.from(navigator.getGamepads()).filter(Boolean);
+  for (const gp of pads) {
+    const actuator = gp?.vibrationActuator;
+    if (!actuator) continue;
+    actuator.reset?.().catch?.(() => {});
+    actuator.playEffect?.("dual-rumble", {
+      duration: 1,
+      weakMagnitude: 0,
+      strongMagnitude: 0,
+    }).catch?.(() => {});
   }
 }

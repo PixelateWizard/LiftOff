@@ -309,6 +309,7 @@
     "gamepadPlatform": "Gamepad Icons",
     "gamepadAutoDetect": "Auto-detect Controller",
     "hapticFeedback": "Controller Vibration",
+    "fseReturnShortcut": "Return to LiftOff Shortcut",
     "gamepadIconsColored": "Colored Icons",
     "gamepadBtnSize": "Button Size",
     "checkUpdates": "Check for Updates",
@@ -423,8 +424,14 @@
       "except_home": "Except Home",
       "home": "Home Only",
       "semi": "Semi-immersive",
-      "immersive": "Immersive"
+      "immersive": "Immersive",
+      "l3_r3": "L3 + R3",
+      "view_menu": "View + Menu",
+      "lb_rb": "LB + RB"
     }
+  },
+  "fse": {
+    "returnHint": "Hold {{shortcut}} to return to LiftOff"
   },
   "home": {
     "resumePlaying": "▶ Resume playing",

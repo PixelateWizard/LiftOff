@@ -1,3 +1,5 @@
+import type { FseReturnShortcut } from "./types";
+
 export const COLS = 6;
 export const GAME_COLS = 5;
 export const TABS = ["Home", "Games", "Apps", "Settings"] as const;
@@ -140,6 +142,18 @@ export const KB_NUMS = [
 ];
 
 export const SCAN_KEYS = ["scan_steam", "scan_xbox", "scan_uwp", "scan_desktop", "scan_battlenet", "scan_gog", "scan_epic"] as const;
+export const FSE_RETURN_SHORTCUT_OPTIONS = ["l3_r3", "view_menu", "lb_rb"] as const satisfies readonly FseReturnShortcut[];
+export const FSE_RETURN_SHORTCUT_LABELS: Record<FseReturnShortcut, string> = {
+  l3_r3: "L3 + R3",
+  view_menu: "View + Menu",
+  lb_rb: "LB + RB",
+};
+export const DEFAULT_FSE_RETURN_SHORTCUT: FseReturnShortcut = "l3_r3";
+
+export function fseReturnShortcutLabel(shortcut?: string | null): string {
+  return FSE_RETURN_SHORTCUT_LABELS[(shortcut as FseReturnShortcut) || DEFAULT_FSE_RETURN_SHORTCUT]
+    ?? FSE_RETURN_SHORTCUT_LABELS[DEFAULT_FSE_RETURN_SHORTCUT];
+}
 
 export const DEFAULT_SETTINGS = {
   accent: "ember", theme: "space", stars_enabled: true, ui_motion: true, lofi_music_enabled: true, wide_layout: false, wide_topbar: false, wide_bottombar: false, wide_games: false, wide_apps: false, wide_settings: false, topbar_background: true, bottombar_background: true, hide_bottom_bar: false,
@@ -152,7 +166,7 @@ export const DEFAULT_SETTINGS = {
   bottombar_alignment: "left", bottombar_compact: "off", tabbar_label_case: "default",
   show_recent_games_only: false, show_home_collections: false, show_home_collection_names: true, show_hero_cover: true, show_home_pinned: true, home_pinned_pos: "bottom", onyx_flat_settings: true,
   gamepad_platform: "xbox", gamepad_icons_colored: false, gamepad_icons_filled: true, gamepad_icons_theme_color: false,
-  gamepad_btn_size: "small", gamepad_auto_detect: true, haptic_feedback: true,
+  gamepad_btn_size: "small", gamepad_auto_detect: true, haptic_feedback: true, fse_return_shortcut: DEFAULT_FSE_RETURN_SHORTCUT,
   surface_style: "clear",
   onyx_top_light: true,
   hide_on_launch: true,

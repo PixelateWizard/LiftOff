@@ -50,8 +50,10 @@ import { useLibraryData } from "./hooks/useLibraryData";
 import { useModalState } from "./hooks/useModalState";
 import { usePersistentJson } from "./hooks/usePersistentJson";
 import { useSearchState } from "./hooks/useSearchState";
+import { useFseSession } from "./hooks/useFseSession";
 import { useGamepadNavigation } from "./hooks/useGamepadNavigation";
 import { useStartupBootstrap } from "./hooks/useStartupBootstrap";
+import { useSummonCombo } from "./hooks/useSummonCombo";
 import { useSystemStatus } from "./hooks/useSystemStatus";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { useAppFocusPause } from "./hooks/useAppFocusPause";
@@ -68,6 +70,7 @@ import {
   ACCENTS, THEMES, CLOUD_SHAPES, CLOUD_CONFIGS, KB_ALPHA, KB_NUMS,
   normalizeThemeKey, isDarkThemeKey,
   SURFACE_STYLE_OPTIONS, THEME_LOCKED_SETTINGS, THEME_BG_COLORS, THEME_OPTIONS,
+  DEFAULT_FSE_RETURN_SHORTCUT, fseReturnShortcutLabel,
   getRunAsAdmin, setRunAsAdmin,
 } from "./constants";
 import { CyberpunkCard, FocusRing, StoreBadge } from "./components/ui";
@@ -530,6 +533,52 @@ export default function App() {
     const glow = (!isDark && base.lightGlow) ? base.lightGlow : resolved.glow;
     return { ...resolved, darkText, glow };
   }, [settings.accent, isDark]);
+  const fseReturnShortcut = settings.fse_return_shortcut ?? DEFAULT_FSE_RETURN_SHORTCUT;
+  const { sessionActive: fseSessionActive } = useFseSession();
+  const [fseHintVisible, setFseHintVisible] = useState(false);
+  const [fseHintShortcut, setFseHintShortcut] = useState(fseReturnShortcut);
+  useSummonCombo(fseSessionActive, fseReturnShortcut);
+  useEffect(() => {
+    const unsubs = [];
+    let disposed = false;
+    let hideTimer = null;
+
+    const clearHintTimer = () => {
+      if (hideTimer != null) window.clearTimeout(hideTimer);
+      hideTimer = null;
+    };
+
+    const hideHint = () => {
+      clearHintTimer();
+      if (!disposed) setFseHintVisible(false);
+    };
+
+    const showHint = (event) => {
+      const shortcut = typeof event?.payload === "string"
+        ? event.payload
+        : (settingsRef.current?.fse_return_shortcut ?? DEFAULT_FSE_RETURN_SHORTCUT);
+      setFseHintShortcut(shortcut);
+      setFseHintVisible(true);
+      clearHintTimer();
+      hideTimer = window.setTimeout(() => {
+        if (!disposed) setFseHintVisible(false);
+      }, 5200);
+    };
+
+    const add = async () => {
+      unsubs.push(await listen("fse:watch-started", showHint));
+      unsubs.push(await listen("fse:hidden", hideHint));
+      unsubs.push(await listen("fse:restored", hideHint));
+      unsubs.push(await listen("fse:no-foreground", hideHint));
+    };
+
+    add().catch(() => {});
+    return () => {
+      disposed = true;
+      clearHintTimer();
+      unsubs.forEach((unsub) => unsub());
+    };
+  }, [settingsRef]);
   const {
     tab,
     tabRef,
@@ -769,7 +818,7 @@ export default function App() {
   useEffect(() => {
     audioProfileRef.current = resolveAudioProfile(resolvedTheme, surfaceStyle);
   }, [resolvedTheme, surfaceStyle]);
-  const appPaused = !!launchingApp || !windowFocused;
+  const appPaused = !!launchingApp || !windowFocused || fseSessionActive;
   const { runningIds, isRunning, refreshRunning, gracefulClose, forceClose } = useRunningApps(appPaused);
   runningIdsRef.current = runningIds;
   const cinematicLight = settings.cinematic_home && !isDark;
@@ -2480,15 +2529,45 @@ export default function App() {
   const bottombarBg = settings.bottombar_background ?? true;
   const headerHeightVal = !topbarBg ? 0 : (tab === "Home" ? 72 : 124);
   const bottomBarHeightVal = (!bottombarBg || settings.hide_bottom_bar) ? 0 : 64;
+  const fseHintText = t("fse.returnHint", {
+    shortcut: fseReturnShortcutLabel(fseHintShortcut || fseReturnShortcut),
+  });
+  const fseHintStyle = {
+    position: "fixed",
+    top: 14,
+    left: "50%",
+    transform: "translateX(-50%)",
+    zIndex: 9300,
+    pointerEvents: "none",
+    padding: "7px 12px",
+    borderRadius: 999,
+    background: isMaterial ? "rgba(250, 248, 242, 0.92)" : "rgba(5, 8, 14, 0.72)",
+    border: `1px solid ${accent.glow}0.38)`,
+    boxShadow: isMaterial ? "0 8px 20px rgba(0,0,0,0.14)" : `0 0 18px ${accent.glow}0.18)`,
+    color: isMaterial ? "#1b1b1b" : "rgba(255,255,255,0.94)",
+    backdropFilter: surfaceStyle === "clear" ? undefined : "blur(14px) saturate(140%)",
+    WebkitBackdropFilter: surfaceStyle === "clear" ? undefined : "blur(14px) saturate(140%)",
+    fontSize: 13,
+    fontWeight: 700,
+    lineHeight: 1.2,
+    maxWidth: "min(92vw, 520px)",
+    textAlign: "center",
+    whiteSpace: "nowrap",
+  };
 
   return (
     <ThemeProvider value={themeValue}>
     <SettingsProvider value={settingsValue}>
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
-    <div data-theme={resolvedTheme} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} data-effects={settings.stars_enabled === false ? "static" : "animated"} data-focus={windowFocused ? "active" : "blurred"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, "--accent-pulse": `${accent.glow}0.22)`, "--header-height": `${headerHeightVal}px`, "--bottom-bar-height": `${bottomBarHeightVal}px`, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
+    <div data-theme={resolvedTheme} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} data-effects={settings.stars_enabled === false ? "static" : "animated"} data-focus={windowFocused && !fseSessionActive ? "active" : "blurred"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, "--accent-pulse": `${accent.glow}0.22)`, "--header-height": `${headerHeightVal}px`, "--bottom-bar-height": `${bottomBarHeightVal}px`, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
 
       <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} windowFocused={windowFocused} />
       <AppOverlays>
+      {fseHintVisible && (
+        <div style={fseHintStyle}>
+          {fseHintText}
+        </div>
+      )}
       {launchingApp && <LaunchOverlay app={launchingApp} gameArt={gameArt} customArt={customArt} accent={accent} onDone={closeLaunchOverlay} onSuccess={playLaunchSuccessSound} hapticEnabled={settings.haptic_feedback ?? true} />}
       {closeRequest && (
         <ConfirmModal

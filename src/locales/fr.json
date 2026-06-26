@@ -307,6 +307,7 @@
     "showDate": "Afficher la date",
     "showBattery": "Afficher la batterie",
     "version": "LiftOff v{{version}}",
+    "fseReturnShortcut": "Raccourci retour LiftOff",
     "gamepadPlatform": "Icônes manette",
     "gamepadAutoDetect": "Détection auto manette",
     "hapticFeedback": "Vibration du contrôleur",
@@ -424,8 +425,14 @@
       "except_home": "Sauf accueil",
       "home": "Accueil seul",
       "semi": "Semi-immersif",
-      "immersive": "Immersif"
+      "immersive": "Immersif",
+      "l3_r3": "L3 + R3",
+      "view_menu": "View + Menu",
+      "lb_rb": "LB + RB"
     }
+  },
+  "fse": {
+    "returnHint": "Maintenez {{shortcut}} pour revenir a LiftOff"
   },
   "home": {
     "resumePlaying": "▶ Reprendre",

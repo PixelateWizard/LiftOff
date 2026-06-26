@@ -6,7 +6,7 @@ import { CollapsibleGroup, ToggleKnob, GamepadIconPreview, FocusRing } from "../
 import { ControllerTestWidget } from "../components/ControllerTestWidget";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
-import { ACCENTS, APP_VERSION, GITHUB_REPO, THEME_LOCKED_SETTINGS, normalizeThemeKey } from "../constants";
+import { ACCENTS, APP_VERSION, FSE_RETURN_SHORTCUT_OPTIONS, GITHUB_REPO, THEME_LOCKED_SETTINGS, normalizeThemeKey } from "../constants";
 import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem, SettingsAppearanceCategoryItem, SettingsAppearanceBackItem } from "../types";
 import type { SpotifyStatus } from "../hooks/useSpotify";
 import { SPOTIFY_REDIRECT_URI } from "../components/spotify/constants";
@@ -233,6 +233,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "gamepad_platform",       section: 3, label: t("settings.gamepadPlatform"),     type: "cycle",  options: ["xbox","ps","switch"] },
     { key: "gamepad_auto_detect",    section: 3, label: t("settings.gamepadAutoDetect"),    type: "toggle" },
     { key: "haptic_feedback",        section: 3, label: t("settings.hapticFeedback"),       type: "toggle" },
+    { key: "fse_return_shortcut",     section: 3, label: t("settings.fseReturnShortcut"),    type: "cycle",  options: FSE_RETURN_SHORTCUT_OPTIONS },
     { key: "gamepad_icons_colored",     section: 3, label: t("settings.gamepadIconsColored"),    type: "toggle" },
     { key: "gamepad_icons_filled",      section: 3, label: t("settings.gamepadIconsFilled"),     type: "toggle" },
     { key: "gamepad_icons_theme_color", section: 3, label: t("settings.gamepadIconsThemeColor"), type: "toggle" },

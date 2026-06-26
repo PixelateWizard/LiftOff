@@ -16,9 +16,9 @@ use tauri::Emitter;
 use tauri::Manager;
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_autostart::ManagerExt;
-use windows::core::PWSTR;
+use windows::core::{BOOL, PWSTR};
 use windows::{
-    Win32::Foundation::{CloseHandle, BOOL, LPARAM, WIN32_ERROR, WPARAM},
+    Win32::Foundation::{CloseHandle, LPARAM, WIN32_ERROR, WPARAM},
     Win32::Graphics::Gdi::{
         CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetDIBits,
         PatBlt, ReleaseDC, SelectObject, BITMAPINFO, BITMAPINFOHEADER, BLACKNESS, DIB_RGB_COLORS,
@@ -34,13 +34,15 @@ use windows::{
         SHGetFileInfoW, ShellExecuteW, SHFILEINFOW, SHGFI_FLAGS, SHGFI_ICON, SHGFI_LARGEICON,
     },
     Win32::UI::WindowsAndMessaging::{
-        DestroyIcon, DrawIconEx, EnumWindows, GetForegroundWindow, GetSystemMetrics,
-        GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, IsWindowVisible,
-        PostMessageW, SetForegroundWindow, ShowWindow, DI_NORMAL, SM_CXSCREEN, SM_CYSCREEN,
-        SW_SHOW, SW_SHOWNORMAL, WM_CLOSE,
+        BringWindowToTop, DestroyIcon, DrawIconEx, EnumWindows, GetForegroundWindow,
+        GetSystemMetrics, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
+        IsWindowVisible, PostMessageW, SetForegroundWindow, SetWindowPos, ShowWindow, DI_NORMAL,
+        HWND_NOTOPMOST, HWND_TOPMOST, SM_CXSCREEN, SM_CYSCREEN, SWP_NOMOVE, SWP_NOSIZE,
+        SWP_SHOWWINDOW, SW_SHOW, SW_SHOWNORMAL, WM_CLOSE,
     },
 };
 
+mod fse_watcher;
 mod steam_appinfo;
 mod store_metadata;
 
@@ -293,6 +295,8 @@ pub struct Settings {
     pub gamepad_auto_detect: bool,
     #[serde(default = "default_true")]
     pub haptic_feedback: bool,
+    #[serde(default = "default_fse_return_shortcut")]
+    pub fse_return_shortcut: String,
     #[serde(default = "default_topbar_show_bumpers")]
     pub topbar_show_bumpers: bool,
     #[serde(default = "default_surface_style")]
@@ -351,6 +355,9 @@ fn default_gamepad_platform() -> String {
 }
 fn default_gamepad_btn_size() -> String {
     "small".to_string()
+}
+fn default_fse_return_shortcut() -> String {
+    "l3_r3".to_string()
 }
 fn default_topbar_show_bumpers() -> bool {
     false
@@ -441,6 +448,7 @@ impl Default for Settings {
             gamepad_btn_size: "small".to_string(),
             gamepad_auto_detect: true,
             haptic_feedback: true,
+            fse_return_shortcut: "l3_r3".to_string(),
             topbar_show_bumpers: false,
             surface_style: "clear".to_string(),
             hide_on_launch: true,
@@ -593,10 +601,7 @@ fn valid_xcloud_slug(value: &str) -> bool {
 }
 
 fn valid_xcloud_product_id(value: &str) -> bool {
-    (8..=20).contains(&value.len())
-        && value
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric())
+    (8..=20).contains(&value.len()) && value.bytes().all(|byte| byte.is_ascii_alphanumeric())
 }
 
 fn validated_xcloud_entries(entries: Vec<XCloudGameEntry>) -> Vec<XCloudGameEntry> {
@@ -2892,7 +2897,7 @@ fn registry_string_value(
             .map(|name| PCWSTR(name.as_ptr()))
             .unwrap_or_else(PCWSTR::null);
         let mut hkey = HKEY::default();
-        if RegOpenKeyExW(root, PCWSTR(wide_key.as_ptr()), 0, KEY_READ, &mut hkey).is_err() {
+        if RegOpenKeyExW(root, PCWSTR(wide_key.as_ptr()), None, KEY_READ, &mut hkey).is_err() {
             return None;
         }
 
@@ -3383,27 +3388,6 @@ fn restart_app(app: tauri::AppHandle) {
     app.restart();
 }
 
-// Hide the WebView2 window shortly after a game launch handoff so its D3D
-// compositor allocations are released before the game initializes its own
-// device. This reduces GPU/VRAM contention that can trigger a TDR
-// (DXGI_ERROR_DEVICE_RESET) on shared-GPU handhelds such as the ROG Ally.
-#[tauri::command]
-fn hide_for_launch(window: tauri::WebviewWindow) {
-    std::thread::spawn(move || {
-        // Brief delay so the launch overlay "Launching..." text is visible
-        // before the window disappears.
-        std::thread::sleep(std::time::Duration::from_millis(400));
-        let _ = window.hide();
-    });
-}
-
-// Restore and focus the WebView2 window after returning from a launched game.
-#[tauri::command]
-fn show_after_launch(window: tauri::WebviewWindow) {
-    let _ = window.show();
-    let _ = window.set_focus();
-}
-
 #[derive(Serialize)]
 struct BatteryInfo {
     percent: u32,
@@ -3789,7 +3773,7 @@ fn extract_icon_base64(path: &str) -> Option<String> {
             let _ = DestroyIcon(hicon);
             return None;
         }
-        let hdc_mem = CreateCompatibleDC(hdc_screen);
+        let hdc_mem = CreateCompatibleDC(Some(hdc_screen));
         if hdc_mem.is_invalid() {
             let _ = ReleaseDC(None, hdc_screen);
             let _ = DestroyIcon(hicon);
@@ -3803,7 +3787,7 @@ fn extract_icon_base64(path: &str) -> Option<String> {
             return None;
         }
 
-        let old = SelectObject(hdc_mem, hbm);
+        let old = SelectObject(hdc_mem, hbm.into());
         let _ = PatBlt(hdc_mem, 0, 0, px, px, BLACKNESS);
         let drawn = DrawIconEx(hdc_mem, 0, 0, hicon, px, px, 0, None, DI_NORMAL);
         let _ = SelectObject(hdc_mem, old);
@@ -3835,7 +3819,7 @@ fn extract_icon_base64(path: &str) -> Option<String> {
             DIB_RGB_COLORS,
         );
 
-        let _ = DeleteObject(hbm);
+        let _ = DeleteObject(hbm.into());
         let _ = DeleteDC(hdc_mem);
         let _ = ReleaseDC(None, hdc_screen);
         let _ = DestroyIcon(hicon);
@@ -4157,7 +4141,7 @@ fn get_steam_install_path() -> Option<String> {
             if RegOpenKeyExW(
                 HKEY_LOCAL_MACHINE,
                 PCWSTR(wide_key.as_ptr()),
-                0,
+                None,
                 KEY_READ,
                 &mut hkey,
             )
@@ -5213,7 +5197,8 @@ fn install_size_candidates(dir: &str, source: &str) -> Vec<std::path::PathBuf> {
     let mut candidates = Vec::new();
     let content = root.join("Content");
 
-    if source.eq_ignore_ascii_case("xbox") || source.eq_ignore_ascii_case("uwp") || content.exists() {
+    if source.eq_ignore_ascii_case("xbox") || source.eq_ignore_ascii_case("uwp") || content.exists()
+    {
         candidates.push(content);
     }
     candidates.push(root);
@@ -5920,14 +5905,14 @@ fn process_aumid(pid: u32) -> Option<String> {
     unsafe {
         let process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
         let mut len: u32 = 0;
-        let _ = GetApplicationUserModelId(process, &mut len, PWSTR::null());
+        let _ = GetApplicationUserModelId(process, &mut len, None);
         if len == 0 {
             let _ = CloseHandle(process);
             return None;
         }
 
         let mut buf = vec![0u16; len as usize];
-        let rc = GetApplicationUserModelId(process, &mut len, PWSTR(buf.as_mut_ptr()));
+        let rc = GetApplicationUserModelId(process, &mut len, Some(PWSTR(buf.as_mut_ptr())));
         let _ = CloseHandle(process);
 
         if rc != WIN32_ERROR(0) {
@@ -6274,16 +6259,59 @@ fn check_launch_focus(name: String, launch_path: String, source: String) -> Laun
     }
 }
 
+fn focus_external_window(hwnd: windows::Win32::Foundation::HWND) {
+    unsafe {
+        let _ = ShowWindow(hwnd, SW_SHOW);
+        let _ = SetWindowPos(
+            hwnd,
+            Some(HWND_TOPMOST),
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
+        );
+        let _ = BringWindowToTop(hwnd);
+        let _ = SetForegroundWindow(hwnd);
+        std::thread::sleep(std::time::Duration::from_millis(60));
+        let _ = SetWindowPos(
+            hwnd,
+            Some(HWND_NOTOPMOST),
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
+        );
+        let _ = SetForegroundWindow(hwnd);
+    }
+}
+
 #[tauri::command]
-fn try_focus_launched_app(name: String, launch_path: String, source: String) -> bool {
+fn try_focus_launched_app(
+    name: String,
+    launch_path: String,
+    source: String,
+    app_type: Option<String>,
+    app_handle: tauri::AppHandle,
+) -> bool {
     let Some((window, _)) = best_launch_window(&name, &launch_path, &source) else {
         return false;
     };
 
-    unsafe {
-        let hwnd = windows::Win32::Foundation::HWND(window.hwnd as _);
-        let _ = ShowWindow(hwnd, SW_SHOW);
-        let _ = SetForegroundWindow(hwnd);
+    let hwnd = windows::Win32::Foundation::HWND(window.hwnd as _);
+    focus_external_window(hwnd);
+
+    if app_type.as_deref() == Some("game") {
+        let settings = load_settings_inner();
+        if settings.hide_on_launch {
+            fse_watcher::start_fse_watch(
+                app_handle,
+                OUR_HWND.load(Ordering::Relaxed),
+                settings.fse_return_shortcut,
+                Some(window.hwnd),
+            );
+        }
     }
 
     true
@@ -6425,7 +6453,7 @@ fn close_launched(name: String, launch_path: String, source: String) -> CloseRes
 
     unsafe {
         let hwnd = windows::Win32::Foundation::HWND(window.hwnd as _);
-        let _ = PostMessageW(hwnd, WM_CLOSE, WPARAM(0), LPARAM(0));
+        let _ = PostMessageW(Some(hwnd), WM_CLOSE, WPARAM(0), LPARAM(0));
     }
 
     let closed_now = best_launch_window(&name, &launch_path, &source).is_none();
@@ -6541,8 +6569,8 @@ async fn launch_app(
         match launch_cloud_game_kiosk(&path) {
             Ok(pid) => {
                 launch_mode = "cloud-kiosk".to_string();
-                launch_detail = get_default_browser_exe()
-                    .map(|browser| format!("{} pid={}", browser, pid));
+                launch_detail =
+                    get_default_browser_exe().map(|browser| format!("{} pid={}", browser, pid));
                 Some(pid)
             }
             Err(error) => {
@@ -6592,7 +6620,7 @@ async fn launch_app(
                 .chain(std::iter::once(0))
                 .collect();
             let result = ShellExecuteW(
-                windows::Win32::Foundation::HWND::default(),
+                None,
                 windows::core::PCWSTR(op.as_ptr()),
                 windows::core::PCWSTR(file.as_ptr()),
                 windows::core::PCWSTR::null(),
@@ -6633,7 +6661,7 @@ async fn launch_app(
                 .chain(std::iter::once(0))
                 .collect();
             ShellExecuteW(
-                windows::Win32::Foundation::HWND::default(),
+                None,
                 windows::core::PCWSTR(op.as_ptr()),
                 windows::core::PCWSTR(file.as_ptr()),
                 windows::core::PCWSTR::null(),
@@ -6655,7 +6683,7 @@ async fn launch_app(
                 .chain(std::iter::once(0))
                 .collect();
             ShellExecuteW(
-                windows::Win32::Foundation::HWND::default(),
+                None,
                 windows::core::PCWSTR(op.as_ptr()),
                 windows::core::PCWSTR(file.as_ptr()),
                 windows::core::PCWSTR::null(),
@@ -6684,7 +6712,7 @@ async fn launch_app(
                     .chain(std::iter::once(0))
                     .collect();
                 ShellExecuteW(
-                    windows::Win32::Foundation::HWND::default(),
+                    None,
                     windows::core::PCWSTR(op.as_ptr()),
                     windows::core::PCWSTR(file.as_ptr()),
                     windows::core::PCWSTR::null(),
@@ -6723,6 +6751,18 @@ async fn launch_app(
                     pid,
                     launched_at: now,
                 },
+            );
+        }
+    }
+
+    if app_type == "game" {
+        let settings = load_settings_inner();
+        if settings.hide_on_launch {
+            fse_watcher::start_fse_watch(
+                app_handle.clone(),
+                OUR_HWND.load(Ordering::Relaxed),
+                settings.fse_return_shortcut,
+                None,
             );
         }
     }
@@ -6852,6 +6892,7 @@ fn start_gamepad_listener(_app_handle: tauri::AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(fse_watcher::FseWatch::default())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
@@ -6881,8 +6922,7 @@ pub fn run() {
             clear_recents,
             exit_app,
             restart_app,
-            hide_for_launch,
-            show_after_launch,
+            fse_watcher::show_liftoff,
             clear_art_cache,
             set_frontend_active,
             open_osk,

@@ -105,6 +105,7 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSucce
             name: launchTarget.name,
             launchPath: launchTarget.launch_path,
             source: launchTarget.source,
+            appType: launchTarget.app_type,
           }).catch(() => {});
           window.setTimeout(() => {
             if (mounted.current) done();
@@ -175,6 +176,7 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSucce
                   name: launchTarget.name,
                   launchPath: launchTarget.launch_path,
                   source: launchTarget.source,
+                  appType: launchTarget.app_type,
                 }).catch(() => {});
               } else {
                 done();
@@ -235,6 +237,7 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSucce
       name: app.name,
       launchPath: app.launch_path,
       source: app.source,
+      appType: app.app_type,
     }).catch(() => {});
   };
 

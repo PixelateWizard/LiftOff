@@ -95,6 +95,7 @@ export type BottombarAlign   = "left" | "center" | "right";
 export type GamepadPlatform  = "xbox" | "ps" | "switch";
 export type GamepadBtnSize   = "small" | "medium" | "large";
 export type GamesSort        = "recent" | "az" | "store";
+export type FseReturnShortcut = "l3_r3" | "view_menu" | "lb_rb";
 
 /** Full persisted settings object */
 export interface Settings {
@@ -171,6 +172,7 @@ export interface Settings {
   gamepad_btn_size: GamepadBtnSize;
   gamepad_auto_detect: boolean;
   haptic_feedback: boolean;
+  fse_return_shortcut: FseReturnShortcut;
   surface_style: string;
   hide_on_launch: boolean;
 }

@@ -18,13 +18,64 @@ export interface GpState {
 export const GAMEPAD_DIRECTION_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"] as const;
 export type GamepadDirectionKey = typeof GAMEPAD_DIRECTION_KEYS[number];
 
-export function getBestGamepad(): Gamepad | null {
+let _gamepadInputSuspended = false;
+let _resumeWhenReleasedRaf: number | null = null;
+let _resumeWhenReleasedTimer: number | null = null;
+
+export function setGamepadInputSuspended(suspended: boolean): void {
+  _gamepadInputSuspended = suspended;
+  if (suspended) stopAllRumble();
+}
+
+export function isGamepadInputSuspended(): boolean {
+  return _gamepadInputSuspended;
+}
+
+function anyGamepadButtonPressed(): boolean {
+  return Array.from(navigator.getGamepads())
+    .filter((g): g is Gamepad => g !== null)
+    .some(gp => gp.buttons.some(button => button.pressed));
+}
+
+export function suspendGamepadInputUntilButtonsReleased(timeoutMs = 5000): void {
+  if (_resumeWhenReleasedRaf != null) cancelAnimationFrame(_resumeWhenReleasedRaf);
+  if (_resumeWhenReleasedTimer != null) window.clearTimeout(_resumeWhenReleasedTimer);
+  _resumeWhenReleasedRaf = null;
+  _resumeWhenReleasedTimer = null;
+  setGamepadInputSuspended(true);
+
+  const finish = () => {
+    if (_resumeWhenReleasedRaf != null) cancelAnimationFrame(_resumeWhenReleasedRaf);
+    if (_resumeWhenReleasedTimer != null) window.clearTimeout(_resumeWhenReleasedTimer);
+    _resumeWhenReleasedRaf = null;
+    _resumeWhenReleasedTimer = null;
+    setGamepadInputSuspended(false);
+  };
+
+  const tick = () => {
+    if (!anyGamepadButtonPressed()) {
+      finish();
+      return;
+    }
+    _resumeWhenReleasedRaf = requestAnimationFrame(tick);
+  };
+
+  _resumeWhenReleasedTimer = window.setTimeout(finish, timeoutMs);
+  tick();
+}
+
+export function getRawBestGamepad(): Gamepad | null {
   const gps = Array.from(navigator.getGamepads()).filter((g): g is Gamepad => g !== null);
   return (
     gps.find(gp => gp.mapping === "standard" && gp.axes.length >= 4) ??
     gps.find(gp => gp.buttons.length >= 4    && gp.axes.length >= 4) ??
     gps[0] ?? null
   );
+}
+
+export function getBestGamepad(): Gamepad | null {
+  if (_gamepadInputSuspended) return null;
+  return getRawBestGamepad();
 }
 
 let _lastActiveIdx: number | null = null;
@@ -35,6 +86,8 @@ let _lastActiveIdx: number | null = null;
  * This ensures the controller being physically used always drives the UI.
  */
 export function getActiveGamepad(): Gamepad | null {
+  if (_gamepadInputSuspended) return null;
+
   const all = Array.from(navigator.getGamepads());
   const valid = all
     .map((g, i) => ({ g, i }))
@@ -172,7 +225,7 @@ const HAPTIC_PATTERNS: Record<HapticPattern, DualRumbleEffect[]> = {
 };
 
 export function rumble(pattern: HapticPattern, enabled = true): void {
-  if (!enabled) return;
+  if (!enabled || _gamepadInputSuspended) return;
   const gp = getActiveGamepad();
   const actuator = (gp as any)?.vibrationActuator;
   if (!actuator) return;
@@ -184,5 +237,19 @@ export function rumble(pattern: HapticPattern, enabled = true): void {
       weakMagnitude: pulse.weakMagnitude,
       strongMagnitude: pulse.strongMagnitude,
     }).catch(() => {});
+  }
+}
+
+export function stopAllRumble(): void {
+  const pads = Array.from(navigator.getGamepads()).filter((g): g is Gamepad => g !== null);
+  for (const gp of pads) {
+    const actuator = (gp as any)?.vibrationActuator;
+    if (!actuator) continue;
+    actuator.reset?.().catch?.(() => {});
+    actuator.playEffect?.("dual-rumble", {
+      duration: 1,
+      weakMagnitude: 0,
+      strongMagnitude: 0,
+    }).catch?.(() => {});
   }
 }
