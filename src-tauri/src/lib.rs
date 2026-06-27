@@ -7026,6 +7026,10 @@ pub fn run() {
             let hwnd = window.hwnd().unwrap();
             OUR_HWND.store(hwnd.0 as isize, Ordering::Relaxed);
             let _ = window.set_focus();
+            // set_focus alone is ignored by the foreground lock when another app
+            // owns foreground and no shell hands it off (FSE / Xbox mode). Force
+            // the claim through the retrying + holding activation path.
+            fse_watcher::claim_foreground_on_startup(hwnd.0 as isize);
             start_gamepad_listener(app.handle().clone());
             tauri::async_runtime::spawn(async {
                 let _ = load_xcloud_games(false).await;

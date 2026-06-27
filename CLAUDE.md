@@ -1,7 +1,7 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed the Onyx-only focused-card outline fix for the Games and Apps grids. Onyx card wrappers now allow the animated focus ring to paint outside the virtualized card bounds, while every non-Onyx theme keeps the existing `contentVisibility` / `containIntrinsicSize` behavior and focus styling. Updated `CHANGELOG.md`; validated with `npm.cmd run build` and `git diff --check`. Browser-only visual rendering was blocked by missing Tauri runtime APIs (`window.__TAURI__`), so hands-on Ally/Tauri verification should confirm the Onyx focus ring on focused Games and Apps grid cards.
+- Completed the Windows Xbox Full Screen Experience foreground-lock retry/hold backend pass from `SPEC-codex-fse-foreground-retry.md`. `fse_watcher` now verifies foreground activation with retries, unlocks LiftOff self-raise, holds LiftOff foreground after restore/summon, and claims foreground shortly after startup before clearing topmost. Updated `CHANGELOG.md`; validated with `cargo build` and `cargo clippy`. Only pre-existing warnings remained: path canonicalization, unused `is_our_window_focused`, `steam_appinfo.rs` type complexity, and the existing manual-clamp lint. Hands-on FSE verification should confirm launch input, return shortcut summon, game-exit restore, and relaunch foreground behavior, and watch whether the Xbox home is mistaken for a fullscreen successor.
 
 ## 🐛 Active Bugs
 
