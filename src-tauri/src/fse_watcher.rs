@@ -31,6 +31,19 @@ const SUCCESSOR_GRACE_MS: u64 = 1_500;
 const PREFERRED_TARGET_HIDE_GRACE_MS: u64 = 500;
 const FULLSCREEN_TOLERANCE_PX: i32 = 8;
 const SUMMON_HOLD_MS: u64 = 600;
+// Foreground activation is retried because, under the Windows FSE single-window
+// shell, a single SetForegroundWindow is routinely denied and degrades to
+// nothing (there is no taskbar to flash). We verify GetForegroundWindow between
+// attempts and return as soon as we win.
+const FOREGROUND_ATTEMPTS: u32 = 6;
+const FOREGROUND_RETRY_SLEEP_MS: u64 = 40;
+// After raising LiftOff we re-assert the foreground for a bounded window: FSE
+// tends to route its single visible-window slot back to the Xbox home app right
+// after a game exits or after we summon over a game, which would otherwise bounce
+// LiftOff out of the active slot a beat after it became visible.
+const RESTORE_HOLD_MS: u64 = 1_200;
+const RESTORE_HOLD_POLL_MS: u64 = 120;
+const STARTUP_FOREGROUND_DELAY_MS: u64 = 400;
 const XINPUT_START: u16 = 0x0010;
 const XINPUT_BACK: u16 = 0x0020;
 const XINPUT_LEFT_THUMB: u16 = 0x0040;
@@ -108,8 +121,6 @@ fn window_hwnd(window: &tauri::WebviewWindow, fallback: isize) -> Option<HWND> {
 }
 
 #[cfg(windows)]
-// Briefly attach to the foreground thread so SetForegroundWindow is not
-// downgraded to an internal-focus-only taskbar flash while a game owns focus.
 fn force_foreground_window(hwnd: HWND, unlock_foreground: bool) {
     unsafe {
         if IsIconic(hwnd).as_bool() {
@@ -117,7 +128,25 @@ fn force_foreground_window(hwnd: HWND, unlock_foreground: bool) {
         } else {
             let _ = ShowWindow(hwnd, SW_SHOW);
         }
+    }
 
+    // Without an Explorer shell to hand off focus, the first activation attempt
+    // is frequently denied. Retry and verify GetForegroundWindow each time;
+    // return as soon as the target is actually foreground. The early return
+    // keeps the common case to a single attempt (and a single ALT tap).
+    for attempt in 0..FOREGROUND_ATTEMPTS {
+        if foreground_attempt(hwnd, unlock_foreground) {
+            return;
+        }
+        if attempt + 1 < FOREGROUND_ATTEMPTS {
+            std::thread::sleep(Duration::from_millis(FOREGROUND_RETRY_SLEEP_MS));
+        }
+    }
+}
+
+#[cfg(windows)]
+fn foreground_attempt(hwnd: HWND, unlock_foreground: bool) -> bool {
+    unsafe {
         let foreground = GetForegroundWindow();
         let our_thread = GetCurrentThreadId();
         let fg_thread = if hwnd_value(foreground) == 0 {
@@ -135,10 +164,18 @@ fn force_foreground_window(hwnd: HWND, unlock_foreground: bool) {
             && target_thread != fg_thread
             && AttachThreadInput(our_thread, target_thread, true).as_bool();
 
-        let _ = BringWindowToTop(hwnd);
-        if unlock_foreground {
+        // Tap ALT whenever some OTHER window currently owns the foreground, not
+        // only on the explicit game-focus path. The synthetic input resets the
+        // foreground-lock timer so the activation below is honored instead of
+        // silently denied. A stray ALT into a foreground game during a summon is
+        // an accepted trade-off (the game-focus path already does this).
+        let foreign_foreground =
+            hwnd_value(foreground) != 0 && hwnd_value(foreground) != hwnd_value(hwnd);
+        if unlock_foreground || foreign_foreground {
             tap_alt_key_for_foreground_unlock();
         }
+
+        let _ = BringWindowToTop(hwnd);
         let _ = SetForegroundWindow(hwnd);
         let _ = SetActiveWindow(hwnd);
         let _ = SetFocus(Some(hwnd));
@@ -149,6 +186,8 @@ fn force_foreground_window(hwnd: HWND, unlock_foreground: bool) {
         if attached {
             let _ = AttachThreadInput(our_thread, fg_thread, false);
         }
+
+        hwnd_value(GetForegroundWindow()) == hwnd_value(hwnd)
     }
 }
 
@@ -176,7 +215,29 @@ fn raise_window(hwnd: HWND) {
             SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
         );
     }
-    force_foreground_window(hwnd, false);
+    // Self-raise must break the foreground lock as well: over a fullscreen game
+    // there is no shell to complete the handoff, so AttachThreadInput alone is
+    // not reliable. With the foreign-foreground auto-unlock in foreground_attempt
+    // this is belt-and-suspenders, but it keeps the intent explicit.
+    force_foreground_window(hwnd, true);
+}
+
+#[cfg(windows)]
+fn raise_window_and_hold(hwnd: HWND) {
+    raise_window(hwnd);
+    // FSE re-asserts its home app into the single visible-window slot shortly
+    // after a game exits or after we summon over a game. Re-verify and re-raise
+    // for a bounded window so LiftOff actually keeps the foreground instead of
+    // being bounced back behind the FSE home. We return early-on-win inside
+    // raise_window, so this stays cheap once we are stably foreground.
+    let deadline = Instant::now() + Duration::from_millis(RESTORE_HOLD_MS);
+    while Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(RESTORE_HOLD_POLL_MS));
+        let foreground = unsafe { GetForegroundWindow() };
+        if hwnd_value(foreground) != hwnd_value(hwnd) {
+            raise_window(hwnd);
+        }
+    }
 }
 
 #[cfg(windows)]
@@ -215,7 +276,7 @@ fn focus_game_window(hwnd: HWND) {
 fn restore_liftoff_window(window: &tauri::WebviewWindow, our_hwnd: isize) {
     let _ = window.show();
     if let Some(hwnd) = window_hwnd(window, our_hwnd) {
-        raise_window(hwnd);
+        raise_window_and_hold(hwnd);
     }
     let _ = window.set_focus();
 }
@@ -436,6 +497,30 @@ pub fn start_fse_watch(
             restore_liftoff_window(&window, our_hwnd);
             let _ = app.emit("fse:restored", ());
             app.state::<FseWatch>().cancel();
+        });
+    }
+}
+
+// Claim foreground for LiftOff's own window shortly after startup. Under FSE
+// nothing hands the freshly launched process the single-window slot, so without
+// this LiftOff can come up behind the FSE home app or whatever else is open.
+// Runs on a short delay so WebView2 has created its child windows first, holds
+// against the FSE re-grab, then drops the topmost band so LiftOff behaves like a
+// normal window on the desktop afterward.
+pub fn claim_foreground_on_startup(our_hwnd: isize) {
+    #[cfg(not(windows))]
+    {
+        let _ = our_hwnd;
+    }
+
+    #[cfg(windows)]
+    {
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(STARTUP_FOREGROUND_DELAY_MS));
+            if let Some(hwnd) = hwnd_from_value(our_hwnd) {
+                raise_window_and_hold(hwnd);
+                clear_topmost(hwnd);
+            }
         });
     }
 }
