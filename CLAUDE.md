@@ -1,7 +1,7 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed the Onyx-only focused-card outline fix for the Games and Apps grids. Onyx card wrappers now allow the animated focus ring to paint outside the virtualized card bounds, while every non-Onyx theme keeps the existing `contentVisibility` / `containIntrinsicSize` behavior and focus styling. Updated `CHANGELOG.md`; validated with `npm.cmd run build` and `git diff --check`. Browser-only visual rendering was blocked by missing Tauri runtime APIs (`window.__TAURI__`), so hands-on Ally/Tauri verification should confirm the Onyx focus ring on focused Games and Apps grid cards.
+- Completed the defensive frontend `fse:restored` resume follow-up from `SPEC-claudecode-fse-restored-resume.md`. The canonical `useGamepadNavigation.ts` focus/resume effect now imports Tauri `listen`, subscribes to native `fse:restored`, reuses the existing `resumeFromBackground()` closure, and unlistens on cleanup so controller navigation can recover even if WebView2 drops the normal focus event during FSE return. Updated `CHANGELOG.md`; validated with `npm.cmd run build` and `git diff --check`. Only the existing Vite chunk-size warning and CRLF notices remained. Hands-on FSE verification should confirm D-pad input works immediately after game exit or summon without a touchscreen tap.
 
 ## 🐛 Active Bugs
 

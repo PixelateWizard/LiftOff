@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { TFunction } from "i18next";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { App, Settings } from "../types";
 import { launchApp } from "./useLaunchApp";
@@ -1794,12 +1795,22 @@ export function useGamepadNavigation(
     document.addEventListener("visibilitychange", onVisibilityChange);
     let cancelled = false;
     let unlistenFocus: (() => void) | undefined;
+    let fseRestoredUnlisten: (() => void) | undefined;
     let focusPoll: number | undefined;
     getCurrentWindow().onFocusChanged(({ payload }) => {
       handleNativeFocus(payload);
     }).then((unlisten) => {
       if (cancelled) unlisten();
       else unlistenFocus = unlisten;
+    }).catch(() => {});
+    // Defensive: WebView2 can occasionally drop its focus event when the FSE
+    // backend forces LiftOff foreground, but fse:restored is the reliable
+    // signal that LiftOff is visually back and should resume controller input.
+    listen("fse:restored", () => {
+      resumeFromBackground();
+    }).then((unlisten) => {
+      if (cancelled) unlisten();
+      else fseRestoredUnlisten = unlisten;
     }).catch(() => {});
 
     const startFocusPoll = window.setTimeout(() => {
@@ -1815,6 +1826,7 @@ export function useGamepadNavigation(
     return () => {
       cancelled = true;
       unlistenFocus?.();
+      fseRestoredUnlisten?.();
       if (pauseCheckTimer !== undefined) window.clearTimeout(pauseCheckTimer);
       window.clearTimeout(startFocusPoll);
       if (focusPoll !== undefined) window.clearInterval(focusPoll);
