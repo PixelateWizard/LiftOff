@@ -1,7 +1,7 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed the defensive frontend `fse:restored` resume follow-up from `SPEC-claudecode-fse-restored-resume.md`. The canonical `useGamepadNavigation.ts` focus/resume effect now imports Tauri `listen`, subscribes to native `fse:restored`, reuses the existing `resumeFromBackground()` closure, and unlistens on cleanup so controller navigation can recover even if WebView2 drops the normal focus event during FSE return. Updated `CHANGELOG.md`; validated with `npm.cmd run build` and `git diff --check`. Only the existing Vite chunk-size warning and CRLF notices remained. Hands-on FSE verification should confirm D-pad input works immediately after game exit or summon without a touchscreen tap.
+- Completed the Windows Xbox Full Screen Experience foreground-lock retry/hold backend pass from `SPEC-codex-fse-foreground-retry.md`. `fse_watcher` now verifies foreground activation with retries, unlocks LiftOff self-raise, holds LiftOff foreground after restore/summon, and claims foreground shortly after startup before clearing topmost. Updated `CHANGELOG.md`; validated with `cargo build` and `cargo clippy`. Only pre-existing warnings remained: path canonicalization, unused `is_our_window_focused`, `steam_appinfo.rs` type complexity, and the existing manual-clamp lint. Hands-on FSE verification should confirm launch input, return shortcut summon, game-exit restore, and relaunch foreground behavior, and watch whether the Xbox home is mistaken for a fullscreen successor.
 
 ## 🐛 Active Bugs
 
