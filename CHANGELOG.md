@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.0.0-alpha-5.1] - Alpha 5.1
+
 ### Added
 - **GPU pressure / TDR reduction on shared-GPU handhelds** - LiftOff now eases GPU/VRAM contention that could trigger a driver reset (`DXGI_ERROR_DEVICE_RESET`/TDR) on devices like the ROG Ally. Fullscreen game launches now use a foreground-aware watcher that suspends WebView2 rendering after another visible foreground game window covers its monitor while keeping the LiftOff host HWND present for Windows FSE/Xbox Mode return behavior, resumes WebView2 whenever LiftOff becomes foreground, suspends it again when foreground leaves LiftOff while the game is still running, and resumes it permanently when the game window closes. A new default-on `hide_on_launch` setting gates this with no UI toggle yet. WebView2 also runs with GPU-friendly Chromium flags (`--disable-gpu-memory-buffer-video-frames --enable-zero-copy --num-raster-threads=2`) to lower video-frame VRAM use and raster contention. Hardware acceleration and `backdrop-filter` remain enabled.
 - **Steam store info in Game Details** - Game Details now shows Steam store page info when available, with the short description, a numbered trailer/screenshot media row, and the existing action grid. After controls are revealed, a compact Details / Manage tab strip with LB/RB badges appears beside Play; LB/RB switches tabs, media opens fullscreen with B returning one level to the modal, and non-Steam games, offline/error cases, or disabled store metadata keep the old no-tab action grid.

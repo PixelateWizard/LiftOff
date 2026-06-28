@@ -1,7 +1,7 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed the Windows Xbox Full Screen Experience no-hide GPU-release follow-up: while the watched game HWND is still alive, the watcher now resumes WebView2 and emits `fse:gpu-resumed` when LiftOff becomes foreground, then suspends WebView2 and emits `fse:gpu-suspended` again when foreground leaves LiftOff. The final game-exit/cancel paths only force a resume event if WebView2 is still suspended, avoiding duplicate lifecycle events while preserving the frontend gamepad release quarantine. Updated `CHANGELOG.md`; validated with `cargo build`, `cargo clippy`, `npm.cmd run build`, and `git diff --check`. Only pre-existing warnings remained: path canonicalization, unused `is_our_window_focused`, `steam_appinfo.rs` type complexity, the existing manual-clamp lint, Vite chunk-size, and CRLF notices. Hands-on FSE/Xbox Mode verification should confirm mid-game return to LiftOff, controller input in LiftOff, and re-suspend when returning to the game.
+- Completed the Alpha 5.1 release metadata bump and changelog rebucket. `APP_VERSION`, npm package metadata/lockfile, Tauri config, Cargo metadata/lockfile, and current handoff version references now use `2.0.0-alpha-5.1`; `CHANGELOG.md` has an empty `Unreleased` section followed by `## [2.0.0-alpha-5.1] - Alpha 5.1` containing the prior Unreleased notes. Website-facing release text was left unchanged for the alpha-only bump. Validated with `npm.cmd run tauri -- info`, `npm.cmd run build`, stale-version sweeps, and `git diff --check`; only the existing Vite chunk-size and CRLF notices remained.
 
 ## 🐛 Active Bugs
 
@@ -667,7 +667,7 @@
 
 - **Stack:** Tauri 2, Rust (`src-tauri/src/lib.rs`), React (`src/App.jsx`)
 - **Identifier:** `com.taylo.liftoff`
-- **Version:** `2.0.0-alpha-5` (APP_VERSION in constants.ts) / `2.0.0-alpha-5` (tauri.conf.json — update both together on release; also update Cargo.toml, Cargo.lock, package.json, package-lock.json, CHANGELOG.md; do not update the website for alpha-only versions)
+- **Version:** `2.0.0-alpha-5.1` (APP_VERSION in constants.ts) / `2.0.0-alpha-5.1` (tauri.conf.json — update both together on release; also update Cargo.toml, Cargo.lock, package.json, package-lock.json, CHANGELOG.md; do not update the website for alpha-only versions)
 - **Installer:** NSIS bundle at `src-tauri/target/release/bundle/nsis/`
 - **Dev command:** `npm run dev` (frontend) + `cargo tauri dev`
 - **Build:** `cargo tauri build` → use NSIS installer for testing, not raw `.exe`
@@ -940,7 +940,7 @@ Priority order of `else if` branches:
 ## Frontend (`src/App.jsx`)
 
 ### Constants (top of file)
-- `APP_VERSION = "2.0.0-alpha-5"` — compared against GitHub Releases API for update checks
+- `APP_VERSION = "2.0.0-alpha-5.1"` — compared against GitHub Releases API for update checks
 - `GITHUB_REPO = "PixelateWizard/LiftOff"` — used for update check and releases link
 
 ### State
