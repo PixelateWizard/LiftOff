@@ -1796,6 +1796,7 @@ export function useGamepadNavigation(
     let cancelled = false;
     let unlistenFocus: (() => void) | undefined;
     let fseRestoredUnlisten: (() => void) | undefined;
+    let fseGpuResumedUnlisten: (() => void) | undefined;
     let focusPoll: number | undefined;
     getCurrentWindow().onFocusChanged(({ payload }) => {
       handleNativeFocus(payload);
@@ -1812,6 +1813,12 @@ export function useGamepadNavigation(
       if (cancelled) unlisten();
       else fseRestoredUnlisten = unlisten;
     }).catch(() => {});
+    listen("fse:gpu-resumed", () => {
+      resumeFromBackground();
+    }).then((unlisten) => {
+      if (cancelled) unlisten();
+      else fseGpuResumedUnlisten = unlisten;
+    }).catch(() => {});
 
     const startFocusPoll = window.setTimeout(() => {
       focusPoll = window.setInterval(() => {
@@ -1827,6 +1834,7 @@ export function useGamepadNavigation(
       cancelled = true;
       unlistenFocus?.();
       fseRestoredUnlisten?.();
+      fseGpuResumedUnlisten?.();
       if (pauseCheckTimer !== undefined) window.clearTimeout(pauseCheckTimer);
       window.clearTimeout(startFocusPoll);
       if (focusPoll !== undefined) window.clearInterval(focusPoll);

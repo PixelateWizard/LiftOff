@@ -30,6 +30,7 @@ const FOREGROUND_GRAB_TIMEOUT_MS: u64 = 12_000;
 const SUCCESSOR_GRACE_MS: u64 = 1_500;
 const PREFERRED_TARGET_HIDE_GRACE_MS: u64 = 500;
 const FULLSCREEN_TOLERANCE_PX: i32 = 8;
+#[allow(dead_code)]
 const SUMMON_HOLD_MS: u64 = 600;
 // Foreground activation is retried because, under the Windows FSE single-window
 // shell, a single SetForegroundWindow is routinely denied and degrades to
@@ -44,11 +45,17 @@ const FOREGROUND_RETRY_SLEEP_MS: u64 = 40;
 const RESTORE_HOLD_MS: u64 = 1_200;
 const RESTORE_HOLD_POLL_MS: u64 = 120;
 const STARTUP_FOREGROUND_DELAY_MS: u64 = 400;
+#[allow(dead_code)]
 const XINPUT_START: u16 = 0x0010;
+#[allow(dead_code)]
 const XINPUT_BACK: u16 = 0x0020;
+#[allow(dead_code)]
 const XINPUT_LEFT_THUMB: u16 = 0x0040;
+#[allow(dead_code)]
 const XINPUT_RIGHT_THUMB: u16 = 0x0080;
+#[allow(dead_code)]
 const XINPUT_LEFT_SHOULDER: u16 = 0x0100;
+#[allow(dead_code)]
 const XINPUT_RIGHT_SHOULDER: u16 = 0x0200;
 const MAIN_WINDOW_LABEL: &str = "main";
 
@@ -308,6 +315,7 @@ fn is_fullscreen_like(hwnd: HWND) -> bool {
 }
 
 #[cfg(windows)]
+#[allow(dead_code)]
 fn shortcut_pair(shortcut: &str) -> (u16, u16) {
     match shortcut {
         "view_menu" => (XINPUT_BACK, XINPUT_START),
@@ -317,6 +325,7 @@ fn shortcut_pair(shortcut: &str) -> (u16, u16) {
 }
 
 #[cfg(windows)]
+#[allow(dead_code)]
 fn summon_combo_pressed(shortcut: &str) -> bool {
     let (first, second) = shortcut_pair(shortcut);
     unsafe {
@@ -334,6 +343,7 @@ fn summon_combo_pressed(shortcut: &str) -> bool {
 }
 
 #[cfg(windows)]
+#[allow(dead_code)]
 fn summon_combo_triggered(hold_start: &mut Option<Instant>, shortcut: &str) -> bool {
     if summon_combo_pressed(shortcut) {
         let started = hold_start.get_or_insert_with(Instant::now);
@@ -344,6 +354,204 @@ fn summon_combo_triggered(hold_start: &mut Option<Instant>, shortcut: &str) -> b
     false
 }
 
+#[cfg(windows)]
+fn set_webview_visible(app: &AppHandle, visible: bool) -> bool {
+    let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
+        return false;
+    };
+
+    window
+        .with_webview(move |webview| unsafe {
+            let _ = webview.controller().SetIsVisible(visible);
+        })
+        .is_ok()
+}
+
+#[cfg(windows)]
+fn suspend_webview(app: &AppHandle) -> bool {
+    set_webview_visible(app, false)
+}
+
+#[cfg(not(windows))]
+fn suspend_webview(app: &AppHandle) -> bool {
+    let _ = app;
+    true
+}
+
+#[cfg(windows)]
+fn resume_webview(app: &AppHandle) -> bool {
+    set_webview_visible(app, true)
+}
+
+#[cfg(not(windows))]
+fn resume_webview(app: &AppHandle) -> bool {
+    let _ = app;
+    true
+}
+
+pub fn start_gpu_release_watch(
+    app: AppHandle,
+    our_hwnd: isize,
+    preferred_game_hwnd: Option<isize>,
+) {
+    #[cfg(not(windows))]
+    {
+        let _ = (app, our_hwnd, preferred_game_hwnd);
+    }
+
+    #[cfg(windows)]
+    {
+        let cancel = app.state::<FseWatch>().install(preferred_game_hwnd);
+
+        std::thread::spawn(move || {
+            if our_hwnd == 0 {
+                let _ = app.emit("fse:no-foreground", ());
+                app.state::<FseWatch>().cancel();
+                return;
+            }
+
+            let deadline = Instant::now() + Duration::from_millis(FOREGROUND_GRAB_TIMEOUT_MS);
+            let mut preferred_ready_since: Option<Instant> = None;
+            let mut game_hwnd = loop {
+                if cancel.load(Ordering::SeqCst) {
+                    return;
+                }
+
+                let fg = unsafe { GetForegroundWindow() };
+                let fg_value = hwnd_value(fg);
+                let fg_is_other = fg_value != 0
+                    && fg_value != our_hwnd
+                    && unsafe { IsWindowVisible(fg).as_bool() }
+                    && is_fullscreen_like(fg);
+
+                if fg_is_other {
+                    break fg;
+                }
+
+                let preferred_game_hwnd = app.state::<FseWatch>().preferred_game_hwnd();
+                if let Some(preferred) = preferred_game_hwnd {
+                    let preferred_alive = unsafe {
+                        IsWindow(Some(preferred)).as_bool() && IsWindowVisible(preferred).as_bool()
+                    };
+
+                    if preferred_alive {
+                        focus_game_window(preferred);
+                        let started = preferred_ready_since.get_or_insert_with(Instant::now);
+                        if started.elapsed()
+                            >= Duration::from_millis(PREFERRED_TARGET_HIDE_GRACE_MS)
+                        {
+                            break preferred;
+                        }
+                    } else {
+                        preferred_ready_since = None;
+                    }
+                }
+
+                if Instant::now() >= deadline {
+                    let preferred_game_hwnd = app.state::<FseWatch>().preferred_game_hwnd();
+                    if let Some(preferred) = preferred_game_hwnd {
+                        let preferred_alive = unsafe {
+                            IsWindow(Some(preferred)).as_bool()
+                                && IsWindowVisible(preferred).as_bool()
+                        };
+                        if preferred_alive {
+                            break preferred;
+                        }
+                    }
+                    let _ = app.emit("fse:no-foreground", ());
+                    app.state::<FseWatch>().cancel();
+                    return;
+                }
+
+                std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
+            };
+
+            focus_game_window(game_hwnd);
+            if let Some(liftoff_hwnd) = hwnd_from_value(our_hwnd) {
+                clear_topmost(liftoff_hwnd);
+            }
+
+            if !suspend_webview(&app) {
+                let _ = app.emit("fse:no-foreground", ());
+                app.state::<FseWatch>().cancel();
+                return;
+            }
+            let _ = app.emit("fse:gpu-suspended", ());
+            focus_game_window(game_hwnd);
+            let mut webview_suspended = true;
+
+            loop {
+                if cancel.load(Ordering::SeqCst) {
+                    if webview_suspended {
+                        let _ = resume_webview(&app);
+                        let _ = app.emit("fse:gpu-resumed", ());
+                    }
+                    return;
+                }
+
+                let alive = unsafe { IsWindow(Some(game_hwnd)).as_bool() };
+                if !alive {
+                    let grace_end = Instant::now() + Duration::from_millis(SUCCESSOR_GRACE_MS);
+                    let mut reacquired = false;
+
+                    while Instant::now() < grace_end {
+                        if cancel.load(Ordering::SeqCst) {
+                            if webview_suspended {
+                                let _ = resume_webview(&app);
+                                let _ = app.emit("fse:gpu-resumed", ());
+                            }
+                            return;
+                        }
+
+                        let fg = unsafe { GetForegroundWindow() };
+                        let fg_value = hwnd_value(fg);
+                        if fg_value != 0
+                            && fg_value != our_hwnd
+                            && unsafe { IsWindowVisible(fg).as_bool() }
+                            && is_fullscreen_like(fg)
+                        {
+                            game_hwnd = fg;
+                            reacquired = true;
+                            break;
+                        }
+
+                        std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
+                    }
+
+                    if reacquired {
+                        continue;
+                    }
+                    break;
+                }
+
+                let foreground = unsafe { GetForegroundWindow() };
+                let foreground_value = hwnd_value(foreground);
+                if foreground_value == our_hwnd {
+                    if webview_suspended && resume_webview(&app) {
+                        webview_suspended = false;
+                        let _ = app.emit("fse:gpu-resumed", ());
+                    }
+                } else if foreground_value != 0
+                    && !webview_suspended
+                    && suspend_webview(&app)
+                {
+                    webview_suspended = true;
+                    let _ = app.emit("fse:gpu-suspended", ());
+                }
+
+                std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
+            }
+
+            if webview_suspended {
+                let _ = resume_webview(&app);
+                let _ = app.emit("fse:gpu-resumed", ());
+            }
+            app.state::<FseWatch>().cancel();
+        });
+    }
+}
+
+#[allow(dead_code)]
 pub fn start_fse_watch(
     app: AppHandle,
     our_hwnd: isize,

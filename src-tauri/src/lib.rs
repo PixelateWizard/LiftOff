@@ -6305,10 +6305,9 @@ fn try_focus_launched_app(
     if app_type.as_deref() == Some("game") {
         let settings = load_settings_inner();
         if settings.hide_on_launch {
-            fse_watcher::start_fse_watch(
+            fse_watcher::start_gpu_release_watch(
                 app_handle,
                 OUR_HWND.load(Ordering::Relaxed),
-                settings.fse_return_shortcut,
                 Some(window.hwnd),
             );
         }
@@ -6759,10 +6758,9 @@ async fn launch_app(
     if app_type == "game" {
         let settings = load_settings_inner();
         if settings.hide_on_launch {
-            fse_watcher::start_fse_watch(
+            fse_watcher::start_gpu_release_watch(
                 app_handle.clone(),
                 OUR_HWND.load(Ordering::Relaxed),
-                settings.fse_return_shortcut,
                 None,
             );
         }
@@ -6863,11 +6861,9 @@ async fn launch_app(
             if !fse_was_active && watch_is_game && load_settings_inner().hide_on_launch {
                 let foreground_matches_found = unsafe { GetForegroundWindow().0 as isize == found };
                 if foreground_matches_found {
-                    let settings = load_settings_inner();
-                    fse_watcher::start_fse_watch(
+                    fse_watcher::start_gpu_release_watch(
                         handle.clone(),
                         our_hwnd,
-                        settings.fse_return_shortcut,
                         Some(found),
                     );
                 }

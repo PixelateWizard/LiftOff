@@ -37,6 +37,8 @@ export function useFseSession() {
     addListener("fse:watch-started", true).catch(() => {});
     addListener("fse:hidden", true).catch(() => {});
     addListener("fse:restored", false, true).catch(() => {});
+    addListener("fse:gpu-suspended", true).catch(() => {});
+    addListener("fse:gpu-resumed", false, true).catch(() => {});
     addListener("fse:no-foreground", false).catch(() => {});
 
     return () => {
