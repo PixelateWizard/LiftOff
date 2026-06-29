@@ -1,5 +1,5 @@
 // Store-page metadata for library games.
-// Source-agnostic layer; v1 implements the Steam provider only.
+// Source-agnostic layer; Steam and Xbox providers share the same cache shape.
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -97,7 +97,9 @@ fn write_cache(path: &Path, meta: &StoreMetadata) {
 }
 
 fn normalize_store_media_url(value: &str) -> String {
-    if let Some(rest) = value.strip_prefix("http://") {
+    if let Some(rest) = value.strip_prefix("//") {
+        format!("https://{rest}")
+    } else if let Some(rest) = value.strip_prefix("http://") {
         format!("https://{rest}")
     } else {
         value.to_string()
@@ -276,6 +278,178 @@ async fn fetch_steam(client: &reqwest::Client, app_id: &str) -> Result<StoreMeta
     })
 }
 
+fn json_text(value: &serde_json::Value, key: &str) -> Option<String> {
+    value
+        .get(key)
+        .and_then(|value| value.as_str())
+        .filter(|value| !value.trim().is_empty())
+        .map(|value| value.to_string())
+}
+
+fn product_from_ms_store_response(body: &serde_json::Value) -> Option<&serde_json::Value> {
+    body.pointer("/Payload/Products/0")
+        .or_else(|| body.get("Payload"))
+        .or_else(|| body.pointer("/Products/0"))
+}
+
+fn localized_ms_store_product(product: &serde_json::Value) -> &serde_json::Value {
+    product
+        .pointer("/LocalizedProperties/0")
+        .unwrap_or(product)
+}
+
+async fn fetch_xbox(client: &reqwest::Client, product_id: &str) -> Result<StoreMetadata, String> {
+    let url = format!(
+        "https://storeedgefd.dsx.mp.microsoft.com/v9.0/products/{product_id}?market=US&locale=en-US&deviceFamily=Windows.Desktop"
+    );
+
+    let resp = client
+        .get(&url)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|error| format!("request failed: {error}"))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("microsoft store returned status {}", resp.status()));
+    }
+
+    let body: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|error| format!("invalid json: {error}"))?;
+
+    let product = product_from_ms_store_response(&body)
+        .ok_or_else(|| "product missing in microsoft store response".to_string())?;
+    let localized = localized_ms_store_product(product);
+
+    let images = product
+        .get("Images")
+        .and_then(|value| value.as_array())
+        .or_else(|| localized.get("Images").and_then(|value| value.as_array()));
+    let screenshots = images
+        .map(|images| {
+            images
+                .iter()
+                .filter(|image| {
+                    let kind = json_text(image, "ImageType")
+                        .or_else(|| json_text(image, "ImagePurpose"))
+                        .unwrap_or_default()
+                        .to_ascii_lowercase();
+                    kind == "screenshot"
+                })
+                .filter_map(|image| {
+                    let url = json_text(image, "Url").or_else(|| json_text(image, "Uri"))?;
+                    let url = normalize_store_media_url(&url);
+                    Some(StoreScreenshot {
+                        thumb: format!("{url}?w=480"),
+                        full: url,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let videos = product
+        .get("Trailers")
+        .and_then(|value| value.as_array())
+        .or_else(|| localized.get("Videos").and_then(|value| value.as_array()));
+    let movies = videos
+        .map(|videos| {
+            videos
+                .iter()
+                .enumerate()
+                .filter_map(|(index, video)| {
+                    let url = json_text(video, "Url").or_else(|| json_text(video, "Uri"))?;
+                    let thumbnail = video
+                        .pointer("/Image/Url")
+                        .and_then(|value| value.as_str())
+                        .or_else(|| video.pointer("/PreviewImage/Uri").and_then(|value| value.as_str()))
+                        .map(normalize_store_media_url)
+                        .unwrap_or_default();
+                    let name = json_text(video, "Title")
+                        .or_else(|| json_text(video, "Name"))
+                        .or_else(|| {
+                            video
+                                .get("SortOrder")
+                                .and_then(|value| value.as_u64())
+                                .map(|sort| format!("Trailer {sort}"))
+                        })
+                        .unwrap_or_else(|| "Trailer".to_string());
+                    Some(StoreMovie {
+                        id: format!("xbox-trailer-{index}"),
+                        name,
+                        thumbnail,
+                        mp4: Some(normalize_store_media_url(&url)),
+                        webm: None,
+                        hls_h264: None,
+                        dash_h264: None,
+                        dash_av1: None,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let release_date = json_text(product, "ReleaseDateUtc")
+        .or_else(|| product.pointer("/MarketProperties/0/OriginalReleaseDate").and_then(|value| value.as_str()).map(|value| value.to_string()));
+
+    Ok(StoreMetadata {
+        cache_version: CACHE_SCHEMA_VERSION,
+        source: "xbox".to_string(),
+        app_id: product_id.to_string(),
+        short_description: json_text(product, "ShortDescription")
+            .or_else(|| json_text(localized, "ShortDescription"))
+            .unwrap_or_default(),
+        about_html: json_text(product, "Description")
+            .or_else(|| json_text(localized, "ProductDescription"))
+            .unwrap_or_default(),
+        developers: json_text(product, "DeveloperName")
+            .map(|value| vec![value])
+            .unwrap_or_default(),
+        publishers: json_text(product, "PublisherName")
+            .map(|value| vec![value])
+            .unwrap_or_default(),
+        genres: product
+            .get("Categories")
+            .and_then(|value| value.as_array())
+            .map(|values| {
+                values
+                    .iter()
+                    .filter_map(|value| {
+                        value
+                            .as_str()
+                            .map(|text| text.to_string())
+                            .or_else(|| json_text(value, "Name"))
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
+        release_date,
+        header_image: product
+            .get("Images")
+            .and_then(|value| value.as_array())
+            .and_then(|images| {
+                images.iter().find_map(|image| {
+                    let kind = json_text(image, "ImageType")
+                        .or_else(|| json_text(image, "ImagePurpose"))
+                        .unwrap_or_default()
+                        .to_ascii_lowercase();
+                    if kind == "hero" {
+                        json_text(image, "Url").or_else(|| json_text(image, "Uri"))
+                    } else {
+                        None
+                    }
+                })
+            })
+            .map(|value| normalize_store_media_url(&value)),
+        background: None,
+        screenshots,
+        movies,
+        fetched_at: now_secs(),
+    })
+}
+
 pub async fn get_store_metadata(
     client: &reqwest::Client,
     cache_root: &Path,
@@ -293,6 +467,7 @@ pub async fn get_store_metadata(
 
     let fetched = match source {
         "steam" => fetch_steam(client, app_id).await?,
+        "xbox" => fetch_xbox(client, app_id).await?,
         other => {
             return Err(format!(
                 "store metadata not supported for source '{other}' yet"
@@ -316,13 +491,16 @@ pub async fn fetch_store_metadata(
 
     let source = source.trim().to_ascii_lowercase();
     let app_id = app_id.trim().to_string();
-    if source != "steam" {
+    if !matches!(source.as_str(), "steam" | "xbox") {
         return Err(format!(
             "store metadata not supported for source '{source}' yet"
         ));
     }
-    if app_id.is_empty() || !app_id.bytes().all(|byte| byte.is_ascii_digit()) {
+    if source == "steam" && (app_id.is_empty() || !app_id.bytes().all(|byte| byte.is_ascii_digit())) {
         return Err("steam store metadata requires a numeric appid".to_string());
+    }
+    if source == "xbox" && (app_id.is_empty() || !app_id.bytes().all(|byte| byte.is_ascii_alphanumeric())) {
+        return Err("xbox store metadata requires a productId".to_string());
     }
 
     let client = reqwest::Client::builder()
@@ -339,4 +517,12 @@ pub async fn fetch_store_metadata(
         force.unwrap_or(false),
     )
     .await
+}
+
+#[tauri::command]
+pub async fn fetch_xbox_store_metadata(
+    product_id: String,
+    force: Option<bool>,
+) -> Result<StoreMetadata, String> {
+    fetch_store_metadata("xbox".to_string(), product_id, force).await
 }

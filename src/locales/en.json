@@ -169,6 +169,7 @@
   },
   "install": {
     "install": "Install",
+    "getOnXbox": "Get in Store",
     "installing": "Installing",
     "preparing": "Allocating disk space…",
     "downloading": "Downloading…",

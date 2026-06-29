@@ -12,6 +12,7 @@ export interface App {
   last_played?: number;
   steam_appid?: number;
   steam_icon_hash?: string;
+  xbox_product_id?: string;
   installing?: boolean;
   installProgress?: number;
   runAsAdmin?: boolean;

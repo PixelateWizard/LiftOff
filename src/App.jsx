@@ -65,6 +65,7 @@ import { SteamQrModal } from "./components/steam/SteamQrModal";
 import { XboxConnectGuide } from "./components/xbox/XboxConnectGuide";
 import { AUDIO_PROFILES, resolveAudioProfile } from "./audio/audioProfiles";
 import { detectPlatform } from "./utils/gamepad";
+import { xboxProductIdFor } from "./utils/xboxProductId";
 import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO,
   ACCENTS, THEMES, CLOUD_SHAPES, CLOUD_CONFIGS, KB_ALPHA, KB_NUMS,
@@ -2742,6 +2743,7 @@ export default function App() {
           }
           installed={detailsApp.installed !== false}
           canInstall={String(detailsApp.source ?? "").toLowerCase() === "steam" && !!steamAppIdFor(detailsApp)}
+          canXboxInstall={String(detailsApp.source ?? "").toLowerCase() === "xbox" && detailsApp.installed === false}
           installProgress={installProgress[detailsApp.id]}
           installError={installErrors[detailsApp.id]}
           running={isRunning(detailsApp.id)}
@@ -2753,6 +2755,11 @@ export default function App() {
             setCloseRequest({ app, force: false });
           }}
           onInstall={() => startSteamInstall(detailsApp)}
+          onXboxInstall={() => {
+            const productId = xboxProductIdFor(detailsApp);
+            const uri = productId ? `ms-windows-store://pdp/?ProductId=${productId}` : "xbox://";
+            invoke("open_uri", { uri }).catch((error) => console.warn("Xbox install handoff failed", error));
+          }}
           onCancelInstall={() => cancelSteamInstall(detailsApp)}
           onUninstall={String(detailsApp.source ?? "").toLowerCase() === "steam" ? () => setSteamUninstallRequest(detailsApp) : undefined}
           onVerify={String(detailsApp.source ?? "").toLowerCase() === "steam" ? () => verifySteamInstall(detailsApp) : undefined}

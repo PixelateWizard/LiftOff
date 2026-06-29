@@ -3,6 +3,7 @@ import { IoChevronBackOutline, IoChevronDownOutline, IoChevronForwardOutline, Io
 import { StoreBadge } from "./ui/StoreBadge";
 import { useStoreMetadata } from "../hooks/useStoreMetadata";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, rumble, type GpState } from "../utils/gamepad";
+import { xboxProductIdFor } from "../utils/xboxProductId";
 import type { AccentColors, App, StoreMovie, StoreScreenshot, ThemeColors } from "../types";
 
 type SizeBytes = number | "loading" | undefined;
@@ -43,12 +44,14 @@ interface GameDetailsModalProps {
   downloadBytes?: DownloadBytes;
   installed: boolean;
   canInstall?: boolean;
+  canXboxInstall?: boolean;
   installProgress?: InstallProgress;
   installError?: string;
   running?: boolean;
   onPlay: () => void;
   onCloseGame?: () => void;
   onInstall?: () => void;
+  onXboxInstall?: () => void;
   onCancelInstall?: () => void;
   onUninstall?: () => void;
   onVerify?: () => void;
@@ -150,12 +153,14 @@ export function GameDetailsModal({
   downloadBytes,
   installed,
   canInstall = false,
+  canXboxInstall = false,
   installProgress,
   installError,
   running = false,
   onPlay,
   onCloseGame,
   onInstall,
+  onXboxInstall,
   onCancelInstall,
   onUninstall,
   onVerify,
@@ -200,8 +205,15 @@ export function GameDetailsModal({
   const source = app.source?.toLowerCase() ?? "";
   const isCloud = source === "cloud";
   const isSteam = source === "steam";
+  const isXbox = source === "xbox";
   const steamAppId = app.steam_appid != null ? String(app.steam_appid) : undefined;
-  const store = useStoreMetadata(app.source, steamAppId, storeMetaEnabled && isSteam);
+  const xboxProductId = xboxProductIdFor(app) ?? undefined;
+  const store = useStoreMetadata(
+    app.source,
+    steamAppId,
+    xboxProductId,
+    storeMetaEnabled && (isSteam || (isXbox && !!xboxProductId)),
+  );
   const movies: StoreMovie[] = store.data?.movies ?? [];
   const screenshots = store.data?.screenshots ?? [];
   const shortDescription = store.data?.shortDescription ?? "";
@@ -220,7 +232,7 @@ export function GameDetailsModal({
     })),
   ], [movies, screenshots, t]);
   const mediaCount = mediaItems.length;
-  const hasStoreContent = isSteam && (shortDescription.trim().length > 0 || mediaCount > 0);
+  const hasStoreContent = (isSteam || isXbox) && (shortDescription.trim().length > 0 || mediaCount > 0);
   const [activeTab, setActiveTab] = useState<"details" | "manage">("details");
   const activeTabRef = useRef<"details" | "manage">("details");
   const [overlay, setOverlay] = useState<{ index: number } | null>(null);
@@ -312,8 +324,12 @@ export function GameDetailsModal({
     }
     if (canInstall) {
       onInstall?.();
+      return;
     }
-  }, [canInstall, installed, installing, onCancelInstall, onInstall, onPlay, uninstalling]);
+    if (canXboxInstall) {
+      onXboxInstall?.();
+    }
+  }, [canInstall, canXboxInstall, installed, installing, onCancelInstall, onInstall, onPlay, onXboxInstall, uninstalling]);
 
   const actions = useMemo<DetailAction[]>(() => [
     ...(running && onCloseGame ? [{ key: "close-game", label: t("home.close"), onClick: onCloseGame, danger: true }] : []),
@@ -541,14 +557,17 @@ export function GameDetailsModal({
   const installLabel = downloadBytes != null
     ? `${t("install.install")} (${formatBytes(downloadBytes)})`
     : t("install.install");
+  const xboxInstallLabel = t("install.getOnXbox", { defaultValue: "Get in Store" });
   const primaryLabel = running
     ? t("home.resume")
     : installed
       ? t("details.play")
       : installing
         ? (uninstalling ? t("install.uninstalling") : t("install.cancel"))
+        : canXboxInstall
+          ? xboxInstallLabel
         : installLabel;
-  const primaryDisabled = !installed && (uninstalling || (!installing && !canInstall));
+  const primaryDisabled = !installed && (uninstalling || (!installing && !canInstall && !canXboxInstall));
   const overlayItem = overlay ? mediaItems[overlay.index] : null;
   const overlayMovieSrc = overlayItem?.type === "trailer" ? movieSource(overlayItem.movie) : undefined;
 

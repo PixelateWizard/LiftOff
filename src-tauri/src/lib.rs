@@ -121,6 +121,8 @@ pub struct AppEntry {
     pub steam_appid: Option<u32>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub steam_icon_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub xbox_product_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -1055,6 +1057,8 @@ pub struct XboxOwnedTitleCache {
     #[serde(default)]
     pub pfn: Option<String>,
     #[serde(default)]
+    pub product_id: Option<String>,
+    #[serde(default)]
     pub last_played: Option<i64>,
 }
 
@@ -1711,8 +1715,96 @@ fn merge_owned_steam_games(apps: &mut Vec<AppEntry>, installed: &[AppEntry]) {
             },
             steam_appid: Some(owned.appid),
             steam_icon_hash: owned.icon_hash,
+            xbox_product_id: None,
         });
     }
+}
+
+fn is_microsoft_store_product_id(value: &str) -> bool {
+    let trimmed = value.trim();
+    trimmed.len() == 12
+        && trimmed.bytes().all(|byte| byte.is_ascii_alphanumeric())
+        && trimmed.bytes().any(|byte| byte.is_ascii_alphabetic())
+}
+
+fn normalize_xbox_catalog_name(value: &str) -> String {
+    value
+        .to_lowercase()
+        .replace('&', " and ")
+        .split(|ch: char| !ch.is_ascii_alphanumeric())
+        .filter(|part| {
+            !matches!(
+                *part,
+                "pc" | "windows" | "edition" | "standard" | "deluxe" | "ultimate" | "farewell"
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("")
+}
+
+fn xcloud_product_lookup() -> std::collections::HashMap<String, String> {
+    #[derive(Deserialize)]
+    struct XcloudSeedEntry {
+        name: String,
+        #[serde(rename = "productId")]
+        product_id: String,
+    }
+    serde_json::from_str::<Vec<XcloudSeedEntry>>(XCLOUD_BUNDLED_JSON)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|entry| is_microsoft_store_product_id(&entry.product_id))
+        .map(|entry| (normalize_xbox_catalog_name(&entry.name), entry.product_id))
+        .collect()
+}
+
+fn xcloud_product_id_for_name(
+    lookup: &std::collections::HashMap<String, String>,
+    name: &str,
+) -> Option<String> {
+    let normalized = normalize_xbox_catalog_name(name);
+    if normalized.is_empty() {
+        return None;
+    }
+    if let Some(product_id) = lookup.get(&normalized) {
+        return Some(product_id.clone());
+    }
+    lookup
+        .iter()
+        .filter(|(candidate, _)| {
+            !candidate.is_empty()
+                && (normalized.starts_with(candidate.as_str())
+                    || candidate.starts_with(normalized.as_str()))
+        })
+        .max_by_key(|(candidate, _)| candidate.len())
+        .map(|(_, product_id)| product_id.clone())
+}
+
+fn extract_xml_text(content: &str, tag: &str) -> Option<String> {
+    let open = format!("<{tag}>");
+    let close = format!("</{tag}>");
+    let start = content.find(&open)? + open.len();
+    let end = content[start..].find(&close)? + start;
+    Some(content[start..end].trim().to_string()).filter(|value| !value.is_empty())
+}
+
+fn microsoft_game_config_product_id(install_location: &str) -> Option<String> {
+    if install_location.trim().is_empty() {
+        return None;
+    }
+    for base in [Path::new(install_location).to_path_buf(), Path::new(install_location).join("Content")] {
+        for file_name in ["MicrosoftGame.config", "MicrosoftGame.Config"] {
+            let path = base.join(file_name);
+            let Ok(content) = std::fs::read_to_string(path) else {
+                continue;
+            };
+            if let Some(store_id) = extract_xml_text(&content, "StoreId") {
+                if is_microsoft_store_product_id(&store_id) {
+                    return Some(store_id);
+                }
+            }
+        }
+    }
+    None
 }
 
 fn merge_owned_xbox_titles(apps: &mut Vec<AppEntry>) {
@@ -1723,6 +1815,7 @@ fn merge_owned_xbox_titles(apps: &mut Vec<AppEntry>) {
         .filter(|pfn| !pfn.trim().is_empty())
         .map(|pfn| pfn.to_lowercase())
         .collect();
+    let xcloud_lookup = xcloud_product_lookup();
 
     for title in load_xbox_owned_titles() {
         if title.name.trim().is_empty() || title.title_id.trim().is_empty() {
@@ -1737,19 +1830,43 @@ fn merge_owned_xbox_titles(apps: &mut Vec<AppEntry>) {
         if apps.iter().any(|app| app.id == id) {
             continue;
         }
+        let product_id = title
+            .product_id
+            .as_ref()
+            .map(|value| value.trim().to_string())
+            .filter(|value| is_microsoft_store_product_id(value))
+            .or_else(|| xcloud_product_id_for_name(&xcloud_lookup, &title.name));
+        let launch_path = product_id
+            .as_ref()
+            .map(|value| format!("ms-windows-store://pdp/?ProductId={value}"))
+            .unwrap_or_else(|| "xbox://".to_string());
         apps.push(AppEntry {
             id,
             name: title.name,
             icon_base64: None,
-            launch_path: format!("ms-windows-store://pdp/?productId={}", title.title_id),
+            launch_path,
             app_type: "game".to_string(),
             source: "xbox".to_string(),
             install_dir: None,
             installed: false,
+            xbox_product_id: product_id,
             last_played: title.last_played,
             ..Default::default()
         });
     }
+}
+
+#[tauri::command]
+fn open_uri(app_handle: tauri::AppHandle, uri: String) -> Result<(), String> {
+    let uri = uri.trim();
+    if uri.is_empty() {
+        return Err("URI is empty".to_string());
+    }
+    use tauri_plugin_opener::OpenerExt;
+    app_handle
+        .opener()
+        .open_url(uri, None::<&str>)
+        .map_err(|error| format!("open URI failed: {error}"))
 }
 
 #[tauri::command]
@@ -2270,6 +2387,13 @@ fn xbox_fetch_title_history(
         title_id: serde_json::Value,
         #[serde(default)]
         name: String,
+        #[serde(
+            default,
+            rename = "productId",
+            alias = "modernTitleId",
+            alias = "storeId"
+        )]
+        product_id: Option<String>,
         #[serde(default)]
         devices: Vec<String>,
         #[serde(default)]
@@ -2338,6 +2462,10 @@ fn xbox_fetch_title_history(
                     .or(detail_pfn)
                     .map(|pfn| pfn.trim().to_string())
                     .filter(|pfn| !pfn.is_empty()),
+                product_id: title
+                    .product_id
+                    .map(|product_id| product_id.trim().to_string())
+                    .filter(|product_id| !product_id.is_empty()),
                 last_played,
             })
         })
@@ -4694,6 +4822,11 @@ fn scan_uwp_apps() -> Vec<AppEntry> {
         let is_xbox_game = app_id == "Game" || has_mgc;
         let app_type = if is_xbox_game { "game" } else { "app" };
         let source = if is_xbox_game { "xbox" } else { "uwp" };
+        let xbox_product_id = if is_xbox_game {
+            microsoft_game_config_product_id(install_location)
+        } else {
+            None
+        };
         let icon_base64 = if !install_location.is_empty() && !logo_hint.is_empty() {
             extract_uwp_icon_base64(install_location, logo_hint)
         } else {
@@ -4712,6 +4845,7 @@ fn scan_uwp_apps() -> Vec<AppEntry> {
                 Some(install_location.to_string())
             },
             installed: true,
+            xbox_product_id,
             ..Default::default()
         });
     }
@@ -7554,6 +7688,7 @@ pub fn run() {
             get_settings,
             save_settings,
             clear_recents,
+            open_uri,
             exit_app,
             restart_app,
             fse_watcher::show_liftoff,
@@ -7590,6 +7725,7 @@ pub fn run() {
             steam_watch_install,
             steam_install_progress,
             store_metadata::fetch_store_metadata,
+            store_metadata::fetch_xbox_store_metadata,
             get_pins,
             toggle_pin,
             get_hidden,
