@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const CACHE_TTL_SECS: u64 = 60 * 60 * 24 * 14;
-const CACHE_SCHEMA_VERSION: u32 = 2;
+const CACHE_SCHEMA_VERSION: u32 = 4;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoreScreenshot {
@@ -103,6 +103,81 @@ fn normalize_store_media_url(value: &str) -> String {
         format!("https://{rest}")
     } else {
         value.to_string()
+    }
+}
+
+fn is_direct_video_url(value: &str) -> bool {
+    let lower = value
+        .split('?')
+        .next()
+        .unwrap_or(value)
+        .to_ascii_lowercase();
+    lower.ends_with(".mp4") || lower.ends_with(".webm") || lower.ends_with(".m3u8")
+}
+
+fn xml_attr_value(tag: &str, attr: &str) -> Option<String> {
+    let needle = format!("{attr}=\"");
+    let start = tag.find(&needle)? + needle.len();
+    let end = tag[start..].find('"')? + start;
+    Some(tag[start..end].to_string())
+}
+
+fn xml_text_after_tag(value: &str, tag_start: usize, tag: &str) -> Option<String> {
+    let open_end = value[tag_start..].find('>')? + tag_start + 1;
+    let close = format!("</{tag}>");
+    let close_start = value[open_end..].find(&close)? + open_end;
+    Some(value[open_end..close_start].trim().to_string()).filter(|text| !text.is_empty())
+}
+
+fn best_dash_base_url(manifest: &str) -> Option<String> {
+    let mut best: Option<(u64, String)> = None;
+    let mut pos = 0;
+    while let Some(rel_start) = manifest[pos..].find("<Representation") {
+        let start = pos + rel_start;
+        let tag_end = manifest[start..].find('>')? + start;
+        let tag = &manifest[start..=tag_end];
+        let bandwidth = xml_attr_value(tag, "bandwidth")
+            .and_then(|value| value.parse::<u64>().ok())
+            .unwrap_or(0);
+        let Some(rel_base_start) = manifest[tag_end..].find("<BaseURL>") else {
+            pos = tag_end + 1;
+            continue;
+        };
+        let base_start = tag_end + rel_base_start;
+        if let Some(base_url) = xml_text_after_tag(manifest, base_start, "BaseURL") {
+            let base_url = base_url.replace("&amp;", "&");
+            if is_direct_video_url(&base_url)
+                && best
+                    .as_ref()
+                    .map(|(best_bandwidth, _)| bandwidth > *best_bandwidth)
+                    .unwrap_or(true)
+            {
+                best = Some((bandwidth, normalize_store_media_url(&base_url)));
+            }
+        }
+        pos = tag_end + 1;
+    }
+    best.map(|(_, url)| url)
+}
+
+fn hls_url_for_dash_url(url: &str) -> Option<String> {
+    let (path, suffix) = url.split_once('?').unwrap_or((url, ""));
+    if !path.to_ascii_lowercase().ends_with(".mpd") {
+        return None;
+    }
+    let mut hls_url = format!("{}.m3u8", &path[..path.len().saturating_sub(4)]);
+    if !suffix.is_empty() {
+        hls_url.push('?');
+        hls_url.push_str(suffix);
+    }
+    Some(hls_url)
+}
+
+async fn verified_hls_url(client: &reqwest::Client, dash_url: &str) -> Option<String> {
+    let hls_url = hls_url_for_dash_url(dash_url)?;
+    match client.head(&hls_url).send().await {
+        Ok(resp) if resp.status().is_success() => Some(hls_url),
+        _ => None,
     }
 }
 
@@ -278,6 +353,35 @@ async fn fetch_steam(client: &reqwest::Client, app_id: &str) -> Result<StoreMeta
     })
 }
 
+async fn resolve_xbox_video_url(
+    client: &reqwest::Client,
+    raw_url: &str,
+) -> (Option<String>, Option<String>, Option<String>) {
+    let url = normalize_store_media_url(raw_url);
+    let lower = url.split('?').next().unwrap_or(&url).to_ascii_lowercase();
+    if is_direct_video_url(&url) {
+        return (Some(url), None, None);
+    }
+    if lower.ends_with(".mpd") {
+        let dash_url = url.clone();
+        let hls_url = verified_hls_url(client, &dash_url).await;
+        let mp4_url = match client.get(&dash_url).send().await {
+            Ok(resp) if resp.status().is_success() => resp
+                .text()
+                .await
+                .ok()
+                .and_then(|text| best_dash_base_url(&text)),
+            _ => None,
+        };
+        return (
+            if hls_url.is_some() { None } else { mp4_url },
+            hls_url,
+            Some(dash_url),
+        );
+    }
+    (None, None, None)
+}
+
 fn json_text(value: &serde_json::Value, key: &str) -> Option<String> {
     value
         .get(key)
@@ -293,9 +397,7 @@ fn product_from_ms_store_response(body: &serde_json::Value) -> Option<&serde_jso
 }
 
 fn localized_ms_store_product(product: &serde_json::Value) -> &serde_json::Value {
-    product
-        .pointer("/LocalizedProperties/0")
-        .unwrap_or(product)
+    product.pointer("/LocalizedProperties/0").unwrap_or(product)
 }
 
 async fn fetch_xbox(client: &reqwest::Client, product_id: &str) -> Result<StoreMetadata, String> {
@@ -354,45 +456,51 @@ async fn fetch_xbox(client: &reqwest::Client, product_id: &str) -> Result<StoreM
         .get("Trailers")
         .and_then(|value| value.as_array())
         .or_else(|| localized.get("Videos").and_then(|value| value.as_array()));
-    let movies = videos
-        .map(|videos| {
-            videos
-                .iter()
-                .enumerate()
-                .filter_map(|(index, video)| {
-                    let url = json_text(video, "Url").or_else(|| json_text(video, "Uri"))?;
-                    let thumbnail = video
-                        .pointer("/Image/Url")
+    let mut movies = Vec::new();
+    if let Some(videos) = videos {
+        for (index, video) in videos.iter().enumerate() {
+            let Some(url) = json_text(video, "Url").or_else(|| json_text(video, "Uri")) else {
+                continue;
+            };
+            let thumbnail = video
+                .pointer("/Image/Url")
+                .and_then(|value| value.as_str())
+                .or_else(|| {
+                    video
+                        .pointer("/PreviewImage/Uri")
                         .and_then(|value| value.as_str())
-                        .or_else(|| video.pointer("/PreviewImage/Uri").and_then(|value| value.as_str()))
-                        .map(normalize_store_media_url)
-                        .unwrap_or_default();
-                    let name = json_text(video, "Title")
-                        .or_else(|| json_text(video, "Name"))
-                        .or_else(|| {
-                            video
-                                .get("SortOrder")
-                                .and_then(|value| value.as_u64())
-                                .map(|sort| format!("Trailer {sort}"))
-                        })
-                        .unwrap_or_else(|| "Trailer".to_string());
-                    Some(StoreMovie {
-                        id: format!("xbox-trailer-{index}"),
-                        name,
-                        thumbnail,
-                        mp4: Some(normalize_store_media_url(&url)),
-                        webm: None,
-                        hls_h264: None,
-                        dash_h264: None,
-                        dash_av1: None,
-                    })
                 })
-                .collect()
-        })
-        .unwrap_or_default();
+                .map(normalize_store_media_url)
+                .unwrap_or_default();
+            let name = json_text(video, "Title")
+                .or_else(|| json_text(video, "Name"))
+                .or_else(|| {
+                    video
+                        .get("SortOrder")
+                        .and_then(|value| value.as_u64())
+                        .map(|sort| format!("Trailer {sort}"))
+                })
+                .unwrap_or_else(|| "Trailer".to_string());
+            let (mp4, hls_h264, dash_h264) = resolve_xbox_video_url(client, &url).await;
+            movies.push(StoreMovie {
+                id: format!("xbox-trailer-{index}"),
+                name,
+                thumbnail,
+                mp4,
+                webm: None,
+                hls_h264,
+                dash_h264,
+                dash_av1: None,
+            });
+        }
+    }
 
-    let release_date = json_text(product, "ReleaseDateUtc")
-        .or_else(|| product.pointer("/MarketProperties/0/OriginalReleaseDate").and_then(|value| value.as_str()).map(|value| value.to_string()));
+    let release_date = json_text(product, "ReleaseDateUtc").or_else(|| {
+        product
+            .pointer("/MarketProperties/0/OriginalReleaseDate")
+            .and_then(|value| value.as_str())
+            .map(|value| value.to_string())
+    });
 
     Ok(StoreMetadata {
         cache_version: CACHE_SCHEMA_VERSION,
@@ -496,10 +604,13 @@ pub async fn fetch_store_metadata(
             "store metadata not supported for source '{source}' yet"
         ));
     }
-    if source == "steam" && (app_id.is_empty() || !app_id.bytes().all(|byte| byte.is_ascii_digit())) {
+    if source == "steam" && (app_id.is_empty() || !app_id.bytes().all(|byte| byte.is_ascii_digit()))
+    {
         return Err("steam store metadata requires a numeric appid".to_string());
     }
-    if source == "xbox" && (app_id.is_empty() || !app_id.bytes().all(|byte| byte.is_ascii_alphanumeric())) {
+    if source == "xbox"
+        && (app_id.is_empty() || !app_id.bytes().all(|byte| byte.is_ascii_alphanumeric()))
+    {
         return Err("xbox store metadata requires a productId".to_string());
     }
 

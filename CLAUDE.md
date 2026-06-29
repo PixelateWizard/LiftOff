@@ -1,11 +1,31 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed Xbox Details follow-up regression fix: the broken Get in Store and blank Xbox Details media/description were caused by decimal Xbox TitleHub IDs such as `2107339353` being cached as `product_id` and mistaken for Microsoft Store product IDs. LiftOff now only accepts 12-character alphanumeric Store IDs with letters, falls back through the bundled cloud catalog with tolerant title matching, uses `ProductId` casing in the Store URI, reads installed Xbox `MicrosoftGame.config` / `MicrosoftGame.Config` StoreIds from both package roots and `Content` folders, and lets Details resolve Xbox product IDs from the bundled catalog even when an older cached entry lacks a valid `xbox_product_id`. Verified the Microsoft Store catalog API returns description/screenshots for real IDs including Control's installed `9PL1J8PJKH29`, bundled Control `BZ6W9LRPC26W`, and Abiotic Factor `9P4NV23Q6QC2`. No Xbox/Microsoft logo assets were added. Validated with `npm run build`, `cargo check`, and `git diff --check`; only the existing Vite chunk-size warning, Rust path canonicalization warning, Rust unused-helper warning, and CRLF notices remained.
+- Completed remaining Xbox trailer gray-screen playback follow-up: DOOM: The Dark Ages still works, and Hades / High On Life style Microsoft Store HLS trailers now route through lazy-loaded `hls.js` in the Details overlay instead of relying on WebView2 native HLS playback that could stall on a gray `0:00` video surface.
 
 ## 🐛 Active Bugs
 
 - The indeterminate install bar at the bottom of a game card in the Games library restarts/glitches whenever gamepad focus moves to another card. Deferred; do not fix as part of Tasks D/E.
+
+**Completed (this session - Xbox trailer HLS gray-screen fix):**
+- Reproduced the remaining gray-screen class from live Microsoft Store metadata: Hades product `9P8DL6W0JBB8` and High On Life product `9NL4714VTLRS` expose older `-AVS.m3u8` HLS master playlists with absolute rendition URLs and audio groups, while the already-working DOOM: The Dark Ages path uses a newer relative `manifest.m3u8` layout.
+- Added `hls.js` as a frontend dependency and lazy-load it only when a Details trailer overlay opens an `.m3u8` source. MP4/WebM trailers keep the native video `src` path.
+- The HLS overlay now attaches through Media Source with cleanup on source/overlay changes, retries fatal network/media errors through `hls.js`, disables the HLS worker to avoid WebView/CSP worker issues, and falls back to native HLS only if the module or Media Source support is unavailable.
+- Updated `CHANGELOG.md`; validated with `npm run build`, `cargo check`, and `git diff --check`. Remaining output is the existing Rust `is_our_window_focused` unused-helper/path warning, CRLF notices, and Vite chunk-size warnings for the existing app bundle plus the new lazy HLS chunk. Hands-on Ally verification should reopen Hades and High On Life trailers and confirm they advance past `0:00` with video and audio, then recheck DOOM: The Dark Ages.
+
+**Completed (this session - Xbox trailer audio and Doom media):**
+- Reproduced both current Microsoft Store trailer shapes: Abiotic Factor exposed DASH `BaseURL` video and audio as separate MP4 streams, while DOOM: The Dark Ages exposed segmented DASH `manifest.mpd` files with no `BaseURL`, causing the first pass to cache silent video-only MP4s or no playable source.
+- Confirmed both shapes expose adjacent HLS `.m3u8` playlists with `#EXT-X-MEDIA:TYPE=AUDIO` groups, including DOOM: The Dark Ages product `9PH9X0760B0T`.
+- Updated Xbox trailer resolution in `src-tauri/src/store_metadata.rs` to derive and verify the HLS playlist for `.mpd` URLs, cache it in `hls_h264`, keep the original manifest in `dash_h264`, and only fall back to extracted MP4 `BaseURL` streams when HLS is unavailable.
+- Bumped store metadata cache schema to refresh silent/unavailable Xbox trailer records from the prior Xbox video pass.
+- Updated `CHANGELOG.md`; validated with `cargo check`, `npm run build`, and `git diff --check`. Remaining output is the existing Rust `is_our_window_focused` unused-helper/path warning, the Vite chunk-size warning, and CRLF notices. Hands-on Ally verification should reopen affected Xbox Details modals after cache refresh and confirm trailer audio plus DOOM: The Dark Ages trailer playback.
+
+**Completed (this session - Xbox trailer playback):**
+- Reproduced the broken Xbox trailer shape against live Microsoft Store catalog data: Xbox `Trailers[].Url` values were DASH `.mpd` manifests, while the Details modal expected a browser-playable media URL.
+- Added Xbox trailer manifest resolution in `src-tauri/src/store_metadata.rs`, selecting the highest-bandwidth MP4 `BaseURL` from the MPD before caching and preserving the original manifest in `dash_h264` for diagnostics/future playback support.
+- Bumped the store metadata cache schema to refresh old Xbox trailer records where `mp4` incorrectly contained a raw `.mpd` URL.
+- Details now only hands direct MP4/WebM/HLS URLs to the fullscreen video overlay, so stale or future raw manifests fall back to the existing unavailable thumbnail state instead of a dead video element.
+- Updated `CHANGELOG.md`; validated with `cargo check`, `npm run build`, and `git diff --check`. Remaining output is the existing Rust `is_our_window_focused` unused-helper/path warning, the Vite chunk-size warning, and CRLF notices. Hands-on Ally verification should reopen an Xbox Details modal after the cache refresh and confirm a trailer tile plays in the fullscreen overlay.
 
 **Completed (this session - store metadata frontend):**
 - Added a session-cached `useStoreMetadata` hook that calls the new `fetch_store_metadata` Tauri command only for Steam games when `settings.fetch_store_metadata` is enabled.

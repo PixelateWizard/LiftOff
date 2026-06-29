@@ -12,6 +12,7 @@
   "dependencies": {
     "@tauri-apps/api": "2.11.1",
     "@tauri-apps/plugin-opener": "2.5.4",
+    "hls.js": "^1.6.16",
     "i18next": "^26.0.8",
     "i18next-browser-languagedetector": "^8.2.1",
     "qrcode.react": "^4.2.0",

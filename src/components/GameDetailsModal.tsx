@@ -136,8 +136,23 @@ function normalizeMediaUrl(url?: string | null) {
   return url.startsWith("http://") ? `https://${url.slice("http://".length)}` : url;
 }
 
+function playableMediaUrl(url?: string | null) {
+  const normalized = normalizeMediaUrl(url);
+  if (!normalized) return undefined;
+  const path = normalized.split("?")[0].toLowerCase();
+  return /\.(mp4|webm|m3u8)$/.test(path) ? normalized : undefined;
+}
+
+function isHlsMediaUrl(url?: string | null) {
+  return normalizeMediaUrl(url)?.split("?")[0].toLowerCase().endsWith(".m3u8") ?? false;
+}
+
 function movieSource(movie: StoreMovie) {
-  return normalizeMediaUrl(movie.mp4 || movie.webm || movie.hlsH264 || movie.dashH264 || movie.dashAv1);
+  return playableMediaUrl(movie.mp4)
+    || playableMediaUrl(movie.webm)
+    || playableMediaUrl(movie.hlsH264)
+    || playableMediaUrl(movie.dashH264)
+    || playableMediaUrl(movie.dashAv1);
 }
 
 export function GameDetailsModal({
@@ -570,14 +585,58 @@ export function GameDetailsModal({
   const primaryDisabled = !installed && (uninstalling || (!installing && !canInstall && !canXboxInstall));
   const overlayItem = overlay ? mediaItems[overlay.index] : null;
   const overlayMovieSrc = overlayItem?.type === "trailer" ? movieSource(overlayItem.movie) : undefined;
+  const overlayMovieUsesHls = isHlsMediaUrl(overlayMovieSrc);
+  const overlayNativeSrc = overlayMovieSrc && !overlayMovieUsesHls ? overlayMovieSrc : undefined;
 
   useEffect(() => {
-    if (overlayItem?.type !== "trailer") return;
-    const timer = window.setTimeout(() => {
-      overlayVideoRef.current?.play().catch(() => {});
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [overlayItem]);
+    if (overlayItem?.type !== "trailer" || !overlayMovieSrc) return;
+    const video = overlayVideoRef.current;
+    if (!video) return;
+    let hls: import("hls.js").default | null = null;
+    let cancelled = false;
+    let timer: number | undefined;
+    const play = () => video.play().catch(() => {});
+
+    if (isHlsMediaUrl(overlayMovieSrc)) {
+      import("hls.js").then(({ default: Hls }) => {
+        if (cancelled) return;
+        if (!Hls.isSupported()) {
+          video.src = overlayMovieSrc;
+          video.load();
+          timer = window.setTimeout(play, 0);
+          return;
+        }
+        hls = new Hls({ enableWorker: false });
+        hls.loadSource(overlayMovieSrc);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, play);
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (!data.fatal || !hls) return;
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+          else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+          else hls.destroy();
+        });
+      }).catch(() => {
+        if (cancelled) return;
+        video.src = overlayMovieSrc;
+        video.load();
+        timer = window.setTimeout(play, 0);
+      });
+    } else {
+      video.src = overlayMovieSrc;
+      video.load();
+      timer = window.setTimeout(play, 0);
+    }
+
+    return () => {
+      cancelled = true;
+      if (timer != null) window.clearTimeout(timer);
+      hls?.destroy();
+      video.pause();
+      video.removeAttribute("src");
+      video.load();
+    };
+  }, [overlayItem?.type, overlayMovieSrc]);
 
   const metaItems = [
     { label: t("details.lastPlayed"), value: lastPlayedAt ? formatRelativeTime(lastPlayedAt, t("details.never")) : t("details.never") },
@@ -1101,7 +1160,7 @@ export function GameDetailsModal({
                 <video
                   key={overlayMovieSrc}
                   ref={overlayVideoRef}
-                  src={overlayMovieSrc}
+                  src={overlayNativeSrc}
                   controls
                   autoPlay
                   playsInline

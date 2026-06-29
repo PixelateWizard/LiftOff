@@ -26,8 +26,12 @@ use windows::{
     },
     Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS},
     Win32::System::Threading::{
-        OpenProcess, QueryFullProcessImageNameW, TerminateProcess, PROCESS_NAME_WIN32,
-        PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE,
+        AttachThreadInput, GetCurrentThreadId, OpenProcess, QueryFullProcessImageNameW,
+        TerminateProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
+        PROCESS_TERMINATE,
+    },
+    Win32::UI::Input::KeyboardAndMouse::{
+        keybd_event, SetActiveWindow, SetFocus, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VK_MENU,
     },
     Win32::UI::Input::XboxController::{XInputSetState, XINPUT_VIBRATION},
     Win32::UI::Shell::{
@@ -36,9 +40,9 @@ use windows::{
     Win32::UI::WindowsAndMessaging::{
         BringWindowToTop, DestroyIcon, DrawIconEx, EnumWindows, GetForegroundWindow,
         GetSystemMetrics, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
-        IsWindowVisible, PostMessageW, SetForegroundWindow, SetWindowPos, ShowWindow, DI_NORMAL,
-        HWND_NOTOPMOST, HWND_TOPMOST, SM_CXSCREEN, SM_CYSCREEN, SWP_NOMOVE, SWP_NOSIZE,
-        SWP_SHOWWINDOW, SW_SHOW, SW_SHOWNORMAL, WM_CLOSE,
+        IsIconic, IsWindowVisible, PostMessageW, SetForegroundWindow, SetWindowPos, ShowWindow,
+        DI_NORMAL, HWND_NOTOPMOST, HWND_TOPMOST, SM_CXSCREEN, SM_CYSCREEN, SWP_NOMOVE,
+        SWP_NOSIZE, SWP_SHOWWINDOW, SW_RESTORE, SW_SHOW, SW_SHOWNORMAL, WM_CLOSE,
     },
 };
 
@@ -1866,7 +1870,44 @@ fn open_uri(app_handle: tauri::AppHandle, uri: String) -> Result<(), String> {
     app_handle
         .opener()
         .open_url(uri, None::<&str>)
-        .map_err(|error| format!("open URI failed: {error}"))
+        .map_err(|error| format!("open URI failed: {error}"))?;
+    if uri.starts_with("ms-windows-store://") || uri.starts_with("xbox://") {
+        tauri::async_runtime::spawn_blocking(|| focus_store_handoff_window());
+    }
+    Ok(())
+}
+
+fn focus_store_handoff_window() {
+    let deadline = Instant::now() + Duration::from_millis(2_500);
+    while Instant::now() < deadline {
+        if let Some(hwnd) = find_store_handoff_window() {
+            focus_external_window(windows::Win32::Foundation::HWND(hwnd as _));
+            let focused = unsafe { GetForegroundWindow().0 as isize == hwnd };
+            if focused {
+                return;
+            }
+        }
+        std::thread::sleep(Duration::from_millis(120));
+    }
+}
+
+fn find_store_handoff_window() -> Option<isize> {
+    collect_launch_windows()
+        .into_iter()
+        .find(|window| {
+            let title = window.title.to_lowercase();
+            let exe = window
+                .exe_path
+                .as_deref()
+                .unwrap_or_default()
+                .to_lowercase();
+            title.contains("microsoft store")
+                || title.contains("xbox")
+                || exe.ends_with("\\winstore.app.exe")
+                || exe.ends_with("\\xboxapp.exe")
+                || exe.ends_with("\\applicationframehost.exe")
+        })
+        .map(|window| window.hwnd)
 }
 
 #[tauri::command]
@@ -7001,7 +7042,59 @@ fn check_launch_focus(name: String, launch_path: String, source: String) -> Laun
 
 fn focus_external_window(hwnd: windows::Win32::Foundation::HWND) {
     unsafe {
-        let _ = ShowWindow(hwnd, SW_SHOW);
+        if IsIconic(hwnd).as_bool() {
+            let _ = ShowWindow(hwnd, SW_RESTORE);
+        } else {
+            let _ = ShowWindow(hwnd, SW_SHOW);
+        }
+    }
+    for attempt in 0..6 {
+        focus_external_window_attempt(hwnd);
+        let focused = unsafe { GetForegroundWindow().0 as isize == hwnd.0 as isize };
+        if focused {
+            break;
+        }
+        if attempt < 5 {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
+    unsafe {
+        let _ = SetWindowPos(
+            hwnd,
+            Some(HWND_NOTOPMOST),
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
+        );
+    }
+}
+
+fn focus_external_window_attempt(hwnd: windows::Win32::Foundation::HWND) {
+    unsafe {
+        let foreground = GetForegroundWindow();
+        let our_thread = GetCurrentThreadId();
+        let fg_thread = if foreground.0.is_null() {
+            0
+        } else {
+            GetWindowThreadProcessId(foreground, None)
+        };
+        let target_thread = GetWindowThreadProcessId(hwnd, None);
+        let attached = fg_thread != 0
+            && fg_thread != our_thread
+            && AttachThreadInput(our_thread, fg_thread, true).as_bool();
+        let attached_target = target_thread != 0
+            && target_thread != our_thread
+            && target_thread != fg_thread
+            && AttachThreadInput(our_thread, target_thread, true).as_bool();
+
+        if foreground.0 as isize != 0 && foreground.0 as isize != hwnd.0 as isize {
+            keybd_event(VK_MENU.0 as u8, 0, KEYBD_EVENT_FLAGS(0), 0);
+            keybd_event(VK_MENU.0 as u8, 0, KEYEVENTF_KEYUP, 0);
+            std::thread::sleep(Duration::from_millis(20));
+        }
+
         let _ = SetWindowPos(
             hwnd,
             Some(HWND_TOPMOST),
@@ -7013,17 +7106,15 @@ fn focus_external_window(hwnd: windows::Win32::Foundation::HWND) {
         );
         let _ = BringWindowToTop(hwnd);
         let _ = SetForegroundWindow(hwnd);
-        std::thread::sleep(std::time::Duration::from_millis(60));
-        let _ = SetWindowPos(
-            hwnd,
-            Some(HWND_NOTOPMOST),
-            0,
-            0,
-            0,
-            0,
-            SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW,
-        );
-        let _ = SetForegroundWindow(hwnd);
+        let _ = SetActiveWindow(hwnd);
+        let _ = SetFocus(Some(hwnd));
+
+        if attached_target {
+            let _ = AttachThreadInput(our_thread, target_thread, false);
+        }
+        if attached {
+            let _ = AttachThreadInput(our_thread, fg_thread, false);
+        }
     }
 }
 
