@@ -102,6 +102,7 @@ export interface UseGamepadNavigationOptions {
   showSpotifyGuideRef?: AnyRef<boolean>;
   showSpotifyOverlayRef?: AnyRef<boolean>;
   showSteamQrRef?: AnyRef<boolean>;
+  showXboxGuideRef?: AnyRef<boolean>;
   showCloudPickerRef?: AnyRef<boolean>;
   themePickerFocusIndexRef?: AnyRef<number>;
   surfacePickerFocusIndexRef?: AnyRef<number>;
@@ -118,6 +119,9 @@ export interface UseGamepadNavigationOptions {
   onOpenSteamQr?: () => void;
   onSteamDisconnect?: () => void;
   steamConnectedRef?: AnyRef<boolean>;
+  onOpenXboxGuide?: () => void;
+  onXboxDisconnect?: () => void;
+  xboxConnectedRef?: AnyRef<boolean>;
   setThemePickerFocusIndex?: (value: number) => void;
   setSurfacePickerFocusIndex?: (value: number) => void;
   setArtPickerApp?: (app: App | null) => void;
@@ -348,6 +352,7 @@ export function useGamepadNavigation(
     showSpotifyGuideRef = { current: false } as AnyRef<boolean>,
     showSpotifyOverlayRef = { current: false } as AnyRef<boolean>,
     showSteamQrRef = { current: false } as AnyRef<boolean>,
+    showXboxGuideRef = { current: false } as AnyRef<boolean>,
     showCloudPickerRef = { current: false } as AnyRef<boolean>,
     themePickerFocusIndexRef = { current: 0 } as AnyRef<number>,
     surfacePickerFocusIndexRef = { current: 0 } as AnyRef<number>,
@@ -363,6 +368,9 @@ export function useGamepadNavigation(
     onOpenSteamQr = noop,
     onSteamDisconnect = noop,
     steamConnectedRef = { current: false } as AnyRef<boolean>,
+    onOpenXboxGuide = noop,
+    onXboxDisconnect = noop,
+    xboxConnectedRef = { current: false } as AnyRef<boolean>,
     setThemePickerFocusIndex = noop as (value: number) => void,
     setSurfacePickerFocusIndex = noop as (value: number) => void,
     setArtPickerApp = noop as (app: App | null) => void,
@@ -686,6 +694,7 @@ export function useGamepadNavigation(
     || !!showSpotifyGuideRef.current
     || !!showSpotifyOverlayRef.current
     || !!showSteamQrRef.current
+    || !!showXboxGuideRef.current
     || !!showCloudPickerRef.current
     || !!detailsAppRef.current
     || !!artPickerAppRef.current
@@ -772,7 +781,7 @@ export function useGamepadNavigation(
       return;
     }
     // Modal intercepts all input via its own poll — main nav must not run
-    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current || showSpotifyGuideRef.current || showSpotifyOverlayRef.current || showSteamQrRef.current || showCloudPickerRef.current || detailsAppRef.current) return;
+    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current || showSpotifyGuideRef.current || showSpotifyOverlayRef.current || showSteamQrRef.current || showXboxGuideRef.current || showCloudPickerRef.current || detailsAppRef.current) return;
 
     // Art picker open — only Escape closes it (user interacts via touch/mouse)
     if (artPickerAppRef.current) {
@@ -1233,6 +1242,11 @@ export function useGamepadNavigation(
           else onOpenSteamQr();
           haptic("confirm");
         }
+        else if (item.type === "xbox") {
+          if (xboxConnectedRef.current) onXboxDisconnect();
+          else onOpenXboxGuide();
+          haptic("confirm");
+        }
         else if (item.type === "refresh") { refreshLibrary(); haptic("confirm"); }
         else if (item.type === "update") {
           if (updateStatus === "available") {
@@ -1638,6 +1652,7 @@ export function useGamepadNavigation(
             && !showSpotifyGuideRef.current
             && !showSpotifyOverlayRef.current
             && !showSteamQrRef.current
+            && !showXboxGuideRef.current
             && !showCloudPickerRef.current
             && !detailsAppRef.current;
 

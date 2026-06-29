@@ -1,13 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
-import { IoAlbumsOutline, IoChevronForward, IoColorPaletteOutline, IoGridOutline, IoHomeOutline } from "react-icons/io5";
+import { IoAlbumsOutline, IoChevronForward, IoColorPaletteOutline, IoGridOutline, IoHomeOutline, IoPersonCircleOutline } from "react-icons/io5";
 import { CollapsibleGroup, ToggleKnob, GamepadIconPreview, FocusRing } from "../components/ui";
 import { ControllerTestWidget } from "../components/ControllerTestWidget";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
 import { ACCENTS, APP_VERSION, FSE_RETURN_SHORTCUT_OPTIONS, GITHUB_REPO, THEME_LOCKED_SETTINGS, normalizeThemeKey } from "../constants";
-import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem, SettingsAppearanceCategoryItem, SettingsAppearanceBackItem } from "../types";
+import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem, SettingsAppearanceCategoryItem, SettingsAppearanceBackItem, XboxStatus } from "../types";
 import type { SpotifyStatus } from "../hooks/useSpotify";
 import { SPOTIFY_REDIRECT_URI } from "../components/spotify/constants";
 
@@ -200,6 +200,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "steam_account",  section: 1, label: t("steam.title"),            type: "steam" },
     { key: "show_uninstalled_games", section: 1, label: t("settings.showUninstalledGames"), type: "toggle" },
     { key: "scan_xbox",      section: 1, label: t("settings.scanXbox"),      type: "toggle" },
+    { key: "xbox_account",   section: 1, label: t("xbox.title"),             type: "xbox" },
     { key: "scan_uwp",       section: 1, label: t("settings.scanStoreApps"), type: "toggle" },
     { key: "scan_desktop",   section: 1, label: t("settings.scanDesktop"),   type: "toggle" },
     { key: "scan_battlenet", section: 1, label: t("settings.scanBattlenet"), type: "toggle" },
@@ -358,6 +359,11 @@ export interface SettingsScreenProps {
   steamStatus?: SteamStatus;
   onOpenSteamQr?: () => void;
   onSteamDisconnect?: () => void;
+  xboxStatus?: XboxStatus;
+  xboxRefreshStatus?: string | null;
+  onOpenXboxGuide?: () => void;
+  onXboxDisconnect?: () => void;
+  onXboxRefresh?: () => void;
 }
 
 export function SettingsScreen({
@@ -393,6 +399,11 @@ export function SettingsScreen({
   steamStatus,
   onOpenSteamQr,
   onSteamDisconnect,
+  xboxStatus,
+  xboxRefreshStatus,
+  onOpenXboxGuide,
+  onXboxDisconnect,
+  onXboxRefresh,
 }: SettingsScreenProps) {
   const { t } = useTranslation();
   const { settingsRowGlass, accent, theme, isDark, glassEnabled, surfaceStyle, surface, resolvedTheme } = useTheme();
@@ -1032,6 +1043,103 @@ export function SettingsScreen({
               }}
             >
               {connected ? t("steam.disconnect") : t("steam.connect")}
+            </button>
+          </div>
+          {onyxRing}
+        </div>
+      );
+    }
+
+    if (item.type === "xbox") {
+      const connected = !!xboxStatus?.connected;
+      const ownedCount = xboxStatus?.owned_count ?? 0;
+      const refreshText =
+        xboxRefreshStatus === "refreshing" ? t("xbox.refreshing") :
+        xboxRefreshStatus === "done" ? t("xbox.refreshDone") :
+        xboxRefreshStatus === "error" ? t("xbox.refreshFailed") :
+        "";
+      return (
+        <div
+          key={item.key}
+          data-settings-row=""
+          className={focused ? "focused" : ""}
+          ref={rowRef}
+          style={{ ...rowStyle, gap: 18, alignItems: "stretch" }}
+          onClick={() => connected ? onXboxDisconnect?.() : onOpenXboxGuide?.()}
+        >
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, minWidth: 0, flex: 1 }}>
+            <div
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: isPixel || isCyber ? 0 : 10,
+                display: "grid",
+                placeItems: "center",
+                border: `1px solid ${focused ? accent.primary : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)"}`,
+                background: isDark ? "rgba(255,255,255,0.045)" : "rgba(0,0,0,0.035)",
+                color: connected ? accent.primary : theme.textDim,
+                flexShrink: 0,
+              }}
+            >
+              <IoPersonCircleOutline size={22} />
+            </div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{item.label}</div>
+              <div style={{ fontSize: 11, color: theme.textDim, lineHeight: 1.45, marginTop: 3 }}>
+                {connected
+                  ? t("xbox.connectedHint", { gamertag: xboxStatus?.gamertag || t("xbox.connected"), count: ownedCount })
+                  : t("xbox.connectHint")}
+              </div>
+              <div style={{ fontSize: 10, color: theme.textFaint, marginTop: 5 }}>
+                {refreshText || t("xbox.securityHint")}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <span style={{ fontSize: 12, color: connected ? accent.primary : theme.textDim, fontWeight: connected ? 800 : 500, whiteSpace: "nowrap" }}>
+              {connected ? (xboxStatus?.gamertag || t("xbox.connected")) : t("xbox.notConnected")}
+            </span>
+            {connected && (
+              <button
+                type="button"
+                disabled={xboxRefreshStatus === "refreshing"}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onXboxRefresh?.();
+                }}
+                style={{
+                  border: `1px solid ${accent.primary}`,
+                  background: xboxRefreshStatus === "refreshing" ? `${accent.glow}0.14)` : "transparent",
+                  color: accent.primary,
+                  borderRadius: isPixel || isCyber ? 0 : isMaterial ? 8 : 10,
+                  padding: "8px 12px",
+                  fontSize: 12,
+                  fontWeight: 800,
+                  cursor: xboxRefreshStatus === "refreshing" ? "default" : "pointer",
+                  opacity: xboxRefreshStatus === "refreshing" ? 0.72 : 1,
+                }}
+              >
+                {t("xbox.refresh")}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                connected ? onXboxDisconnect?.() : onOpenXboxGuide?.();
+              }}
+              style={{
+                border: `1px solid ${connected ? "rgba(232,74,74,0.52)" : accent.primary}`,
+                background: connected ? "rgba(232,74,74,0.12)" : accent.primary,
+                color: connected ? "#ff8d8d" : accent.darkText ? "#161616" : "#fff",
+                borderRadius: isPixel || isCyber ? 0 : isMaterial ? 8 : 10,
+                padding: "8px 12px",
+                fontSize: 12,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {connected ? t("xbox.disconnect") : t("xbox.connect")}
             </button>
           </div>
           {onyxRing}

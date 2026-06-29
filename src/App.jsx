@@ -62,6 +62,7 @@ import { SpotifyConnectGuide } from "./components/spotify/SpotifyConnectGuide";
 import { SpotifyMiniBar } from "./components/spotify/SpotifyMiniBar";
 import { SpotifyOverlay } from "./components/spotify/SpotifyOverlay";
 import { SteamQrModal } from "./components/steam/SteamQrModal";
+import { XboxConnectGuide } from "./components/xbox/XboxConnectGuide";
 import { AUDIO_PROFILES, resolveAudioProfile } from "./audio/audioProfiles";
 import { detectPlatform } from "./utils/gamepad";
 import {
@@ -154,6 +155,7 @@ export default function App() {
     if (tabMotionTimerRef.current) window.clearTimeout(tabMotionTimerRef.current);
     if (subtabMotionTimerRef.current) window.clearTimeout(subtabMotionTimerRef.current);
     if (focusPulseTimerRef.current) window.clearTimeout(focusPulseTimerRef.current);
+    if (xboxRefreshStatusTimerRef.current) window.clearTimeout(xboxRefreshStatusTimerRef.current);
   }, []);
   const [showThemePicker, setShowThemePickerState] = useState(false);
   const showThemePickerRef = useRef(false);
@@ -186,6 +188,12 @@ export default function App() {
     showSteamQrRef.current = value;
     setShowSteamQrState(value);
   };
+  const [showXboxGuide, setShowXboxGuideState] = useState(false);
+  const showXboxGuideRef = useRef(false);
+  const setShowXboxGuide = (value) => {
+    showXboxGuideRef.current = value;
+    setShowXboxGuideState(value);
+  };
   const [showCloudPicker, setShowCloudPickerState] = useState(false);
   const showCloudPickerRef = useRef(false);
   const setShowCloudPicker = (value) => {
@@ -198,6 +206,12 @@ export default function App() {
   const [steamQrError, setSteamQrError] = useState("");
   const steamConnectedRef = useRef(false);
   const steamStartupRefreshRef = useRef(false);
+  const [xboxStatus, setXboxStatus] = useState({ connected: false, owned_count: 0 });
+  const [xboxAuthPhase, setXboxAuthPhase] = useState("idle");
+  const [xboxAuthError, setXboxAuthError] = useState("");
+  const [xboxRefreshStatus, setXboxRefreshStatus] = useState(null);
+  const xboxConnectedRef = useRef(false);
+  const xboxRefreshStatusTimerRef = useRef(null);
   const [themePickerFocusIndex, setThemePickerFocusIndexState] = useState(0);
   const themePickerFocusIndexRef = useRef(0);
   const setThemePickerFocusIndex = (value) => {
@@ -394,12 +408,19 @@ export default function App() {
     steamConnectedRef.current = !!steamStatus.connected;
   }, [steamStatus.connected]);
   useEffect(() => {
+    xboxConnectedRef.current = !!xboxStatus.connected;
+  }, [xboxStatus.connected]);
+  useEffect(() => {
     if (!steamStatus.connected || settings.steam_owned_library_seen) return;
     updateSettingsBatch({
       steam_owned_library_seen: true,
       show_uninstalled_games: true,
     });
   }, [steamStatus.connected, settings.steam_owned_library_seen, updateSettingsBatch]);
+  useEffect(() => {
+    if (!xboxStatus.connected || settings.show_uninstalled_games === true) return;
+    updateSettingsBatch({ show_uninstalled_games: true });
+  }, [xboxStatus.connected, settings.show_uninstalled_games, updateSettingsBatch]);
   useEffect(() => {
     if (!showUninstalledGames && installFilterRef.current !== "all") {
       setInstallFilter("all");
@@ -456,8 +477,66 @@ export default function App() {
       .catch(() => {});
   };
 
+  const xboxErrorMessage = (error) => {
+    const raw = String(error || "");
+    if (raw.includes("NO_XBOX_ACCOUNT")) return t("xbox.errorNoXboxAccount");
+    if (raw.includes("CHILD_ACCOUNT")) return t("xbox.errorChildAccount");
+    return t("xbox.connectFailed");
+  };
+
+  const setTemporaryXboxRefreshStatus = (status) => {
+    if (xboxRefreshStatusTimerRef.current) window.clearTimeout(xboxRefreshStatusTimerRef.current);
+    setXboxRefreshStatus(status);
+    if (status === "done" || status === "error") {
+      xboxRefreshStatusTimerRef.current = window.setTimeout(() => {
+        setXboxRefreshStatus(null);
+      }, 2600);
+    }
+  };
+
+  const refreshXboxStatus = () => {
+    invoke("xbox_account_status")
+      .then((status) => setXboxStatus(status || { connected: false, owned_count: 0 }))
+      .catch(() => setXboxStatus({ connected: false, owned_count: 0 }));
+  };
+
+  const openXboxGuide = () => {
+    setXboxAuthPhase("idle");
+    setXboxAuthError("");
+    setShowXboxGuide(true);
+  };
+
+  const beginXboxAuth = () => {
+    setXboxAuthError("");
+    setXboxAuthPhase("waiting");
+    invoke("xbox_begin_auth").catch(() => {
+      setXboxAuthPhase("error");
+      setXboxAuthError(t("xbox.connectFailed"));
+    });
+  };
+
+  const refreshXboxLibrary = () => {
+    setTemporaryXboxRefreshStatus("refreshing");
+    invoke("xbox_refresh_library").catch(() => {
+      setTemporaryXboxRefreshStatus("error");
+    });
+  };
+
+  const disconnectXbox = () => {
+    invoke("xbox_disconnect")
+      .then(() => {
+        setXboxStatus({ connected: false, owned_count: 0 });
+        setXboxAuthPhase("idle");
+        setXboxAuthError("");
+        setXboxRefreshStatus(null);
+        refreshLibrary();
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
     refreshSteamStatus();
+    refreshXboxStatus();
     let disposed = false;
     const unsubs = [];
     const add = async () => {
@@ -498,6 +577,38 @@ export default function App() {
           refreshSteamStatus();
           refreshLibrary();
         }
+      }));
+      unsubs.push(await listen("xbox-login-success", (event) => {
+        if (disposed) return;
+        const payload = event.payload || {};
+        setXboxStatus({
+          connected: true,
+          gamertag: payload.gamertag,
+          xuid: payload.xuid,
+          owned_count: payload.owned_count ?? 0,
+        });
+        setXboxAuthPhase("idle");
+        setXboxAuthError("");
+        setShowXboxGuide(false);
+        refreshLibrary();
+      }));
+      unsubs.push(await listen("xbox-login-error", (event) => {
+        if (disposed) return;
+        setXboxAuthError(xboxErrorMessage(event.payload));
+        setXboxAuthPhase("error");
+      }));
+      unsubs.push(await listen("xbox-account-changed", (event) => {
+        if (!disposed) setXboxStatus(event.payload || { connected: false, owned_count: 0 });
+      }));
+      unsubs.push(await listen("xbox-refresh-done", () => {
+        if (disposed) return;
+        refreshXboxStatus();
+        setTemporaryXboxRefreshStatus("done");
+        refreshLibrary();
+      }));
+      unsubs.push(await listen("xbox-refresh-error", () => {
+        if (disposed) return;
+        setTemporaryXboxRefreshStatus("error");
       }));
     };
     add().catch(() => {});
@@ -683,6 +794,7 @@ export default function App() {
     showSpotifyGuideRef,
     showSpotifyOverlayRef,
     showSteamQrRef,
+    showXboxGuideRef,
     showCloudPickerRef,
     themePickerFocusIndexRef,
     surfacePickerFocusIndexRef,
@@ -702,6 +814,9 @@ export default function App() {
     onOpenSteamQr: openSteamQr,
     onSteamDisconnect: disconnectSteam,
     steamConnectedRef,
+    onOpenXboxGuide: openXboxGuide,
+    onXboxDisconnect: disconnectXbox,
+    xboxConnectedRef,
     setThemePickerFocusIndex,
     setSurfacePickerFocusIndex,
     setArtPickerApp,
@@ -2303,6 +2418,11 @@ export default function App() {
       steamStatus={steamStatus}
       onOpenSteamQr={openSteamQr}
       onSteamDisconnect={disconnectSteam}
+      xboxStatus={xboxStatus}
+      xboxRefreshStatus={xboxRefreshStatus}
+      onOpenXboxGuide={openXboxGuide}
+      onXboxDisconnect={disconnectXbox}
+      onXboxRefresh={refreshXboxLibrary}
     />
   );
 
@@ -2810,6 +2930,14 @@ export default function App() {
         onClose={() => setShowSteamQr(false)}
         t={t}
       />
+      <XboxConnectGuide
+        open={showXboxGuide}
+        phase={xboxAuthPhase}
+        error={xboxAuthError}
+        onBegin={beginXboxAuth}
+        onClose={() => setShowXboxGuide(false)}
+        t={t}
+      />
       {showFileBrowser && (
         <FileBrowser
           mode={showFileBrowser}
@@ -3203,7 +3331,7 @@ export default function App() {
       )}
       </AppOverlays>
 
-      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || showSpotifyGuide || showSpotifyOverlay || showSteamQr || showCloudPicker || detailsApp) ? "none" : "auto" }}>
+      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || showSpotifyGuide || showSpotifyOverlay || showSteamQr || showXboxGuide || showCloudPicker || detailsApp) ? "none" : "auto" }}>
 
         {/* Topbar */}
         <AppHeader

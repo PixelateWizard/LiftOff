@@ -76,6 +76,20 @@ export interface StoreMetadata {
   fetchedAt: number;
 }
 
+export interface XboxStatus {
+  connected: boolean;
+  gamertag?: string;
+  xuid?: string;
+  owned_count: number;
+  updated_at?: number;
+}
+
+export interface XboxLoginPayload {
+  gamertag: string;
+  xuid: string;
+  owned_count: number;
+}
+
 // ── Settings value union types ─────────────────────────────────
 
 export type ThemeMode        =
@@ -289,6 +303,10 @@ export interface SettingsSteamItem extends SettingsItemBase {
   type: "steam";
 }
 
+export interface SettingsXboxItem extends SettingsItemBase {
+  type: "xbox";
+}
+
 export interface SettingsRefreshItem extends SettingsItemBase {
   type: "refresh";
 }
@@ -347,6 +365,7 @@ export type SettingsItem =
   | SettingsActionItem
   | SettingsSpotifyItem
   | SettingsSteamItem
+  | SettingsXboxItem
   | SettingsRefreshItem
   | SettingsUpdateItem
   | SettingsLinkItem

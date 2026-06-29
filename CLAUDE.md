@@ -1,7 +1,7 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed the Alpha 5.1 release metadata bump and changelog rebucket. `APP_VERSION`, npm package metadata/lockfile, Tauri config, Cargo metadata/lockfile, and current handoff version references now use `2.0.0-alpha-5.1`; `CHANGELOG.md` has an empty `Unreleased` section followed by `## [2.0.0-alpha-5.1] - Alpha 5.1` containing the prior Unreleased notes. Website-facing release text was left unchanged for the alpha-only bump. Validated with `npm.cmd run tauri -- info`, `npm.cmd run build`, stale-version sweeps, and `git diff --check`; only the existing Vite chunk-size and CRLF notices remained.
+- Completed PR2 from `spec-xbox-auth.md`: added the generic account-icon Microsoft account Settings row and browser sign-in guide, wired Xbox auth/status/refresh/disconnect events into frontend status and library refresh, added inline connected refresh feedback, mapped `NO_XBOX_ACCOUNT` / `CHILD_ACCOUNT` to localized errors, added Xbox status/login TypeScript types plus English and TODO French strings, made the not-installed-games toggle source-neutral, and confirmed the grid filtering/dimming path is already based on `installed:false` rather than Steam-only. No Microsoft or Xbox logo assets were added. Validated with `npm.cmd run build`, `cargo check`, and `git diff --check`; only the existing Vite chunk-size warning, Rust unused-helper/path warning, and CRLF notices remained. Live Microsoft sign-in/titlehub response verification is still the hands-on gate.
 
 ## 🐛 Active Bugs
 

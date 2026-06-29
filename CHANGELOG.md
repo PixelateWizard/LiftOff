@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+- **Microsoft account Settings connection** - The Library settings screen now has a generic account-icon Microsoft account row for Xbox/Game Pass title-history import, with a browser sign-in guide, Credential Manager security note, connected gamertag/title-count display, disconnect, inline refresh-library action, and localized handling for no-Xbox-profile and child-account errors. Xbox login, refresh, disconnect, and account-change events now update the frontend status row and refresh the library, and the not-installed-games toggle is source-neutral so imported Xbox entries use the same dimmed `installed:false` card treatment as Steam-owned entries.
+- **Xbox account backend auth foundation** - LiftOff now has backend Microsoft/Xbox PKCE auth using the baked-in public Azure Client ID, stores the Xbox refresh token in Windows Credential Manager, caches account metadata and PC title-history results under app data, exposes Xbox account status/auth/refresh/disconnect Tauri commands and events for the upcoming Settings UI, refreshes the cache quietly on startup when connected, and merges cached not-installed Xbox titles into the Games library as dimmed `installed:false` Xbox entries while skipping installed package-family matches.
+
 ## [2.0.0-alpha-5.1] - Alpha 5.1
 
 ### Added

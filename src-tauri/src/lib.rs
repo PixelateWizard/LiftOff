@@ -53,6 +53,11 @@ const XCLOUD_REMOTE_URL: &str =
 const XCLOUD_BUNDLED_JSON: &str = include_str!("../../src/data/xcloudGames.json");
 const XCLOUD_REFRESH_INTERVAL_SECS: u64 = 24 * 60 * 60;
 const CREATE_NO_WINDOW: u32 = 0x08000000;
+const XBOX_CLIENT_ID: &str = "eb621939-a417-4b39-b140-e6d599edf168";
+const XBOX_REDIRECT_PORT: u16 = 28456;
+const XBOX_KEYRING_SERVICE: &str = "com.taylo.liftoff.xbox";
+const XBOX_KEYRING_USER: &str = "refresh_token";
+const XBOX_SCOPES: &str = "XboxLive.signin offline_access";
 
 /// PNG size for embedded icons. UI tiles are ~48px; 128px gives headroom for high-DPI / focus scale
 /// without huge JSON payloads (256px would be sharper but much larger base64).
@@ -1015,6 +1020,44 @@ pub struct SteamOwnedGameCache {
     pub icon_hash: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct XboxAccountMeta {
+    #[serde(default)]
+    pub xuid: String,
+    #[serde(default)]
+    pub gamertag: String,
+    #[serde(default)]
+    pub owned_count: usize,
+    #[serde(default)]
+    pub updated_at: i64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct XboxStatus {
+    pub connected: bool,
+    pub gamertag: Option<String>,
+    pub xuid: Option<String>,
+    pub owned_count: usize,
+    pub updated_at: Option<i64>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct XboxLoginPayload {
+    pub gamertag: String,
+    pub xuid: String,
+    pub owned_count: usize,
+}
+
+#[derive(Serialize, Deserialize, Clone, Default)]
+pub struct XboxOwnedTitleCache {
+    pub title_id: String,
+    pub name: String,
+    #[serde(default)]
+    pub pfn: Option<String>,
+    #[serde(default)]
+    pub last_played: Option<i64>,
+}
+
 struct SteamSession {
     account_name: String,
     steamid: String,
@@ -1045,6 +1088,14 @@ fn steam_account_path() -> std::path::PathBuf {
 
 fn steam_owned_path() -> std::path::PathBuf {
     liftoff_dir().join("steam_owned.json")
+}
+
+fn xbox_account_path() -> std::path::PathBuf {
+    liftoff_dir().join("xbox_account.json")
+}
+
+fn xbox_owned_path() -> std::path::PathBuf {
+    liftoff_dir().join("xbox_owned.json")
 }
 
 fn load_steam_account_meta() -> Option<SteamAccountMeta> {
@@ -1098,6 +1149,60 @@ fn save_owned_steam_games(games: &[SteamOwnedGameCache]) {
     }
     if let Ok(json) = serde_json::to_string_pretty(games) {
         let _ = std::fs::write(path, json);
+    }
+}
+
+fn load_xbox_account_meta() -> Option<XboxAccountMeta> {
+    std::fs::read_to_string(xbox_account_path())
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+}
+
+fn save_xbox_account_meta(meta: &XboxAccountMeta) {
+    let path = xbox_account_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(json) = serde_json::to_string_pretty(meta) {
+        let _ = std::fs::write(path, json);
+    }
+}
+
+fn load_xbox_owned_titles() -> Vec<XboxOwnedTitleCache> {
+    std::fs::read_to_string(xbox_owned_path())
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+fn save_xbox_owned_titles(titles: &[XboxOwnedTitleCache]) {
+    let path = xbox_owned_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(json) = serde_json::to_string_pretty(titles) {
+        let _ = std::fs::write(path, json);
+    }
+}
+
+fn xbox_refresh_entry() -> keyring::Result<keyring::Entry> {
+    keyring::Entry::new(XBOX_KEYRING_SERVICE, XBOX_KEYRING_USER)
+}
+
+fn store_xbox_refresh_token(token: &str) -> Result<(), String> {
+    xbox_refresh_entry()
+        .map_err(|e| format!("keyring init failed: {e}"))?
+        .set_password(token)
+        .map_err(|e| format!("keyring store failed: {e}"))
+}
+
+fn load_xbox_refresh_token() -> Option<String> {
+    xbox_refresh_entry().ok()?.get_password().ok()
+}
+
+fn clear_xbox_refresh_token() {
+    if let Ok(entry) = xbox_refresh_entry() {
+        let _ = entry.delete_credential();
     }
 }
 
@@ -1610,6 +1715,43 @@ fn merge_owned_steam_games(apps: &mut Vec<AppEntry>, installed: &[AppEntry]) {
     }
 }
 
+fn merge_owned_xbox_titles(apps: &mut Vec<AppEntry>) {
+    let installed_pfns: std::collections::HashSet<String> = apps
+        .iter()
+        .filter(|app| app.installed)
+        .filter_map(|app| app.id.split_once('!').map(|(pfn, _)| pfn))
+        .filter(|pfn| !pfn.trim().is_empty())
+        .map(|pfn| pfn.to_lowercase())
+        .collect();
+
+    for title in load_xbox_owned_titles() {
+        if title.name.trim().is_empty() || title.title_id.trim().is_empty() {
+            continue;
+        }
+        if let Some(pfn) = &title.pfn {
+            if installed_pfns.contains(&pfn.to_lowercase()) {
+                continue;
+            }
+        }
+        let id = format!("xbox-owned:{}", title.title_id);
+        if apps.iter().any(|app| app.id == id) {
+            continue;
+        }
+        apps.push(AppEntry {
+            id,
+            name: title.name,
+            icon_base64: None,
+            launch_path: format!("ms-windows-store://pdp/?productId={}", title.title_id),
+            app_type: "game".to_string(),
+            source: "xbox".to_string(),
+            install_dir: None,
+            installed: false,
+            last_played: title.last_played,
+            ..Default::default()
+        });
+    }
+}
+
 #[tauri::command]
 fn steam_account_status() -> SteamStatus {
     steam_status_inner()
@@ -1823,6 +1965,18 @@ async fn spotify_begin_auth(
 }
 
 fn wait_for_callback(listener: TcpListener) -> Result<(String, String), String> {
+    wait_for_callback_page(
+        listener,
+        "LiftOff is connected to Spotify",
+        "You can close this tab and return to LiftOff.",
+    )
+}
+
+fn wait_for_callback_page(
+    listener: TcpListener,
+    title: &str,
+    message: &str,
+) -> Result<(String, String), String> {
     listener.set_nonblocking(false).ok();
     let (mut stream, _) = listener
         .accept()
@@ -1836,7 +1990,10 @@ fn wait_for_callback(listener: TcpListener) -> Result<(String, String), String> 
     let first = req.lines().next().unwrap_or("");
     let path = first.split_whitespace().nth(1).unwrap_or("");
 
-    let body = "<html><body style='font-family:sans-serif;background:#0b110d;color:#eafff6;text-align:center;padding-top:80px'><h2>LiftOff is connected to Spotify</h2><p>You can close this tab and return to LiftOff.</p></body></html>";
+    let body = format!(
+        "<html><body style='font-family:sans-serif;background:#0b110d;color:#eafff6;text-align:center;padding-top:80px'><h2>{}</h2><p>{}</p></body></html>",
+        title, message
+    );
     let resp = format!(
         "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: {}\r\n\r\n{}",
         body.len(),
@@ -1865,6 +2022,449 @@ fn wait_for_callback(listener: TcpListener) -> Result<(String, String), String> 
         return Err("No authorization code in callback.".into());
     }
     Ok((code, state))
+}
+
+// Xbox / Microsoft account auth --------------------------------------------
+//
+// Auth uses Microsoft Identity Platform OAuth2 with PKCE, then exchanges the
+// Microsoft access token for Xbox Live and XSTS tokens. The refresh token stays
+// in Windows Credential Manager; local JSON stores only account metadata and a
+// title-history cache for not-installed Game Pass-style library entries.
+
+fn xbox_status_inner() -> XboxStatus {
+    let Some(meta) = load_xbox_account_meta() else {
+        return XboxStatus::default();
+    };
+    let connected = !meta.xuid.is_empty() && load_xbox_refresh_token().is_some();
+    XboxStatus {
+        connected,
+        gamertag: if meta.gamertag.is_empty() {
+            None
+        } else {
+            Some(meta.gamertag)
+        },
+        xuid: if meta.xuid.is_empty() {
+            None
+        } else {
+            Some(meta.xuid)
+        },
+        owned_count: meta.owned_count,
+        updated_at: if meta.updated_at > 0 {
+            Some(meta.updated_at)
+        } else {
+            None
+        },
+    }
+}
+
+fn emit_xbox_account_changed(app: &tauri::AppHandle) {
+    let _ = app.emit("xbox-account-changed", xbox_status_inner());
+}
+
+fn xbox_http() -> Result<reqwest::blocking::Client, String> {
+    reqwest::blocking::Client::builder()
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(30))
+        .build()
+        .map_err(|e| format!("HTTP client failed: {e}"))
+}
+
+fn xbox_exchange_code(
+    code: &str,
+    verifier: &str,
+    redirect_uri: &str,
+) -> Result<(String, String), String> {
+    #[derive(Deserialize)]
+    struct TokenResponse {
+        access_token: String,
+        refresh_token: String,
+    }
+
+    let resp = xbox_http()?
+        .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
+        .form(&[
+            ("client_id", XBOX_CLIENT_ID),
+            ("grant_type", "authorization_code"),
+            ("code", code),
+            ("redirect_uri", redirect_uri),
+            ("code_verifier", verifier),
+        ])
+        .send()
+        .map_err(|e| format!("Token exchange request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("Token exchange HTTP {}", resp.status().as_u16()));
+    }
+    let parsed = resp
+        .json::<TokenResponse>()
+        .map_err(|e| format!("Token exchange parse failed: {e}"))?;
+    Ok((parsed.access_token, parsed.refresh_token))
+}
+
+fn xbox_refresh_access_token(refresh_token: &str) -> Result<(String, String), String> {
+    #[derive(Deserialize)]
+    struct TokenResponse {
+        access_token: String,
+        #[serde(default)]
+        refresh_token: Option<String>,
+    }
+
+    let resp = xbox_http()?
+        .post("https://login.microsoftonline.com/consumers/oauth2/v2.0/token")
+        .form(&[
+            ("client_id", XBOX_CLIENT_ID),
+            ("grant_type", "refresh_token"),
+            ("refresh_token", refresh_token),
+            ("scope", XBOX_SCOPES),
+        ])
+        .send()
+        .map_err(|e| format!("Token refresh request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("Token refresh HTTP {}", resp.status().as_u16()));
+    }
+    let parsed = resp
+        .json::<TokenResponse>()
+        .map_err(|e| format!("Token refresh parse failed: {e}"))?;
+    Ok((
+        parsed.access_token,
+        parsed
+            .refresh_token
+            .filter(|token| !token.trim().is_empty())
+            .unwrap_or_else(|| refresh_token.to_string()),
+    ))
+}
+
+fn xbox_get_xbl_token(ms_access_token: &str) -> Result<(String, String), String> {
+    #[derive(Deserialize)]
+    #[allow(non_snake_case)]
+    struct XuiClaim {
+        uhs: String,
+    }
+    #[derive(Deserialize)]
+    #[allow(non_snake_case)]
+    struct DisplayClaims {
+        xui: Vec<XuiClaim>,
+    }
+    #[derive(Deserialize)]
+    #[allow(non_snake_case)]
+    struct XblResponse {
+        Token: String,
+        DisplayClaims: DisplayClaims,
+    }
+
+    let body = serde_json::json!({
+        "Properties": {
+            "AuthMethod": "RPS",
+            "SiteName": "user.auth.xboxlive.com",
+            "RpsTicket": format!("d={}", ms_access_token),
+        },
+        "RelyingParty": "http://auth.xboxlive.com",
+        "TokenType": "JWT",
+    });
+    let resp = xbox_http()?
+        .post("https://user.auth.xboxlive.com/user/authenticate")
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json")
+        .json(&body)
+        .send()
+        .map_err(|e| format!("XBL auth request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("XBL auth HTTP {}", resp.status().as_u16()));
+    }
+    let parsed = resp
+        .json::<XblResponse>()
+        .map_err(|e| format!("XBL auth parse failed: {e}"))?;
+    let uhs = parsed
+        .DisplayClaims
+        .xui
+        .into_iter()
+        .next()
+        .map(|claim| claim.uhs)
+        .unwrap_or_default();
+    Ok((parsed.Token, uhs))
+}
+
+fn xbox_get_xsts_token(xbl_token: &str) -> Result<(String, String, String, String), String> {
+    #[derive(Deserialize)]
+    #[allow(non_snake_case)]
+    struct XuiClaim {
+        uhs: String,
+        #[serde(default)]
+        gtg: String,
+        #[serde(default)]
+        xid: String,
+    }
+    #[derive(Deserialize)]
+    #[allow(non_snake_case)]
+    struct DisplayClaims {
+        xui: Vec<XuiClaim>,
+    }
+    #[derive(Deserialize)]
+    #[allow(non_snake_case)]
+    struct XstsResponse {
+        Token: String,
+        DisplayClaims: DisplayClaims,
+    }
+
+    let body = serde_json::json!({
+        "Properties": {
+            "SandboxId": "RETAIL",
+            "UserTokens": [xbl_token],
+        },
+        "RelyingParty": "http://xboxlive.com",
+        "TokenType": "JWT",
+    });
+    let resp = xbox_http()?
+        .post("https://xsts.auth.xboxlive.com/xsts/authorize")
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json")
+        .json(&body)
+        .send()
+        .map_err(|e| format!("XSTS auth request failed: {e}"))?;
+
+    if resp.status().as_u16() == 401 {
+        let body_text = resp.text().unwrap_or_default();
+        if body_text.contains("2148916233") {
+            return Err("NO_XBOX_ACCOUNT".to_string());
+        }
+        if body_text.contains("2148916238") {
+            return Err("CHILD_ACCOUNT".to_string());
+        }
+        return Err(format!("XSTS auth HTTP 401: {body_text}"));
+    }
+    if !resp.status().is_success() {
+        return Err(format!("XSTS auth HTTP {}", resp.status().as_u16()));
+    }
+    let parsed = resp
+        .json::<XstsResponse>()
+        .map_err(|e| format!("XSTS auth parse failed: {e}"))?;
+    let claim = parsed
+        .DisplayClaims
+        .xui
+        .into_iter()
+        .next()
+        .ok_or_else(|| "XSTS claims missing".to_string())?;
+    if claim.xid.trim().is_empty() {
+        return Err("XSTS xuid missing".to_string());
+    }
+    Ok((parsed.Token, claim.uhs, claim.gtg, claim.xid))
+}
+
+fn xbox_fetch_title_history(
+    xuid: &str,
+    userhash: &str,
+    xsts_token: &str,
+) -> Result<Vec<XboxOwnedTitleCache>, String> {
+    #[derive(Deserialize, Default)]
+    struct Detail {
+        #[serde(default)]
+        pfn: Option<String>,
+    }
+    #[derive(Deserialize, Default)]
+    struct TitleHistory {
+        #[serde(rename = "lastTimePlayed", default)]
+        last_time_played: Option<String>,
+    }
+    #[derive(Deserialize, Default)]
+    struct Title {
+        #[serde(rename = "titleId", default)]
+        title_id: serde_json::Value,
+        #[serde(default)]
+        name: String,
+        #[serde(default)]
+        devices: Vec<String>,
+        #[serde(default)]
+        pfn: Option<String>,
+        #[serde(default)]
+        detail: Option<Detail>,
+        #[serde(rename = "titleHistory", default)]
+        title_history: Option<TitleHistory>,
+    }
+    #[derive(Deserialize, Default)]
+    struct TitlesResponse {
+        #[serde(default)]
+        titles: Vec<Title>,
+    }
+
+    let url = format!(
+        "https://titlehub.xboxlive.com/users/xuid({})/titles/titlehistory/decoration/detail",
+        xuid
+    );
+    let auth_header = format!("XBL3.0 x={};{}", userhash, xsts_token);
+    let resp = xbox_http()?
+        .get(&url)
+        .header("Authorization", auth_header)
+        .header("x-xbl-contract-version", "2")
+        .header("Accept-Language", "en-US")
+        .send()
+        .map_err(|e| format!("Title history request failed: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("Title history HTTP {}", resp.status().as_u16()));
+    }
+    let parsed = resp
+        .json::<TitlesResponse>()
+        .map_err(|e| format!("Title history parse failed: {e}"))?;
+
+    Ok(parsed
+        .titles
+        .into_iter()
+        .filter(|title| {
+            !title.name.trim().is_empty()
+                && title.devices.iter().any(|device| {
+                    let device = device.to_lowercase();
+                    device == "pc" || device == "win32"
+                })
+        })
+        .filter_map(|title| {
+            let title_id = match title.title_id {
+                serde_json::Value::String(value) => value,
+                serde_json::Value::Number(value) => value.to_string(),
+                _ => String::new(),
+            };
+            if title_id.trim().is_empty() {
+                return None;
+            }
+            let last_played = title
+                .title_history
+                .as_ref()
+                .and_then(|history| history.last_time_played.as_deref())
+                .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
+                .map(|dt| dt.timestamp());
+            let detail_pfn = title.detail.and_then(|detail| detail.pfn);
+            Some(XboxOwnedTitleCache {
+                title_id,
+                name: title.name,
+                pfn: title
+                    .pfn
+                    .or(detail_pfn)
+                    .map(|pfn| pfn.trim().to_string())
+                    .filter(|pfn| !pfn.is_empty()),
+                last_played,
+            })
+        })
+        .collect())
+}
+
+fn run_xbox_login(
+    app: &tauri::AppHandle,
+) -> Result<(String, String, Vec<XboxOwnedTitleCache>), String> {
+    let verifier = random_url_safe(64);
+    let challenge = pkce_challenge(&verifier);
+    let state = random_url_safe(16);
+    let redirect_uri = format!("http://localhost:{}/callback", XBOX_REDIRECT_PORT);
+    let listener = TcpListener::bind(("127.0.0.1", XBOX_REDIRECT_PORT))
+        .map_err(|e| format!("Could not bind redirect port {}: {}", XBOX_REDIRECT_PORT, e))?;
+
+    let auth_url = format!(
+        "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?client_id={}&response_type=code&redirect_uri={}&scope={}&code_challenge={}&code_challenge_method=S256&state={}&prompt=select_account",
+        urlencoding::encode(XBOX_CLIENT_ID),
+        urlencoding::encode(&redirect_uri),
+        urlencoding::encode(XBOX_SCOPES),
+        urlencoding::encode(&challenge),
+        urlencoding::encode(&state),
+    );
+
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_url(auth_url, None::<&str>)
+        .map_err(|e| format!("Could not open browser: {e}"))?;
+
+    let (code, returned_state) = wait_for_callback_page(
+        listener,
+        "LiftOff is connected to Microsoft",
+        "You can close this tab and return to LiftOff.",
+    )?;
+    if returned_state != state {
+        return Err("State mismatch; aborting Microsoft authorization.".to_string());
+    }
+
+    let (ms_access_token, refresh_token) = xbox_exchange_code(&code, &verifier, &redirect_uri)?;
+    store_xbox_refresh_token(&refresh_token)?;
+    let (xbl_token, _) = xbox_get_xbl_token(&ms_access_token)?;
+    let (xsts_token, userhash, gamertag, xuid) = xbox_get_xsts_token(&xbl_token)?;
+    let titles = xbox_fetch_title_history(&xuid, &userhash, &xsts_token)?;
+    Ok((gamertag, xuid, titles))
+}
+
+fn xbox_xsts_from_refresh() -> Result<(String, String, String, String), String> {
+    let refresh_token =
+        load_xbox_refresh_token().ok_or_else(|| "Xbox refresh token unavailable".to_string())?;
+    let (ms_access_token, new_refresh) = xbox_refresh_access_token(&refresh_token)?;
+    let _ = store_xbox_refresh_token(&new_refresh);
+    let (xbl_token, _) = xbox_get_xbl_token(&ms_access_token)?;
+    xbox_get_xsts_token(&xbl_token)
+}
+
+fn refresh_xbox_owned_titles(app_handle: &tauri::AppHandle) -> Result<usize, String> {
+    let status = xbox_status_inner();
+    let Some(xuid) = status.xuid else {
+        return Err("Xbox account not connected".to_string());
+    };
+    let (xsts_token, userhash, gamertag, _) = xbox_xsts_from_refresh()?;
+    let titles = xbox_fetch_title_history(&xuid, &userhash, &xsts_token)?;
+    let owned_count = titles.len();
+    save_xbox_owned_titles(&titles);
+    save_xbox_account_meta(&XboxAccountMeta {
+        xuid,
+        gamertag,
+        owned_count,
+        updated_at: unix_now_i64(),
+    });
+    emit_xbox_account_changed(app_handle);
+    Ok(owned_count)
+}
+
+#[tauri::command]
+fn xbox_account_status() -> XboxStatus {
+    xbox_status_inner()
+}
+
+#[tauri::command]
+fn xbox_begin_auth(app_handle: tauri::AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || match run_xbox_login(&app_handle) {
+        Ok((gamertag, xuid, titles)) => {
+            let owned_count = titles.len();
+            save_xbox_owned_titles(&titles);
+            save_xbox_account_meta(&XboxAccountMeta {
+                xuid: xuid.clone(),
+                gamertag: gamertag.clone(),
+                owned_count,
+                updated_at: unix_now_i64(),
+            });
+            let payload = XboxLoginPayload {
+                gamertag,
+                xuid,
+                owned_count,
+            };
+            let _ = app_handle.emit("xbox-login-success", payload);
+            emit_xbox_account_changed(&app_handle);
+        }
+        Err(error) => {
+            let _ = app_handle.emit("xbox-login-error", error);
+        }
+    });
+    Ok(())
+}
+
+#[tauri::command]
+fn xbox_refresh_library(app_handle: tauri::AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || match refresh_xbox_owned_titles(&app_handle) {
+        Ok(_) => {
+            let _ = app_handle.emit("xbox-refresh-done", ());
+        }
+        Err(error) => {
+            let _ = app_handle.emit("xbox-refresh-error", error);
+        }
+    });
+    Ok(())
+}
+
+#[tauri::command]
+fn xbox_disconnect(app_handle: tauri::AppHandle) -> Result<(), String> {
+    clear_xbox_refresh_token();
+    let _ = std::fs::remove_file(xbox_account_path());
+    let _ = std::fs::remove_file(xbox_owned_path());
+    emit_xbox_account_changed(&app_handle);
+    Ok(())
 }
 
 struct SpotifyTokens {
@@ -5505,6 +6105,9 @@ fn get_apps() -> Vec<AppEntry> {
         apps.extend(installed.clone());
         merge_owned_steam_games(&mut apps, &installed);
     }
+    if settings.scan_xbox {
+        merge_owned_xbox_titles(&mut apps);
+    }
 
     // 4. Battle.net Games scan
     if settings.scan_battlenet {
@@ -5619,6 +6222,9 @@ fn get_all_apps() -> Vec<AppEntry> {
         let installed = scan_steam_games();
         apps.extend(installed.clone());
         merge_owned_steam_games(&mut apps, &installed);
+    }
+    if settings.scan_xbox {
+        merge_owned_xbox_titles(&mut apps);
     }
 
     if settings.scan_battlenet {
@@ -6974,6 +7580,10 @@ pub fn run() {
             steam_account_status,
             steam_logout,
             fetch_steam_owned_games,
+            xbox_account_status,
+            xbox_begin_auth,
+            xbox_refresh_library,
+            xbox_disconnect,
             steam_install,
             steam_uninstall,
             steam_verify,
@@ -7030,6 +7640,12 @@ pub fn run() {
             tauri::async_runtime::spawn(async {
                 let _ = load_xcloud_games(false).await;
             });
+            if xbox_status_inner().connected {
+                let app_handle_xbox = app.handle().clone();
+                tauri::async_runtime::spawn_blocking(move || {
+                    let _ = refresh_xbox_owned_titles(&app_handle_xbox);
+                });
+            }
             Ok(())
         })
         .run(tauri::generate_context!())

@@ -2183,6 +2183,7 @@ name = "liftoff"
 version = "2.0.0-alpha-5.1"
 dependencies = [
  "base64 0.22.1",
+ "chrono",
  "dirs 5.0.1",
  "getrandom 0.2.17",
  "keyring",
