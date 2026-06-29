@@ -90,6 +90,11 @@
     "productId": "9PP11S01XRNT"
   },
   {
+    "name": "Abyssus",
+    "slug": "abyssus",
+    "productId": "9P8NKVVB0XQJ"
+  },
+  {
     "name": "Ace Attorney Investigations Collection",
     "slug": "ace-attorney-investigations-collection",
     "productId": "9P25VS66VJVN"
@@ -740,6 +745,11 @@
     "productId": "9NR81PCSLLB6"
   },
   {
+    "name": "BLiNX: The Time Sweeper",
+    "slug": "blinx-the-time-sweeper",
+    "productId": "BRG51C5MWFSG"
+  },
+  {
     "name": "Blood Bowl 3",
     "slug": "blood-bowl-3",
     "productId": "9N0BT2QC646K"
@@ -1093,6 +1103,11 @@
     "name": "Citizen Sleeper 2: Starward Vector",
     "slug": "citizen-sleeper-2-starward-vector",
     "productId": "9MWCF1XBJBR2"
+  },
+  {
+    "name": "City Hunter",
+    "slug": "city-hunter",
+    "productId": "9NW5PD1LG102"
   },
   {
     "name": "Clair Obscur: Expedition 33",
@@ -2135,6 +2150,11 @@
     "productId": "9PBNGCVBGML0"
   },
   {
+    "name": "FAR CRY 6",
+    "slug": "far-cry-6",
+    "productId": "9N661LCNBH8J"
+  },
+  {
     "name": "Far Cry Primal",
     "slug": "far-cry-primal",
     "productId": "9P8X98F4BDC9"
@@ -2773,6 +2793,11 @@
     "name": "Harry Potter: Quidditch Champions",
     "slug": "harry-potter-quidditch-champions",
     "productId": "9P1GN7LSJZXQ"
+  },
+  {
+    "name": "Harvest Moon: Mad Dash",
+    "slug": "harvest-moon-mad-dash",
+    "productId": "9ND1VD3Q5Q0B"
   },
   {
     "name": "Harvest Moon: The Winds of Anthos",
@@ -4598,6 +4623,11 @@
     "name": "PAW Patrol Mighty Pups Save Adventure Bay",
     "slug": "paw-patrol-mighty-pups-save-adventure-bay",
     "productId": "9N3TF03KNTBD"
+  },
+  {
+    "name": "PAW Patrol Rescue Wheels: Championship",
+    "slug": "paw-patrol-rescue-wheels-championship",
+    "productId": "9NJQ3J8L1MDL"
   },
   {
     "name": "PAW Patrol The Movie: Adventure City Calls",
