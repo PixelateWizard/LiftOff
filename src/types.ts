@@ -91,6 +91,13 @@ export interface XboxLoginPayload {
   owned_count: number;
 }
 
+export interface XboxInstallProgress {
+  productId: string;
+  pct: number;
+  state: string;
+  errorCode: number;
+}
+
 // ── Settings value union types ─────────────────────────────────
 
 export type ThemeMode        =

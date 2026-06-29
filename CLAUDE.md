@@ -1,7 +1,7 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed remaining Xbox trailer gray-screen playback follow-up: DOOM: The Dark Ages still works, and Hades / High On Life style Microsoft Store HLS trailers now route through lazy-loaded `hls.js` in the Details overlay instead of relying on WebView2 native HLS playback that could stall on a gray `0:00` video surface.
+- Completed Xbox Game Pass silent-install spec pass: backend Store InstallControl commands/events are wired for probe/start/cancel/progress where supported, Details consumes Xbox install progress with cancel/fallback behavior, and changelog validation is complete.
 
 ## 🐛 Active Bugs
 

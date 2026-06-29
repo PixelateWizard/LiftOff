@@ -310,6 +310,7 @@ export default function App() {
   const [installSize, setInstallSize] = useState({});
   const [downloadSize, setDownloadSize] = useState({});
   const [installProgress, setInstallProgress] = useState({});
+  const [xboxInstallProgress, setXboxInstallProgress] = useState({});
   const [installErrors, setInstallErrors] = useState({});
   const [steamUninstallRequest, setSteamUninstallRequest] = useState(null);
   const {
@@ -1140,6 +1141,29 @@ export default function App() {
     patchLibraryApp(id, { installing: false, installProgress: undefined });
   }, [patchLibraryApp]);
 
+  const xboxAppIdForProductId = useCallback((productId) => {
+    const normalized = String(productId ?? "").trim().toLowerCase();
+    if (!normalized) return null;
+    const hit = [...allAppsRef.current, ...appsRef.current].find((app) => (
+      String(xboxProductIdFor(app) ?? "").trim().toLowerCase() === normalized
+    ));
+    return hit?.id ?? null;
+  }, [allAppsRef, appsRef]);
+
+  const setXboxInstallProgressForApp = useCallback((id, progress) => {
+    setXboxInstallProgress((prev) => ({ ...prev, [id]: progress }));
+    patchLibraryApp(id, { installing: true, installProgress: progress.pct ?? 0 });
+  }, [patchLibraryApp]);
+
+  const clearXboxInstallProgressForApp = useCallback((id) => {
+    setXboxInstallProgress((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    patchLibraryApp(id, { installing: false, installProgress: undefined });
+  }, [patchLibraryApp]);
+
   const setInstallErrorForApp = useCallback((id, code) => {
     setInstallErrors((prev) => ({ ...prev, [id]: code }));
   }, []);
@@ -1197,6 +1221,36 @@ export default function App() {
     });
   }, [clearInstallErrorForApp, setInstallErrorForApp]);
 
+  const openXboxInstallFallback = useCallback((app) => {
+    const productId = xboxProductIdFor(app);
+    const uri = productId ? `ms-windows-store://pdp/?ProductId=${productId}` : "xbox://";
+    invoke("open_uri", { uri }).catch((error) => console.warn("Xbox install handoff failed", error));
+  }, []);
+
+  const startXboxInstall = useCallback((app) => {
+    const productId = xboxProductIdFor(app);
+    if (!productId) {
+      openXboxInstallFallback(app);
+      return;
+    }
+    clearInstallErrorForApp(app.id);
+    setXboxInstallProgressForApp(app.id, { productId, pct: 0, state: "pending", errorCode: 0 });
+    invoke("xbox_install_product", { productId }).catch((error) => {
+      clearXboxInstallProgressForApp(app.id);
+      setInstallErrorForApp(app.id, "generic");
+      console.warn("Xbox silent install failed", error);
+    });
+  }, [clearInstallErrorForApp, clearXboxInstallProgressForApp, openXboxInstallFallback, setInstallErrorForApp, setXboxInstallProgressForApp]);
+
+  const cancelXboxInstall = useCallback((app) => {
+    const productId = xboxProductIdFor(app);
+    if (!productId) return;
+    invoke("xbox_cancel_install", { productId }).catch((error) => {
+      setInstallErrorForApp(app.id, "generic");
+      console.warn("Xbox install cancel failed", error);
+    });
+  }, [setInstallErrorForApp]);
+
   const applySteamProgress = useCallback((payload) => {
     if (!payload) return;
     const appid = String(payload.appid ?? payload.appId ?? "");
@@ -1220,6 +1274,33 @@ export default function App() {
     clearInstallErrorForApp(id);
     setInstallProgressForApp(id, progress);
   }, [clearInstallErrorForApp, clearInstallProgressForApp, patchLibraryApp, setInstallProgressForApp]);
+
+  const applyXboxProgress = useCallback((payload) => {
+    if (!payload) return;
+    const productId = String(payload.productId ?? payload.product_id ?? "");
+    if (!productId) return;
+    const id = xboxAppIdForProductId(productId);
+    if (!id) return;
+    const progress = {
+      productId,
+      pct: Number(payload.pct ?? 0),
+      state: String(payload.state ?? "downloading"),
+      errorCode: Number(payload.errorCode ?? payload.error_code ?? 0),
+    };
+    if (progress.state === "complete") {
+      clearXboxInstallProgressForApp(id);
+      patchLibraryApp(id, { installed: true, installing: false, installProgress: undefined });
+      refreshLibraryRef.current();
+      return;
+    }
+    if (progress.state === "error" || progress.state === "canceled") {
+      clearXboxInstallProgressForApp(id);
+      if (progress.state === "error") setInstallErrorForApp(id, "generic");
+      return;
+    }
+    clearInstallErrorForApp(id);
+    setXboxInstallProgressForApp(id, progress);
+  }, [clearInstallErrorForApp, clearXboxInstallProgressForApp, patchLibraryApp, setInstallErrorForApp, setXboxInstallProgressForApp, xboxAppIdForProductId]);
 
   const watchedSteamAppIds = useMemo(() => Object.values(installProgress)
     .filter((progress) => progress?.appid && progress.state !== "uninstalling" && progress.state !== "complete")
@@ -1328,6 +1409,20 @@ export default function App() {
         clearInstallProgressForApp(id);
         setInstallErrorForApp(id, "watchError");
       }));
+      unsubs.push(await listen("xbox-install-progress", (event) => {
+        applyXboxProgress(event.payload ?? {});
+      }));
+      unsubs.push(await listen("xbox-install-error", (event) => {
+        const payload = event.payload ?? {};
+        const productId = String(payload.productId ?? payload.product_id ?? "");
+        const id = xboxAppIdForProductId(productId);
+        if (!id) return;
+        clearXboxInstallProgressForApp(id);
+        setInstallErrorForApp(id, "generic");
+      }));
+      unsubs.push(await listen("library-rescan-needed", () => {
+        refreshLibraryRef.current();
+      }));
       if (disposed) {
         while (unsubs.length) unsubs.pop()?.();
       }
@@ -1337,7 +1432,7 @@ export default function App() {
       disposed = true;
       while (unsubs.length) unsubs.pop()?.();
     };
-  }, [applySteamProgress, clearInstallProgressForApp, patchLibraryApp, setInstallErrorForApp]);
+  }, [applySteamProgress, applyXboxProgress, clearInstallProgressForApp, clearXboxInstallProgressForApp, patchLibraryApp, setInstallErrorForApp, xboxAppIdForProductId]);
 
   const detailsArtForceAttemptRef = useRef("");
   useEffect(() => {
@@ -2745,6 +2840,7 @@ export default function App() {
           canInstall={String(detailsApp.source ?? "").toLowerCase() === "steam" && !!steamAppIdFor(detailsApp)}
           canXboxInstall={String(detailsApp.source ?? "").toLowerCase() === "xbox" && detailsApp.installed === false}
           installProgress={installProgress[detailsApp.id]}
+          xboxInstallProgress={xboxInstallProgress[detailsApp.id]}
           installError={installErrors[detailsApp.id]}
           running={isRunning(detailsApp.id)}
           hapticEnabled={settings.haptic_feedback ?? true}
@@ -2755,11 +2851,9 @@ export default function App() {
             setCloseRequest({ app, force: false });
           }}
           onInstall={() => startSteamInstall(detailsApp)}
-          onXboxInstall={() => {
-            const productId = xboxProductIdFor(detailsApp);
-            const uri = productId ? `ms-windows-store://pdp/?ProductId=${productId}` : "xbox://";
-            invoke("open_uri", { uri }).catch((error) => console.warn("Xbox install handoff failed", error));
-          }}
+          onXboxInstall={() => startXboxInstall(detailsApp)}
+          onXboxCancelInstall={() => cancelXboxInstall(detailsApp)}
+          onXboxInstallFallback={() => openXboxInstallFallback(detailsApp)}
           onCancelInstall={() => cancelSteamInstall(detailsApp)}
           onUninstall={String(detailsApp.source ?? "").toLowerCase() === "steam" ? () => setSteamUninstallRequest(detailsApp) : undefined}
           onVerify={String(detailsApp.source ?? "").toLowerCase() === "steam" ? () => verifySteamInstall(detailsApp) : undefined}

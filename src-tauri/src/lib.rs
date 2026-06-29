@@ -2636,6 +2636,621 @@ fn xbox_disconnect(app_handle: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+const XBOX_INSTALL_CLIENT_ID: &str = "LiftOff";
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct XboxInstallProgress {
+    product_id: String,
+    pct: f64,
+    state: String,
+    error_code: u32,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct XboxInstallError {
+    product_id: String,
+    message: String,
+}
+
+#[cfg(windows)]
+#[allow(non_snake_case)]
+mod xbox_install_control {
+    use super::{XboxInstallProgress, XBOX_INSTALL_CLIENT_ID};
+    use std::ffi::c_void;
+    use std::time::{Duration, Instant};
+    use windows::core::{
+        IInspectable_Vtbl, IUnknown, Interface, RuntimeName, Type, GUID, HRESULT, HSTRING,
+    };
+
+    #[repr(transparent)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    struct AppInstallManager(IUnknown);
+    unsafe impl Interface for AppInstallManager {
+        type Vtable = IAppInstallManager_Vtbl;
+        const IID: GUID = IAppInstallManager::IID;
+    }
+    impl RuntimeName for AppInstallManager {
+        const NAME: &'static str =
+            "Windows.ApplicationModel.Store.Preview.InstallControl.AppInstallManager";
+    }
+
+    #[repr(transparent)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    struct AppInstallOptions(IUnknown);
+    unsafe impl Interface for AppInstallOptions {
+        type Vtable = IAppInstallOptions_Vtbl;
+        const IID: GUID = IAppInstallOptions::IID;
+    }
+    impl RuntimeName for AppInstallOptions {
+        const NAME: &'static str =
+            "Windows.ApplicationModel.Store.Preview.InstallControl.AppInstallOptions";
+    }
+
+    #[repr(transparent)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    struct IAppInstallManager(IUnknown);
+    unsafe impl Interface for IAppInstallManager {
+        type Vtable = IAppInstallManager_Vtbl;
+        const IID: GUID = GUID::from_u128(0x9353e170_8441_4b45_bd72_7c2fa925beee);
+    }
+
+    #[repr(C)]
+    struct IAppInstallManager_Vtbl {
+        base__: IInspectable_Vtbl,
+        AppInstallItems: unsafe extern "system" fn(*mut c_void, *mut *mut c_void) -> HRESULT,
+        Cancel: unsafe extern "system" fn(*mut c_void, *mut c_void) -> HRESULT,
+    }
+
+    #[repr(transparent)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    struct IAppInstallManager6(IUnknown);
+    unsafe impl Interface for IAppInstallManager6 {
+        type Vtable = IAppInstallManager6_Vtbl;
+        const IID: GUID = GUID::from_u128(0xc9e7d408_f27a_4471_b2f4_e76efcbebcca);
+    }
+
+    #[repr(C)]
+    struct IAppInstallManager6_Vtbl {
+        base__: IInspectable_Vtbl,
+        SearchForAllUpdatesWithUpdateOptionsAsync: usize,
+        SearchForAllUpdatesWithUpdateOptionsForUserAsync: usize,
+        SearchForUpdatesWithUpdateOptionsAsync: usize,
+        SearchForUpdatesWithUpdateOptionsForUserAsync: usize,
+        StartProductInstallWithOptionsAsync: unsafe extern "system" fn(
+            *mut c_void,
+            *mut c_void,
+            *mut c_void,
+            *mut c_void,
+            *mut c_void,
+            *mut c_void,
+            *mut *mut c_void,
+        ) -> HRESULT,
+    }
+
+    #[repr(transparent)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    struct IAppInstallOptions(IUnknown);
+    unsafe impl Interface for IAppInstallOptions {
+        type Vtable = IAppInstallOptions_Vtbl;
+        const IID: GUID = GUID::from_u128(0xc9808300_1cb8_4eb6_8c9f_6a30c64a5b51);
+    }
+
+    #[repr(C)]
+    struct IAppInstallOptions_Vtbl {
+        base__: IInspectable_Vtbl,
+    }
+
+    #[repr(transparent)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    struct IAppInstallOptions2(IUnknown);
+    unsafe impl Interface for IAppInstallOptions2 {
+        type Vtable = IAppInstallOptions2_Vtbl;
+        const IID: GUID = GUID::from_u128(0x8a04c0d7_c94b_425e_95b4_bf27faeaee89);
+    }
+
+    #[repr(C)]
+    struct IAppInstallOptions2_Vtbl {
+        base__: IInspectable_Vtbl,
+        PinToDesktopAfterInstall: usize,
+        SetPinToDesktopAfterInstall: usize,
+        PinToStartAfterInstall: usize,
+        SetPinToStartAfterInstall: usize,
+        PinToTaskbarAfterInstall: usize,
+        SetPinToTaskbarAfterInstall: usize,
+        CompletedInstallToastNotificationMode:
+            unsafe extern "system" fn(*mut c_void, *mut i32) -> HRESULT,
+        SetCompletedInstallToastNotificationMode:
+            unsafe extern "system" fn(*mut c_void, i32) -> HRESULT,
+        InstallInProgressToastNotificationMode:
+            unsafe extern "system" fn(*mut c_void, *mut i32) -> HRESULT,
+        SetInstallInProgressToastNotificationMode:
+            unsafe extern "system" fn(*mut c_void, i32) -> HRESULT,
+    }
+
+    #[repr(transparent)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    struct AppInstallItem(IUnknown);
+    unsafe impl Interface for AppInstallItem {
+        type Vtable = IAppInstallItem_Vtbl;
+        const IID: GUID = IAppInstallItem::IID;
+    }
+
+    #[repr(transparent)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    struct IAppInstallItem(IUnknown);
+    unsafe impl Interface for IAppInstallItem {
+        type Vtable = IAppInstallItem_Vtbl;
+        const IID: GUID = GUID::from_u128(0x49d3dfab_168a_4cbf_a93a_9e448c82737d);
+    }
+
+    #[repr(C)]
+    struct IAppInstallItem_Vtbl {
+        base__: IInspectable_Vtbl,
+        ProductId: unsafe extern "system" fn(*mut c_void, *mut *mut c_void) -> HRESULT,
+        PackageFamilyName: usize,
+        InstallType: usize,
+        IsUserInitiated: usize,
+        GetCurrentStatus: unsafe extern "system" fn(*mut c_void, *mut *mut c_void) -> HRESULT,
+        Cancel: unsafe extern "system" fn(*mut c_void) -> HRESULT,
+    }
+
+    #[repr(transparent)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    struct AppInstallStatus(IUnknown);
+    unsafe impl Interface for AppInstallStatus {
+        type Vtable = IAppInstallStatus_Vtbl;
+        const IID: GUID = IAppInstallStatus::IID;
+    }
+
+    #[repr(transparent)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    struct IAppInstallStatus(IUnknown);
+    unsafe impl Interface for IAppInstallStatus {
+        type Vtable = IAppInstallStatus_Vtbl;
+        const IID: GUID = GUID::from_u128(0x936dccfa_2450_4126_88b1_6127a644dd5c);
+    }
+
+    #[repr(C)]
+    struct IAppInstallStatus_Vtbl {
+        base__: IInspectable_Vtbl,
+        InstallState: unsafe extern "system" fn(*mut c_void, *mut i32) -> HRESULT,
+        DownloadSizeInBytes: unsafe extern "system" fn(*mut c_void, *mut u64) -> HRESULT,
+        BytesDownloaded: unsafe extern "system" fn(*mut c_void, *mut u64) -> HRESULT,
+        PercentComplete: unsafe extern "system" fn(*mut c_void, *mut f64) -> HRESULT,
+        ErrorCode: unsafe extern "system" fn(*mut c_void, *mut HRESULT) -> HRESULT,
+    }
+
+    #[repr(transparent)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    struct AppInstallItemVector(IUnknown);
+    unsafe impl Interface for AppInstallItemVector {
+        type Vtable = AppInstallItemVector_Vtbl;
+        const IID: GUID = GUID::zeroed();
+    }
+
+    #[repr(C)]
+    struct AppInstallItemVector_Vtbl {
+        base__: IInspectable_Vtbl,
+        GetAt: unsafe extern "system" fn(*mut c_void, u32, *mut *mut c_void) -> HRESULT,
+        Size: unsafe extern "system" fn(*mut c_void, *mut u32) -> HRESULT,
+    }
+
+    #[repr(transparent)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    struct IAsyncInfo(IUnknown);
+    unsafe impl Interface for IAsyncInfo {
+        type Vtable = IAsyncInfo_Vtbl;
+        const IID: GUID = GUID::from_u128(0x00000036_0000_0000_c000_000000000046);
+    }
+
+    #[repr(C)]
+    struct IAsyncInfo_Vtbl {
+        base__: IInspectable_Vtbl,
+        Id: usize,
+        Status: unsafe extern "system" fn(*mut c_void, *mut i32) -> HRESULT,
+        ErrorCode: unsafe extern "system" fn(*mut c_void, *mut HRESULT) -> HRESULT,
+        Cancel: usize,
+        Close: unsafe extern "system" fn(*mut c_void) -> HRESULT,
+    }
+
+    #[repr(transparent)]
+    #[derive(Clone, Debug, Eq, PartialEq)]
+    struct InstallItemsOperation(IUnknown);
+    unsafe impl Interface for InstallItemsOperation {
+        type Vtable = InstallItemsOperation_Vtbl;
+        const IID: GUID = GUID::zeroed();
+    }
+
+    #[repr(C)]
+    struct InstallItemsOperation_Vtbl {
+        base__: IInspectable_Vtbl,
+        SetCompleted: usize,
+        Completed: usize,
+        GetResults: unsafe extern "system" fn(*mut c_void, *mut *mut c_void) -> HRESULT,
+    }
+
+    impl AppInstallManager {
+        fn new() -> windows::core::Result<Self> {
+            static SHARED: windows::core::imp::FactoryCache<
+                AppInstallManager,
+                windows::core::imp::IGenericFactory,
+            > = windows::core::imp::FactoryCache::new();
+            SHARED.call(|factory| factory.ActivateInstance::<Self>())
+        }
+
+        fn app_install_items(&self) -> windows::core::Result<AppInstallItemVector> {
+            unsafe {
+                let mut result__ = std::ptr::null_mut();
+                (Interface::vtable(self).AppInstallItems)(Interface::as_raw(self), &mut result__)
+                    .and_then(|| Type::from_abi(result__))
+            }
+        }
+
+        fn cancel(&self, product_id: &str) -> windows::core::Result<()> {
+            let product_id = HSTRING::from(product_id);
+            unsafe {
+                (Interface::vtable(self).Cancel)(
+                    Interface::as_raw(self),
+                    std::mem::transmute_copy(&product_id),
+                )
+                .ok()
+            }
+        }
+
+        fn start_product_install(
+            &self,
+            product_id: &str,
+        ) -> windows::core::Result<InstallItemsOperation> {
+            let manager6 = Interface::cast::<IAppInstallManager6>(self)?;
+            let options = AppInstallOptions::new()?;
+            let options2 = Interface::cast::<IAppInstallOptions2>(&options)?;
+            options2.disable_toasts()?;
+
+            let product_id = HSTRING::from(product_id);
+            let flight_id = HSTRING::new();
+            let client_id = HSTRING::from(XBOX_INSTALL_CLIENT_ID);
+            let correlation_vector = HSTRING::new();
+            unsafe {
+                let mut result__ = std::ptr::null_mut();
+                (Interface::vtable(&manager6).StartProductInstallWithOptionsAsync)(
+                    Interface::as_raw(&manager6),
+                    std::mem::transmute_copy(&product_id),
+                    std::mem::transmute_copy(&flight_id),
+                    std::mem::transmute_copy(&client_id),
+                    std::mem::transmute_copy(&correlation_vector),
+                    Interface::as_raw(&options),
+                    &mut result__,
+                )
+                .and_then(|| Type::from_abi(result__))
+            }
+        }
+    }
+
+    impl AppInstallOptions {
+        fn new() -> windows::core::Result<Self> {
+            static SHARED: windows::core::imp::FactoryCache<
+                AppInstallOptions,
+                windows::core::imp::IGenericFactory,
+            > = windows::core::imp::FactoryCache::new();
+            SHARED.call(|factory| factory.ActivateInstance::<Self>())
+        }
+    }
+
+    impl IAppInstallOptions2 {
+        fn disable_toasts(&self) -> windows::core::Result<()> {
+            const NO_TOAST: i32 = 3;
+            unsafe {
+                (Interface::vtable(self).SetCompletedInstallToastNotificationMode)(
+                    Interface::as_raw(self),
+                    NO_TOAST,
+                )
+                .ok()?;
+                (Interface::vtable(self).SetInstallInProgressToastNotificationMode)(
+                    Interface::as_raw(self),
+                    NO_TOAST,
+                )
+                .ok()
+            }
+        }
+    }
+
+    impl AppInstallItem {
+        fn product_id(&self) -> windows::core::Result<String> {
+            unsafe {
+                let mut result__ = std::ptr::null_mut();
+                (Interface::vtable(self).ProductId)(Interface::as_raw(self), &mut result__).map(
+                    || {
+                        let value = std::mem::transmute::<*mut c_void, HSTRING>(result__);
+                        value.to_string_lossy()
+                    },
+                )
+            }
+        }
+
+        fn current_status(&self) -> windows::core::Result<AppInstallStatus> {
+            unsafe {
+                let mut result__ = std::ptr::null_mut();
+                (Interface::vtable(self).GetCurrentStatus)(Interface::as_raw(self), &mut result__)
+                    .and_then(|| Type::from_abi(result__))
+            }
+        }
+    }
+
+    impl AppInstallStatus {
+        fn snapshot(&self, product_id: &str) -> windows::core::Result<XboxInstallProgress> {
+            unsafe {
+                let mut install_state = 0i32;
+                let mut pct = 0f64;
+                let mut error = HRESULT(0);
+                (Interface::vtable(self).InstallState)(Interface::as_raw(self), &mut install_state)
+                    .ok()?;
+                (Interface::vtable(self).PercentComplete)(Interface::as_raw(self), &mut pct)
+                    .ok()?;
+                (Interface::vtable(self).ErrorCode)(Interface::as_raw(self), &mut error).ok()?;
+                Ok(XboxInstallProgress {
+                    product_id: product_id.to_string(),
+                    pct: pct.clamp(0.0, 100.0),
+                    state: install_state_label(install_state).to_string(),
+                    error_code: error.0 as u32,
+                })
+            }
+        }
+    }
+
+    impl AppInstallItemVector {
+        fn len(&self) -> windows::core::Result<u32> {
+            unsafe {
+                let mut result__ = 0u32;
+                (Interface::vtable(self).Size)(Interface::as_raw(self), &mut result__)
+                    .map(|| result__)
+            }
+        }
+
+        fn get_at(&self, index: u32) -> windows::core::Result<AppInstallItem> {
+            unsafe {
+                let mut result__ = std::ptr::null_mut();
+                (Interface::vtable(self).GetAt)(Interface::as_raw(self), index, &mut result__)
+                    .and_then(|| Type::from_abi(result__))
+            }
+        }
+
+        fn matching_item(&self, product_id: &str) -> windows::core::Result<Option<AppInstallItem>> {
+            let size = self.len()?;
+            let mut first = None;
+            for index in 0..size {
+                let item = self.get_at(index)?;
+                if first.is_none() {
+                    first = Some(item.clone());
+                }
+                if item
+                    .product_id()
+                    .map(|value| value.eq_ignore_ascii_case(product_id))
+                    .unwrap_or(false)
+                {
+                    return Ok(Some(item));
+                }
+            }
+            Ok(first)
+        }
+    }
+
+    impl InstallItemsOperation {
+        fn status(&self) -> windows::core::Result<i32> {
+            let info = Interface::cast::<IAsyncInfo>(self)?;
+            unsafe {
+                let mut result__ = 0i32;
+                (Interface::vtable(&info).Status)(Interface::as_raw(&info), &mut result__)
+                    .map(|| result__)
+            }
+        }
+
+        fn error_code(&self) -> windows::core::Result<HRESULT> {
+            let info = Interface::cast::<IAsyncInfo>(self)?;
+            unsafe {
+                let mut result__ = HRESULT(0);
+                (Interface::vtable(&info).ErrorCode)(Interface::as_raw(&info), &mut result__)
+                    .map(|| result__)
+            }
+        }
+
+        fn close(&self) {
+            if let Ok(info) = Interface::cast::<IAsyncInfo>(self) {
+                unsafe {
+                    let _ = (Interface::vtable(&info).Close)(Interface::as_raw(&info)).ok();
+                }
+            }
+        }
+
+        fn get_results(&self) -> windows::core::Result<AppInstallItemVector> {
+            unsafe {
+                let mut result__ = std::ptr::null_mut();
+                (Interface::vtable(self).GetResults)(Interface::as_raw(self), &mut result__)
+                    .and_then(|| Type::from_abi(result__))
+            }
+        }
+    }
+
+    impl Drop for InstallItemsOperation {
+        fn drop(&mut self) {
+            self.close();
+        }
+    }
+
+    pub fn probe() -> Result<u32, String> {
+        let manager = AppInstallManager::new().map_err(format_error("probe manager"))?;
+        manager
+            .app_install_items()
+            .and_then(|items| items.len())
+            .map_err(format_error("probe install items"))
+    }
+
+    pub fn cancel(product_id: &str) -> Result<(), String> {
+        let manager = AppInstallManager::new().map_err(format_error("cancel manager"))?;
+        manager
+            .cancel(product_id)
+            .map_err(format_error("cancel install"))
+    }
+
+    pub fn start_and_watch<F>(product_id: &str, mut on_progress: F) -> Result<(), String>
+    where
+        F: FnMut(XboxInstallProgress),
+    {
+        let manager = AppInstallManager::new().map_err(format_error("install manager"))?;
+        let operation = manager
+            .start_product_install(product_id)
+            .map_err(format_error("start install"))?;
+        let items = wait_for_start_results(&operation)?;
+        let item = items
+            .matching_item(product_id)
+            .map_err(format_error("read install item"))?
+            .ok_or_else(|| "Xbox install started but returned no install item".to_string())?;
+
+        let deadline = Instant::now() + Duration::from_secs(60 * 60 * 4);
+        loop {
+            let status = item
+                .current_status()
+                .map_err(format_error("read install status"))?;
+            let progress = status
+                .snapshot(product_id)
+                .map_err(format_error("read install progress"))?;
+            let done = install_state_done(&progress.state);
+            on_progress(progress);
+            if done {
+                return Ok(());
+            }
+            if Instant::now() >= deadline {
+                return Err("Xbox install progress watch timed out".to_string());
+            }
+            std::thread::sleep(Duration::from_millis(750));
+        }
+    }
+
+    fn wait_for_start_results(
+        operation: &InstallItemsOperation,
+    ) -> Result<AppInstallItemVector, String> {
+        let deadline = Instant::now() + Duration::from_secs(30);
+        loop {
+            match operation
+                .status()
+                .map_err(format_error("read install start status"))?
+            {
+                1 => {
+                    return operation
+                        .get_results()
+                        .map_err(format_error("start results"))
+                }
+                2 => return Err("Xbox install start was canceled".to_string()),
+                3 => {
+                    let code = operation.error_code().unwrap_or(HRESULT(0));
+                    return Err(format!(
+                        "Xbox install start failed: HRESULT 0x{:08X}",
+                        code.0 as u32
+                    ));
+                }
+                _ => {
+                    if Instant::now() >= deadline {
+                        return Err("Timed out waiting for Xbox install to start".to_string());
+                    }
+                    std::thread::sleep(Duration::from_millis(100));
+                }
+            }
+        }
+    }
+
+    fn install_state_done(state: &str) -> bool {
+        matches!(state, "complete" | "canceled" | "error")
+    }
+
+    fn install_state_label(value: i32) -> &'static str {
+        match value {
+            0 => "pending",
+            1 => "starting",
+            2 => "acquiringLicense",
+            3 => "downloading",
+            4 => "restoringData",
+            5 => "installing",
+            6 => "complete",
+            7 => "canceled",
+            8 => "paused",
+            9 => "error",
+            10 => "pausedLowBattery",
+            11 => "pausedWifiRecommended",
+            12 => "pausedWifiRequired",
+            13 => "readyToDownload",
+            _ => "unknown",
+        }
+    }
+
+    fn format_error(context: &'static str) -> impl FnOnce(windows::core::Error) -> String {
+        move |error| format!("{context}: {error}")
+    }
+}
+
+#[cfg(not(windows))]
+mod xbox_install_control {
+    use super::XboxInstallProgress;
+
+    pub fn probe() -> Result<u32, String> {
+        Err("Xbox silent install is only available on Windows".to_string())
+    }
+
+    pub fn cancel(_product_id: &str) -> Result<(), String> {
+        Err("Xbox silent install is only available on Windows".to_string())
+    }
+
+    pub fn start_and_watch<F>(_product_id: &str, _on_progress: F) -> Result<(), String>
+    where
+        F: FnMut(XboxInstallProgress),
+    {
+        Err("Xbox silent install is only available on Windows".to_string())
+    }
+}
+
+#[tauri::command]
+fn xbox_install_probe() -> Result<u32, String> {
+    xbox_install_control::probe()
+}
+
+#[tauri::command]
+fn xbox_cancel_install(product_id: String) -> Result<(), String> {
+    let product_id = product_id.trim().to_string();
+    if product_id.is_empty() {
+        return Err("Xbox product ID is required".to_string());
+    }
+    xbox_install_control::cancel(&product_id)
+}
+
+#[tauri::command]
+fn xbox_install_product(product_id: String, app_handle: tauri::AppHandle) -> Result<(), String> {
+    let product_id = product_id.trim().to_string();
+    if product_id.is_empty() {
+        return Err("Xbox product ID is required".to_string());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        let progress_product_id = product_id.clone();
+        let result = xbox_install_control::start_and_watch(&product_id, |progress| {
+            let _ = app_handle.emit("xbox-install-progress", progress);
+        });
+        match result {
+            Ok(_) => {
+                let _ = app_handle.emit("library-rescan-needed", ());
+            }
+            Err(message) => {
+                let _ = app_handle.emit(
+                    "xbox-install-error",
+                    XboxInstallError {
+                        product_id: progress_product_id,
+                        message,
+                    },
+                );
+            }
+        }
+    });
+    Ok(())
+}
+
 struct SpotifyTokens {
     access_token: String,
     refresh_token: String,
@@ -7810,6 +8425,9 @@ pub fn run() {
             xbox_begin_auth,
             xbox_refresh_library,
             xbox_disconnect,
+            xbox_install_probe,
+            xbox_install_product,
+            xbox_cancel_install,
             steam_install,
             steam_uninstall,
             steam_verify,

@@ -4,7 +4,7 @@ import { StoreBadge } from "./ui/StoreBadge";
 import { useStoreMetadata } from "../hooks/useStoreMetadata";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, rumble, type GpState } from "../utils/gamepad";
 import { xboxProductIdFor } from "../utils/xboxProductId";
-import type { AccentColors, App, StoreMovie, StoreScreenshot, ThemeColors } from "../types";
+import type { AccentColors, App, StoreMovie, StoreScreenshot, ThemeColors, XboxInstallProgress } from "../types";
 
 type SizeBytes = number | "loading" | undefined;
 type DownloadBytes = number | undefined;
@@ -46,12 +46,15 @@ interface GameDetailsModalProps {
   canInstall?: boolean;
   canXboxInstall?: boolean;
   installProgress?: InstallProgress;
+  xboxInstallProgress?: XboxInstallProgress;
   installError?: string;
   running?: boolean;
   onPlay: () => void;
   onCloseGame?: () => void;
   onInstall?: () => void;
   onXboxInstall?: () => void;
+  onXboxCancelInstall?: () => void;
+  onXboxInstallFallback?: () => void;
   onCancelInstall?: () => void;
   onUninstall?: () => void;
   onVerify?: () => void;
@@ -170,12 +173,15 @@ export function GameDetailsModal({
   canInstall = false,
   canXboxInstall = false,
   installProgress,
+  xboxInstallProgress,
   installError,
   running = false,
   onPlay,
   onCloseGame,
   onInstall,
   onXboxInstall,
+  onXboxCancelInstall,
+  onXboxInstallFallback,
   onCancelInstall,
   onUninstall,
   onVerify,
@@ -312,10 +318,22 @@ export function GameDetailsModal({
     textShadow: "0 2px 8px rgba(0,0,0,0.6)",
     background: "rgba(0,0,0,0.18)",
   };
-  const installing = !!installProgress && installProgress.state !== "complete";
-  const uninstalling = installProgress?.state === "uninstalling";
-  const installPhase = installProgress?.phase ?? "downloading";
-  const liveInstall = installProgress?.live === true;
+  const xboxInstalling = !!xboxInstallProgress && !["complete", "canceled", "error"].includes(xboxInstallProgress.state);
+  const effectiveInstallProgress = installProgress ?? (xboxInstalling ? {
+    pct: xboxInstallProgress.pct,
+    state: xboxInstallProgress.state,
+    phase: ["pending", "starting", "acquiringLicense", "readyToDownload"].includes(xboxInstallProgress.state)
+      ? "preparing"
+      : ["restoringData", "installing"].includes(xboxInstallProgress.state)
+        ? "staging"
+        : ["paused", "pausedLowBattery", "pausedWifiRecommended", "pausedWifiRequired"].includes(xboxInstallProgress.state)
+          ? "paused"
+          : "downloading",
+  } : undefined);
+  const installing = !!effectiveInstallProgress && effectiveInstallProgress.state !== "complete";
+  const uninstalling = effectiveInstallProgress?.state === "uninstalling";
+  const installPhase = effectiveInstallProgress?.phase ?? "downloading";
+  const liveInstall = effectiveInstallProgress?.live === true;
   const indeterminateInstall = liveInstall || uninstalling;
   const installPhaseLabel = installPhase === "preparing"
     ? "install.preparing"
@@ -324,7 +342,7 @@ export function GameDetailsModal({
       : installPhase === "paused"
         ? "install.paused"
         : "install.downloading";
-  const installPct = Math.max(0, Math.min(100, Number(installProgress?.pct ?? 0)));
+  const installPct = Math.max(0, Math.min(100, Number(effectiveInstallProgress?.pct ?? 0)));
   const installErrorText = installError ? t(`install.${installError}`, { defaultValue: t("install.generic") }) : "";
 
   const handlePrimaryAction = useCallback(() => {
@@ -334,7 +352,8 @@ export function GameDetailsModal({
       return;
     }
     if (installing) {
-      onCancelInstall?.();
+      if (xboxInstalling) onXboxCancelInstall?.();
+      else onCancelInstall?.();
       return;
     }
     if (canInstall) {
@@ -342,9 +361,10 @@ export function GameDetailsModal({
       return;
     }
     if (canXboxInstall) {
-      onXboxInstall?.();
+      if (xboxProductId) onXboxInstall?.();
+      else onXboxInstallFallback?.();
     }
-  }, [canInstall, canXboxInstall, installed, installing, onCancelInstall, onInstall, onPlay, onXboxInstall, uninstalling]);
+  }, [canInstall, canXboxInstall, installed, installing, onCancelInstall, onInstall, onPlay, onXboxCancelInstall, onXboxInstall, onXboxInstallFallback, uninstalling, xboxInstalling, xboxProductId]);
 
   const actions = useMemo<DetailAction[]>(() => [
     ...(running && onCloseGame ? [{ key: "close-game", label: t("home.close"), onClick: onCloseGame, danger: true }] : []),
@@ -572,7 +592,9 @@ export function GameDetailsModal({
   const installLabel = downloadBytes != null
     ? `${t("install.install")} (${formatBytes(downloadBytes)})`
     : t("install.install");
-  const xboxInstallLabel = t("install.getOnXbox", { defaultValue: "Get in Store" });
+  const xboxInstallLabel = xboxProductId
+    ? t("install.install")
+    : t("install.getOnXbox", { defaultValue: "Get in Store" });
   const primaryLabel = running
     ? t("home.resume")
     : installed
