@@ -5611,6 +5611,44 @@ fn dispatch_steam_uri(uri: &str) -> Result<(), String> {
     Ok(())
 }
 
+// Ensure the Steam client is running in silent (tray-only) mode before
+// dispatching a game URI. If Steam is already running this is a no-op.
+// If Steam is not running, starts it with -silent -nochatui -nofriendsui
+// and waits up to 4 seconds for it to be ready before returning.
+fn ensure_steam_running_silent() {
+    if is_process_running("steam.exe") {
+        return;
+    }
+    let Some(steam_path) = get_steam_install_path() else {
+        return;
+    };
+    let steam_exe = format!("{}\\Steam.exe", steam_path);
+    if !std::path::Path::new(&steam_exe).exists() {
+        return;
+    }
+    let result = std::process::Command::new(&steam_exe)
+        .args(["-silent", "-nochatui", "-nofriendsui"])
+        .creation_flags(CREATE_NO_WINDOW)
+        .spawn();
+    if result.is_err() {
+        return;
+    }
+    // Wait for Steam to be ready before we fire the game URI.
+    // Poll is_process_running instead of a fixed sleep so we don't
+    // wait longer than needed on fast machines.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(4);
+    while std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        if is_process_running("steam.exe") {
+            // Give Steam a moment to register its URI handlers after the
+            // process appears — without this the rungameid dispatch can
+            // occasionally arrive before Steam is ready to handle it.
+            std::thread::sleep(std::time::Duration::from_millis(800));
+            break;
+        }
+    }
+}
+
 fn validate_steam_appid(appid: &str) -> Result<String, String> {
     let trimmed = appid.trim();
     if trimmed.is_empty() || !trimmed.chars().all(|ch| ch.is_ascii_digit()) {
@@ -6036,6 +6074,7 @@ fn steam_install(app_handle: tauri::AppHandle, appid: String) -> Result<(), Stri
     if get_steam_install_path().is_none() {
         return Err("steam-client-missing".to_string());
     }
+    ensure_steam_running_silent();
     dispatch_steam_uri(&format!("steam://install/{}", appid))?;
     spawn_steam_install_watcher(app_handle, appid);
     Ok(())
@@ -6056,6 +6095,7 @@ fn steam_uninstall(app_handle: tauri::AppHandle, appid: String) -> Result<(), St
             )
         })
         .unwrap_or(false);
+    ensure_steam_running_silent();
     dispatch_steam_uri(&format!("steam://uninstall/{}", appid))?;
     spawn_steam_uninstall_watcher(app_handle, appid, cancelling_download);
     Ok(())
@@ -6067,6 +6107,7 @@ fn steam_verify(appid: String) -> Result<(), String> {
     if get_steam_install_path().is_none() {
         return Err("steam-client-missing".to_string());
     }
+    ensure_steam_running_silent();
     dispatch_steam_uri(&format!("steam://validate/{}", appid))
 }
 
@@ -8045,10 +8086,14 @@ async fn launch_app(
         launch_mode = "battlenet".to_string();
         child_pid = 0;
     } else if path.starts_with("steam://") {
+        // Ensure Steam is running silently (no window) before dispatching the
+        // game URI. If Steam is not yet running this starts it with -silent
+        // -nochatui -nofriendsui so no Steam UI window appears.
         // Route through explorer.exe so the launch is always dispatched at
         // Medium integrity (normal user level), even when LiftOff is elevated.
         // This keeps tools like AnyFSE, which hook into game launches at
         // normal integrity, able to intercept the launch correctly.
+        ensure_steam_running_silent();
         dispatch_steam_uri(&path)?;
         launch_mode = "steam-uri".to_string();
         child_pid = 0;

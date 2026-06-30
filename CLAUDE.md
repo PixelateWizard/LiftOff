@@ -1,11 +1,23 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed Xbox Game Pass silent-install spec pass: backend Store InstallControl commands/events are wired for probe/start/cancel/progress where supported, Details consumes Xbox install progress with cancel/fallback behavior, and changelog validation is complete.
+- Completed research spike: built and ran a standalone `C:\liftoff-spike\steam-probe` executable to verify the live `steamclient64.dll` `IClientEngine` / `IClientAppManager` access path. No LiftOff production source files were changed, and no mutating Steam app-manager methods were called.
 
 ## 🐛 Active Bugs
 
 - The indeterminate install bar at the bottom of a game card in the Games library restarts/glitches whenever gamepad focus moves to another card. Deferred; do not fix as part of Tasks D/E.
+
+**Completed (this session - Steam runtime interface-map probe):**
+- Built the standalone Rust probe at `C:\liftoff-spike\steam-probe`, loading Steam's installed `steamclient64.dll` directly and resolving `Steam_CreateSteamPipe`, `Steam_ConnectToGlobalUser`, `Steam_CreateGlobalUser`, `CreateInterface`, and `Steam_BReleaseSteamPipe`.
+- Confirmed an unpackaged process can create pipe `1`, connect global user `1`, and obtain `IClientEngine` through `CLIENTENGINE_INTERFACE_VERSION005`.
+- Probed `IClientEngine` slots 6-14 in isolated child processes and identified slot 8 as the live `IClientAppManager` getter for query string `CLIENTAPPMANAGER`; slot 8 returned a direct object pointer with at least 80 readable vtable entries.
+- Wrote `C:\liftoff-spike\interfacemap-findings.md` with the raw runtime evidence, false-positive slot notes, preserved non-mutating constraint, and the recommendation to validate read-only ordinal 2 (`GetAppInstallState`) before any guarded `InstallApp` ordinal-6 experiment.
+
+**Completed (this session - Steam IClientAppManager spike):**
+- Installed the current Ghidra 12.1.2 public build plus Microsoft OpenJDK 21, copied the shipping Steam `steamclient64.dll` into `C:\liftoff-spike`, and ran headless analysis against the saved project.
+- Confirmed the current DLL exports `CreateInterface` but does not contain a `CLIENTAPPMANAGER_INTERFACE_VERSION...` string, and the static vtable scan found no clean `IClientAppManager` C++ vtable candidate.
+- Extracted the current `IClientAppManager` interface-map method order from the binary string table: `LaunchApp` ordinal 0, `GetAppInstallState` ordinal 2, `InstallApp` ordinal 6, `UninstallApp` ordinal 11, `GetDownloadStats` ordinal 36, and `GetAppStateInfo` ordinal 66.
+- Wrote `C:\liftoff-spike\steamclient-findings.md` with wrapper signatures, output buffer sizes, blockers, and the recommendation not to implement the old open-steamworks-style `LoadLibraryW` / versioned `CreateInterface` / vtable bridge without a runtime trace.
 
 **Completed (this session - Xbox trailer HLS gray-screen fix):**
 - Reproduced the remaining gray-screen class from live Microsoft Store metadata: Hades product `9P8DL6W0JBB8` and High On Life product `9NL4714VTLRS` expose older `-AVS.m3u8` HLS master playlists with absolute rendition URLs and audio groups, while the already-working DOOM: The Dark Ages path uses a newer relative `manifest.m3u8` layout.
