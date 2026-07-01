@@ -29,7 +29,11 @@
       "findingGames": "Recherche des jeux install\u00e9s\u2026",
       "loadingArt": "Chargement des illustrations\u2026",
       "almostReady": "Presque pr\u00eat\u2026",
-      "stillWorking": "Toujours en cours \u2014 les grandes biblioth\u00e8ques peuvent prendre un moment\u2026"
+      "stillWorking": "Toujours en cours \u2014 les grandes biblioth\u00e8ques peuvent prendre un moment\u2026",
+      "scanDesktop": "TODO(fr) Reading Start Menu and Desktop shortcuts\u2026",
+      "scanSteam": "TODO(fr) Checking your Steam library\u2026",
+      "scanXbox": "TODO(fr) Checking Game Pass\u2026",
+      "scanOther": "TODO(fr) Checking other launchers\u2026"
     }
   },
   "artPicker": {

@@ -4772,6 +4772,16 @@ fn restart_app(app: tauri::AppHandle) {
     app.restart();
 }
 
+#[tauri::command]
+fn show_main_window(window: tauri::WebviewWindow) -> Result<(), String> {
+    window.show().map_err(|e| e.to_string())?;
+    window.set_focus().map_err(|e| e.to_string())?;
+    if let Ok(hwnd) = window.hwnd() {
+        fse_watcher::claim_foreground_on_startup(hwnd.0 as isize);
+    }
+    Ok(())
+}
+
 #[derive(Serialize)]
 struct BatteryInfo {
     percent: u32,
@@ -5221,6 +5231,82 @@ fn extract_icon_base64(path: &str) -> Option<String> {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Default)]
+struct CachedIcon {
+    #[serde(default)]
+    mtime_secs: u64,
+    #[serde(default)]
+    size_bytes: u64,
+    #[serde(default)]
+    icon_base64: Option<String>,
+}
+
+#[derive(Default)]
+struct IconCacheStats {
+    fresh_extractions: u64,
+    extract_ms: u128,
+}
+
+fn icon_cache_path() -> std::path::PathBuf {
+    liftoff_dir().join("icon_cache.json")
+}
+
+fn load_icon_cache() -> HashMap<String, CachedIcon> {
+    std::fs::read_to_string(icon_cache_path())
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+fn save_icon_cache(cache: &HashMap<String, CachedIcon>) {
+    if let Ok(json) = serde_json::to_string(cache) {
+        let _ = std::fs::write(icon_cache_path(), json);
+    }
+}
+
+fn extract_icon_base64_cached(
+    path: &str,
+    cache: &mut HashMap<String, CachedIcon>,
+    stats: &mut IconCacheStats,
+) -> Option<String> {
+    let meta = std::fs::metadata(path).ok()?;
+    let mtime_secs = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let size_bytes = meta.len();
+
+    if let Some(cached) = cache.get(path) {
+        if cached.mtime_secs == mtime_secs && cached.size_bytes == size_bytes {
+            return cached.icon_base64.clone();
+        }
+    }
+
+    let started = Instant::now();
+    let icon = extract_icon_base64(path);
+    stats.fresh_extractions += 1;
+    stats.extract_ms += started.elapsed().as_millis();
+    cache.insert(
+        path.to_string(),
+        CachedIcon {
+            mtime_secs,
+            size_bytes,
+            icon_base64: icon.clone(),
+        },
+    );
+    icon
+}
+
+fn log_scan_timing(lines: &[String]) {
+    let _ = std::fs::write(liftoff_dir().join("scan_timing.log"), lines.join("\n"));
+}
+
+fn push_scan_timing(lines: &mut Vec<String>, phase: &str, started: Instant) {
+    lines.push(format!("{}: {}ms", phase, started.elapsed().as_millis()));
+}
+
 /// Resolve a UWP icon PNG from the package's install directory.
 /// `logo_hint` is the relative path from the manifest (e.g. "Assets\Square44x44Logo.png").
 /// We try the exact path first, then scan the Assets folder for any scale/theme variant.
@@ -5291,13 +5377,32 @@ fn extract_uwp_icon_base64(install_location: &str, logo_hint: &str) -> Option<St
     None
 }
 
-fn scan_folder(folder: &str, app_type: &str) -> Vec<AppEntry> {
-    scan_folder_with_source(folder, app_type, "desktop")
+fn scan_folder(
+    folder: &str,
+    app_type: &str,
+    cache: &mut HashMap<String, CachedIcon>,
+    stats: &mut IconCacheStats,
+) -> Vec<AppEntry> {
+    scan_folder_with_source(folder, app_type, "desktop", cache, stats)
 }
 
-fn scan_folder_with_source(folder: &str, app_type: &str, source: &str) -> Vec<AppEntry> {
+fn scan_folder_with_source(
+    folder: &str,
+    app_type: &str,
+    source: &str,
+    cache: &mut HashMap<String, CachedIcon>,
+    stats: &mut IconCacheStats,
+) -> Vec<AppEntry> {
     let mut entries = Vec::new();
-    scan_folder_recursive(Path::new(folder), app_type, source, 0, &mut entries);
+    scan_folder_recursive(
+        Path::new(folder),
+        app_type,
+        source,
+        0,
+        &mut entries,
+        cache,
+        stats,
+    );
     entries
 }
 
@@ -5307,6 +5412,8 @@ fn scan_folder_recursive(
     source: &str,
     depth: u32,
     entries: &mut Vec<AppEntry>,
+    cache: &mut HashMap<String, CachedIcon>,
+    stats: &mut IconCacheStats,
 ) {
     if depth > 4 {
         return;
@@ -5324,7 +5431,7 @@ fn scan_folder_recursive(
             continue;
         }
         if p.is_dir() {
-            scan_folder_recursive(&p, app_type, source, depth + 1, entries);
+            scan_folder_recursive(&p, app_type, source, depth + 1, entries, cache, stats);
         } else {
             let ext = p
                 .extension()
@@ -5337,7 +5444,7 @@ fn scan_folder_recursive(
                     .and_then(|n| n.to_str())
                     .unwrap_or("Unknown")
                     .to_string();
-                let icon = extract_icon_base64(&path_str);
+                let icon = extract_icon_base64_cached(&path_str, cache, stats);
                 entries.push(AppEntry {
                     id: path_str.clone(),
                     name,
@@ -6150,7 +6257,10 @@ fn find_battlenet_exe() -> Option<String> {
         .map(|p| p.to_string())
 }
 
-fn scan_battlenet_games() -> Vec<AppEntry> {
+fn scan_battlenet_games(
+    cache: &mut HashMap<String, CachedIcon>,
+    stats: &mut IconCacheStats,
+) -> Vec<AppEntry> {
     // Games are registered in the Uninstall key with Blizzard Uninstaller as their uninstall string.
     let output = std::process::Command::new("powershell")
         .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", r#"
@@ -6210,7 +6320,7 @@ fn scan_battlenet_games() -> Vec<AppEntry> {
         if launch_path.is_empty() {
             continue;
         }
-        let icon = find_game_icon(install);
+        let icon = find_game_icon(install, cache, stats);
         let id = format!(
             "battlenet:{}",
             name.to_lowercase()
@@ -6232,7 +6342,10 @@ fn scan_battlenet_games() -> Vec<AppEntry> {
     games
 }
 
-fn scan_gog_games() -> Vec<AppEntry> {
+fn scan_gog_games(
+    cache: &mut HashMap<String, CachedIcon>,
+    stats: &mut IconCacheStats,
+) -> Vec<AppEntry> {
     let output = std::process::Command::new("powershell")
         .args([
             "-NoProfile",
@@ -6306,7 +6419,7 @@ fn scan_gog_games() -> Vec<AppEntry> {
             continue;
         }
 
-        let icon = extract_icon_base64(&launch_path);
+        let icon = extract_icon_base64_cached(&launch_path, cache, stats);
         let id = format!(
             "gog:{}",
             name.to_lowercase()
@@ -6345,7 +6458,10 @@ struct EpicManifest {
     is_application: Option<bool>,
 }
 
-fn scan_epic_games() -> Vec<AppEntry> {
+fn scan_epic_games(
+    cache: &mut HashMap<String, CachedIcon>,
+    stats: &mut IconCacheStats,
+) -> Vec<AppEntry> {
     let program_data =
         std::env::var("PROGRAMDATA").unwrap_or_else(|_| "C:\\ProgramData".to_string());
     let manifest_dir = Path::new(&program_data)
@@ -6414,7 +6530,7 @@ fn scan_epic_games() -> Vec<AppEntry> {
             "com.epicgames.launcher://apps/{}?action=launch&silent=true",
             app_id
         );
-        let icon = extract_icon_base64(&exe_full.to_string_lossy());
+        let icon = extract_icon_base64_cached(&exe_full.to_string_lossy(), cache, stats);
         let id = format!("epic:{}", app_id.to_lowercase());
         games.push(AppEntry {
             id,
@@ -6504,7 +6620,10 @@ fn find_bnet_game_exe(dir: &str) -> Option<String> {
     candidates.into_iter().next()
 }
 
-fn scan_steam_games() -> Vec<AppEntry> {
+fn scan_steam_games(
+    cache: &mut HashMap<String, CachedIcon>,
+    stats: &mut IconCacheStats,
+) -> Vec<AppEntry> {
     let mut games = Vec::new();
     let library_paths = steam_library_paths();
 
@@ -6551,7 +6670,8 @@ fn scan_steam_games() -> Vec<AppEntry> {
                         continue;
                     }
                     let launch_path = format!("steam://rungameid/{}", app_id);
-                    let icon = find_game_icon(&format!("{}\\common\\{}", library, install_dir));
+                    let icon =
+                        find_game_icon(&format!("{}\\common\\{}", library, install_dir), cache, stats);
                     games.push(AppEntry {
                         id: launch_path.clone(),
                         name,
@@ -6833,7 +6953,11 @@ fn extract_vdf_value(line: &str) -> String {
     }
 }
 
-fn find_game_icon(game_dir: &str) -> Option<String> {
+fn find_game_icon(
+    game_dir: &str,
+    cache: &mut HashMap<String, CachedIcon>,
+    stats: &mut IconCacheStats,
+) -> Option<String> {
     let path = Path::new(game_dir);
     if !path.exists() {
         return None;
@@ -6847,7 +6971,7 @@ fn find_game_icon(game_dir: &str) -> Option<String> {
                 .to_lowercase()
                 == "exe"
             {
-                if let Some(icon) = extract_icon_base64(&p.to_string_lossy()) {
+                if let Some(icon) = extract_icon_base64_cached(&p.to_string_lossy(), cache, stats) {
                     return Some(icon);
                 }
             }
@@ -6857,13 +6981,25 @@ fn find_game_icon(game_dir: &str) -> Option<String> {
 }
 
 #[tauri::command]
-fn get_apps() -> Vec<AppEntry> {
+async fn get_apps(app: tauri::AppHandle) -> Vec<AppEntry> {
+    tauri::async_runtime::spawn_blocking(move || get_apps_inner(app))
+        .await
+        .unwrap_or_default()
+}
+
+fn get_apps_inner(app: tauri::AppHandle) -> Vec<AppEntry> {
+    let scan_started = Instant::now();
+    let mut scan_timing = Vec::new();
+    let mut icon_cache = load_icon_cache();
+    let mut icon_stats = IconCacheStats::default();
     let settings = load_settings_inner();
     let hidden = load_hidden_inner();
     let mut apps: Vec<AppEntry> = Vec::new();
 
     // 1. Existing Desktop/Start Menu Scan
     if settings.scan_desktop {
+        let _ = app.emit("library-scan-phase", "desktop");
+        let phase_started = Instant::now();
         let user_desktop = dirs::desktop_dir()
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_default();
@@ -6877,11 +7013,14 @@ fn get_apps() -> Vec<AppEntry> {
         let start_menu_common =
             "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs".to_string();
         for folder in [&user_desktop, &start_menu_user, &start_menu_common] {
-            apps.extend(scan_folder(folder, "app"));
+            apps.extend(scan_folder(folder, "app", &mut icon_cache, &mut icon_stats));
         }
+        push_scan_timing(&mut scan_timing, "desktop", phase_started);
     }
 
     // Steam launcher app entry — try registry path first, then fallbacks
+    let _ = app.emit("library-scan-phase", "steam");
+    let steam_phase_started = Instant::now();
     let steam_exe = get_steam_install_path()
         .map(|p| format!("{}\\Steam.exe", p))
         .and_then(|p| {
@@ -6905,7 +7044,11 @@ fn get_apps() -> Vec<AppEntry> {
             apps.push(AppEntry {
                 id: "steam_launcher".to_string(),
                 name: "Steam".to_string(),
-                icon_base64: extract_icon_base64(&steam_path),
+                icon_base64: extract_icon_base64_cached(
+                    &steam_path,
+                    &mut icon_cache,
+                    &mut icon_stats,
+                ),
                 launch_path: steam_path,
                 app_type: "app".to_string(),
                 source: "desktop".to_string(),
@@ -6932,24 +7075,32 @@ fn get_apps() -> Vec<AppEntry> {
 
     // 3. Steam Games scan (this adds the games, not the app)
     if settings.scan_steam {
-        let installed = scan_steam_games();
+        let installed = scan_steam_games(&mut icon_cache, &mut icon_stats);
         apps.extend(installed.clone());
         merge_owned_steam_games(&mut apps, &installed);
     }
+    push_scan_timing(&mut scan_timing, "steam", steam_phase_started);
+
+    let _ = app.emit("library-scan-phase", "xbox");
+    let xbox_phase_started = Instant::now();
     if settings.scan_xbox {
         merge_owned_xbox_titles(&mut apps);
     }
+    push_scan_timing(&mut scan_timing, "xbox", xbox_phase_started);
 
     // 4. Battle.net Games scan
+    let _ = app.emit("library-scan-phase", "other_launchers");
+    let other_phase_started = Instant::now();
     if settings.scan_battlenet {
-        apps.extend(scan_battlenet_games());
+        apps.extend(scan_battlenet_games(&mut icon_cache, &mut icon_stats));
     }
     if settings.scan_gog {
-        apps.extend(scan_gog_games());
+        apps.extend(scan_gog_games(&mut icon_cache, &mut icon_stats));
     }
     if settings.scan_epic {
-        apps.extend(scan_epic_games());
+        apps.extend(scan_epic_games(&mut icon_cache, &mut icon_stats));
     }
+    push_scan_timing(&mut scan_timing, "other_launchers", other_phase_started);
 
     drop_shadowed_xbox_duplicates(&mut apps);
 
@@ -6974,17 +7125,37 @@ fn get_apps() -> Vec<AppEntry> {
 
     drop_shadowed_xbox_duplicates(&mut apps);
 
+    save_icon_cache(&icon_cache);
+    scan_timing.push(format!(
+        "icon_extraction: {}ms ({} fresh)",
+        icon_stats.extract_ms, icon_stats.fresh_extractions
+    ));
+    push_scan_timing(&mut scan_timing, "total", scan_started);
+    log_scan_timing(&scan_timing);
+
     apps
 }
 
 // Same as get_apps() but without filtering hidden entries.
 // Used by the frontend to show proper names/icons for hidden apps in the Manage modal.
 #[tauri::command]
-fn get_all_apps() -> Vec<AppEntry> {
+async fn get_all_apps(app: tauri::AppHandle) -> Vec<AppEntry> {
+    tauri::async_runtime::spawn_blocking(move || get_all_apps_inner(app))
+        .await
+        .unwrap_or_default()
+}
+
+fn get_all_apps_inner(app: tauri::AppHandle) -> Vec<AppEntry> {
+    let scan_started = Instant::now();
+    let mut scan_timing = Vec::new();
+    let mut icon_cache = load_icon_cache();
+    let mut icon_stats = IconCacheStats::default();
     let settings = load_settings_inner();
     let mut apps: Vec<AppEntry> = Vec::new();
 
     if settings.scan_desktop {
+        let _ = app.emit("library-scan-phase", "desktop");
+        let phase_started = Instant::now();
         let user_desktop = dirs::desktop_dir()
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_default();
@@ -6998,10 +7169,13 @@ fn get_all_apps() -> Vec<AppEntry> {
         let start_menu_common =
             "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs".to_string();
         for folder in [&user_desktop, &start_menu_user, &start_menu_common] {
-            apps.extend(scan_folder(folder, "app"));
+            apps.extend(scan_folder(folder, "app", &mut icon_cache, &mut icon_stats));
         }
+        push_scan_timing(&mut scan_timing, "desktop", phase_started);
     }
 
+    let _ = app.emit("library-scan-phase", "steam");
+    let steam_phase_started = Instant::now();
     let steam_exe = get_steam_install_path()
         .map(|p| format!("{}\\Steam.exe", p))
         .and_then(|p| {
@@ -7025,7 +7199,11 @@ fn get_all_apps() -> Vec<AppEntry> {
             apps.push(AppEntry {
                 id: "steam_launcher".to_string(),
                 name: "Steam".to_string(),
-                icon_base64: extract_icon_base64(&steam_path),
+                icon_base64: extract_icon_base64_cached(
+                    &steam_path,
+                    &mut icon_cache,
+                    &mut icon_stats,
+                ),
                 launch_path: steam_path,
                 app_type: "app".to_string(),
                 source: "desktop".to_string(),
@@ -7050,23 +7228,31 @@ fn get_all_apps() -> Vec<AppEntry> {
     }
 
     if settings.scan_steam {
-        let installed = scan_steam_games();
+        let installed = scan_steam_games(&mut icon_cache, &mut icon_stats);
         apps.extend(installed.clone());
         merge_owned_steam_games(&mut apps, &installed);
     }
+    push_scan_timing(&mut scan_timing, "steam", steam_phase_started);
+
+    let _ = app.emit("library-scan-phase", "xbox");
+    let xbox_phase_started = Instant::now();
     if settings.scan_xbox {
         merge_owned_xbox_titles(&mut apps);
     }
+    push_scan_timing(&mut scan_timing, "xbox", xbox_phase_started);
 
+    let _ = app.emit("library-scan-phase", "other_launchers");
+    let other_phase_started = Instant::now();
     if settings.scan_battlenet {
-        apps.extend(scan_battlenet_games());
+        apps.extend(scan_battlenet_games(&mut icon_cache, &mut icon_stats));
     }
     if settings.scan_gog {
-        apps.extend(scan_gog_games());
+        apps.extend(scan_gog_games(&mut icon_cache, &mut icon_stats));
     }
     if settings.scan_epic {
-        apps.extend(scan_epic_games());
+        apps.extend(scan_epic_games(&mut icon_cache, &mut icon_stats));
     }
+    push_scan_timing(&mut scan_timing, "other_launchers", other_phase_started);
 
     // Deduplicate only — no hidden filter
     let mut seen = std::collections::HashSet::new();
@@ -7087,7 +7273,13 @@ fn get_all_apps() -> Vec<AppEntry> {
         if !folder.enabled {
             continue;
         }
-        for app in scan_folder_with_source(&folder.path, &folder.app_type, &folder.source) {
+        for app in scan_folder_with_source(
+            &folder.path,
+            &folder.app_type,
+            &folder.source,
+            &mut icon_cache,
+            &mut icon_stats,
+        ) {
             if known_paths.contains(&app.launch_path.to_lowercase()) {
                 continue;
             }
@@ -7125,6 +7317,14 @@ fn get_all_apps() -> Vec<AppEntry> {
     }
 
     drop_shadowed_xbox_duplicates(&mut apps);
+
+    save_icon_cache(&icon_cache);
+    scan_timing.push(format!(
+        "icon_extraction: {}ms ({} fresh)",
+        icon_stats.extract_ms, icon_stats.fresh_extractions
+    ));
+    push_scan_timing(&mut scan_timing, "total", scan_started);
+    log_scan_timing(&scan_timing);
 
     apps
 }
@@ -8442,6 +8642,7 @@ pub fn run() {
             open_uri,
             exit_app,
             restart_app,
+            show_main_window,
             fse_watcher::show_liftoff,
             clear_art_cache,
             set_frontend_active,
@@ -8521,11 +8722,6 @@ pub fn run() {
             let window = app.get_webview_window("main").unwrap();
             let hwnd = window.hwnd().unwrap();
             OUR_HWND.store(hwnd.0 as isize, Ordering::Relaxed);
-            let _ = window.set_focus();
-            // set_focus alone is ignored by the foreground lock when another app
-            // owns foreground and no shell hands it off (FSE / Xbox mode). Force
-            // the claim through the retrying + holding activation path.
-            fse_watcher::claim_foreground_on_startup(hwnd.0 as isize);
             start_gamepad_listener(app.handle().clone());
             tauri::async_runtime::spawn(async {
                 let _ = load_xcloud_games(false).await;

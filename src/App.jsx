@@ -2720,6 +2720,8 @@ export default function App() {
     spotifyHasTrack &&
     (settings.cinematic_home || settings.home_mode === "immersive") &&
     !showSpotifyOverlay;
+  const semiHomeShellActive = tab === "Home" && !settings.cinematic_home && settings.home_mode === "semi";
+  const immersiveHomeShellActive = tab === "Home" && (settings.cinematic_home || settings.home_mode === "immersive");
   const spotifyMiniPlayer = showSpotifyOverlay || !spotifyHasTrack
     ? null
     : (
@@ -2775,7 +2777,7 @@ export default function App() {
     <ThemeProvider value={themeValue}>
     <SettingsProvider value={settingsValue}>
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
-    <div data-theme={resolvedTheme} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} data-effects={settings.stars_enabled === false ? "static" : "animated"} data-focus={windowFocused && !fseSessionActive ? "active" : "blurred"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, "--accent-pulse": `${accent.glow}0.22)`, "--header-height": `${headerHeightVal}px`, "--bottom-bar-height": `${bottomBarHeightVal}px`, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
+    <div data-theme={resolvedTheme} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} data-effects={settings.stars_enabled === false ? "static" : "animated"} data-focus={windowFocused && !fseSessionActive ? "active" : "blurred"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, "--accent-pulse": `${accent.glow}0.22)`, "--header-height": `${headerHeightVal}px`, "--bottom-bar-height": `${bottomBarHeightVal}px`, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: (semiHomeShellActive || immersiveHomeShellActive) ? "hidden" : "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
 
       <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} windowFocused={windowFocused} />
       <AppOverlays>
@@ -3456,11 +3458,11 @@ export default function App() {
         />
         {/* Tab content area: Home, Games, and Apps stay mounted so tab switches do not rebuild large views. */}
         <AppMainContent>
-        <div style={{ position: "relative", flex: 1, overflow: (!(settings.topbar_background ?? true) && tab === "Home") || ((settings.cinematic_home || settings.home_mode === "semi") && tab === "Home") ? "auto" : "hidden" }}>
+        <div style={{ position: "relative", flex: 1, overflow: (immersiveHomeShellActive || semiHomeShellActive) ? "hidden" : (!(settings.topbar_background ?? true) && tab === "Home") ? "auto" : "hidden" }}>
 
           {tab === "Settings" && (
-            <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", zIndex: 2, paddingTop: "var(--header-height)", paddingBottom: "var(--bottom-bar-height)", boxSizing: "border-box" }}>
-              <div key={settingsPanelKey} className={settingsMotionClass} style={{ position: "relative", minHeight: "100%", zIndex: 2 }}>
+            <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain", zIndex: 2, paddingTop: "var(--header-height)", paddingBottom: "var(--bottom-bar-height)", boxSizing: "border-box" }}>
+              <div key={settingsPanelKey} className={settingsMotionClass} style={{ position: "relative", minHeight: 0, paddingBottom: 20, zIndex: 2 }}>
                 <SettingsScreenWrapper />
               </div>
             </div>

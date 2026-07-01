@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 
 const startingSound = new URL("../../assets/appLaunchSound.wav", import.meta.url).href;
@@ -26,6 +28,7 @@ export function SplashScreen({ exiting }: SplashScreenProps) {
   const { t } = useTranslation();
   const [statusIdx, setStatusIdx] = useState(0);
   const [longWait, setLongWait] = useState(false);
+  const [scanPhase, setScanPhase] = useState<string | null>(null);
 
   // Rotating, honest "we're working" phrases. Indeterminate by design - we do not
   // have real per-source progress here, so these reassure rather than measure.
@@ -36,6 +39,12 @@ export function SplashScreen({ exiting }: SplashScreenProps) {
     "splash.status.loadingArt",
     "splash.status.almostReady",
   ];
+  const SCAN_PHASE_STATUS_KEYS: Record<string, string> = {
+    desktop: "splash.status.scanDesktop",
+    steam: "splash.status.scanSteam",
+    xbox: "splash.status.scanXbox",
+    other_launchers: "splash.status.scanOther",
+  };
 
   // English fallbacks so the splash reads correctly even before locale files load.
   const STATUS_FALLBACKS: Record<string, string> = {
@@ -45,6 +54,10 @@ export function SplashScreen({ exiting }: SplashScreenProps) {
     "splash.status.loadingArt": "Loading artwork\u2026",
     "splash.status.almostReady": "Almost ready\u2026",
     "splash.status.stillWorking": "Still working \u2014 large libraries can take a moment\u2026",
+    "splash.status.scanDesktop": "Reading Start Menu and Desktop shortcuts\u2026",
+    "splash.status.scanSteam": "Checking your Steam library\u2026",
+    "splash.status.scanXbox": "Checking Game Pass\u2026",
+    "splash.status.scanOther": "Checking other launchers\u2026",
   };
 
   // Advance the phrase every 2.2s. Stop advancing once we enter the long-wait state
@@ -68,7 +81,17 @@ export function SplashScreen({ exiting }: SplashScreenProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exiting, longWait, statusIdx]);
 
-  const statusKey = longWait ? "splash.status.stillWorking" : STATUS_KEYS[statusIdx];
+  useEffect(() => {
+    const unlisten = listen<string>("library-scan-phase", (event) => {
+      setScanPhase(event.payload);
+    });
+    return () => {
+      unlisten.then((fn) => fn()).catch(() => {});
+    };
+  }, []);
+
+  const phaseStatusKey = scanPhase ? SCAN_PHASE_STATUS_KEYS[scanPhase] : null;
+  const statusKey = phaseStatusKey ?? (longWait ? "splash.status.stillWorking" : STATUS_KEYS[statusIdx]);
   const statusText = t(statusKey, STATUS_FALLBACKS[statusKey]);
 
   useEffect(() => {
@@ -152,6 +175,10 @@ export function SplashScreen({ exiting }: SplashScreenProps) {
       }
     }
     return () => { document.getElementById("splash-styles")?.remove(); };
+  }, []);
+
+  useEffect(() => {
+    invoke("show_main_window").catch(() => {});
   }, []);
 
   return (

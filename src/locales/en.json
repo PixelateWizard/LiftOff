@@ -29,7 +29,11 @@
       "findingGames": "Finding installed games\u2026",
       "loadingArt": "Loading artwork\u2026",
       "almostReady": "Almost ready\u2026",
-      "stillWorking": "Still working \u2014 large libraries can take a moment\u2026"
+      "stillWorking": "Still working \u2014 large libraries can take a moment\u2026",
+      "scanDesktop": "Reading Start Menu and Desktop shortcuts\u2026",
+      "scanSteam": "Checking your Steam library\u2026",
+      "scanXbox": "Checking Game Pass\u2026",
+      "scanOther": "Checking other launchers\u2026"
     }
   },
   "artPicker": {

@@ -98,6 +98,7 @@ export function HomeView(props: HomeViewProps) {
   const [heroMediaPaused, setHeroMediaPaused] = useState(false);
   const [heroVideoPlaying, setHeroVideoPlaying] = useState<Record<string, boolean>>({});
   const semiSlotRef = useRef<HTMLDivElement>(null);
+  const HOME_BOTTOM_CLEARANCE = 20;
   const BOTTOM_BAR_H = settings.hide_bottom_bar ? 0 : 48;
   const semiHomeBase = Math.round(110 * (settings.home_cover_scale ?? 1.0));
   const CARD_H = Math.round(semiHomeBase * 1.5);
@@ -111,6 +112,13 @@ export function HomeView(props: HomeViewProps) {
   const semiHeroHeight = `calc(${semiViewportH} - ${SEMI_SLOT_H}px)`;
   const semiCardW = `${semiHomeBase}px`;
   const semiCardH = `${CARD_H}px`;
+  const stopSemiHomeOuterScroll = useCallback((event: any) => {
+    if (!semiHome) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest(".semi-home-slot")) return;
+    event.preventDefault();
+    event.stopPropagation();
+  }, [semiHome]);
   const heroGamesRef = useRef<any[]>([]);
   const heroGames = useMemo(() => {
     const appIds = new Set(apps.map((a: any) => a.id));
@@ -247,6 +255,70 @@ export function HomeView(props: HomeViewProps) {
 
   const homeFilteredRecent = recent.filter((a: any) => !settings.show_recent_games_only || a.app_type === "game").slice(0, 8);
   const homePinnedApps = pins.map((id: string) => apps.find((a: any) => a.id === id)).filter(Boolean);
+  const homeCollections = settings.show_home_collections ? [
+    ...gameCollections.map(col => ({
+      id: col.id, name: col.name, type: "game",
+      items: apps.filter(a => a.app_type === "game" && (gameMemberships[a.id] || []).includes(col.id)).slice(0, 20),
+    })),
+    ...appCollections.map(col => ({
+      id: col.id, name: col.name, type: "app",
+      items: apps.filter(a => a.app_type === "app" && (appMemberships[a.id] || []).includes(col.id)).slice(0, 20),
+    })),
+  ].filter(c => c.items.length > 0 && !homeHiddenCollections.includes(c.name)) : [];
+
+  const openImmersiveDrawerFromWheel = useCallback(() => {
+    if (homeCollections.length === 0) return false;
+    const nextSection = homeFilteredRecent.length > 0 ? "recent" : "home_collections";
+    setFocusSection(nextSection);
+    focusSectionRef.current = nextSection;
+    setFocusIndex(0);
+    focusIndexRef.current = 0;
+    if (nextSection === "home_collections") {
+      setHomeColFocusRow(0);
+      homeColFocusRowRef.current = 0;
+      setHomeColFocusCol(0);
+      homeColFocusColRef.current = 0;
+    }
+    requestAnimationFrame(() => {
+      drawerScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    return true;
+  }, [drawerScrollRef, focusIndexRef, focusSectionRef, homeColFocusColRef, homeColFocusRowRef, homeCollections.length, homeFilteredRecent.length, setFocusIndex, setFocusSection, setHomeColFocusCol, setHomeColFocusRow]);
+
+  const handleHomeWheelCapture = useCallback((event: any) => {
+    if (semiHome) {
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest(".semi-home-slot")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    if (!cinematicHome || homeCollections.length === 0) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const drawerOpen = focusSection === "recent" || focusSection === "home_collections";
+    if (!drawerOpen) {
+      openImmersiveDrawerFromWheel();
+      return;
+    }
+
+    const drawer = drawerScrollRef.current;
+    if (!drawer) return;
+
+    const modeScale = event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? drawer.clientHeight : 1;
+    const deltaY = event.deltaY * modeScale;
+    if (deltaY < 0 && drawer.scrollTop <= 0) {
+      setFocusSection("hero");
+      focusSectionRef.current = "hero";
+      setFocusIndex(0);
+      focusIndexRef.current = 0;
+      return;
+    }
+    drawer.scrollBy({ top: deltaY, behavior: "auto" });
+  }, [cinematicHome, drawerScrollRef, focusIndexRef, focusSection, focusSectionRef, homeCollections.length, openImmersiveDrawerFromWheel, semiHome, setFocusIndex, setFocusSection]);
 
   useEffect(() => {
     if (!semiHome) return;
@@ -413,17 +485,6 @@ export function HomeView(props: HomeViewProps) {
     const cinematicHeroNearChevron = settings.cinematic_home && settings.hide_bottom_bar && settings.show_home_collections && !cinematicPinnedVisible;
     const cinematicHeroBottom = cinematicHeroAtBottom ? 24 : cinematicPinnedAtBottom ? 88 : cinematicHeroNearChevron ? 72 : 122;
     const showSpotifyHeroChip = !!spotifyHeroChip;
-    const homeCollections = settings.show_home_collections ? [
-      ...gameCollections.map(col => ({
-        id: col.id, name: col.name, type: "game",
-        items: apps.filter(a => a.app_type === "game" && (gameMemberships[a.id] || []).includes(col.id)).slice(0, 20),
-      })),
-      ...appCollections.map(col => ({
-        id: col.id, name: col.name, type: "app",
-        items: apps.filter(a => a.app_type === "app" && (appMemberships[a.id] || []).includes(col.id)).slice(0, 20),
-      })),
-    ].filter(c => c.items.length > 0 && !homeHiddenCollections.includes(c.name)) : [];
-
     const activeApp = (() => {
       if (!semiHome) return activeHeroGame;
       if (focusSec === "hero") {
@@ -1259,14 +1320,13 @@ export function HomeView(props: HomeViewProps) {
                 </div>
               );
             })}
-            <div aria-hidden="true" style={{ height: SEMI_SLOT_H, flexShrink: 0, scrollSnapAlign: "none", pointerEvents: "none" }} />
           </div>
         )}
 
         {!semiHome && !settings.cinematic_home && settings.show_home_recents !== false && <div style={{ paddingTop: 0 }}>
           <div style={{ paddingTop: 14 }} />
           {homeFilteredRecent.length === 0 ? (
-            <div style={{ fontSize: 13, color: theme.textFaint, paddingBottom: settings.show_home_collections ? 16 : 100 }}>{t('home.noRecents')}</div>
+            <div style={{ fontSize: 13, color: theme.textFaint, paddingBottom: settings.show_home_collections ? 16 : HOME_BOTTOM_CLEARANCE }}>{t('home.noRecents')}</div>
           ) : (
             <div
               ref={recentShelfRef}
@@ -1275,7 +1335,7 @@ export function HomeView(props: HomeViewProps) {
                 gap: 10,
                 overflowX: "auto",
                 paddingTop: 16,
-                paddingBottom: settings.show_home_collections ? 32 : 120,
+                paddingBottom: settings.show_home_collections ? 32 : HOME_BOTTOM_CLEARANCE,
                 paddingLeft: 18,
                 paddingRight: 18,
                 marginTop: -16,
@@ -1528,7 +1588,7 @@ export function HomeView(props: HomeViewProps) {
 
           // ── NORMAL / SEMI MODE: inline below recents ──
           return (
-            <div style={{ paddingBottom: 100, ...(semiHome ? { padding: "0 24px 100px" } : {}) }}>
+            <div style={{ paddingBottom: HOME_BOTTOM_CLEARANCE, ...(semiHome ? { padding: `0 24px ${HOME_BOTTOM_CLEARANCE}px` } : {}) }}>
               {collectionRows}
             </div>
           );
@@ -1541,10 +1601,13 @@ export function HomeView(props: HomeViewProps) {
     <div
       data-home-root=""
       ref={scrollRef}
+      onWheelCapture={handleHomeWheelCapture}
+      onTouchMoveCapture={stopSemiHomeOuterScroll}
       style={{
         position: "absolute",
         inset: 0,
         overflowY: cinematicHome ? "visible" : semiHome ? "hidden" : "auto",
+        overscrollBehavior: "contain",
         zIndex: active ? 2 : 0,
         opacity: active ? 1 : 0.001,
         pointerEvents: active ? "auto" : "none",

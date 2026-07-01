@@ -135,6 +135,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                         ? `0 0 0 1px ${accent.glow}0.42), 0 0 22px ${accent.glow}0.28), 0 8px 24px rgba(0,0,0,0.18)`
                         : "none",
                     };
+              const tabContentBottomPadding = 20;
               const viewbarBtnStyle = (selected, focused) => ({
                 height: 28,
                 minWidth: 74,
@@ -201,7 +202,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                 : APP_COLS.indexOf(appCollectionTab);
 
               return (
-            <div ref={scrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", zIndex: 2, paddingTop: "var(--header-height)", paddingBottom: "var(--bottom-bar-height)", boxSizing: "border-box" }}>
+            <div ref={scrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", overscrollBehavior: "contain", zIndex: 2, paddingTop: "var(--header-height)", paddingBottom: "var(--bottom-bar-height)", boxSizing: "border-box" }}>
               <div style={{ padding: "0 24px 0", ...(wideLayout ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box" }}>
                 {/* Action buttons — hidden; kept for potential future use */}
                 <div style={{ display: "none" }}>
@@ -451,13 +452,13 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
 
             {tab === "Games" ? (
               filteredApps.length === 0 ? (
-                <div style={{ minHeight: 220, display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: 100 }}>
+                <div style={{ minHeight: 220, display: "flex", alignItems: "center", justifyContent: "center", paddingBottom: tabContentBottomPadding }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: theme.textDim, textAlign: "center" }}>
                     {installFilter === "notInstalled" ? t("grid.empty.noUninstalled") : t("home.noGames")}
                   </div>
                 </div>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: `repeat(${effectiveGameCols}, minmax(0, 1fr))`, gap: 12, paddingBottom: 100 }}>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${effectiveGameCols}, minmax(0, 1fr))`, gap: 12, paddingBottom: tabContentBottomPadding }}>
                   {filteredApps.map((app, i) => {
                     const focused = isFocused("grid", i);
                     const isPinned = pins.includes(app.id);
@@ -471,7 +472,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                 </div>
               )
             ) : appListView ? (
-              <div style={{ display: "grid", gridTemplateColumns: `repeat(${appListCols}, minmax(0, 1fr))`, gap: 6, paddingBottom: 100 }}>
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${appListCols}, minmax(0, 1fr))`, gap: 6, paddingBottom: tabContentBottomPadding }}>
                 {filteredApps.map((app, i) => {
                   const focused = isFocused("grid", i);
                   const isPinned = pins.includes(app.id);
@@ -497,7 +498,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                 })}
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`, gap: 10, paddingBottom: 100 }}>
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`, gap: 10, paddingBottom: tabContentBottomPadding }}>
                 {filteredApps.map((app, i) => {
                   const focused = isFocused("grid", i);
                   const isPinned = pins.includes(app.id);

@@ -1,11 +1,32 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed Steam direct bridge rollback: install and launch production paths are back on URI dispatch with silent Steam startup preserved, after direct `IClientAppManager` `InstallApp` / `LaunchApp` attempts both returned `result=1`.
+- Completed Immersive Home mouse-wheel scrolling fix: wheel input opens and scrolls the rows drawer, while Home shell layers stay locked instead of revealing blank themed space.
 
 ## 🐛 Active Bugs
 
 - The indeterminate install bar at the bottom of a game card in the Games library restarts/glitches whenever gamepad focus moves to another card. Deferred; do not fix as part of Tasks D/E.
+
+**Completed (this session - Home bottom scroll-gap follow-up):**
+- Routed Immersive Home mouse-wheel input into the slide-up rows drawer: first downward wheel opens the drawer, further wheel movement scrolls the drawer, and upward wheel at the top returns focus to the hero.
+- Locked the outer scaled app shell and tab content shell while Immersive Home is active so mouse wheel cannot expose blank themed space behind the fixed Home layers.
+- Removed the late `useEffect` added after the splash loading return in `App.jsx`; that hook only ran after splash completion and could blank the app from a React hook-order mismatch.
+- Blocked Normal Home non-slotbar wheel/touch input from bubbling to the outer app shell while preserving scrolling inside `.semi-home-slot`.
+- Made the scaled app shell non-scrollable while Normal Home is active, preventing stale shell offsets from showing empty space without adding a post-splash hook.
+- Removed the blank trailing snap page from Normal/default Home's fixed semi-home slot so mouse/touch scrolling stops on the final real row instead of snapping to empty space.
+- Replaced Legacy Home's leftover `100`/`120` bottom content tails with the shared 20px Home clearance while preserving the scroll container's real bottom-bar padding.
+- Added Home scroll overscroll containment to match the Games/Apps/Settings tab behavior.
+- Updated `CHANGELOG.md` and `RELEASE-NOTES-Alpha-5.2.md`; validated with `npm run build` and `git diff --check`. Remaining output was the existing Vite chunk-size warning and LF/CRLF notices.
+
+**Completed (this session - startup responsiveness / Alpha 5.2 release sweep):**
+- Wrapped `get_apps` and `get_all_apps` in `spawn_blocking` and moved their existing scan bodies into inner helpers so slow cold scans do not sit on the WebView command path.
+- Added a persistent `icon_cache.json` keyed by path, modified time, and file size for scan-time desktop, custom-folder, Steam, Battle.net, GOG, and Epic icon extraction; one-off manually added apps still extract directly.
+- Added `library-scan-phase` events for Desktop, Steam, Xbox/Game Pass, and other launcher phases, plus `scan_timing.log` output with the latest phase and icon-extraction timing.
+- Changed the Tauri main window to start hidden, added `show_main_window`, and moved the FSE startup foreground claim to run after the splash-mounted frontend reveals the window.
+- Extended the splash status system with scan-phase text and English/French locale keys (`fr` placeholders flagged as `TODO(fr)`), while preserving the timed fallback and long-wait behavior.
+- Reduced Games/Apps/Settings native scroll tails to the same small bottom clearance gamepad navigation already respected and added `overscrollBehavior: contain` to tab scrollers.
+- Created `RELEASE-NOTES-Alpha-5.2.md`, moved `CHANGELOG.md` Unreleased items into `2.0.0-alpha-5.2`, and bumped app-owned version markers in `APP_VERSION`, npm, Cargo, and Tauri metadata to `2.0.0-alpha-5.2`.
+- Validated with `npm run build`, `cargo check`, `npm.cmd run tauri -- info`, stale app-version search, and `git diff --check`. Remaining output was the existing Vite chunk-size warning, existing Rust path/unused-helper warnings, Tauri package-outdated notices, and LF/CRLF notices.
 
 **Completed (this session - Steam direct bridge rollback / result=1 finding):**
 - Reverted `steam_install` to the stable `ensure_steam_running_silent()` plus `steam://install/{appid}` dispatch path and restored the existing ACF install watcher.
@@ -706,7 +727,7 @@
 
 - **Stack:** Tauri 2, Rust (`src-tauri/src/lib.rs`), React (`src/App.jsx`)
 - **Identifier:** `com.taylo.liftoff`
-- **Version:** `2.0.0-alpha-5.1` (APP_VERSION in constants.ts) / `2.0.0-alpha-5.1` (tauri.conf.json — update both together on release; also update Cargo.toml, Cargo.lock, package.json, package-lock.json, CHANGELOG.md; do not update the website for alpha-only versions)
+- **Version:** `2.0.0-alpha-5.2` (APP_VERSION in constants.ts) / `2.0.0-alpha-5.2` (tauri.conf.json — update both together on release; also update Cargo.toml, Cargo.lock, package.json, package-lock.json, CHANGELOG.md; do not update the website for alpha-only versions)
 - **Installer:** NSIS bundle at `src-tauri/target/release/bundle/nsis/`
 - **Dev command:** `npm run dev` (frontend) + `cargo tauri dev`
 - **Build:** `cargo tauri build` → use NSIS installer for testing, not raw `.exe`
@@ -979,7 +1000,7 @@ Priority order of `else if` branches:
 ## Frontend (`src/App.jsx`)
 
 ### Constants (top of file)
-- `APP_VERSION = "2.0.0-alpha-5.1"` — compared against GitHub Releases API for update checks
+- `APP_VERSION = "2.0.0-alpha-5.2"` — compared against GitHub Releases API for update checks
 - `GITHUB_REPO = "PixelateWizard/LiftOff"` — used for update check and releases link
 
 ### State
