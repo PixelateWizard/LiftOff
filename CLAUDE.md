@@ -1,11 +1,18 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed research spike: built and ran a standalone `C:\liftoff-spike\steam-probe` executable to verify the live `steamclient64.dll` `IClientEngine` / `IClientAppManager` access path. No LiftOff production source files were changed, and no mutating Steam app-manager methods were called.
+- Completed Steam direct bridge rollback: install and launch production paths are back on URI dispatch with silent Steam startup preserved, after direct `IClientAppManager` `InstallApp` / `LaunchApp` attempts both returned `result=1`.
 
 ## 🐛 Active Bugs
 
 - The indeterminate install bar at the bottom of a game card in the Games library restarts/glitches whenever gamepad focus moves to another card. Deferred; do not fix as part of Tasks D/E.
+
+**Completed (this session - Steam direct bridge rollback / result=1 finding):**
+- Reverted `steam_install` to the stable `ensure_steam_running_silent()` plus `steam://install/{appid}` dispatch path and restored the existing ACF install watcher.
+- Reverted Steam game launch handling to `ensure_steam_running_silent()` plus `steam://rungameid/{appid}` URI dispatch through `explorer.exe`, preserving the no-full-Steam-window startup behavior.
+- Removed the production `steamclient64.dll` loader/session helpers, direct `InstallApp` / `LaunchApp` calls, direct `GetDownloadStats` watcher, and the extra Windows `LibraryLoader` feature so the shipped backend no longer carries the failed direct bridge.
+- Documented the result of the live attempt: `IClientAppManager::LaunchApp` reached Steam but returned `result=1` for Dispatch (`appid=2592160`), and `InstallApp` also returned `result=1`; old headers interpret `1` as a generic/unspecified error, so the proxy is likely checking additional Steam state that the spike did not reproduce.
+- Next attempt should use x64dbg/runtime tracing around Steam's own UI install/launch path to identify the missing proxy state/setup before reintroducing any internal bridge code.
 
 **Completed (this session - Steam runtime interface-map probe):**
 - Built the standalone Rust probe at `C:\liftoff-spike\steam-probe`, loading Steam's installed `steamclient64.dll` directly and resolving `Steam_CreateSteamPipe`, `Steam_ConnectToGlobalUser`, `Steam_CreateGlobalUser`, `CreateInterface`, and `Steam_BReleaseSteamPipe`.
