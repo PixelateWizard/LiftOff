@@ -125,6 +125,11 @@
     "productId": "9P3ZQ8PZNNCJ"
   },
   {
+    "name": "AFL 26",
+    "slug": "afl-26",
+    "productId": "9PFB28TVCTPC"
+  },
+  {
     "name": "Against the Storm",
     "slug": "against-the-storm",
     "productId": "9NRLRJPV4HWL"
@@ -233,6 +238,11 @@
     "name": "Amazing Maze",
     "slug": "amazing-maze",
     "productId": "9P1M9DR3XQ97"
+  },
+  {
+    "name": "Ambulance Life: A Paramedic Simulator",
+    "slug": "ambulance-life-a-paramedic-simulator",
+    "productId": "9N5R00S6HWW1"
   },
   {
     "name": "American Arcadia",
@@ -475,6 +485,11 @@
     "productId": "9N91LVQC5JLR"
   },
   {
+    "name": "Asterigos: Curse of the Stars",
+    "slug": "asterigos-curse-of-the-stars",
+    "productId": "9PB5XB3FM6XC"
+  },
+  {
     "name": "Astria Ascending",
     "slug": "astria-ascending",
     "productId": "9MW7H0DVS9T6"
@@ -563,6 +578,11 @@
     "name": "Banjo Kazooie: N n B",
     "slug": "banjo-kazooie-n-n-b",
     "productId": "BVR64CDJ01FJ"
+  },
+  {
+    "name": "Banjo-Kazooie",
+    "slug": "banjo-kazooie",
+    "productId": "BSJG7TTSWVJ2"
   },
   {
     "name": "Banjo-Tooie",
@@ -870,6 +890,11 @@
     "productId": "9MZZNL8J2MSZ"
   },
   {
+    "name": "BrokenLore: FOLLOW",
+    "slug": "brokenlore-follow",
+    "productId": "9NTV7XC3DLCJ"
+  },
+  {
     "name": "Brotato",
     "slug": "brotato",
     "productId": "9P9VNSQK1W3K"
@@ -1115,6 +1140,11 @@
     "productId": "9PPT8K6GQHRZ"
   },
   {
+    "name": "Clash: Artifacts of Chaos",
+    "slug": "clash-artifacts-of-chaos",
+    "productId": "9PM6X8KR5955"
+  },
+  {
     "name": "Clone Drone in the Danger Zone",
     "slug": "clone-drone-in-the-danger-zone",
     "productId": "9NKHKBQJSSC3"
@@ -1128,6 +1158,11 @@
     "name": "Clue: Murder By Death",
     "slug": "clue-murder-by-death",
     "productId": "9NVTQKZNHQ91"
+  },
+  {
+    "name": "ClusterTruck",
+    "slug": "clustertruck",
+    "productId": "BX4J85JZNGXQ"
   },
   {
     "name": "Coffee Talk",
@@ -1300,6 +1335,11 @@
     "productId": "9P6HVHDP2PGK"
   },
   {
+    "name": "Crimson Skies: High Road to Revenge",
+    "slug": "crimson-skies-high-road-to-revenge",
+    "productId": "C4B8XR1LCXR5"
+  },
+  {
     "name": "Crisol: Theater of Idols",
     "slug": "crisol-theater-of-idols",
     "productId": "9N6QTNWJM2NW"
@@ -1323,6 +1363,11 @@
     "name": "CROSSBOW: Bloodnight",
     "slug": "crossbow-bloodnight",
     "productId": "9NFM82JG1DS8"
+  },
+  {
+    "name": "Crown Wars: The Black Prince",
+    "slug": "crown-wars-the-black-prince",
+    "productId": "9PNRPKZ6RVHQ"
   },
   {
     "name": "Crusader Kings III",
@@ -2100,6 +2145,16 @@
     "productId": "9PMN4DGRT1LN"
   },
   {
+    "name": "Fable II",
+    "slug": "fable-ii",
+    "productId": "C2WKJJ9F5936"
+  },
+  {
+    "name": "Fable III",
+    "slug": "fable-iii",
+    "productId": "BR46KM4D5B9L"
+  },
+  {
     "name": "Fae Farm",
     "slug": "fae-farm",
     "productId": "9N0QS2277QHF"
@@ -2465,6 +2520,16 @@
     "productId": "BPQZT43FWD49"
   },
   {
+    "name": "Gangs of Sherwood",
+    "slug": "gangs-of-sherwood",
+    "productId": "9NK73970HRLM"
+  },
+  {
+    "name": "Garden Life: A Cozy Simulator",
+    "slug": "garden-life-a-cozy-simulator",
+    "productId": "9P2ZL80B8Z1N"
+  },
+  {
     "name": "Garden Story",
     "slug": "garden-story",
     "productId": "9PP09MJRH2XD"
@@ -2493,6 +2558,11 @@
     "name": "Gears of War 4",
     "slug": "gears-of-war-4",
     "productId": "9NBLGGH4PBBM"
+  },
+  {
+    "name": "Gears of War: Judgment",
+    "slug": "gears-of-war-judgment",
+    "productId": "BSHMMGRP84N4"
   },
   {
     "name": "Gears of War: Reloaded",
@@ -2770,6 +2840,16 @@
     "productId": "9MV4WRSN7MDF"
   },
   {
+    "name": "Handball 17",
+    "slug": "handball-17",
+    "productId": "BPHW1QWRDVTV"
+  },
+  {
+    "name": "Handball 21",
+    "slug": "handball-21",
+    "productId": "9N5R0W761HP0"
+  },
+  {
     "name": "Hanoi Puzzles: Flip Match",
     "slug": "hanoi-puzzles-flip-match",
     "productId": "9NP8S4C4B4JK"
@@ -2880,6 +2960,11 @@
     "productId": "9P3PT7PQJD0M"
   },
   {
+    "name": "Hello Engineer",
+    "slug": "hello-engineer",
+    "productId": "9MXFM3J19R5H"
+  },
+  {
     "name": "Hello Neighbor",
     "slug": "hello-neighbor",
     "productId": "C0G1L18DT97K"
@@ -2888,6 +2973,16 @@
     "name": "Hello Neighbor 2",
     "slug": "hello-neighbor-2",
     "productId": "9N961B11FJ4W"
+  },
+  {
+    "name": "Hello Neighbor: Hide and Seek",
+    "slug": "hello-neighbor-hide-and-seek",
+    "productId": "9N0HKBMZKC15"
+  },
+  {
+    "name": "Hellpoint",
+    "slug": "hellpoint",
+    "productId": "9NT99F4GCVC4"
   },
   {
     "name": "Heretic + Hexen",
@@ -3058,6 +3153,11 @@
     "name": "Hunt: Showdown 1896",
     "slug": "hunt-showdown-1896",
     "productId": "9NPRV0R4CS1Z"
+  },
+  {
+    "name": "Hunting Simulator",
+    "slug": "hunting-simulator",
+    "productId": "BZPXC633X531"
   },
   {
     "name": "Hyper Gunsport",
@@ -3775,6 +3875,11 @@
     "productId": "9NHHMTXFQVLQ"
   },
   {
+    "name": "Lovely Planet",
+    "slug": "lovely-planet",
+    "productId": "BZ6XR01BVH4J"
+  },
+  {
     "name": "Lovish",
     "slug": "lovish",
     "productId": "9NXF610Q2P1D"
@@ -3903,6 +4008,11 @@
     "name": "Max: The Curse of Brotherhood",
     "slug": "max-the-curse-of-brotherhood",
     "productId": "C0SFCF4PBRSZ"
+  },
+  {
+    "name": "Mayhem in Single Valley",
+    "slug": "mayhem-in-single-valley",
+    "productId": "9NL0LV032XNL"
   },
   {
     "name": "McPixel 3",
@@ -4110,6 +4220,11 @@
     "productId": "9NJC29JG70LM"
   },
   {
+    "name": "Monster Truck Championship",
+    "slug": "monster-truck-championship",
+    "productId": "9NQDN27KM68H"
+  },
+  {
     "name": "Moon Mystery",
     "slug": "moon-mystery",
     "productId": "9PJLNCRLB5MD"
@@ -4178,6 +4293,11 @@
     "name": "Moving Out 2",
     "slug": "moving-out-2",
     "productId": "9P88K6NQW12H"
+  },
+  {
+    "name": "Mr. Shifty",
+    "slug": "mr-shifty",
+    "productId": "BVXQ0CFV4W7J"
   },
   {
     "name": "Mundaun",
@@ -4410,6 +4530,11 @@
     "productId": "9N0ZL12829P4"
   },
   {
+    "name": "No Time To Explain",
+    "slug": "no-time-to-explain",
+    "productId": "BR07QWGDPPL1"
+  },
+  {
     "name": "Nobody Saves the World",
     "slug": "nobody-saves-the-world",
     "productId": "9NFZ65KKJ10X"
@@ -4428,6 +4553,16 @@
     "name": "NORCO",
     "slug": "norco",
     "productId": "9NZFZXDRZQLR"
+  },
+  {
+    "name": "Not For Broadcast",
+    "slug": "not-for-broadcast",
+    "productId": "9PFM9XD606HT"
+  },
+  {
+    "name": "Nova Strike",
+    "slug": "nova-strike",
+    "productId": "9P2Z7WDFM00X"
   },
   {
     "name": "Nowhere Prophet",
@@ -4570,6 +4705,16 @@
     "productId": "9PP2NCZ72C79"
   },
   {
+    "name": "OVERPASS",
+    "slug": "overpass",
+    "productId": "9NMF2BJ16BJS"
+  },
+  {
+    "name": "Overpass 2",
+    "slug": "overpass-2",
+    "productId": "9P6Z4R93GZML"
+  },
+  {
     "name": "Overrogue",
     "slug": "overrogue",
     "productId": "9NWDLFG0MBBM"
@@ -4605,6 +4750,16 @@
     "productId": "9N673ZL1TCS7"
   },
   {
+    "name": "Party Hard",
+    "slug": "party-hard",
+    "productId": "BXVBZGL29961"
+  },
+  {
+    "name": "Party Hard 2",
+    "slug": "party-hard-2",
+    "productId": "9PL843QMNVN7"
+  },
+  {
     "name": "Path of Giants",
     "slug": "path-of-giants",
     "productId": "9N5XBLD93C1Z"
@@ -4618,6 +4773,16 @@
     "name": "Pathfinders: Memories",
     "slug": "pathfinders-memories",
     "productId": "9NCLP2VN9ZC4"
+  },
+  {
+    "name": "Pathologic 2",
+    "slug": "pathologic-2",
+    "productId": "9PHS5Q7KQMJM"
+  },
+  {
+    "name": "Pathologic 3",
+    "slug": "pathologic-3",
+    "productId": "9P352L301527"
   },
   {
     "name": "PAW Patrol Mighty Pups Save Adventure Bay",
@@ -4905,6 +5070,16 @@
     "productId": "9P1V4FPR7NBL"
   },
   {
+    "name": "Punch Club",
+    "slug": "punch-club",
+    "productId": "BS1V82FLTGKJ"
+  },
+  {
+    "name": "Punch Club 2: Fast Forward",
+    "slug": "punch-club-2-fast-forward",
+    "productId": "9NCTF8CRB9XV"
+  },
+  {
     "name": "PuzzlePet – Feed Your Cat",
     "slug": "puzzlepet-feed-your-cat",
     "productId": "9P8RXNL2PXZT"
@@ -4988,6 +5163,11 @@
     "name": "Rare Replay",
     "slug": "rare-replay",
     "productId": "C22T53SQ7FLM"
+  },
+  {
+    "name": "Ravenswatch",
+    "slug": "ravenswatch",
+    "productId": "9P4NX9RD7FRG"
   },
   {
     "name": "Rayman Legends",
@@ -5120,6 +5300,11 @@
     "productId": "9N1XDDL50X5F"
   },
   {
+    "name": "RiMS Racing",
+    "slug": "rims-racing",
+    "productId": "9NG9BNZQ68ND"
+  },
+  {
     "name": "Ring of Pain",
     "slug": "ring-of-pain",
     "productId": "9MZCCHNRK9R1"
@@ -5248,6 +5433,16 @@
     "name": "Ruff Ghanor",
     "slug": "ruff-ghanor",
     "productId": "9NVQ1X3L7RPC"
+  },
+  {
+    "name": "Rugby 18",
+    "slug": "rugby-18",
+    "productId": "BZR1DDL02STZ"
+  },
+  {
+    "name": "Rugby 25",
+    "slug": "rugby-25",
+    "productId": "9NDWNCK07X0Z"
   },
   {
     "name": "Rugby League 26",
@@ -5388,6 +5583,11 @@
     "name": "ScourgeBringer",
     "slug": "scourgebringer",
     "productId": "9NXPV1T3WS34"
+  },
+  {
+    "name": "ScreamRide",
+    "slug": "screamride",
+    "productId": "BZQTQH0MZ90H"
   },
   {
     "name": "Sea Fantasy",
@@ -5610,6 +5810,11 @@
     "productId": "9PF3T0M4HK95"
   },
   {
+    "name": "Slime 3K: Rise Against Despot",
+    "slug": "slime-3k-rise-against-despot",
+    "productId": "9N7J1PFNMZK7"
+  },
+  {
     "name": "Slime Rancher",
     "slug": "slime-rancher",
     "productId": "C2NC88M7NWZ1"
@@ -5728,6 +5933,11 @@
     "name": "Speedball",
     "slug": "speedball",
     "productId": "9N7RJW3CGFNG"
+  },
+  {
+    "name": "SpeedRunners",
+    "slug": "speedrunners",
+    "productId": "C3PB0BP0G04L"
   },
   {
     "name": "Spell Disk",
@@ -5945,6 +6155,11 @@
     "productId": "9N7H54KNCB9N"
   },
   {
+    "name": "Streets of Rogue",
+    "slug": "streets-of-rogue",
+    "productId": "9MZVTHHJKD3G"
+  },
+  {
     "name": "Strike Force 3",
     "slug": "strike-force-3",
     "productId": "9N2LVHSHWFPZ"
@@ -6115,6 +6330,11 @@
     "productId": "9P9WGF0GKHQH"
   },
   {
+    "name": "Taxi Life: A City Driving Simulator",
+    "slug": "taxi-life-a-city-driving-simulator",
+    "productId": "9PP1T546WJFM"
+  },
+  {
     "name": "Tchia",
     "slug": "tchia",
     "productId": "9NK4WRQX5ZC5"
@@ -6170,6 +6390,11 @@
     "productId": "9PJ0M5D2GVPZ"
   },
   {
+    "name": "Tennis World Tour",
+    "slug": "tennis-world-tour",
+    "productId": "BZX8LHQFCCRH"
+  },
+  {
     "name": "TENSEI",
     "slug": "tensei",
     "productId": "9NRC632CVR18"
@@ -6188,6 +6413,11 @@
     "name": "Tesla vs Lovecraft",
     "slug": "tesla-vs-lovecraft",
     "productId": "C5HGQXZ7PZW1"
+  },
+  {
+    "name": "Test Drive Unlimited Solar Crown",
+    "slug": "test-drive-unlimited-solar-crown",
+    "productId": "9PCZ7R12WNDL"
   },
   {
     "name": "Tetris Effect: Connected",
@@ -6305,6 +6535,21 @@
     "productId": "BPWXCL17ZZJG"
   },
   {
+    "name": "The Escapists",
+    "slug": "the-escapists",
+    "productId": "BZDK396HW2G8"
+  },
+  {
+    "name": "The Escapists 2",
+    "slug": "the-escapists-2",
+    "productId": "BS8XGCLL3VQZ"
+  },
+  {
+    "name": "The Escapists: The Walking Dead",
+    "slug": "the-escapists-the-walking-dead",
+    "productId": "BZTZV149BZ44"
+  },
+  {
     "name": "The Evil Within",
     "slug": "the-evil-within",
     "productId": "C2M8HBNVPT1T"
@@ -6328,6 +6573,11 @@
     "name": "The Falconeer",
     "slug": "the-falconeer",
     "productId": "9N8J0T5HCDB9"
+  },
+  {
+    "name": "The Final Station",
+    "slug": "the-final-station",
+    "productId": "BX8HV1B694PC"
   },
   {
     "name": "THE FINALS",
@@ -6845,6 +7095,16 @@
     "productId": "9NSQ5R004HDW"
   },
   {
+    "name": "Tour De France 2023",
+    "slug": "tour-de-france-2023",
+    "productId": "9NQSVT8LH9PC"
+  },
+  {
+    "name": "Tour de France 2024",
+    "slug": "tour-de-france-2024",
+    "productId": "9PH609TKQ13M"
+  },
+  {
     "name": "Tour de France 2025",
     "slug": "tour-de-france-2025",
     "productId": "9PNVJV9NMN2V"
@@ -6875,6 +7135,11 @@
     "productId": "9NSFGM8J6MBJ"
   },
   {
+    "name": "Train Life: A Railway Simulator",
+    "slug": "train-life-a-railway-simulator",
+    "productId": "9NJLM6Z0SNN5"
+  },
+  {
     "name": "Tram Simulator Urban Transit",
     "slug": "tram-simulator-urban-transit",
     "productId": "9P74PJH3DJRW"
@@ -6893,6 +7158,11 @@
     "name": "TRANSIRUBY",
     "slug": "transiruby",
     "productId": "9N5PQQQ34BSR"
+  },
+  {
+    "name": "Trash Sailors",
+    "slug": "trash-sailors",
+    "productId": "9PHJJ15DQKM1"
   },
   {
     "name": "Trek to Yomi",
@@ -7065,6 +7335,11 @@
     "productId": "9NQ6Z171XZX8"
   },
   {
+    "name": "Undungeon",
+    "slug": "undungeon",
+    "productId": "9PJ517SDHQPF"
+  },
+  {
     "name": "UNO",
     "slug": "uno",
     "productId": "BNSDHDK45KBR"
@@ -7200,6 +7475,11 @@
     "productId": "9NFZMZ65SHPK"
   },
   {
+    "name": "War Hospital",
+    "slug": "war-hospital",
+    "productId": "9P8GR4BMTV36"
+  },
+  {
     "name": "War Thunder",
     "slug": "war-thunder",
     "productId": "BX1DTCBD1HXJ"
@@ -7218,6 +7498,11 @@
     "name": "Warhammer 40,000: Darktide",
     "slug": "warhammer-40000-darktide",
     "productId": "9NT3WC6RKBVQ"
+  },
+  {
+    "name": "Warhammer 40,000: Inquisitor – Martyr",
+    "slug": "warhammer-40000-inquisitor-martyr",
+    "productId": "BPG20784Z9S4"
   },
   {
     "name": "Warhammer: Vermintide 2",
@@ -7433,6 +7718,16 @@
     "name": "Worms Rumble",
     "slug": "worms-rumble",
     "productId": "9PCPD8CGKR4L"
+  },
+  {
+    "name": "WRC 9 FIA World Rally Championship",
+    "slug": "wrc-9-fia-world-rally-championship",
+    "productId": "9NJ3R4FN60RR"
+  },
+  {
+    "name": "WRC Generations – The FIA WRC Official Game",
+    "slug": "wrc-generations-the-fia-wrc-official-game",
+    "productId": "9N913NZZ64H1"
   },
   {
     "name": "Wreckfest",
