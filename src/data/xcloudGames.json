@@ -395,6 +395,11 @@
     "productId": "9NZQPT0MWTD0"
   },
   {
+    "name": "Assassin’s Creed Black Flag Resynced",
+    "slug": "assassins-creed-black-flag-resynced",
+    "productId": "9MXQ1PFK7NC0"
+  },
+  {
     "name": "Assassin’s Creed Brotherhood",
     "slug": "assassins-creed-brotherhood",
     "productId": "9PGMNX4HG2C7"
@@ -573,6 +578,11 @@
     "name": "BALL x PIT",
     "slug": "ball-x-pit",
     "productId": "9MWXF3SRD7QN"
+  },
+  {
+    "name": "Banishers: Ghosts of New Eden",
+    "slug": "banishers-ghosts-of-new-eden",
+    "productId": "9NKFS43DLFFL"
   },
   {
     "name": "Banjo Kazooie: N n B",
@@ -915,6 +925,11 @@
     "productId": "9PBBW3BCQRJ1"
   },
   {
+    "name": "Buckshot Roulette",
+    "slug": "buckshot-roulette",
+    "productId": "9P5B8CPQ9S7F"
+  },
+  {
     "name": "Bug Fables: The Everlasting Sapling",
     "slug": "bug-fables-the-everlasting-sapling",
     "productId": "9PNNV537W2SN"
@@ -953,6 +968,11 @@
     "name": "Cafeteria Nipponica",
     "slug": "cafeteria-nipponica",
     "productId": "9P771T69VMJ2"
+  },
+  {
+    "name": "Call of Duty: Black Ops 6",
+    "slug": "call-of-duty-black-ops-6",
+    "productId": "9P22THR57FV7"
   },
   {
     "name": "Call of Duty: Modern Warfare II",
@@ -4740,6 +4760,11 @@
     "productId": "9P1471GHNT7P"
   },
   {
+    "name": "Palworld",
+    "slug": "palworld",
+    "productId": "9NKV34XDW014"
+  },
+  {
     "name": "Paper io 2",
     "slug": "paper-io-2",
     "productId": "9NKKL2CHSP3T"
@@ -7630,6 +7655,11 @@
     "productId": "9N232RBCFR2G"
   },
   {
+    "name": "Winds of Arcana: Ruination",
+    "slug": "winds-of-arcana-ruination",
+    "productId": "9P1ZW5K4S44V"
+  },
+  {
     "name": "Wings of Endless",
     "slug": "wings-of-endless",
     "productId": "9N8CXNP4CB1P"
@@ -7738,6 +7768,11 @@
     "name": "Wuchang: Fallen Feathers",
     "slug": "wuchang-fallen-feathers",
     "productId": "9NPRHD8GQKQS"
+  },
+  {
+    "name": "Wuthering Waves",
+    "slug": "wuthering-waves",
+    "productId": "9P41GS5W1C6L"
   },
   {
     "name": "Wylde Flowers",
