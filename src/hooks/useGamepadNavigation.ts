@@ -7,7 +7,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { App, Settings } from "../types";
 import { launchApp } from "./useLaunchApp";
 import { getBestGamepad, getActiveGamepad, readGpState, detectPlatform, rumble, type HapticPattern } from "../utils/gamepad";
-import { buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "../views/settings";
+import { buildSettingsItems, getSectionNavigableItems, getSettingCycleOptions, SETTINGS_SECTIONS } from "../views/settings";
 import {
   ACCENTS as DEFAULT_ACCENTS,
   COLS as DEFAULT_COLS,
@@ -1203,7 +1203,7 @@ export function useGamepadNavigation(
           haptic("confirm");
         }
         else if (item.type === "toggle")  { updateSetting(item.key, !currentSettings[item.key]); haptic("confirm"); }
-        else if (item.type === "cycle")  { const opts = item.options; const curVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur + 1) % opts.length]); haptic("confirm"); }
+        else if (item.type === "cycle")  { const opts = getSettingCycleOptions(item, currentSettings); const rawVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const curVal = opts.includes(rawVal) ? rawVal : item.key === "home_pinned_pos" ? "top" : rawVal; const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur + 1) % opts.length]); haptic("confirm"); }
         else if (item.type === "theme_picker") {
           const idx = Math.max(0, THEME_OPTIONS.indexOf(normalizeThemeKey(String(currentSettings.theme))));
           setThemePickerFocusIndex(idx);
@@ -1280,7 +1280,7 @@ export function useGamepadNavigation(
       if (key === "ArrowLeft") {
         if (!item) return;
         if (item.type === "toggle")  { updateSetting(item.key, !currentSettings[item.key]); haptic("confirm"); }
-        else if (item.type === "cycle")  { const opts = item.options; const curVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length]); haptic("confirm"); }
+        else if (item.type === "cycle")  { const opts = getSettingCycleOptions(item, currentSettings); const rawVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const curVal = opts.includes(rawVal) ? rawVal : item.key === "home_pinned_pos" ? "top" : rawVal; const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length]); haptic("confirm"); }
         else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur - 1 + keys.length) % keys.length]); haptic("confirm"); }
         else if (item.type === "slider") {
           const cur = (currentSettings[item.key] as number | undefined) ?? 1.0;
@@ -1315,7 +1315,7 @@ export function useGamepadNavigation(
         })),
       ].filter(c => c.items.length > 0) : [];
 
-      const pinnedAtTop = (currentSettings.home_pinned_pos ?? "bottom") === "top";
+      const pinnedAtTop = currentSettings.home_mode === "semi" || (currentSettings.home_pinned_pos ?? "bottom") === "top";
 
       // Ordered chain of sections from top to bottom — same logic for all home modes
       const chain: string[] = [

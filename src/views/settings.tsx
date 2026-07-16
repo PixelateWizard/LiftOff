@@ -366,6 +366,16 @@ export interface SettingsScreenProps {
   onXboxRefresh?: () => void;
 }
 
+export function getSettingCycleOptions(
+  item: { key: keyof Settings; type: "cycle"; options: readonly string[] },
+  settings: Settings
+): readonly string[] {
+  if (item.key === "home_pinned_pos" && settings.home_mode === "semi") {
+    return item.options.filter(option => option !== "bottom");
+  }
+  return item.options;
+}
+
 export function SettingsScreen({
   settingsFocusIndex,
   settingsSection,
@@ -823,10 +833,12 @@ export function SettingsScreen({
     }
 
     if (item.type === "cycle") {
-      const opts = item.options;
+      const opts = getSettingCycleOptions(item, settings);
       const curVal = item.key === "theme"
         ? normalizeThemeKey(String(settings[item.key]))
-        : settings[item.key] as string;
+        : item.key === "home_pinned_pos" && settings.home_mode === "semi" && settings[item.key] === "bottom"
+          ? "top"
+          : settings[item.key] as string;
       const cur = opts.indexOf(curVal);
       return (
         <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle}>

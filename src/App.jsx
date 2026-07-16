@@ -1950,7 +1950,7 @@ export default function App() {
       }
       scroller.scrollTo({ top: Math.max(0, newTop), behavior: scrollBehavior });
     };
-    const scrollFocusedCardHorizontally = (container, resetWhenFirst = false) => {
+    const scrollFocusedCardHorizontally = (container, resetWhenFirst = false, edgePad = 18) => {
       const card = focusedCardRef.current;
       if (!container || !card) return;
       if (resetWhenFirst && focusIndex === 0) {
@@ -1960,7 +1960,6 @@ export default function App() {
       const scale = settings.ui_scale ?? 1;
       const sr = container.getBoundingClientRect();
       const cr = card.getBoundingClientRect();
-      const edgePad = 18;
       const cardLeft = (cr.left - sr.left) / scale;
       const cardRight = (cr.right - sr.left) / scale;
       let newLeft = container.scrollLeft;
@@ -2041,7 +2040,8 @@ export default function App() {
             pinnedShelfRef.current.scrollTo({ left: 0, behavior: "smooth" });
           } else if (focusedCardRef.current) {
             if (outerRef.current) outerRef.current.style.overflowY = "hidden";
-            focusedCardRef.current.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+            const defaultHomePinnedTop = settingsRef.current?.home_mode === "semi" && !settingsRef.current?.cinematic_home;
+            scrollFocusedCardHorizontally(pinnedShelfRef.current || focusedCardRef.current.parentElement, false, defaultHomePinnedTop ? 32 : 18);
             if (outerRef.current) { outerRef.current.style.overflowY = ""; outerRef.current.scrollTop = 0; }
           }
         }, 80);

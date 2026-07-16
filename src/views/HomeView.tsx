@@ -349,7 +349,8 @@ export function HomeView(props: HomeViewProps) {
     const panelOpen = settings.cinematic_home && (colsFocused || focusSec === "recent");
     // Moved down below homeCollections definition to resolve activeApp correctly in semi-immersive mode
     const sectionTitleFontSize = settings.home_section_title_size === "large" ? 15 : settings.home_section_title_size === "medium" ? 12 : 10;
-    const pinnedAtTop = settings.home_pinned_pos === "top";
+    const defaultHome = semiHome && !settings.cinematic_home;
+    const pinnedAtTop = defaultHome || settings.home_pinned_pos === "top";
     const isOnyx = resolvedTheme === "onyx";
     const showHeroArtwork = !settings.cinematic_home || settings.show_immersive_hero_art !== false;
     const heroFocused = focusSec === "hero";
@@ -503,7 +504,8 @@ export function HomeView(props: HomeViewProps) {
       return null;
     })();
 
-    const heroGame = semiHome ? activeApp : activeHeroGame;
+    const semiHeroApp = focusSec === "pinned" ? activeHeroGame : activeApp;
+    const heroGame = semiHome ? semiHeroApp : activeHeroGame;
     const heroArt = heroGame ? (customArt[heroGame.id] || gameArt[heroGame.id]) : null;
     const resolveHeroType = (id) => {
       if (settings.animated_heroes === "static")   return "static";
@@ -521,7 +523,7 @@ export function HomeView(props: HomeViewProps) {
     const heroResumeFocused = heroFocused && (!heroRunning || heroActionIndex === 0);
     const heroCloseFocused = heroFocused && heroRunning && heroActionIndex === 1;
 
-    const activeGame = activeApp && activeApp.app_type === "game" ? activeApp : null;
+    const activeGame = heroGame && heroGame.app_type === "game" ? heroGame : null;
     const activeGameHeroType = activeGame
       ? settings.animated_heroes === "static"
         ? "static"
@@ -1172,6 +1174,9 @@ export function HomeView(props: HomeViewProps) {
                   </div>
                 );
               })}
+              {defaultHome && pinnedAtTop && (
+                <div aria-hidden="true" style={{ width: 32, minWidth: 32, height: 1, flexShrink: 0 }} />
+              )}
           </div>
         )}
 

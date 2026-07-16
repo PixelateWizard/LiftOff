@@ -359,7 +359,7 @@ fn default_hero_content_pos() -> String {
     "bottom".to_string()
 }
 fn default_home_pinned_pos() -> String {
-    "bottom".to_string()
+    "top".to_string()
 }
 fn default_gamepad_platform() -> String {
     "xbox".to_string()
@@ -450,7 +450,7 @@ impl Default for Settings {
             show_home_collection_names: true,
             show_hero_cover: true,
             show_home_pinned: true,
-            home_pinned_pos: "bottom".to_string(),
+            home_pinned_pos: "top".to_string(),
             onyx_flat_settings: true,
             gamepad_platform: "xbox".to_string(),
             gamepad_icons_colored: false,

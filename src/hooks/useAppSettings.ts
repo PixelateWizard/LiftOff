@@ -61,16 +61,20 @@ export function useAppSettings({
         updated.wide_settings = true;
         updated.wide_bottombar = true;
       }
+      const migratedHomePinnedPosition = updated.home_mode === "semi" && updated.home_pinned_pos === "bottom";
+      if (migratedHomePinnedPosition) updated.home_pinned_pos = "top";
       setSettings(updated);
-      if (s.surface_style === "pixel") invoke("save_settings", { settings: updated }).catch(console.error);
+      if (s.surface_style === "pixel" || migratedHomePinnedPosition) invoke("save_settings", { settings: updated }).catch(console.error);
       applyDefaultTab(s.default_tab);
       if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
     }).catch(() => {
       invoke<Partial<Settings>>("get_settings").then(s => {
         const merged = { ...settingsRef.current, ...s };
         if (merged.surface_style === "pixel") merged.surface_style = "win9x";
+        const migratedHomePinnedPosition = merged.home_mode === "semi" && merged.home_pinned_pos === "bottom";
+        if (migratedHomePinnedPosition) merged.home_pinned_pos = "top";
         setSettings(merged);
-        if (s.surface_style === "pixel") invoke("save_settings", { settings: merged }).catch(console.error);
+        if (s.surface_style === "pixel" || migratedHomePinnedPosition) invoke("save_settings", { settings: merged }).catch(console.error);
         applyDefaultTab(s.default_tab);
         if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
       });
@@ -88,6 +92,10 @@ export function useAppSettings({
       }
       if (key === "home_mode") {
         updated.cinematic_home = (value as string) === "immersive";
+        if (value === "semi" && updated.home_pinned_pos === "bottom") updated.home_pinned_pos = "top";
+      }
+      if (key === "home_pinned_pos" && updated.home_mode === "semi" && value === "bottom") {
+        updated.home_pinned_pos = "top";
       }
       if (key === "theme") {
         const nextTheme = normalizeThemeKey(value as string);

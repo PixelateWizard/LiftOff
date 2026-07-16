@@ -1,7 +1,7 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed lightweight Vitest and Playwright foundation: isolated frontend logic has jsdom unit coverage, the app shell has a mocked-Tauri Chromium smoke test, and native behavior remains gated on the real Tauri/Ally runtime.
+- Completed Normal/semi Home top pinned shelf focus scrolling fix: the right-most focused pill now keeps visible right-side clearance instead of aligning flush to the screen edge.
 
 ## 🐛 Active Bugs
 
