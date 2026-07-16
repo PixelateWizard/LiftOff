@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- **Frontend test foundation** - Added Vitest/jsdom coverage for gamepad input mapping, repeat timing, and controller-platform detection, plus a Playwright Chromium smoke test that boots the real Home shell against deterministic mocked Tauri commands. New `test`, `test:watch`, `test:e2e`, and `test:all` npm scripts make the fast checks repeatable while keeping native launch, fullscreen, WebView2, account, and controller-feel verification on the real Tauri/Ally runtime.
+
 ## [2.0.0-alpha-5.2] - Alpha 5.2
 
 ### Added

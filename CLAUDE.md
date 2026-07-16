@@ -1,7 +1,7 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed Immersive Home mouse-wheel scrolling fix: wheel input opens and scrolls the rows drawer, while Home shell layers stay locked instead of revealing blank themed space.
+- Completed lightweight Vitest and Playwright foundation: isolated frontend logic has jsdom unit coverage, the app shell has a mocked-Tauri Chromium smoke test, and native behavior remains gated on the real Tauri/Ally runtime.
 
 ## 🐛 Active Bugs
 
@@ -856,6 +856,14 @@ All animated theme backgrounds live in `src/components/backgrounds/` and are bar
   - Current row focus uses a 1px accent border, subtle inset highlight, restrained glow/lift, and bold text. Keep focused row text as `theme.text` so Obsidian/Lo-fi titles do not turn dark.
 
 ### Verification Notes
+
+#### Testing Pattern
+
+- `npm run test` runs fast Vitest/jsdom unit tests under `src/**/*.test.{ts,tsx}`. Prefer these for pure utilities, reducers/state transitions, parsing, and focused component behavior that does not require a native window.
+- `npm run test:e2e` starts Vite on `127.0.0.1:1422` and runs Playwright tests under `tests/e2e`. The smoke harness installs deterministic Tauri command/event mocks before the app loads so startup, layout, focus, and controller-navigation flows can be exercised without touching real launchers or user data.
+- `npm run test:all` runs both frontend test layers. A fresh machine also needs the one-time `npx playwright install chromium` browser download.
+- Mocked browser tests are partial confidence only. They do not validate WebView2/Tauri IPC, native window activation, launcher-mediated launches, fullscreen/FSE handoff, hardware gamepad feel, haptics, or real account integrations; use `npm.cmd run tauri -- dev` and hands-on Ally checks for those paths.
+- Keep `npm run build` and `git diff --check` as the baseline change validation, and add `cargo check` or targeted `cargo test` whenever `src-tauri` changes.
 
 - `npm.cmd run build` passes after the full hook refactor including `useGamepadNavigation` extraction.
 - `npm run build` passes after the Games/Apps keep-mounted Home-switch optimization and gamepad scroll fix.
