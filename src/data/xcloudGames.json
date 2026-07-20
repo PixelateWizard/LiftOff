@@ -1,5 +1,10 @@
 [
   {
+    "name": "#Blud",
+    "slug": "blud",
+    "productId": "9PBTFFLF6D2T"
+  },
+  {
     "name": "#DRIVE Rally",
     "slug": "drive-rally",
     "productId": "9NFKS70W83Z0"
@@ -20,6 +25,11 @@
     "productId": "9NG9WM7N8MT3"
   },
   {
+    "name": "70s-style Robot Anime Geppy-X",
+    "slug": "70s-style-robot-anime-geppy-x",
+    "productId": "9PMDDZDCTPM9"
+  },
+  {
     "name": "7th Domain: Tree of Chaos",
     "slug": "7th-domain-tree-of-chaos",
     "productId": "9PDBFZGM0BTS"
@@ -33,6 +43,11 @@
     "name": "9th Dawn Remake",
     "slug": "9th-dawn-remake",
     "productId": "9PF5H31CQP37"
+  },
+  {
+    "name": "A Hat in Time",
+    "slug": "a-hat-in-time",
+    "productId": "BX91DHSR4C5T"
   },
   {
     "name": "A Little To The Left",
@@ -83,6 +98,11 @@
     "name": "Absolum",
     "slug": "absolum",
     "productId": "9NR6NJ401NBS"
+  },
+  {
+    "name": "Absolver",
+    "slug": "absolver",
+    "productId": "C3XCXTFS6FFQ"
   },
   {
     "name": "Abyssal Drift",
@@ -770,6 +790,11 @@
     "productId": "9NX6XGVJ0J3D"
   },
   {
+    "name": "Blightbound",
+    "slug": "blightbound",
+    "productId": "9P7L5136WX0R"
+  },
+  {
     "name": "Blindfire",
     "slug": "blindfire",
     "productId": "9NR81PCSLLB6"
@@ -1018,6 +1043,11 @@
     "name": "Cartel Tycoon",
     "slug": "cartel-tycoon",
     "productId": "9NRR1ZXG0ZZ8"
+  },
+  {
+    "name": "Carto",
+    "slug": "carto",
+    "productId": "9NJ2XXPJVDRD"
   },
   {
     "name": "Cash Cleaner Simulator",
@@ -1640,6 +1670,11 @@
     "productId": "9NMC1FNLSKK8"
   },
   {
+    "name": "Disc Room",
+    "slug": "disc-room",
+    "productId": "9P4GS31NHKT7"
+  },
+  {
     "name": "Discounty",
     "slug": "discounty",
     "productId": "9MX2JR436QFW"
@@ -2130,6 +2165,11 @@
     "productId": "9PC12991NZ5N"
   },
   {
+    "name": "Exit the Gungeon",
+    "slug": "exit-the-gungeon",
+    "productId": "9P7ZR10P26RP"
+  },
+  {
     "name": "Exoprimal",
     "slug": "exoprimal",
     "productId": "9NMFRHJX5JCZ"
@@ -2173,6 +2213,11 @@
     "name": "Fable III",
     "slug": "fable-iii",
     "productId": "BR46KM4D5B9L"
+  },
+  {
+    "name": "Fade to Silence",
+    "slug": "fade-to-silence",
+    "productId": "C5B84LR72JB7"
   },
   {
     "name": "Fae Farm",
@@ -2425,6 +2470,11 @@
     "productId": "9PFB822HLX39"
   },
   {
+    "name": "Forager",
+    "slug": "forager",
+    "productId": "9MV2S7Q5PHSW"
+  },
+  {
     "name": "Forest Camp Story",
     "slug": "forest-camp-story",
     "productId": "9P5N78QGPS1X"
@@ -2563,6 +2613,11 @@
     "name": "Gas Station Simulator",
     "slug": "gas-station-simulator",
     "productId": "9NH6JRWC8MTZ"
+  },
+  {
+    "name": "Gato Roboto",
+    "slug": "gato-roboto",
+    "productId": "9PF6XX9BSHF0"
   },
   {
     "name": "Gears 5",
@@ -3150,6 +3205,11 @@
     "productId": "9PPCS86WS28Z"
   },
   {
+    "name": "Hotline Miami 2: Wrong Number",
+    "slug": "hotline-miami-2-wrong-number",
+    "productId": "9NRX55Z58QNV"
+  },
+  {
     "name": "House Flipper",
     "slug": "house-flipper",
     "productId": "9NBFGKQLMV33"
@@ -3220,6 +3280,11 @@
     "productId": "9PF9FQGH89WM"
   },
   {
+    "name": "I Hate Running Backwards",
+    "slug": "i-hate-running-backwards",
+    "productId": "C3Z4C9CNSLRJ"
+  },
+  {
     "name": "I Hate This Place",
     "slug": "i-hate-this-place",
     "productId": "9P9N7VG2BF53"
@@ -3243,6 +3308,11 @@
     "name": "Iconoclasts",
     "slug": "iconoclasts",
     "productId": "9N7WRWNN5GZN"
+  },
+  {
+    "name": "Ikenfell",
+    "slug": "ikenfell",
+    "productId": "9P91S5ZL1P4D"
   },
   {
     "name": "Imagine Earth",
@@ -3830,6 +3900,11 @@
     "productId": "9NW0HVLB2GNG"
   },
   {
+    "name": "Lock’s Quest",
+    "slug": "locks-quest",
+    "productId": "BXMWZ8WQS4XR"
+  },
+  {
     "name": "Lonely Mountains: Downhill",
     "slug": "lonely-mountains-downhill",
     "productId": "9MV6MCVLT8GR"
@@ -4025,6 +4100,11 @@
     "productId": "9NTZHGP0GFTP"
   },
   {
+    "name": "MAVRIX by Matt Jones",
+    "slug": "mavrix-by-matt-jones",
+    "productId": "9NZX67J81X6F"
+  },
+  {
     "name": "Max: The Curse of Brotherhood",
     "slug": "max-the-curse-of-brotherhood",
     "productId": "C0SFCF4PBRSZ"
@@ -4083,6 +4163,11 @@
     "name": "Metal Slug Tactics",
     "slug": "metal-slug-tactics",
     "productId": "9NGNZP1J1JN7"
+  },
+  {
+    "name": "Metal Wolf Chaos XD",
+    "slug": "metal-wolf-chaos-xd",
+    "productId": "9P72G60JZDC4"
   },
   {
     "name": "Metavoidal",
@@ -4170,6 +4255,11 @@
     "productId": "9N5PKH0KW2L1"
   },
   {
+    "name": "MINIT",
+    "slug": "minit",
+    "productId": "C120V2WGRMCH"
+  },
+  {
     "name": "Miraculous – Paris Under Siege",
     "slug": "miraculous-paris-under-siege",
     "productId": "9NSWRWW5S3ZG"
@@ -4178,6 +4268,16 @@
     "name": "Mirror’s Edge Catalyst",
     "slug": "mirrors-edge-catalyst",
     "productId": "C48LBRJJCP2L"
+  },
+  {
+    "name": "Monaco 2",
+    "slug": "monaco-2",
+    "productId": "9P692DQM7N3J"
+  },
+  {
+    "name": "Monaco: What’s Yours Is Mine",
+    "slug": "monaco-whats-yours-is-mine",
+    "productId": "C1Z0M42RJ2C1"
   },
   {
     "name": "Mondealy",
@@ -4358,6 +4458,11 @@
     "name": "My Brother Rabbit",
     "slug": "my-brother-rabbit",
     "productId": "9PN00JGV48R1"
+  },
+  {
+    "name": "My Friend Pedro",
+    "slug": "my-friend-pedro",
+    "productId": "9NMH293554QQ"
   },
   {
     "name": "My Friend Peppa Pig",
@@ -4635,6 +4740,11 @@
     "productId": "9NF744DF5FQ3"
   },
   {
+    "name": "Olija",
+    "slug": "olija",
+    "productId": "9N8LVGJ6RDBP"
+  },
+  {
     "name": "Omno",
     "slug": "omno",
     "productId": "9PJ6C03ZLLQV"
@@ -4875,6 +4985,11 @@
     "productId": "9P0P58R3NQDS"
   },
   {
+    "name": "Pepper Grinder",
+    "slug": "pepper-grinder",
+    "productId": "9P2T1C6PF0DK"
+  },
+  {
     "name": "Perfect Dark",
     "slug": "perfect-dark",
     "productId": "C0SWGV4560W1"
@@ -4893,6 +5008,11 @@
     "name": "PGA TOUR 2K25",
     "slug": "pga-tour-2k25",
     "productId": "9MWJ5DWVFVGW"
+  },
+  {
+    "name": "Phantom Abyss",
+    "slug": "phantom-abyss",
+    "productId": "9NH9W1N1XWV5"
   },
   {
     "name": "Phantom Breaker: Battle Grounds Ultimate",
@@ -4933,6 +5053,11 @@
     "name": "PictoQuest",
     "slug": "pictoquest",
     "productId": "9P14J9831SBP"
+  },
+  {
+    "name": "PIKUNIKU",
+    "slug": "pikuniku",
+    "productId": "9N8WRDC25K6J"
   },
   {
     "name": "PJ MASKS: HEROES OF THE NIGHT",
@@ -5080,6 +5205,11 @@
     "productId": "9NQ73XB1Q5ZG"
   },
   {
+    "name": "Protodroid DeLTA",
+    "slug": "protodroid-delta",
+    "productId": "9PG2TC6Z3WS5"
+  },
+  {
     "name": "Psychonauts",
     "slug": "psychonauts",
     "productId": "C5HHPG1TXDNG"
@@ -5118,6 +5248,11 @@
     "name": "Quantum Break",
     "slug": "quantum-break",
     "productId": "9NBLGGH6H0RV"
+  },
+  {
+    "name": "Quarantine Zone: The Last Check",
+    "slug": "quarantine-zone-the-last-check",
+    "productId": "9P9446P7D9TZ"
   },
   {
     "name": "Quest Hunter",
@@ -5670,6 +5805,16 @@
     "productId": "BRVK4W7RVCXR"
   },
   {
+    "name": "Shadow Warrior",
+    "slug": "shadow-warrior",
+    "productId": "BR7ZJJHGWT5X"
+  },
+  {
+    "name": "Shadow Warrior 2",
+    "slug": "shadow-warrior-2",
+    "productId": "9P6SFBR1TCWQ"
+  },
+  {
     "name": "Shadowrun Returns",
     "slug": "shadowrun-returns",
     "productId": "9N6PHQ93Z451"
@@ -5925,6 +6070,11 @@
     "productId": "9NJCVGS6T30K"
   },
   {
+    "name": "South of the Circle",
+    "slug": "south-of-the-circle",
+    "productId": "9MTZBS6PF8MS"
+  },
+  {
     "name": "South Park: The Fractured But Whole",
     "slug": "south-park-the-fractured-but-whole",
     "productId": "C4VLMWJWM7BG"
@@ -6160,6 +6310,11 @@
     "productId": "9N88DFRX8WCJ"
   },
   {
+    "name": "Stories Untold",
+    "slug": "stories-untold",
+    "productId": "9NS4Z73TM0K5"
+  },
+  {
     "name": "STRANGER OF PARADISE FINAL FANTASY ORIGIN",
     "slug": "stranger-of-paradise-final-fantasy-origin",
     "productId": "9P90PC10BZW8"
@@ -6285,6 +6440,11 @@
     "productId": "9NR0GCBSLDW4"
   },
   {
+    "name": "Supraland",
+    "slug": "supraland",
+    "productId": "9P75CZFXMS7N"
+  },
+  {
     "name": "Supraland Six Inches Under",
     "slug": "supraland-six-inches-under",
     "productId": "9P5RS5065835"
@@ -6398,6 +6558,11 @@
     "name": "Tempopo",
     "slug": "tempopo",
     "productId": "9P6X0VL8BXZF"
+  },
+  {
+    "name": "Temtem",
+    "slug": "temtem",
+    "productId": "9MVXZMRQXHSF"
   },
   {
     "name": "Ten Dates",
@@ -6790,6 +6955,11 @@
     "productId": "9NFSR96G6K4N"
   },
   {
+    "name": "The Messenger",
+    "slug": "the-messenger",
+    "productId": "9NNFBW3NGV9K"
+  },
+  {
     "name": "The Mildew Children",
     "slug": "the-mildew-children",
     "productId": "9NL6F5300JS4"
@@ -6798,6 +6968,11 @@
     "name": "The Nom",
     "slug": "the-nom",
     "productId": "9MWMGT7M9M44"
+  },
+  {
+    "name": "The Occupation",
+    "slug": "the-occupation",
+    "productId": "9PNV1L1M09P6"
   },
   {
     "name": "The Oregon Trail",
@@ -6923,6 +7098,11 @@
     "name": "The Talos Principle 2",
     "slug": "the-talos-principle-2",
     "productId": "9N7P8GVMF6SS"
+  },
+  {
+    "name": "The Talos Principle: Reawakened",
+    "slug": "the-talos-principle-reawakened",
+    "productId": "9NT7Q3CB5N9T"
   },
   {
     "name": "The Texas Chain Saw Massacre",
@@ -7475,6 +7655,11 @@
     "productId": "9P9V698V6MVR"
   },
   {
+    "name": "Void Bastards",
+    "slug": "void-bastards",
+    "productId": "9N584LPFG1GM"
+  },
+  {
     "name": "Voidtrain",
     "slug": "voidtrain",
     "productId": "9NQMVR9WL9FW"
@@ -7488,6 +7673,11 @@
     "name": "Wander Stars",
     "slug": "wander-stars",
     "productId": "9NK4TGJNK7F8"
+  },
+  {
+    "name": "Wandersong",
+    "slug": "wandersong",
+    "productId": "9ND3Z0QH0NKB"
   },
   {
     "name": "Wanderstop",
@@ -7635,6 +7825,11 @@
     "productId": "9NFT3TR6MN9W"
   },
   {
+    "name": "Wildfire",
+    "slug": "wildfire",
+    "productId": "9NFF0GQ68HBG"
+  },
+  {
     "name": "Wildfrost",
     "slug": "wildfrost",
     "productId": "9N061M9R7BVQ"
@@ -7683,6 +7878,11 @@
     "name": "Wizard of Legend 2",
     "slug": "wizard-of-legend-2",
     "productId": "9P5KTTRZVS9W"
+  },
+  {
+    "name": "Wizard with a Gun",
+    "slug": "wizard-with-a-gun",
+    "productId": "9P436CQCTNGW"
   },
   {
     "name": "Wo Long: Fallen Dynasty",
