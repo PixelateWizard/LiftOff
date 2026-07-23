@@ -1,7 +1,7 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- JABBER Task A is complete and independently validated: A8 passed 10 consecutive recovery cycles split across Remnant 2 (Xbox/Game Pass) and PEAK (Steam), covering Alt+F4, each game's own Quit control, and summon-equivalent foreground restore -> LiftOff Resume -> exit on both sources. The automation layer cannot synthesize the physical L3+R3 XInput chord, so that input gesture remains the only hardware-only check. Next, keep Task B and the memory spike harness isolated on `spike/bg-memory-measure` and run C0b step 1 only. If the empty-div null test reaches the same ~132 MB GPU-process floor, treat Task C's unmount premise as disproven and stop; do not proceed to C1+, C0b steps 2-3, or C3-alt.
+- Recover the complete Task B sound-effects toggle from the preserved spike stash onto `codex/task-b-sound-effects-toggle`, excluding the C0 memory harness; verify B1-B6, validate Rust/frontend/tests/diff, then merge and push from `main`. The stash must remain until the applied Task B diff is confirmed complete.
 
 ## 🐛 Active Bugs
 

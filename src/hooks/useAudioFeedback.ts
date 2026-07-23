@@ -9,7 +9,10 @@ import { AUDIO_PROFILES, type AudioProfile } from "../audio/audioProfiles";
 
 type AudioKey = "ui" | "uiAlt" | "gameStart" | "appLoaded" | "launchSuccess";
 
-export function useAudioFeedback(profileRef?: RefObject<AudioProfile>) {
+export function useAudioFeedback(
+  profileRef?: RefObject<AudioProfile>,
+  enabledRef?: RefObject<boolean>,
+) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const audioBuffers = useRef<Partial<Record<AudioKey, AudioBuffer>>>({});
 
@@ -28,6 +31,9 @@ export function useAudioFeedback(profileRef?: RefObject<AudioProfile>) {
   }, [getAudioCtx]);
 
   const playBuffer = useCallback((key: AudioKey) => {
+    // Sound effects are muted at the playback boundary rather than at each call
+    // site, so every existing playSound* caller is covered automatically.
+    if (enabledRef && enabledRef.current === false) return;
     try {
       const ctx = getAudioCtx();
       if (ctx.state === "suspended") ctx.resume();
@@ -53,7 +59,7 @@ export function useAudioFeedback(profileRef?: RefObject<AudioProfile>) {
       gainNode.connect(ctx.destination);
       src.start(0);
     } catch {}
-  }, [getAudioCtx, profileRef]);
+  }, [enabledRef, getAudioCtx, profileRef]);
 
   useEffect(() => {
     preloadAudio("ui", uiSound);

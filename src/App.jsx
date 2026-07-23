@@ -321,6 +321,7 @@ export default function App() {
     gameMemberships, setGameMemberships, gameMembershipsRef,
   } = useCollections();
   const audioProfileRef = useRef(AUDIO_PROFILES.standard);
+  const sfxEnabledRef = useRef(true);
   const {
     customSources,
     setCustomSources,
@@ -328,7 +329,7 @@ export default function App() {
     customFolders,
     setCustomFolders,
   } = useCustomSources();
-  const { playSound, playSoundAlt, playSoundGameStart, playAppLoadedSound, playLaunchSuccessSound } = useAudioFeedback(audioProfileRef);
+  const { playSound, playSoundAlt, playSoundGameStart, playAppLoadedSound, playLaunchSuccessSound } = useAudioFeedback(audioProfileRef, sfxEnabledRef);
   const startupHapticsEnabledRef = useRef(true);
   const {
     gameArt,
@@ -385,6 +386,10 @@ export default function App() {
     onScanKeyChange: refreshLibrary,
     autoScaleRef,
   });
+  useEffect(() => {
+    sfxEnabledRef.current = settings.sfx_enabled !== false;
+  }, [settings.sfx_enabled]);
+
   startupHapticsEnabledRef.current = settings.haptic_feedback ?? true;
   const { updateStatus, updateInfo, checkForUpdates } = useUpdateCheck({
     appVersion: APP_VERSION,

@@ -143,6 +143,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
       { key: "lofi_music_enabled", label: t("settings.lofiMusic"), type: "toggle" },
     ] : undefined },
     { key: "ui_motion",     section: 0, group: 0, label: t("settings.uiMotion"),      type: "toggle", indent: true },
+    { key: "sfx_enabled",   section: 0, group: 0, label: t("settings.sfxEnabled"),    type: "toggle", indent: true },
     { key: "surface_style", section: 0, group: 0, label: t("settings.surfaceStyle"),  type: "surface_picker", indent: true },
 
     D("home", 0, 1),

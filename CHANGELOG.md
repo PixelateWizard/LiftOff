@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Added
+- **Sound effects toggle** - Added a persisted Appearance setting that mutes every UI, launch, splash-complete, and launch-success cue at the shared playback boundary while leaving lo-fi music and haptics unchanged. The new English `settings.sfxEnabled` key needs moi952 localization follow-up.
 - **Frontend test foundation** - Added Vitest/jsdom coverage for gamepad input mapping, repeat timing, and controller-platform detection, plus a Playwright Chromium smoke test that boots the real Home shell against deterministic mocked Tauri commands. New `test`, `test:watch`, `test:e2e`, and `test:all` npm scripts make the fast checks repeatable while keeping native launch, fullscreen, WebView2, account, and controller-feel verification on the real Tauri/Ally runtime.
 
 ### Fixed

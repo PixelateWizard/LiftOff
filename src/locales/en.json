@@ -236,6 +236,7 @@
     "backgroundForest": "Forest Effects",
     "backgroundWebcore": "Webcore Effects",
     "uiMotion": "UI Motion",
+    "sfxEnabled": "Sound Effects",
     "surfaceStyle": "Surface Style",
     "appearanceGroups": {
       "style": "Style",

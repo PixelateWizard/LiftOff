@@ -171,6 +171,8 @@ pub struct Settings {
     pub onyx_top_light: bool,
     #[serde(default = "default_true")]
     pub lofi_music_enabled: bool,
+    #[serde(default = "default_true")]
+    pub sfx_enabled: bool,
     pub default_tab: String,
     pub scan_steam: bool,
     pub scan_xbox: bool,
@@ -391,6 +393,7 @@ impl Default for Settings {
             stars_enabled: true,
             ui_motion: true,
             lofi_music_enabled: true,
+            sfx_enabled: true,
             default_tab: "Home".to_string(),
             scan_steam: true,
             scan_xbox: true,
