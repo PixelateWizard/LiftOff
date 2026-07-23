@@ -5,6 +5,8 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
 
 #[cfg(windows)]
+use windows::core::BOOL;
+#[cfg(windows)]
 use windows::Win32::Foundation::{HWND, RECT};
 #[cfg(windows)]
 use windows::Win32::Graphics::Gdi::{
@@ -22,7 +24,8 @@ use windows::Win32::UI::Input::XboxController::{XInputGetState, XINPUT_STATE};
 use windows::Win32::UI::WindowsAndMessaging::{
     BringWindowToTop, GetForegroundWindow, GetWindowRect, GetWindowThreadProcessId, IsIconic,
     IsWindow, IsWindowVisible, SetForegroundWindow, SetWindowPos, ShowWindow, HWND_NOTOPMOST,
-    HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SW_RESTORE, SW_SHOW,
+    HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, SWP_SHOWWINDOW,
+    SW_RESTORE, SW_SHOW,
 };
 
 const POLL_INTERVAL_MS: u64 = 250;
@@ -38,6 +41,17 @@ const SUMMON_HOLD_MS: u64 = 600;
 // attempts and return as soon as we win.
 const FOREGROUND_ATTEMPTS: u32 = 6;
 const FOREGROUND_RETRY_SLEEP_MS: u64 = 40;
+// WebView2 resume is verified rather than fire-and-forget: after a
+// fullscreen-exclusive game releases the GPU, a single SetIsVisible(true) can be
+// dropped or land on a stale composition surface, which presents as a fully
+// black LiftOff window with no way for the user to recover.
+const RESUME_ATTEMPTS: u32 = 8;
+const RESUME_RETRY_SLEEP_MS: u64 = 60;
+const WEBVIEW_QUERY_TIMEOUT_MS: u64 = 400;
+// Self-heal window after a game exits. AnyFSE can re-route its visible-window
+// slot for a beat after the game process tears down, so we keep checking.
+const POST_EXIT_HEAL_MS: u64 = 4_000;
+const POST_EXIT_HEAL_POLL_MS: u64 = 250;
 // After raising LiftOff we re-assert the foreground for a bounded window: FSE
 // tends to route its single visible-window slot back to the Xbox home app right
 // after a game exits or after we summon over a game, which would otherwise bounce
@@ -379,11 +393,127 @@ fn suspend_webview(app: &AppHandle) -> bool {
 }
 
 #[cfg(windows)]
+#[allow(dead_code)]
 fn resume_webview(app: &AppHandle) -> bool {
     set_webview_visible(app, true)
 }
 
+// Read back the controller's actual visibility. `with_webview` marshals to the
+// main thread, so the result comes back over a channel with a bounded wait
+// rather than being read synchronously. `None` means "could not determine",
+// which callers treat as success to avoid spinning on a controller that will
+// never answer.
+#[cfg(windows)]
+fn webview_is_visible(app: &AppHandle) -> Option<bool> {
+    let window = app.get_webview_window(MAIN_WINDOW_LABEL)?;
+    let (tx, rx) = std::sync::mpsc::channel::<bool>();
+    window
+        .with_webview(move |webview| unsafe {
+            let mut visible = BOOL(0);
+            if webview.controller().IsVisible(&mut visible).is_ok() {
+                let _ = tx.send(visible.as_bool());
+            }
+        })
+        .ok()?;
+    rx.recv_timeout(Duration::from_millis(WEBVIEW_QUERY_TIMEOUT_MS))
+        .ok()
+}
+
+// Resume rendering and confirm it took. Returns false only when the controller
+// answered and is still not visible after every attempt.
+#[cfg(windows)]
+fn resume_webview_verified(app: &AppHandle) -> bool {
+    for attempt in 0..RESUME_ATTEMPTS {
+        let _ = set_webview_visible(app, true);
+        match webview_is_visible(app) {
+            Some(true) => return true,
+            None => return true,
+            Some(false) => {}
+        }
+        if attempt + 1 < RESUME_ATTEMPTS {
+            std::thread::sleep(Duration::from_millis(RESUME_RETRY_SLEEP_MS));
+        }
+    }
+    false
+}
+
 #[cfg(not(windows))]
+fn resume_webview_verified(app: &AppHandle) -> bool {
+    let _ = app;
+    true
+}
+
+// A one-pixel resize round-trip. WebView2 can come back visible while still
+// presenting the composition surface it had before the game took the GPU; a
+// WM_SIZE forces a full recomposite. The window ends at its original size, so
+// nothing is visible to the user beyond the repaint itself.
+#[cfg(windows)]
+fn nudge_webview_repaint(hwnd: HWND) {
+    unsafe {
+        let mut rect = RECT::default();
+        if GetWindowRect(hwnd, &mut rect).is_err() {
+            return;
+        }
+        let width = rect.right - rect.left;
+        let height = rect.bottom - rect.top;
+        if width <= 1 || height <= 1 {
+            return;
+        }
+        let flags = SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE;
+        let _ = SetWindowPos(hwnd, None, 0, 0, width - 1, height, flags);
+        std::thread::sleep(Duration::from_millis(16));
+        let _ = SetWindowPos(hwnd, None, 0, 0, width, height, flags);
+    }
+}
+
+// Keep checking for a few seconds after a game exits. AnyFSE can bounce its
+// visible-window slot back to the home app a beat late, and a resume that was
+// accepted at exit time can end up on a surface that never paints.
+#[cfg(windows)]
+fn start_post_exit_heal(app: AppHandle, our_hwnd: isize) {
+    std::thread::spawn(move || {
+        let deadline = Instant::now() + Duration::from_millis(POST_EXIT_HEAL_MS);
+        while Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(POST_EXIT_HEAL_POLL_MS));
+            if webview_is_visible(&app) == Some(false) {
+                let _ = set_webview_visible(&app, true);
+                if let Some(hwnd) = hwnd_from_value(our_hwnd) {
+                    nudge_webview_repaint(hwnd);
+                }
+                let _ = app.emit("fse:gpu-resumed", ());
+            }
+        }
+    });
+}
+
+// Full recovery sequence for "the game exited and LiftOff must come back".
+#[cfg(windows)]
+fn restore_after_game_exit(app: &AppHandle, our_hwnd: isize) {
+    let resumed = resume_webview_verified(app);
+    if let Some(hwnd) = hwnd_from_value(our_hwnd) {
+        unsafe {
+            if IsIconic(hwnd).as_bool() {
+                let _ = ShowWindow(hwnd, SW_RESTORE);
+            } else {
+                let _ = ShowWindow(hwnd, SW_SHOW);
+            }
+        }
+        raise_window_and_hold(hwnd);
+        clear_topmost(hwnd);
+        nudge_webview_repaint(hwnd);
+    }
+    if !resumed {
+        // Last resort: the controller reported not-visible through every retry.
+        // Issue one more unverified call before handing off to the heal thread.
+        let _ = set_webview_visible(app, true);
+    }
+    let _ = app.emit("fse:gpu-resumed", ());
+    let _ = app.emit("fse:restored", ());
+    start_post_exit_heal(app.clone(), our_hwnd);
+}
+
+#[cfg(not(windows))]
+#[allow(dead_code)]
 fn resume_webview(app: &AppHandle) -> bool {
     let _ = app;
     true
@@ -483,7 +613,7 @@ pub fn start_gpu_release_watch(
             loop {
                 if cancel.load(Ordering::SeqCst) {
                     if webview_suspended {
-                        let _ = resume_webview(&app);
+                        let _ = resume_webview_verified(&app);
                         let _ = app.emit("fse:gpu-resumed", ());
                     }
                     return;
@@ -497,7 +627,7 @@ pub fn start_gpu_release_watch(
                     while Instant::now() < grace_end {
                         if cancel.load(Ordering::SeqCst) {
                             if webview_suspended {
-                                let _ = resume_webview(&app);
+                                let _ = resume_webview_verified(&app);
                                 let _ = app.emit("fse:gpu-resumed", ());
                             }
                             return;
@@ -527,8 +657,11 @@ pub fn start_gpu_release_watch(
                 let foreground = unsafe { GetForegroundWindow() };
                 let foreground_value = hwnd_value(foreground);
                 if foreground_value == our_hwnd {
-                    if webview_suspended && resume_webview(&app) {
+                    if webview_suspended && resume_webview_verified(&app) {
                         webview_suspended = false;
+                        if let Some(hwnd) = hwnd_from_value(our_hwnd) {
+                            nudge_webview_repaint(hwnd);
+                        }
                         let _ = app.emit("fse:gpu-resumed", ());
                     }
                 } else if foreground_value != 0
@@ -542,9 +675,12 @@ pub fn start_gpu_release_watch(
                 std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
             }
 
+            // The game window is gone. Do not assume a single SetIsVisible(true)
+            // is enough: verify the resume, reclaim foreground from the FSE home
+            // slot, and force a recomposite. Otherwise LiftOff can end up
+            // foreground and completely black with no user-side recovery.
             if webview_suspended {
-                let _ = resume_webview(&app);
-                let _ = app.emit("fse:gpu-resumed", ());
+                restore_after_game_exit(&app, our_hwnd);
             }
             app.state::<FseWatch>().cancel();
         });
@@ -753,4 +889,28 @@ pub fn show_liftoff(app: AppHandle) {
         restore_liftoff_window(&window, 0);
     }
     let _ = app.emit("fse:restored", ());
+}
+
+// Frontend watchdog escape hatch. The frontend can detect that rendering never
+// actually came back (requestAnimationFrame stays silent while WebView2
+// rendering is disabled) and ask the backend to force it.
+#[tauri::command]
+pub fn force_webview_resume(app: AppHandle) {
+    #[cfg(windows)]
+    {
+        let _ = resume_webview_verified(&app);
+        let our_hwnd = app
+            .get_webview_window(MAIN_WINDOW_LABEL)
+            .and_then(|window| window.hwnd().ok())
+            .map(|hwnd| hwnd.0 as isize)
+            .unwrap_or(0);
+        if let Some(hwnd) = hwnd_from_value(our_hwnd) {
+            nudge_webview_repaint(hwnd);
+        }
+        let _ = app.emit("fse:gpu-resumed", ());
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = app;
+    }
 }

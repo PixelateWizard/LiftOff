@@ -6,6 +6,7 @@
 - **Frontend test foundation** - Added Vitest/jsdom coverage for gamepad input mapping, repeat timing, and controller-platform detection, plus a Playwright Chromium smoke test that boots the real Home shell against deterministic mocked Tauri commands. New `test`, `test:watch`, `test:e2e`, and `test:all` npm scripts make the fast checks repeatable while keeping native launch, fullscreen, WebView2, account, and controller-feel verification on the real Tauri/Ally runtime.
 
 ### Fixed
+- **FSE game-exit black screen** - WebView2 resume now retries and verifies controller visibility, reclaims the AnyFSE foreground slot, forces a one-pixel repaint, self-heals for four seconds after game exit, and exposes a frontend render-liveness escape hatch instead of emitting a false successful resume onto a black surface.
 - **Normal Home pinned shelf placement** - Removed the nonfunctional Bottom choice from the default Normal Home view, migrate existing Normal Home Bottom selections to Top, added a real scroll-end spacer, and corrected focused-pill auto-scrolling so the final top-pinned item keeps visible clearance from the right edge. Legacy and Immersive Home keep the Bottom option.
 - **Normal Home pinned focus hero stability** - In the default Normal/semi Home view, focusing a pinned shelf item no longer changes the hero/background art; the focused pinned item remains navigable while the hero stays on the selected Home hero item.
 

@@ -1,7 +1,7 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Completed Normal/semi Home top pinned shelf focus scrolling fix: the right-most focused pill now keeps visible right-side clearance instead of aligning flush to the screen edge.
+- JABBER Task A is complete and independently validated: A8 passed 10 consecutive recovery cycles split across Remnant 2 (Xbox/Game Pass) and PEAK (Steam), covering Alt+F4, each game's own Quit control, and summon-equivalent foreground restore -> LiftOff Resume -> exit on both sources. The automation layer cannot synthesize the physical L3+R3 XInput chord, so that input gesture remains the only hardware-only check. Next, keep Task B and the memory spike harness isolated on `spike/bg-memory-measure` and run C0b step 1 only. If the empty-div null test reaches the same ~132 MB GPU-process floor, treat Task C's unmount premise as disproven and stop; do not proceed to C1+, C0b steps 2-3, or C3-alt.
 
 ## 🐛 Active Bugs
 
