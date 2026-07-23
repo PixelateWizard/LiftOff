@@ -1,7 +1,16 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Recover the complete Task B sound-effects toggle from the preserved spike stash onto `codex/task-b-sound-effects-toggle`, excluding the C0 memory harness; verify B1-B6, validate Rust/frontend/tests/diff, then merge and push from `main`. The stash must remain until the applied Task B diff is confirmed complete.
+- Tasks A and B are shipped on `main`. Preserve the rejected C0b/C2 findings and the FSE native-summon limitation in this handoff, then audit that both spike branches remain unmerged/unpushed and that no memory harness, dependency change, or debug keybinding reached `main`.
+
+## Investigated and rejected
+
+- **Background unmount for memory reduction:** Rejected. The C0b null test showed a 34.1 MB GPU-process delta from unmounting an empty `div`, so the effect was a compositor layer-tree rebuild rather than retained subtree content. Do not retry unmount-based memory work.
+- **WebView2 `MemoryUsageTargetLevel`:** Available in pinned `webview2-com` 0.38.2 as `ICoreWebView2_19::SetMemoryUsageTargetLevel`, but only through a transitive dependency whose interface types are not re-exported. Using it requires declaring `webview2-com` directly and accepting a version-sync obligation against the version Tauri/wry pins. Deferred, not impossible.
+
+## FSE validation constraint
+
+- The native L3+R3 summon shortcut is non-functional under FSE and must not be treated as a testable recovery path. The A8 checklist's physical L3+R3 assumption was incorrect; any existing acceptance criteria that reference this shortcut are void.
 
 ## 🐛 Active Bugs
 
