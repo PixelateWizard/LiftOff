@@ -320,6 +320,11 @@
     "productId": "9P2KNSPZ9292"
   },
   {
+    "name": "Anno 1800",
+    "slug": "anno-1800",
+    "productId": "9P1VNX9Z03N5"
+  },
+  {
     "name": "ANNO: Mutationem",
     "slug": "anno-mutationem",
     "productId": "9PMHGHXLGLJM"
@@ -420,6 +425,11 @@
     "productId": "9MXQ1PFK7NC0"
   },
   {
+    "name": "Assassin’s Creed Black Flag Resynced",
+    "slug": "assassins-creed-black-flag-resynced",
+    "productId": "9MXBSZJ2HSSV"
+  },
+  {
     "name": "Assassin’s Creed Brotherhood",
     "slug": "assassins-creed-brotherhood",
     "productId": "9PGMNX4HG2C7"
@@ -460,9 +470,19 @@
     "productId": "9PMB5879J2FW"
   },
   {
+    "name": "Assassin’s Creed Odyssey",
+    "slug": "assassins-creed-odyssey",
+    "productId": "9PDNF24PP2V2"
+  },
+  {
     "name": "Assassin’s Creed Origins",
     "slug": "assassins-creed-origins",
     "productId": "9NC2HVPRQQ9F"
+  },
+  {
+    "name": "Assassin’s Creed Origins",
+    "slug": "assassins-creed-origins",
+    "productId": "9P2CHXX6D861"
   },
   {
     "name": "Assassin’s Creed Revelations",
@@ -488,6 +508,11 @@
     "name": "Assassin’s Creed Valhalla",
     "slug": "assassins-creed-valhalla",
     "productId": "9NMHP9SMZHGZ"
+  },
+  {
+    "name": "Assassin’s Creed Valhalla",
+    "slug": "assassins-creed-valhalla",
+    "productId": "9NJ2SFHNCCRV"
   },
   {
     "name": "Assassin’s Creed: Shadows",
@@ -2255,9 +2280,19 @@
     "productId": "BT0FF7LH14HV"
   },
   {
+    "name": "Far Cry 3 Blood Dragon",
+    "slug": "far-cry-3-blood-dragon",
+    "productId": "9P5Z088TJQ5S"
+  },
+  {
     "name": "Far Cry 4",
     "slug": "far-cry-4",
     "productId": "9PMTJMML92S4"
+  },
+  {
+    "name": "Far Cry 4",
+    "slug": "far-cry-4",
+    "productId": "9MVV32Z0JPCL"
   },
   {
     "name": "Far Cry 5",
@@ -2275,9 +2310,19 @@
     "productId": "9N661LCNBH8J"
   },
   {
+    "name": "FAR CRY 6",
+    "slug": "far-cry-6",
+    "productId": "9PJ45NJCHSFS"
+  },
+  {
     "name": "Far Cry Primal",
     "slug": "far-cry-primal",
     "productId": "9P8X98F4BDC9"
+  },
+  {
+    "name": "Far Cry Primal",
+    "slug": "far-cry-primal",
+    "productId": "9P1HX8TFF3VW"
   },
   {
     "name": "Far Cry: New Dawn",
@@ -2458,6 +2503,11 @@
     "name": "FOR HONOR",
     "slug": "for-honor",
     "productId": "C3HQKX3B35PD"
+  },
+  {
+    "name": "FOR HONOR",
+    "slug": "for-honor",
+    "productId": "9P82LXD5RH31"
   },
   {
     "name": "For The King II",
@@ -3328,6 +3378,11 @@
     "name": "Immortals Fenyx Rising",
     "slug": "immortals-fenyx-rising",
     "productId": "9NFPNPLR8VBK"
+  },
+  {
+    "name": "Immortals Fenyx Rising",
+    "slug": "immortals-fenyx-rising",
+    "productId": "9NV0Q705NQ2N"
   },
   {
     "name": "Immortals of Aveum",
@@ -4285,6 +4340,11 @@
     "productId": "9N24ST9292XS"
   },
   {
+    "name": "MONOPOLY 2024",
+    "slug": "monopoly-2024",
+    "productId": "9NVH8SJNX20S"
+  },
+  {
     "name": "MONOPOLY Madness",
     "slug": "monopoly-madness",
     "productId": "9MTP0GJ0Q3MG"
@@ -4608,6 +4668,11 @@
     "name": "Nine Sols",
     "slug": "nine-sols",
     "productId": "9N3LGKGF3CC2"
+  },
+  {
+    "name": "NINJA GAIDEN 2 Black",
+    "slug": "ninja-gaiden-2-black",
+    "productId": "9N51FH42VQDS"
   },
   {
     "name": "NINJA GAIDEN 4",
@@ -5460,6 +5525,11 @@
     "productId": "9N1XDDL50X5F"
   },
   {
+    "name": "Riders Republic",
+    "slug": "riders-republic",
+    "productId": "9P1RPXHWZ1C7"
+  },
+  {
     "name": "RiMS Racing",
     "slug": "rims-racing",
     "productId": "9NG9BNZQ68ND"
@@ -5950,6 +6020,11 @@
     "productId": "BXF9VWKCD6QW"
   },
   {
+    "name": "SKULL AND BONES",
+    "slug": "skull-and-bones",
+    "productId": "9PG0S835V6J5"
+  },
+  {
     "name": "Sky Rogue",
     "slug": "sky-rogue",
     "productId": "9NLPK75DL5HR"
@@ -6078,6 +6153,11 @@
     "name": "South Park: The Fractured But Whole",
     "slug": "south-park-the-fractured-but-whole",
     "productId": "C4VLMWJWM7BG"
+  },
+  {
+    "name": "South Park: The Fractured But Whole",
+    "slug": "south-park-the-fractured-but-whole",
+    "productId": "9PJNXM82ZX47"
   },
   {
     "name": "South Park: The Stick of Truth",
@@ -6235,6 +6315,11 @@
     "productId": "9N59CT2NKDPV"
   },
   {
+    "name": "Star Wars Outlaws",
+    "slug": "star-wars-outlaws",
+    "productId": "9P1P7DWHBDBD"
+  },
+  {
     "name": "STAR WARS: Dark Forces Remaster",
     "slug": "star-wars-dark-forces-remaster",
     "productId": "9MZFGMJHBN99"
@@ -6298,6 +6383,11 @@
     "name": "STEEP",
     "slug": "steep",
     "productId": "9NWDKGFHMZK3"
+  },
+  {
+    "name": "STEEP",
+    "slug": "steep",
+    "productId": "9P2RT7TNT37T"
   },
   {
     "name": "Stellaris",
@@ -6695,9 +6785,19 @@
     "productId": "9NXTFRQJGZ43"
   },
   {
+    "name": "The Crew 2",
+    "slug": "the-crew-2",
+    "productId": "BV05F8VT7JJ4"
+  },
+  {
     "name": "The Crew Motorfest",
     "slug": "the-crew-motorfest",
     "productId": "9NNS41P5J1C7"
+  },
+  {
+    "name": "The Crew Motorfest",
+    "slug": "the-crew-motorfest",
+    "productId": "9NC4PV16GVT1"
   },
   {
     "name": "The Crown of Wu",
@@ -7010,6 +7110,11 @@
     "productId": "9NTX07HR22TG"
   },
   {
+    "name": "The Planet Crafter",
+    "slug": "the-planet-crafter",
+    "productId": "9N072VV7MFK7"
+  },
+  {
     "name": "The Plucky Squire",
     "slug": "the-plucky-squire",
     "productId": "9NC3FHGQRS88"
@@ -7093,6 +7198,11 @@
     "name": "The Sushi Spinnery",
     "slug": "the-sushi-spinnery",
     "productId": "9NTXL8HRZ546"
+  },
+  {
+    "name": "The Talos Principle",
+    "slug": "the-talos-principle",
+    "productId": "9N02KMVCRSRM"
   },
   {
     "name": "The Talos Principle 2",
@@ -7220,14 +7330,29 @@
     "productId": "9MVR1G75VX22"
   },
   {
+    "name": "Tom Clancy’s Ghost Recon Breakpoint",
+    "slug": "tom-clancys-ghost-recon-breakpoint",
+    "productId": "C3VVNLQQ54F8"
+  },
+  {
     "name": "Tom Clancy’s Ghost Recon Wildlands",
     "slug": "tom-clancys-ghost-recon-wildlands",
     "productId": "9PJ1PLJQ7QPN"
   },
   {
+    "name": "Tom Clancy’s Ghost Recon Wildlands",
+    "slug": "tom-clancys-ghost-recon-wildlands",
+    "productId": "9P85NL6T3DHP"
+  },
+  {
     "name": "Tom Clancy’s Rainbow Six Extraction",
     "slug": "tom-clancys-rainbow-six-extraction",
     "productId": "9NK1FQJ1SMCB"
+  },
+  {
+    "name": "Tom Clancy’s Rainbow Six Extraction",
+    "slug": "tom-clancys-rainbow-six-extraction",
+    "productId": "BXRB4ZH2GJHK"
   },
   {
     "name": "Tom Clancy’s Rainbow Six Siege",
@@ -7718,6 +7843,11 @@
     "name": "Warhammer 40,000: Inquisitor – Martyr",
     "slug": "warhammer-40000-inquisitor-martyr",
     "productId": "BPG20784Z9S4"
+  },
+  {
+    "name": "Warhammer 40,000: Space Marine 2",
+    "slug": "warhammer-40000-space-marine-2",
+    "productId": "9N9PCZWHVP2L"
   },
   {
     "name": "Warhammer: Vermintide 2",
