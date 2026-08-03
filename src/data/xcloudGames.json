@@ -795,6 +795,11 @@
     "productId": "9NKFJ3BHJMN6"
   },
   {
+    "name": "BLACKTAIL",
+    "slug": "blacktail",
+    "productId": "9PJS5ZBHL9DT"
+  },
+  {
     "name": "Blair Witch",
     "slug": "blair-witch",
     "productId": "9NG7LG421V0Q"
@@ -1020,6 +1025,11 @@
     "productId": "9P771T69VMJ2"
   },
   {
+    "name": "Call of Cthulhu",
+    "slug": "call-of-cthulhu",
+    "productId": "BQZ10L79X0FP"
+  },
+  {
     "name": "Call of Duty: Black Ops 6",
     "slug": "call-of-duty-black-ops-6",
     "productId": "9P22THR57FV7"
@@ -1088,6 +1098,11 @@
     "name": "Cat God Ranch",
     "slug": "cat-god-ranch",
     "productId": "9PFXS88SW9F4"
+  },
+  {
+    "name": "Cat Quest II",
+    "slug": "cat-quest-ii",
+    "productId": "9PMH7F7GD178"
   },
   {
     "name": "Cat Quest III",
@@ -1470,6 +1485,11 @@
     "productId": "9NRG099DCJ65"
   },
   {
+    "name": "Curse of the Dead Gods",
+    "slug": "curse-of-the-dead-gods",
+    "productId": "9MX9K92M5CSN"
+  },
+  {
     "name": "Cyber Shadow",
     "slug": "cyber-shadow",
     "productId": "9NX9LJ5JSWH8"
@@ -1738,6 +1758,11 @@
     "name": "Disneyland Adventures",
     "slug": "disneyland-adventures",
     "productId": "9N6Z8DQXSQWH"
+  },
+  {
+    "name": "Dispatch",
+    "slug": "dispatch",
+    "productId": "9NDJSV855T3P"
   },
   {
     "name": "DJMAX RESPECT V",
@@ -3170,6 +3195,11 @@
     "productId": "9PG52KFBFGM2"
   },
   {
+    "name": "High Times",
+    "slug": "high-times",
+    "productId": "9P5RTC9G5JVG"
+  },
+  {
     "name": "Highway Police Simulator",
     "slug": "highway-police-simulator",
     "productId": "9PJQLDS9PKCV"
@@ -3735,6 +3765,11 @@
     "productId": "9PJTGTK447L0"
   },
   {
+    "name": "Laika: Aged Through Blood",
+    "slug": "laika-aged-through-blood",
+    "productId": "9P26VHDG66PJ"
+  },
+  {
     "name": "Lake",
     "slug": "lake",
     "productId": "9N5GLFTT40SN"
@@ -3803,6 +3838,11 @@
     "name": "LEGO DC Super-Villains",
     "slug": "lego-dc-super-villains",
     "productId": "BQXVSGCX6K8W"
+  },
+  {
+    "name": "LEGO INDIANA JONES: THE ORIGINAL ADVENTURES",
+    "slug": "lego-indiana-jones-the-original-adventures",
+    "productId": "BPFXMQVLHFV4"
   },
   {
     "name": "LEGO Jurassic World",
@@ -4143,6 +4183,11 @@
     "name": "MASSIVE CHALICE",
     "slug": "massive-chalice",
     "productId": "C2484ZR2BWNQ"
+  },
+  {
+    "name": "Masters of Anima",
+    "slug": "masters-of-anima",
+    "productId": "BRZ0KJF2QZ8F"
   },
   {
     "name": "Matchbox Driving Adventures",
@@ -4590,6 +4635,11 @@
     "productId": "9MVZTH17V753"
   },
   {
+    "name": "Necromunda: Underhive Wars",
+    "slug": "necromunda-underhive-wars",
+    "productId": "BNTNQL7BH4T3"
+  },
+  {
     "name": "Need for Speed Heat",
     "slug": "need-for-speed-heat",
     "productId": "BRZZLBF5T245"
@@ -4863,6 +4913,11 @@
     "name": "Orten Was The Case",
     "slug": "orten-was-the-case",
     "productId": "9MZ0T8P6MD22"
+  },
+  {
+    "name": "Othercide",
+    "slug": "othercide",
+    "productId": "9PFPQRLJD1DW"
   },
   {
     "name": "Otherwar",
@@ -5840,6 +5895,11 @@
     "productId": "9PLFMN1C160R"
   },
   {
+    "name": "Seasons After Fall",
+    "slug": "seasons-after-fall",
+    "productId": "BVJRH8WMB3BG"
+  },
+  {
     "name": "Secret Neighbor",
     "slug": "secret-neighbor",
     "productId": "9P7GBPGT90L3"
@@ -6170,6 +6230,11 @@
     "productId": "9NLV3X229LG1"
   },
   {
+    "name": "Space Hulk: Tactics",
+    "slug": "space-hulk-tactics",
+    "productId": "BXZTB63NTG3P"
+  },
+  {
     "name": "Space Warlord Organ Trading Simulator",
     "slug": "space-warlord-organ-trading-simulator",
     "productId": "9NVD5DB5T3HD"
@@ -6443,6 +6508,16 @@
     "name": "Styx: Blades of Greed",
     "slug": "styx-blades-of-greed",
     "productId": "9NZTKVTDZ2LB"
+  },
+  {
+    "name": "Styx: Master of Shadows",
+    "slug": "styx-master-of-shadows",
+    "productId": "BNK369Q6JJ5T"
+  },
+  {
+    "name": "Styx: Shards of Darkness",
+    "slug": "styx-shards-of-darkness",
+    "productId": "BTBWJ7WC1Q76"
   },
   {
     "name": "Submerged: Hidden Depths",
@@ -7005,6 +7080,11 @@
     "productId": "9MZXNTB08039"
   },
   {
+    "name": "The King is Watching",
+    "slug": "the-king-is-watching",
+    "productId": "9N24FWHR3V72"
+  },
+  {
     "name": "The Knight Witch",
     "slug": "the-knight-witch",
     "productId": "9N4TDTC6K4QG"
@@ -7195,6 +7275,16 @@
     "productId": "9NFVPRCP0PNC"
   },
   {
+    "name": "The Surge",
+    "slug": "the-surge",
+    "productId": "BRKVPTHJW525"
+  },
+  {
+    "name": "The Surge 2",
+    "slug": "the-surge-2",
+    "productId": "BSWTLFKMV96K"
+  },
+  {
     "name": "The Sushi Spinnery",
     "slug": "the-sushi-spinnery",
     "productId": "9NTXL8HRZ546"
@@ -7213,6 +7303,11 @@
     "name": "The Talos Principle: Reawakened",
     "slug": "the-talos-principle-reawakened",
     "productId": "9NT7Q3CB5N9T"
+  },
+  {
+    "name": "The Technomancer",
+    "slug": "the-technomancer",
+    "productId": "BSN5GB25HM2M"
   },
   {
     "name": "The Texas Chain Saw Massacre",
@@ -7785,6 +7880,11 @@
     "productId": "9N584LPFG1GM"
   },
   {
+    "name": "Void Crew",
+    "slug": "void-crew",
+    "productId": "9PCM05G79JLX"
+  },
+  {
     "name": "Voidtrain",
     "slug": "voidtrain",
     "productId": "9NQMVR9WL9FW"
@@ -7850,6 +7950,11 @@
     "productId": "9N9PCZWHVP2L"
   },
   {
+    "name": "Warhammer Age of Sigmar: Storm Ground",
+    "slug": "warhammer-age-of-sigmar-storm-ground",
+    "productId": "9MXNGTGKPP1W"
+  },
+  {
     "name": "Warhammer: Vermintide 2",
     "slug": "warhammer-vermintide-2",
     "productId": "BXZWT67JBZJH"
@@ -7858,6 +7963,11 @@
     "name": "Warm Snow",
     "slug": "warm-snow",
     "productId": "9NTXHZQQNM2V"
+  },
+  {
+    "name": "Warstride Challenges",
+    "slug": "warstride-challenges",
+    "productId": "9N7HT6KWHDXZ"
   },
   {
     "name": "Wartales",
