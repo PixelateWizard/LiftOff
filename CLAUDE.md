@@ -1,12 +1,11 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- Tasks A and B are shipped on `main`. Preserve the rejected C0b/C2 findings and the FSE native-summon limitation in this handoff, then audit that both spike branches remain unmerged/unpushed and that no memory harness, dependency change, or debug keybinding reached `main`.
+- **Memory investigation close-out:** Consolidate the four rejected WebView2 memory spikes on `main`, verify the already-landed Task A and Task B commits against `origin/main`, then remove the documented spike branches and any obsolete Task B stash.
 
-## Investigated and rejected
+## Memory floor — investigated and closed (Aug 2026)
 
-- **Background unmount for memory reduction:** Rejected. The C0b null test showed a 34.1 MB GPU-process delta from unmounting an empty `div`, so the effect was a compositor layer-tree rebuild rather than retained subtree content. Do not retry unmount-based memory work.
-- **WebView2 `MemoryUsageTargetLevel`:** Available in pinned `webview2-com` 0.38.2 as `ICoreWebView2_19::SetMemoryUsageTargetLevel`, but only through a transitive dependency whose interface types are not re-exported. Using it requires declaring `webview2-com` directly and accepting a version-sync obligation against the version Tauri/wry pins. Deferred, not impossible.
+Four spikes measured: DOM unmount (null: 34 MB delta reproduced with an empty `div` — compositor layer rebuild, not content), plasma blur buffers (null: within ±25 MB run variance), cover-art decode retention (null: renderer converges to the same ~257 MB floor scrolled or not; bitmaps are discarded on schedule), and `--enable-low-end-device-mode` (-20 MB at 120 s but forces RGB565 rendering, visible dither on gradients; rejected). Conclusion: ~585 MB core is the WebView2 steady-state floor for this app. Trimmable slack is ~20 MB. Do not reinvestigate without a new mechanism. Measurement discipline for any future memory work: fresh launch per reading, per-process breakdown, 120 s settle, 40 MB minimum signal over the ~25 MB noise band. Related deferred item: `ICoreWebView2_19::SetMemoryUsageTargetLevel` exists in `webview2-com` 0.38.2 but requires declaring the crate directly (version-sync obligation vs Tauri/wry pin) — deferred, not impossible.
 
 ## FSE validation constraint
 
