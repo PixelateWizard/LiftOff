@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { App } from "../types";
+import type { UpdateRelease } from "./useUpdateCheck";
 
 type ArtPickerMode = "grid" | "hero";
 type FileBrowserMode = "file" | "folder" | null;
@@ -25,6 +26,7 @@ export interface ModalState {
   contextMenu: ContextMenuState | null;
   editNameApp: App | null;
   showPowerModal: boolean;
+  updateRelease: UpdateRelease | null;
   setShowHideModal: React.Dispatch<React.SetStateAction<boolean>>;
   setShowLibraryActions: React.Dispatch<React.SetStateAction<boolean>>;
   setShowFileBrowser: React.Dispatch<React.SetStateAction<FileBrowserMode>>;
@@ -38,6 +40,7 @@ export interface ModalState {
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
   setEditNameApp: React.Dispatch<React.SetStateAction<App | null>>;
   setShowPowerModal: React.Dispatch<React.SetStateAction<boolean>>;
+  setUpdateRelease: React.Dispatch<React.SetStateAction<UpdateRelease | null>>;
   showHideModalRef: React.MutableRefObject<boolean>;
   showLibraryActionsRef: React.MutableRefObject<boolean>;
   showFileBrowserRef: React.MutableRefObject<FileBrowserMode>;
@@ -51,6 +54,7 @@ export interface ModalState {
   contextMenuRef: React.MutableRefObject<ContextMenuState | null>;
   editNameAppRef: React.MutableRefObject<App | null>;
   showPowerModalRef: React.MutableRefObject<boolean>;
+  updateReleaseRef: React.MutableRefObject<UpdateRelease | null>;
 }
 
 export function useModalState(): ModalState {
@@ -67,6 +71,7 @@ export function useModalState(): ModalState {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [editNameApp, setEditNameApp] = useState<App | null>(null);
   const [showPowerModal, setShowPowerModal] = useState(false);
+  const [updateRelease, setUpdateRelease] = useState<UpdateRelease | null>(null);
 
   const showHideModalRef = useRef(false);
   const showLibraryActionsRef = useRef(false);
@@ -81,6 +86,7 @@ export function useModalState(): ModalState {
   const contextMenuRef = useRef<ContextMenuState | null>(null);
   const editNameAppRef = useRef<App | null>(null);
   const showPowerModalRef = useRef(false);
+  const updateReleaseRef = useRef<UpdateRelease | null>(null);
 
   useEffect(() => { showHideModalRef.current = showHideModal; }, [showHideModal]);
   useEffect(() => { showLibraryActionsRef.current = showLibraryActions; }, [showLibraryActions]);
@@ -95,6 +101,7 @@ export function useModalState(): ModalState {
   useEffect(() => { contextMenuRef.current = contextMenu; }, [contextMenu]);
   useEffect(() => { editNameAppRef.current = editNameApp; }, [editNameApp]);
   useEffect(() => { showPowerModalRef.current = showPowerModal; }, [showPowerModal]);
+  useEffect(() => { updateReleaseRef.current = updateRelease; }, [updateRelease]);
 
   return {
     showHideModal,
@@ -110,6 +117,7 @@ export function useModalState(): ModalState {
     contextMenu,
     editNameApp,
     showPowerModal,
+    updateRelease,
     setShowHideModal,
     setShowLibraryActions,
     setShowFileBrowser,
@@ -123,6 +131,7 @@ export function useModalState(): ModalState {
     setContextMenu,
     setEditNameApp,
     setShowPowerModal,
+    setUpdateRelease,
     showHideModalRef,
     showLibraryActionsRef,
     showFileBrowserRef,
@@ -136,5 +145,6 @@ export function useModalState(): ModalState {
     contextMenuRef,
     editNameAppRef,
     showPowerModalRef,
+    updateReleaseRef,
   };
 }

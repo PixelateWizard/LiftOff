@@ -1,7 +1,13 @@
 # LiftOff — Claude Code Handoff
 
 ## ⚡ Active Task
-- **Memory investigation close-out:** Consolidate the four rejected WebView2 memory spikes on `main`, verify the already-landed Task A and Task B commits against `origin/main`, then remove the documented spike branches and any obsolete Task B stash.
+- **Xbox game uninstall — Ally validation pending:** Code and desktop checks are complete for current-user AppX/GDK package removal from game Details. Taylor still needs to run the AppX, GDK cleanup, running-game failure, and stale-Details hardware gates before the behavior is considered device-validated.
+
+**Completed (this session - Xbox game uninstall implementation):**
+- Added typed WinRT package deployment support using only new features on the pinned `windows` crate; removal targets every current-user package full name under the installed game's AUMID-derived package family and emits done/error events from a blocking worker.
+- Added the game Details Uninstall action, shared confirmation, indeterminate uninstall state, Store-specific failure copy, completion rescan, and package-family resolver coverage while preserving Steam uninstall and Steam-only Verify files behavior.
+- Confirmed installed package-backed games are scanned as `source: "xbox"` with `PFN!AppId` identifiers; the helper also accepts `uwp` defensively, while the Details entry point remains game-only.
+- Validated with `cargo check`, `npm run build`, the Vitest unit suite (14 tests), the mocked-Tauri Playwright smoke test, and `git diff --check`. Only the existing Rust unused-helper/path warning, Vite chunk-size warning, and CRLF notices remain. Ally VERIFY-GATEs 5-8 are still pending.
 
 ## Memory floor — investigated and closed (Aug 2026)
 

@@ -186,7 +186,8 @@
     "confirmUninstall": "Uninstall {{name}}? Your saves stay in the cloud.",
     "noClient": "Steam isn't installed on this device. Install the Steam client to download games.",
     "watchError": "LiftOff couldn't confirm the Steam install state yet. Check Steam Downloads, then refresh the library.",
-    "generic": "Steam couldn't start that action."
+    "generic": "Steam couldn't start that action.",
+    "genericStore": "The Microsoft Store couldn't complete that action."
   },
   "settings": {
     "sections": {
@@ -585,6 +586,17 @@
     "delete": "Delete",
     "space": "Space",
     "results": "Results"
+  },
+  "update": {
+    "availableTitle": "Update Available",
+    "availableBody": "LiftOff {{version}} is ready to download.",
+    "currentVersion": "You're currently running {{version}}.",
+    "channelStable": "Stable channel",
+    "channelPrerelease": "Alpha / Beta channel",
+    "download": "Open Download Page",
+    "later": "Remind Me Later",
+    "skip": "Skip This Version",
+    "autoCheck": "Auto Check for Updates"
   },
   "common": {
     "save": "Save",

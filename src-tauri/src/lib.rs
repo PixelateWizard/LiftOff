@@ -198,6 +198,11 @@ pub struct Settings {
     pub animated_heroes: String,
     #[serde(default = "default_update_channel")]
     pub update_channel: String,
+    // When true, LiftOff checks GitHub Releases for a newer build on the
+    // user's selected channel a couple of times a day and surfaces a modal.
+    // The check itself is performed by the frontend; this flag only gates it.
+    #[serde(default = "default_true")]
+    pub auto_update_check: bool,
     // None means "not yet set by user"; frontend fills in auto-detected value.
     #[serde(default)]
     pub ui_scale: Option<f32>,
@@ -409,6 +414,7 @@ impl Default for Settings {
             launch_at_startup: false,
             animated_heroes: "animated".to_string(),
             update_channel: "stable".to_string(),
+            auto_update_check: true,
             ui_scale: None,
             language: "auto".to_string(),
             time_format: "auto".to_string(),
@@ -3209,6 +3215,136 @@ mod xbox_install_control {
     {
         Err("Xbox silent install is only available on Windows".to_string())
     }
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct XboxUninstallDone {
+    package_family_name: String,
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct XboxUninstallError {
+    package_family_name: String,
+    message: String,
+}
+
+#[cfg(windows)]
+mod xbox_uninstall {
+    use std::time::{Duration, Instant};
+    use windows::core::HSTRING;
+    use windows::Management::Deployment::PackageManager;
+
+    // Removes every package registered to the current user for the given
+    // package family name. Blocking; must be called from spawn_blocking.
+    // Removal is current-user only so no elevation prompt is triggered.
+    pub fn remove_family(package_family_name: &str) -> Result<(), String> {
+        let manager =
+            PackageManager::new().map_err(|error| format!("package manager: {error}"))?;
+        // Empty security ID string means "current user".
+        let packages = manager
+            .FindPackagesByUserSecurityIdPackageFamilyName(
+                &HSTRING::new(),
+                &HSTRING::from(package_family_name),
+            )
+            .map_err(|error| format!("find packages: {error}"))?;
+
+        let mut full_names: Vec<HSTRING> = Vec::new();
+        for package in packages {
+            let Ok(id) = package.Id() else { continue };
+            let Ok(full_name) = id.FullName() else { continue };
+            if !full_name.is_empty() {
+                full_names.push(full_name);
+            }
+        }
+        if full_names.is_empty() {
+            return Err("package-not-found".to_string());
+        }
+
+        for full_name in full_names {
+            let operation = manager
+                .RemovePackageAsync(&full_name)
+                .map_err(|error| format!("remove start: {error}"))?;
+            // Large GDK titles can take a while to delete from disk.
+            let deadline = Instant::now() + Duration::from_secs(60 * 30);
+            loop {
+                match operation
+                    .Status()
+                    .map_err(|error| format!("remove status: {error}"))?
+                    .0
+                {
+                    1 => break,
+                    2 => {
+                        return Err("Package removal was canceled".to_string())
+                    }
+                    3 => {
+                        let detail = operation
+                            .GetResults()
+                            .ok()
+                            .and_then(|result| result.ErrorText().ok())
+                            .map(|text| text.to_string_lossy())
+                            .unwrap_or_default();
+                        let code = operation
+                            .ErrorCode()
+                            .map(|code| code.0 as u32)
+                            .unwrap_or(0);
+                        return Err(format!(
+                            "Package removal failed: HRESULT 0x{code:08X} {detail}"
+                        ));
+                    }
+                    _ => {
+                        if Instant::now() >= deadline {
+                            return Err("Package removal timed out".to_string());
+                        }
+                        std::thread::sleep(Duration::from_millis(500));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+#[cfg(not(windows))]
+mod xbox_uninstall {
+    pub fn remove_family(_package_family_name: &str) -> Result<(), String> {
+        Err("Xbox uninstall is only available on Windows".to_string())
+    }
+}
+
+#[tauri::command]
+fn xbox_uninstall_package(
+    package_family_name: String,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let package_family_name = package_family_name.trim().to_string();
+    if package_family_name.is_empty() {
+        return Err("Package family name is required".to_string());
+    }
+    tauri::async_runtime::spawn_blocking(move || {
+        match xbox_uninstall::remove_family(&package_family_name) {
+            Ok(()) => {
+                let _ = app_handle.emit(
+                    "xbox-uninstall-done",
+                    XboxUninstallDone {
+                        package_family_name,
+                    },
+                );
+                let _ = app_handle.emit("library-rescan-needed", ());
+            }
+            Err(message) => {
+                let _ = app_handle.emit(
+                    "xbox-uninstall-error",
+                    XboxUninstallError {
+                        package_family_name,
+                        message,
+                    },
+                );
+            }
+        }
+    });
+    Ok(())
 }
 
 #[tauri::command]
@@ -8677,6 +8813,7 @@ pub fn run() {
             xbox_disconnect,
             xbox_install_probe,
             xbox_install_product,
+            xbox_uninstall_package,
             xbox_cancel_install,
             steam_install,
             steam_uninstall,

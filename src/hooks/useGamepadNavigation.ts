@@ -97,6 +97,7 @@ export interface UseGamepadNavigationOptions {
   detailsAppRef?: AnyRef<App | null>;
   contextMenuRef?: AnyRef<unknown>;
   showPowerModalRef?: AnyRef<boolean>;
+  updateReleaseRef?: AnyRef<unknown>;
   showThemePickerRef?: AnyRef<boolean>;
   showSurfacePickerRef?: AnyRef<boolean>;
   showSpotifyGuideRef?: AnyRef<boolean>;
@@ -347,6 +348,7 @@ export function useGamepadNavigation(
     detailsAppRef = { current: null } as AnyRef<App | null>,
     contextMenuRef,
     showPowerModalRef = { current: false } as AnyRef<boolean>,
+    updateReleaseRef = { current: null } as AnyRef<unknown>,
     showThemePickerRef = { current: false } as AnyRef<boolean>,
     showSurfacePickerRef = { current: false } as AnyRef<boolean>,
     showSpotifyGuideRef = { current: false } as AnyRef<boolean>,
@@ -689,6 +691,7 @@ export function useGamepadNavigation(
     || !!colPickerAppRef?.current
     || !!editNameAppRef?.current
     || !!showPowerModalRef?.current
+    || !!updateReleaseRef?.current
     || !!showThemePickerRef?.current
     || !!showSurfacePickerRef?.current
     || !!showSpotifyGuideRef.current
@@ -781,7 +784,7 @@ export function useGamepadNavigation(
       return;
     }
     // Modal intercepts all input via its own poll — main nav must not run
-    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current || showSpotifyGuideRef.current || showSpotifyOverlayRef.current || showSteamQrRef.current || showXboxGuideRef.current || showCloudPickerRef.current || detailsAppRef.current) return;
+    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current || updateReleaseRef?.current || showSpotifyGuideRef.current || showSpotifyOverlayRef.current || showSteamQrRef.current || showXboxGuideRef.current || showCloudPickerRef.current || detailsAppRef.current) return;
 
     // Art picker open — only Escape closes it (user interacts via touch/mouse)
     if (artPickerAppRef.current) {
@@ -1649,6 +1652,7 @@ export function useGamepadNavigation(
             && !colPickerAppRef?.current
             && !editNameAppRef?.current
             && !showPowerModalRef?.current
+            && !updateReleaseRef?.current
             && !showSpotifyGuideRef.current
             && !showSpotifyOverlayRef.current
             && !showSteamQrRef.current

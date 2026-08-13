@@ -369,7 +369,7 @@ export function GameDetailsModal({
   const actions = useMemo<DetailAction[]>(() => [
     ...(running && onCloseGame ? [{ key: "close-game", label: t("home.close"), onClick: onCloseGame, danger: true }] : []),
     ...(installed && onVerify && isSteam ? [{ key: "verify", label: t("install.verify"), onClick: onVerify }] : []),
-    ...(installed && onUninstall && isSteam ? [{ key: "uninstall", label: t("install.uninstall"), onClick: onUninstall, danger: true }] : []),
+    ...(installed && onUninstall ? [{ key: "uninstall", label: t("install.uninstall"), onClick: onUninstall, danger: true }] : []),
     { key: "pin", label: t(isPinned ? "contextMenu.unpin" : "contextMenu.pin"), onClick: onTogglePin, checked: isPinned },
     { key: "hide", label: t(isHidden ? "contextMenu.show" : "contextMenu.hide"), onClick: onToggleHidden, checked: isHidden },
     ...(!isCloud ? [{

@@ -152,6 +152,7 @@ export interface Settings {
   launch_at_startup: boolean;
   animated_heroes: AnimatedHeroes;
   update_channel: UpdateChannel;
+  auto_update_check: boolean;
   ui_scale: number;
   language: string;
   home_cover_scale: number;

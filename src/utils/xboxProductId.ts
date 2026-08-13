@@ -47,3 +47,12 @@ export function xboxProductIdFor(app: App | null | undefined) {
   return findSeedProductId(app.name);
 }
 
+export function xboxPackageFamilyNameFor(app: App | null | undefined) {
+  if (!app) return null;
+  const source = String(app.source ?? "").toLowerCase();
+  if (source !== "xbox" && source !== "uwp") return null;
+  const id = String(app.id ?? "");
+  const bang = id.indexOf("!");
+  if (bang <= 0) return null;
+  return id.slice(0, bang);
+}

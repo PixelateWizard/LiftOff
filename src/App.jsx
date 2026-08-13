@@ -22,6 +22,7 @@ import LibraryActionsModal from "./components/modals/LibraryActionsModal";
 import CloudGamePickerModal from "./components/modals/CloudGamePickerModal";
 import EditNameModal from "./components/modals/EditNameModal";
 import PowerModal from "./components/modals/PowerModal";
+import UpdateAvailableModal from "./components/modals/UpdateAvailableModal";
 import { SettingsScreen, buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "./views/settings";
 import { ThemePickerModal } from "./components/ThemePickerModal";
 import { SurfacePickerModal } from "./components/SurfacePickerModal";
@@ -65,9 +66,9 @@ import { SteamQrModal } from "./components/steam/SteamQrModal";
 import { XboxConnectGuide } from "./components/xbox/XboxConnectGuide";
 import { AUDIO_PROFILES, resolveAudioProfile } from "./audio/audioProfiles";
 import { detectPlatform } from "./utils/gamepad";
-import { xboxProductIdFor } from "./utils/xboxProductId";
+import { xboxPackageFamilyNameFor, xboxProductIdFor } from "./utils/xboxProductId";
 import {
-  COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO,
+  COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO, UPDATE_CHECK_INTERVAL_HOURS,
   ACCENTS, THEMES, CLOUD_SHAPES, CLOUD_CONFIGS, KB_ALPHA, KB_NUMS,
   normalizeThemeKey, isDarkThemeKey,
   SURFACE_STYLE_OPTIONS, THEME_LOCKED_SETTINGS, THEME_BG_COLORS, THEME_OPTIONS,
@@ -296,13 +297,13 @@ export default function App() {
   const {
     showHideModal, showLibraryActions, showFileBrowser, pendingFile,
     showColModal, colPickerApp, confirmDelete, showFolderManager,
-    artPickerApp, artPickerMode, contextMenu, editNameApp, showPowerModal,
+    artPickerApp, artPickerMode, contextMenu, editNameApp, showPowerModal, updateRelease,
     setShowHideModal, setShowLibraryActions, setShowFileBrowser, setPendingFile,
     setShowColModal, setColPickerApp, setConfirmDelete, setShowFolderManager,
-    setArtPickerApp, setArtPickerMode, setContextMenu, setEditNameApp, setShowPowerModal,
+    setArtPickerApp, setArtPickerMode, setContextMenu, setEditNameApp, setShowPowerModal, setUpdateRelease,
     showHideModalRef, showLibraryActionsRef, showFileBrowserRef, pendingFileRef,
     showColModalRef, colPickerAppRef, confirmDeleteRef, showFolderManagerRef,
-    artPickerAppRef, artPickerModeRef, contextMenuRef, editNameAppRef, showPowerModalRef,
+    artPickerAppRef, artPickerModeRef, contextMenuRef, editNameAppRef, showPowerModalRef, updateReleaseRef,
   } = useModalState();
   const [detailsApp, setDetailsApp] = useState(null);
   const detailsAppRef = useRef(null);
@@ -313,6 +314,7 @@ export default function App() {
   const [xboxInstallProgress, setXboxInstallProgress] = useState({});
   const [installErrors, setInstallErrors] = useState({});
   const [steamUninstallRequest, setSteamUninstallRequest] = useState(null);
+  const [xboxUninstallRequest, setXboxUninstallRequest] = useState(null);
   const {
     appCollections, setAppCollections, appCollectionsRef,
     appMemberships, setAppMemberships, appMembershipsRef,
@@ -391,10 +393,55 @@ export default function App() {
   }, [settings.sfx_enabled]);
 
   startupHapticsEnabledRef.current = settings.haptic_feedback ?? true;
-  const { updateStatus, updateInfo, checkForUpdates } = useUpdateCheck({
+  // Only interrupt with the update modal when nothing else owns the screen.
+  // Refs and live DOM focus checks keep this safe inside the scheduler timer.
+  const canPromptForUpdate = useCallback(() => {
+    if (!isReadyRef.current) return false;
+    if (document.hidden || !document.hasFocus()) return false;
+    if (runningIdsRef.current.size > 0) return false;
+    if (
+      showHideModalRef.current
+      || showLibraryActionsRef.current
+      || showFileBrowserRef.current
+      || pendingFileRef.current
+      || showFolderManagerRef.current
+      || confirmDeleteRef.current
+      || showColModalRef.current
+      || colPickerAppRef.current
+      || editNameAppRef.current
+      || showPowerModalRef.current
+      || updateReleaseRef.current
+      || showThemePickerRef.current
+      || showSurfacePickerRef.current
+      || showSpotifyGuideRef.current
+      || showSpotifyOverlayRef.current
+      || showSteamQrRef.current
+      || showXboxGuideRef.current
+      || showCloudPickerRef.current
+      || detailsAppRef.current
+      || artPickerAppRef.current
+      || contextMenuRef.current
+      || searchOpenRef.current
+    ) return false;
+    return !document.querySelector(".launch-overlay, [data-modal]");
+  }, []);
+  const {
+    updateStatus,
+    updateInfo,
+    checkForUpdates,
+    dismissPendingRelease,
+    skipPendingRelease,
+  } = useUpdateCheck({
     appVersion: APP_VERSION,
     githubRepo: GITHUB_REPO,
     channel: settings.update_channel ?? "stable",
+    autoCheckEnabled: settings.auto_update_check !== false,
+    intervalHours: UPDATE_CHECK_INTERVAL_HOURS,
+    canPrompt: canPromptForUpdate,
+    onUpdateFound: (release) => {
+      setUpdateRelease(release);
+      updateReleaseRef.current = release;
+    },
   });
   const { time, date, battery, charging, hasBattery } = useSystemStatus({
     timeFormat: settings.time_format,
@@ -796,6 +843,7 @@ export default function App() {
     colPickerAppRef,
     editNameAppRef,
     showPowerModalRef,
+    updateReleaseRef,
     showThemePickerRef,
     showSurfacePickerRef,
     showSpotifyGuideRef,
@@ -1256,6 +1304,35 @@ export default function App() {
     });
   }, [setInstallErrorForApp]);
 
+  const xboxAppIdForPackageFamilyName = useCallback((packageFamilyName) => {
+    const normalized = String(packageFamilyName ?? "").trim().toLowerCase();
+    if (!normalized) return null;
+    const prefix = `${normalized}!`;
+    const hit = [...allAppsRef.current, ...appsRef.current].find((app) => (
+      String(app.id ?? "").toLowerCase().startsWith(prefix)
+    ));
+    return hit?.id ?? null;
+  }, [allAppsRef, appsRef]);
+
+  const runXboxUninstall = useCallback((app) => {
+    const packageFamilyName = xboxPackageFamilyNameFor(app);
+    if (!packageFamilyName) return;
+    clearInstallErrorForApp(app.id);
+    // "uninstalling" renders as an indeterminate bar plus the Uninstalling
+    // label in GameDetailsModal, same as the Steam uninstall path.
+    setXboxInstallProgressForApp(app.id, {
+      productId: xboxProductIdFor(app) ?? "",
+      pct: 0,
+      state: "uninstalling",
+      errorCode: 0,
+    });
+    invoke("xbox_uninstall_package", { packageFamilyName }).catch((error) => {
+      clearXboxInstallProgressForApp(app.id);
+      setInstallErrorForApp(app.id, "genericStore");
+      console.warn("Xbox uninstall failed", error);
+    });
+  }, [clearInstallErrorForApp, clearXboxInstallProgressForApp, setInstallErrorForApp, setXboxInstallProgressForApp]);
+
   const applySteamProgress = useCallback((payload) => {
     if (!payload) return;
     const appid = String(payload.appid ?? payload.appId ?? "");
@@ -1425,6 +1502,23 @@ export default function App() {
         clearXboxInstallProgressForApp(id);
         setInstallErrorForApp(id, "generic");
       }));
+      unsubs.push(await listen("xbox-uninstall-done", (event) => {
+        const payload = event.payload ?? {};
+        const packageFamilyName = String(payload.packageFamilyName ?? payload.package_family_name ?? "");
+        const id = xboxAppIdForPackageFamilyName(packageFamilyName);
+        if (!id) return;
+        clearXboxInstallProgressForApp(id);
+        patchLibraryApp(id, { installed: false, installing: false, installProgress: undefined });
+        refreshLibraryRef.current();
+      }));
+      unsubs.push(await listen("xbox-uninstall-error", (event) => {
+        const payload = event.payload ?? {};
+        const packageFamilyName = String(payload.packageFamilyName ?? payload.package_family_name ?? "");
+        const id = xboxAppIdForPackageFamilyName(packageFamilyName);
+        if (!id) return;
+        clearXboxInstallProgressForApp(id);
+        setInstallErrorForApp(id, "genericStore");
+      }));
       unsubs.push(await listen("library-rescan-needed", () => {
         refreshLibraryRef.current();
       }));
@@ -1437,7 +1531,7 @@ export default function App() {
       disposed = true;
       while (unsubs.length) unsubs.pop()?.();
     };
-  }, [applySteamProgress, applyXboxProgress, clearInstallProgressForApp, clearXboxInstallProgressForApp, patchLibraryApp, setInstallErrorForApp, xboxAppIdForProductId]);
+  }, [applySteamProgress, applyXboxProgress, clearInstallProgressForApp, clearXboxInstallProgressForApp, patchLibraryApp, setInstallErrorForApp, xboxAppIdForPackageFamilyName, xboxAppIdForProductId]);
 
   const detailsArtForceAttemptRef = useRef("");
   useEffect(() => {
@@ -2827,6 +2921,18 @@ export default function App() {
           onCancel={() => setSteamUninstallRequest(null)}
         />
       )}
+      {xboxUninstallRequest && (
+        <ConfirmModal
+          message={t("install.confirmUninstall", { name: xboxUninstallRequest.name })}
+          confirmLabel={t("install.uninstall")}
+          onConfirm={() => {
+            const app = xboxUninstallRequest;
+            setXboxUninstallRequest(null);
+            runXboxUninstall(app);
+          }}
+          onCancel={() => setXboxUninstallRequest(null)}
+        />
+      )}
       {detailsApp && (
         <GameDetailsModal
           app={detailsApp}
@@ -2862,7 +2968,11 @@ export default function App() {
           onXboxCancelInstall={() => cancelXboxInstall(detailsApp)}
           onXboxInstallFallback={() => openXboxInstallFallback(detailsApp)}
           onCancelInstall={() => cancelSteamInstall(detailsApp)}
-          onUninstall={String(detailsApp.source ?? "").toLowerCase() === "steam" ? () => setSteamUninstallRequest(detailsApp) : undefined}
+          onUninstall={String(detailsApp.source ?? "").toLowerCase() === "steam"
+            ? () => setSteamUninstallRequest(detailsApp)
+            : xboxPackageFamilyNameFor(detailsApp)
+              ? () => setXboxUninstallRequest(detailsApp)
+              : undefined}
           onVerify={String(detailsApp.source ?? "").toLowerCase() === "steam" ? () => verifySteamInstall(detailsApp) : undefined}
           onTogglePin={() => togglePin(detailsApp)}
           isPinned={pins.includes(detailsApp.id)}
@@ -3011,6 +3121,19 @@ export default function App() {
           onClose={closePowerModal}
           onRestartApp={() => { invoke("restart_app").catch(() => {}); }}
           onExitApp={() => { invoke("exit_app").catch(() => {}); }}
+        />
+      )}
+      {updateRelease && (
+        <UpdateAvailableModal
+          release={updateRelease}
+          currentVersion={APP_VERSION}
+          channel={settings.update_channel ?? "stable"}
+          onClose={() => {
+            setUpdateRelease(null);
+            updateReleaseRef.current = null;
+            dismissPendingRelease();
+          }}
+          onSkipVersion={skipPendingRelease}
         />
       )}
       <SpotifyConnectGuide
@@ -3439,7 +3562,7 @@ export default function App() {
       )}
       </AppOverlays>
 
-      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || showSpotifyGuide || showSpotifyOverlay || showSteamQr || showXboxGuide || showCloudPicker || detailsApp) ? "none" : "auto" }}>
+      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || updateRelease || showSpotifyGuide || showSpotifyOverlay || showSteamQr || showXboxGuide || showCloudPicker || detailsApp) ? "none" : "auto" }}>
 
         {/* Topbar */}
         <AppHeader

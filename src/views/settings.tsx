@@ -250,6 +250,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     // ── About ─────────────────────────────────────────────────────
     { key: "version",      section: 5, label: t("settings.version", { version: APP_VERSION }), type: "info" },
     { key: "update_channel", section: 5, label: t("settings.updateChannel"), type: "cycle", options: ["stable","prerelease"] },
+    { key: "auto_update_check", section: 5, label: t("update.autoCheck"), type: "toggle" },
     { key: "check_updates",section: 5, label: t("settings.checkUpdates"), type: "update" },
 
     D("community", 5),
