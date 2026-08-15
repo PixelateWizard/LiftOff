@@ -23,6 +23,10 @@ Read before bug triage, FSE/controller work, Microsoft Store uninstall changes, 
 
 ## Open Gates and Warnings
 
+### Game uninstall requires two activations
+
+Pressing Uninstall from game Details does not act on the first activation. The user must press Uninstall a second time before the game uninstalls or, for Steam games, Steam's uninstall prompt opens. This is an unresolved cross-source uninstall bug; reproduce it for both package-backed and Steam games before changing the shared Details confirmation/action flow.
+
 ### Microsoft Store game uninstall
 
 Desktop/code checks are complete, but Ally validation remains required before calling the feature device-validated:

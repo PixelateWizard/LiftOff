@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Agent documentation checker automation — complete:** Agents are now explicitly required to run `npm run docs:check` before final handoff whenever they change `CLAUDE.md`, `AGENTS.md`, routed docs, or either workflow skill. The checker guards that instruction itself; CI, hooks, builds, and normal tests remain unaffected. Documentation check and frontend build pass.
+- **Uninstall double-press bug tracking — complete:** Added the unresolved bug to `.agents/docs/known-issues.md`: Uninstall must currently be activated twice before a game uninstalls or Steam opens its uninstall prompt. Documentation-only change; no runtime fix was attempted.
 
 ## Start-of-Task Workflow
 
