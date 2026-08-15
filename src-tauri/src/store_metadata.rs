@@ -7,6 +7,13 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const CACHE_TTL_SECS: u64 = 60 * 60 * 24 * 14;
 const CACHE_SCHEMA_VERSION: u32 = 4;
+const XBOX_SIZE_CACHE_TTL_SECS: u64 = 60 * 60 * 24 * 14;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct XboxInstallSizeCache {
+    bytes: Option<u64>,
+    fetched_at: u64,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StoreScreenshot {
@@ -73,6 +80,12 @@ fn cache_path(cache_root: &Path, source: &str, app_id: &str) -> PathBuf {
         .join("store_metadata")
         .join(source)
         .join(format!("{app_id}.json"))
+}
+
+fn xbox_size_cache_path(cache_root: &Path, product_id: &str) -> PathBuf {
+    cache_root
+        .join("xbox_install_size")
+        .join(format!("{product_id}.json"))
 }
 
 fn read_cache(path: &Path) -> Option<StoreMetadata> {
@@ -558,6 +571,68 @@ async fn fetch_xbox(client: &reqwest::Client, product_id: &str) -> Result<StoreM
     })
 }
 
+// The current storeedgefd response exposes ApproximateSizeInBytes directly on
+// its product payload. MaxInstallSizeInBytes is retained as a fallback because
+// it is also present but may be zero for desktop products.
+fn parse_xbox_install_size(body: &serde_json::Value) -> Option<u64> {
+    let product = product_from_ms_store_response(body)?;
+    ["/ApproximateSizeInBytes", "/MaxInstallSizeInBytes"]
+        .into_iter()
+        .find_map(|pointer| {
+            product
+                .pointer(pointer)
+                .and_then(|value| value.as_u64())
+                .filter(|size| *size > 0)
+        })
+}
+
+pub async fn get_xbox_install_size_inner(
+    client: &reqwest::Client,
+    cache_root: &Path,
+    product_id: &str,
+) -> Result<Option<u64>, String> {
+    let path = xbox_size_cache_path(cache_root, product_id);
+
+    if let Ok(bytes) = std::fs::read(&path) {
+        if let Ok(cached) = serde_json::from_slice::<XboxInstallSizeCache>(&bytes) {
+            if now_secs().saturating_sub(cached.fetched_at) <= XBOX_SIZE_CACHE_TTL_SECS {
+                return Ok(cached.bytes);
+            }
+        }
+    }
+
+    let url = format!(
+        "https://storeedgefd.dsx.mp.microsoft.com/v9.0/products/{product_id}?market=US&locale=en-US&deviceFamily=Windows.Desktop"
+    );
+    let resp = client
+        .get(&url)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|error| format!("request failed: {error}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("microsoft store returned status {}", resp.status()));
+    }
+    let body: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|error| format!("invalid json: {error}"))?;
+
+    let size = parse_xbox_install_size(&body);
+    let cache_entry = XboxInstallSizeCache {
+        bytes: size,
+        fetched_at: now_secs(),
+    };
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(bytes) = serde_json::to_vec_pretty(&cache_entry) {
+        let _ = std::fs::write(&path, bytes);
+    }
+
+    Ok(size)
+}
+
 pub async fn get_store_metadata(
     client: &reqwest::Client,
     cache_root: &Path,
@@ -631,9 +706,55 @@ pub async fn fetch_store_metadata(
 }
 
 #[tauri::command]
+pub async fn get_xbox_install_size(product_id: String) -> Result<Option<u64>, String> {
+    let product_id = product_id.trim().to_string();
+    if !crate::is_microsoft_store_product_id(&product_id) {
+        return Err("invalid microsoft store product id".to_string());
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .user_agent("LiftOff store metadata/1.0")
+        .build()
+        .map_err(|error| format!("could not build http client: {error}"))?;
+
+    get_xbox_install_size_inner(&client, &crate::liftoff_dir(), &product_id).await
+}
+
+#[tauri::command]
 pub async fn fetch_xbox_store_metadata(
     product_id: String,
     force: Option<bool>,
 ) -> Result<StoreMetadata, String> {
     fetch_store_metadata("xbox".to_string(), product_id, force).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_verified_storeedgefd_install_size_field() {
+        let body = serde_json::json!({
+            "Payload": {
+                "ApproximateSizeInBytes": 11_853_955_072_u64,
+                "MaxInstallSizeInBytes": 0
+            }
+        });
+        assert_eq!(parse_xbox_install_size(&body), Some(11_853_955_072));
+    }
+
+    #[test]
+    fn missing_or_zero_install_size_is_unknown() {
+        assert_eq!(
+            parse_xbox_install_size(&serde_json::json!({ "Payload": {} })),
+            None
+        );
+        assert_eq!(
+            parse_xbox_install_size(&serde_json::json!({
+                "Payload": { "ApproximateSizeInBytes": 0 }
+            })),
+            None
+        );
+    }
 }

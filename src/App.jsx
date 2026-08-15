@@ -310,6 +310,8 @@ export default function App() {
   const artPickerReturnDetailsRef = useRef(null);
   const [installSize, setInstallSize] = useState({});
   const [downloadSize, setDownloadSize] = useState({});
+  const [xboxInstallSize, setXboxInstallSize] = useState({});
+  const [storageDrives, setStorageDrives] = useState([]);
   const [installProgress, setInstallProgress] = useState({});
   const [xboxInstallProgress, setXboxInstallProgress] = useState({});
   const [installErrors, setInstallErrors] = useState({});
@@ -1457,6 +1459,36 @@ export default function App() {
         setDownloadSize((prev) => ({ ...prev, [detailsApp.id]: null }));
       });
   }, [detailsApp, downloadSize]);
+
+  useEffect(() => {
+    if (!detailsApp || detailsApp.installed !== false) return;
+    if (String(detailsApp.source ?? "").toLowerCase() !== "xbox") return;
+    const productId = xboxProductIdFor(detailsApp);
+    if (!productId) return;
+    let cancelled = false;
+    const appId = detailsApp.id;
+    setXboxInstallSize((prev) => ({ ...prev, [appId]: undefined }));
+    setStorageDrives([]);
+    invoke("get_xbox_install_size", { productId })
+      .then((size) => {
+        if (!cancelled) setXboxInstallSize((prev) => ({ ...prev, [appId]: size == null ? null : size }));
+      })
+      .catch((error) => {
+        console.warn("Could not fetch install size", error);
+        if (!cancelled) setXboxInstallSize((prev) => ({ ...prev, [appId]: null }));
+      });
+    invoke("get_storage_info")
+      .then((drives) => {
+        if (!cancelled) setStorageDrives(Array.isArray(drives) ? drives : []);
+      })
+      .catch((error) => {
+        console.warn("Could not fetch storage information", error);
+        if (!cancelled) setStorageDrives([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detailsApp]);
 
   useEffect(() => {
     let disposed = false;
@@ -2948,6 +2980,10 @@ export default function App() {
             detailsApp.installed === false && downloadSize[detailsApp.id] != null
               ? downloadSize[detailsApp.id]
               : undefined
+          }
+          xboxInstallSizeBytes={xboxInstallSize[detailsApp.id]}
+          installTargetDrive={
+            storageDrives.find((drive) => drive.isDefaultInstallDrive) ?? storageDrives[0] ?? null
           }
           installed={detailsApp.installed !== false}
           canInstall={String(detailsApp.source ?? "").toLowerCase() === "steam" && !!steamAppIdFor(detailsApp)}

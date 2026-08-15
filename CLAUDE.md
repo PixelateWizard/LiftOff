@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Uninstall double-press bug tracking — complete:** Added the unresolved bug to `.agents/docs/known-issues.md`: Uninstall must currently be activated twice before a game uninstalls or Steam opens its uninstall prompt. Documentation-only change; no runtime fix was attempted.
+- **Storage visibility and install pre-check — implemented; Ally validation pending:** Added fail-open storage/catalog-size commands, a non-focusable Settings storage block, and a controller-isolated Details confirmation that blocks only confirmed shortfalls plus 500 MB headroom. Desktop/native tests pass; microSD/default-target behavior, themed rendering, and physical-controller flows remain device gates.
 
 ## Start-of-Task Workflow
 

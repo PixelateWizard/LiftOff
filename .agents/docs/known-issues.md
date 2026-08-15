@@ -23,6 +23,10 @@ Read before bug triage, FSE/controller work, Microsoft Store uninstall changes, 
 
 ## Open Gates and Warnings
 
+### Device storage and install pre-check
+
+Desktop/native checks confirm that Windows' default package-volume API resolves to `C:` in the current unpackaged process, the storage snapshot returns plausible drives with exactly one default target, and live catalog/cache checks return the expected Hades size. Ally hardware validation remains required for microSD enumeration and default-target selection, the Settings block across Glass/Material/win9x, and enough/insufficient/unknown confirmation flows with physical controller input. Do not claim those device-visible paths are validated from compilation, unit tests, or desktop runtime checks.
+
 ### Game uninstall requires two activations
 
 Pressing Uninstall from game Details does not act on the first activation. The user must press Uninstall a second time before the game uninstalls or, for Steam games, Steam's uninstall prompt opens. This is an unresolved cross-source uninstall bug; reproduce it for both package-backed and Steam games before changing the shared Details confirmation/action flow.

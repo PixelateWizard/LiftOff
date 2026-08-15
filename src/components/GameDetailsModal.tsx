@@ -3,8 +3,10 @@ import { IoChevronBackOutline, IoChevronDownOutline, IoChevronForwardOutline, Io
 import { StoreBadge } from "./ui/StoreBadge";
 import { useStoreMetadata } from "../hooks/useStoreMetadata";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, rumble, type GpState } from "../utils/gamepad";
+import { formatBytes } from "../utils/formatBytes";
+import { getInstallSpaceVerdict } from "../utils/installStorage";
 import { xboxProductIdFor } from "../utils/xboxProductId";
-import type { AccentColors, App, StoreMovie, StoreScreenshot, ThemeColors, XboxInstallProgress } from "../types";
+import type { AccentColors, App, DriveStorageInfo, StoreMovie, StoreScreenshot, ThemeColors, XboxInstallProgress } from "../types";
 
 type SizeBytes = number | "loading" | undefined;
 type DownloadBytes = number | undefined;
@@ -42,6 +44,8 @@ interface GameDetailsModalProps {
   playtimeMinutes?: number;
   sizeBytes?: SizeBytes;
   downloadBytes?: DownloadBytes;
+  xboxInstallSizeBytes?: number | null;
+  installTargetDrive?: DriveStorageInfo | null;
   installed: boolean;
   canInstall?: boolean;
   canXboxInstall?: boolean;
@@ -122,18 +126,6 @@ function formatPlaytime(minutes: number) {
   return rem > 0 ? `${hours}h ${rem}m` : `${hours}h`;
 }
 
-function formatBytes(bytes: number) {
-  if (!Number.isFinite(bytes) || bytes < 0) return "";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  let value = bytes;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  return `${value >= 10 || unit === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unit]}`;
-}
-
 function normalizeMediaUrl(url?: string | null) {
   if (!url) return undefined;
   return url.startsWith("http://") ? `https://${url.slice("http://".length)}` : url;
@@ -169,6 +161,8 @@ export function GameDetailsModal({
   playtimeMinutes,
   sizeBytes,
   downloadBytes,
+  xboxInstallSizeBytes,
+  installTargetDrive,
   installed,
   canInstall = false,
   canXboxInstall = false,
@@ -210,6 +204,8 @@ export function GameDetailsModal({
   t,
 }: GameDetailsModalProps) {
   const [focusIdx, setFocusIdx] = useState(0);
+  const [xboxConfirmOpen, setXboxConfirmOpen] = useState(false);
+  const [xboxConfirmFocusIdx, setXboxConfirmFocusIdx] = useState(0);
   const [videoReady, setVideoReady] = useState(false);
   const [controlsRevealed, setControlsRevealed] = useState(false);
   const focusIdxRef = useRef(0);
@@ -223,6 +219,10 @@ export function GameDetailsModal({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const focusRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const overlayVideoRef = useRef<HTMLVideoElement | null>(null);
+  const xboxConfirmOpenRef = useRef(false);
+  const xboxConfirmFocusIdxRef = useRef(0);
+  const xboxConfirmActionsRef = useRef<Array<() => void>>([]);
+  const xboxConfirmButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const source = app.source?.toLowerCase() ?? "";
   const isCloud = source === "cloud";
   const isSteam = source === "steam";
@@ -344,6 +344,24 @@ export function GameDetailsModal({
         : "install.downloading";
   const installPct = Math.max(0, Math.min(100, Number(effectiveInstallProgress?.pct ?? 0)));
   const installErrorText = installError ? t(`install.${installError}`, { defaultValue: t("install.generic") }) : "";
+  const xboxSpaceVerdict = useMemo(() => {
+    return getInstallSpaceVerdict(xboxInstallSizeBytes, installTargetDrive);
+  }, [installTargetDrive, xboxInstallSizeBytes]);
+  const installDriveTitle = useMemo(() => {
+    if (!installTargetDrive) return "";
+    const mount = installTargetDrive.mountPoint.replace(/[\\/]+$/, "");
+    return installTargetDrive.label ? `${mount} — ${installTargetDrive.label}` : mount;
+  }, [installTargetDrive]);
+  const closeXboxConfirm = useCallback(() => {
+    xboxConfirmOpenRef.current = false;
+    xboxConfirmFocusIdxRef.current = 0;
+    setXboxConfirmFocusIdx(0);
+    setXboxConfirmOpen(false);
+  }, []);
+  const confirmXboxInstall = useCallback(() => {
+    closeXboxConfirm();
+    onXboxInstall?.();
+  }, [closeXboxConfirm, onXboxInstall]);
 
   const handlePrimaryAction = useCallback(() => {
     if (uninstalling) return;
@@ -361,10 +379,15 @@ export function GameDetailsModal({
       return;
     }
     if (canXboxInstall) {
-      if (xboxProductId) onXboxInstall?.();
+      if (xboxProductId) {
+        xboxConfirmOpenRef.current = true;
+        xboxConfirmFocusIdxRef.current = 0;
+        setXboxConfirmFocusIdx(0);
+        setXboxConfirmOpen(true);
+      }
       else onXboxInstallFallback?.();
     }
-  }, [canInstall, canXboxInstall, installed, installing, onCancelInstall, onInstall, onPlay, onXboxCancelInstall, onXboxInstall, onXboxInstallFallback, uninstalling, xboxInstalling, xboxProductId]);
+  }, [canInstall, canXboxInstall, installed, installing, onCancelInstall, onInstall, onPlay, onXboxCancelInstall, onXboxInstallFallback, uninstalling, xboxInstalling, xboxProductId]);
 
   const actions = useMemo<DetailAction[]>(() => [
     ...(running && onCloseGame ? [{ key: "close-game", label: t("home.close"), onClick: onCloseGame, danger: true }] : []),
@@ -430,6 +453,9 @@ export function GameDetailsModal({
   primaryActionRef.current = handlePrimaryAction;
   closeRef.current = onClose;
   hapticEnabledRef.current = hapticEnabled;
+  xboxConfirmActionsRef.current = xboxSpaceVerdict === "insufficient"
+    ? [closeXboxConfirm]
+    : [confirmXboxInstall, closeXboxConfirm];
 
   const setFocusedIndex = (index: number) => {
     const bounded = Math.max(0, Math.min(focusCountRef.current - 1, index));
@@ -454,7 +480,22 @@ export function GameDetailsModal({
     setFocusedIndex(0);
     setActiveTab("details");
     setOverlay(null);
+    xboxConfirmOpenRef.current = false;
+    xboxConfirmFocusIdxRef.current = 0;
+    setXboxConfirmFocusIdx(0);
+    setXboxConfirmOpen(false);
   }, [app.id]);
+
+  useEffect(() => {
+    if (xboxSpaceVerdict !== "insufficient") return;
+    xboxConfirmFocusIdxRef.current = 0;
+    setXboxConfirmFocusIdx(0);
+  }, [xboxSpaceVerdict]);
+
+  useEffect(() => {
+    if (!xboxConfirmOpen) return;
+    xboxConfirmButtonRefs.current[xboxConfirmFocusIdx]?.focus();
+  }, [xboxConfirmFocusIdx, xboxConfirmOpen]);
 
   useEffect(() => {
     if (!renderVideo || !videoRef.current) return;
@@ -493,6 +534,30 @@ export function GameDetailsModal({
       const gp = getBestGamepad();
       if (gp) {
         const state = readGpState(gp);
+        if (xboxConfirmOpenRef.current) {
+          const actions = xboxConfirmActionsRef.current;
+          const nextPressed =
+            shouldHandleDirectionRepeat("ArrowRight", state, last, now, pressTime, repeating)
+            || shouldHandleDirectionRepeat("ArrowDown", state, last, now, pressTime, repeating);
+          const previousPressed =
+            shouldHandleDirectionRepeat("ArrowLeft", state, last, now, pressTime, repeating)
+            || shouldHandleDirectionRepeat("ArrowUp", state, last, now, pressTime, repeating);
+          if (actions.length > 1 && (nextPressed || previousPressed)) {
+            const direction = nextPressed ? 1 : -1;
+            const next = (xboxConfirmFocusIdxRef.current + direction + actions.length) % actions.length;
+            xboxConfirmFocusIdxRef.current = next;
+            setXboxConfirmFocusIdx(next);
+            rumble("tab", hapticEnabledRef.current);
+          }
+          if (state.Enter && !last.Enter) {
+            rumble("confirm", hapticEnabledRef.current);
+            actions[xboxConfirmFocusIdxRef.current]?.();
+          }
+          if (state.Escape && !last.Escape) actions[actions.length - 1]?.();
+          Object.assign(last, state);
+          rafId = requestAnimationFrame(poll);
+          return;
+        }
         if (overlayRef.current) {
           const ov = overlayRef.current;
           const item = mediaItemsRef.current[ov.index];
@@ -1164,6 +1229,118 @@ export function GameDetailsModal({
             ) : actionGrid}
           </div>
         </div>
+        {xboxConfirmOpen && (
+          <div
+            role="presentation"
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 60,
+              background: "rgba(0,0,0,0.76)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              display: "grid",
+              placeItems: "center",
+              padding: 28,
+            }}
+            onClick={closeXboxConfirm}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="xbox-install-confirm-title"
+              onClick={(event) => event.stopPropagation()}
+              style={{
+                ...glass,
+                width: "min(520px, 92%)",
+                borderRadius: panelRadius,
+                border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : `1px solid ${accent.glow}0.35)`,
+                boxShadow: surfaceStyle === "material" ? "var(--material-shadow-high)" : "0 24px 70px rgba(0,0,0,0.58)",
+                padding: 24,
+                color: theme.text,
+              }}
+            >
+              <h3 id="xbox-install-confirm-title" style={{ margin: "0 0 20px", fontSize: 22, lineHeight: 1.2 }}>
+                {t("install.confirmTitle", { name: app.name })}
+              </h3>
+              <div style={{ display: "grid", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
+                  <span style={{ color: theme.textDim }}>{t("install.installSize")}</span>
+                  <span style={{ fontWeight: 750, color: xboxInstallSizeBytes == null ? theme.textDim : theme.text }}>
+                    {xboxInstallSizeBytes == null ? t("install.sizeUnknown") : formatBytes(xboxInstallSizeBytes)}
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
+                  <span style={{ color: theme.textDim }}>{t("install.freeSpace")}</span>
+                  <span style={{ fontWeight: 750, color: installTargetDrive ? theme.text : theme.textDim, textAlign: "right" }}>
+                    {installTargetDrive
+                      ? t("install.freeSpaceOn", { free: formatBytes(installTargetDrive.freeBytes), drive: installDriveTitle })
+                      : t("install.freeSpaceUnknown")}
+                  </span>
+                </div>
+              </div>
+              {xboxSpaceVerdict === "insufficient" ? (
+                <div style={{ marginTop: 20, color: "#e85a5a", fontSize: 13, lineHeight: 1.45, fontWeight: 700 }}>
+                  {t("install.notEnoughSpace")}
+                </div>
+              ) : xboxSpaceVerdict === "unknown" ? (
+                <div style={{ marginTop: 20, color: theme.textDim, fontSize: 12, lineHeight: 1.45 }}>
+                  {t("install.spaceUnknownNote")}
+                </div>
+              ) : null}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
+                {xboxSpaceVerdict !== "insufficient" && (
+                  <button
+                    ref={(node) => { xboxConfirmButtonRefs.current[0] = node; }}
+                    type="button"
+                    onClick={confirmXboxInstall}
+                    onMouseEnter={() => {
+                      xboxConfirmFocusIdxRef.current = 0;
+                      setXboxConfirmFocusIdx(0);
+                    }}
+                    style={{
+                      minWidth: 126,
+                      height: 42,
+                      borderRadius: controlRadius,
+                      border: xboxConfirmFocusIdx === 0 ? `2px solid ${accent.primary}` : "1px solid transparent",
+                      background: `linear-gradient(135deg, ${accent.primary}, ${accent.dark})`,
+                      color: primaryText,
+                      fontSize: 14,
+                      fontWeight: 900,
+                      cursor: "pointer",
+                      boxShadow: xboxConfirmFocusIdx === 0 ? `0 0 0 3px ${accent.glow}0.24)` : "none",
+                    }}
+                  >
+                    {t("install.confirmInstall")}
+                  </button>
+                )}
+                <button
+                  ref={(node) => { xboxConfirmButtonRefs.current[xboxSpaceVerdict === "insufficient" ? 0 : 1] = node; }}
+                  type="button"
+                  onClick={closeXboxConfirm}
+                  onMouseEnter={() => {
+                    const index = xboxSpaceVerdict === "insufficient" ? 0 : 1;
+                    xboxConfirmFocusIdxRef.current = index;
+                    setXboxConfirmFocusIdx(index);
+                  }}
+                  style={{
+                    minWidth: 110,
+                    height: 42,
+                    borderRadius: controlRadius,
+                    border: xboxConfirmFocusIdx === (xboxSpaceVerdict === "insufficient" ? 0 : 1) ? `2px solid ${accent.primary}` : `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+                    background: surfaceStyle === "material" ? "var(--material-elevation-1)" : isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.62)",
+                    color: theme.text,
+                    fontSize: 14,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  {t("install.close")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {overlay && (
           <div
             style={{

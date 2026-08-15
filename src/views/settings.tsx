@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { IoAlbumsOutline, IoChevronForward, IoColorPaletteOutline, IoGridOutline, IoHomeOutline, IoPersonCircleOutline } from "react-icons/io5";
@@ -7,9 +8,10 @@ import { ControllerTestWidget } from "../components/ControllerTestWidget";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
 import { ACCENTS, APP_VERSION, FSE_RETURN_SHORTCUT_OPTIONS, GITHUB_REPO, THEME_LOCKED_SETTINGS, normalizeThemeKey } from "../constants";
-import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem, SettingsAppearanceCategoryItem, SettingsAppearanceBackItem, XboxStatus } from "../types";
+import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem, SettingsAppearanceCategoryItem, SettingsAppearanceBackItem, XboxStatus, DriveStorageInfo } from "../types";
 import type { SpotifyStatus } from "../hooks/useSpotify";
 import { SPOTIFY_REDIRECT_URI } from "../components/spotify/constants";
+import { formatBytes } from "../utils/formatBytes";
 
 export interface SteamStatus {
   connected: boolean;
@@ -244,6 +246,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "controller_test",        section: 3, label: t("settings.controllerTest"),      type: "controller_test" },
 
     // ── Data ─────────────────────────────────────────────────────
+    { key: "device_storage", section: 4, label: t("settings.deviceStorage"), type: "storage_info" },
     { key: "clear_recents", section: 4, label: t("settings.clearRecents"), type: "action" },
     { key: "clear_cache",   section: 4, label: t("settings.clearCache"),   type: "action" },
 
@@ -318,6 +321,7 @@ export function getSectionNavigableItems(
       (i) =>
         i.type !== "divider" &&
         i.type !== "info" &&
+        i.type !== "storage_info" &&
         i.type !== "icon_preview" &&
         i.type !== "controller_test" &&
         !('locked' in i && i.locked)
@@ -420,7 +424,23 @@ export function SettingsScreen({
   const { t } = useTranslation();
   const { settingsRowGlass, accent, theme, isDark, glassEnabled, surfaceStyle, surface, resolvedTheme } = useTheme();
   const { settings, updateSetting } = useSettings();
+  const [storageDrives, setStorageDrives] = useState<DriveStorageInfo[]>([]);
   const wideLayout = settings.wide_settings ?? false;
+
+  useEffect(() => {
+    if (settingsSection !== 4) return;
+    let cancelled = false;
+    invoke<DriveStorageInfo[]>("get_storage_info")
+      .then((drives) => {
+        if (!cancelled) setStorageDrives(Array.isArray(drives) ? drives : []);
+      })
+      .catch(() => {
+        if (!cancelled) setStorageDrives([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [settingsSection]);
 
   const ALL_ITEMS = buildSettingsItems(t, normalizeThemeKey(String(settings.theme)));
   const sectionItems = getVisibleSectionItems(settingsSection, ALL_ITEMS, appearanceGroup);
@@ -607,6 +627,62 @@ export function SettingsScreen({
           <span style={{ fontSize: 13, color: theme.textDim }}>{item.label}</span>
         </div>
       );
+
+    if (item.type === "storage_info") {
+      return (
+        <div
+          key={item.key}
+          data-settings-row=""
+          style={{
+            ...settingsRowGlass,
+            borderRadius: isPixel || isCyber ? 0 : isMaterial ? 8 : 16,
+            padding: "14px 20px",
+            marginBottom: 8,
+            cursor: "default",
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 700, color: theme.text, marginBottom: 12 }}>
+            {item.label}
+          </div>
+          {storageDrives.length === 0 ? (
+            <div style={{ fontSize: 12, color: theme.textDim }}>
+              {t("settings.deviceStorageUnavailable")}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {storageDrives.map((drive) => {
+                const usedFraction = drive.totalBytes > 0
+                  ? Math.max(0, Math.min(1, (drive.totalBytes - drive.freeBytes) / drive.totalBytes))
+                  : 0;
+                const mount = drive.mountPoint.replace(/[\\/]+$/, "");
+                const title = drive.label ? `${mount} — ${drive.label}` : mount;
+                return (
+                  <div key={drive.mountPoint}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 7 }}>
+                      <span style={{ fontSize: 13, fontWeight: 650, color: theme.text }}>{title}</span>
+                      {drive.isDefaultInstallDrive && (
+                        <span style={{ fontSize: 11, color: theme.textDim }}>
+                          {t("settings.deviceStorageDefault")}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ width: "100%", height: 8, overflow: "hidden", borderRadius: isPixel ? 0 : 999, background: isMaterial ? "var(--material-inset-bg)" : isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.10)" }}>
+                      <div style={{ width: `${usedFraction * 100}%`, height: "100%", background: usedFraction > 0.9 ? "#e85a5a" : accent.primary }} />
+                    </div>
+                    <div style={{ marginTop: 6, fontSize: 11, color: theme.textDim }}>
+                      {t("settings.deviceStorageFree", {
+                        free: formatBytes(drive.freeBytes),
+                        total: formatBytes(drive.totalBytes),
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     if (item.type === "toggle") {
       const val = settings[item.key] as boolean;

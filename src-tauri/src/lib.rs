@@ -48,6 +48,7 @@ use windows::{
 
 mod fse_watcher;
 mod steam_appinfo;
+mod storage_info;
 mod store_metadata;
 
 const SGDB_KEY: &str = env!("SGDB_API_KEY");
@@ -1733,7 +1734,7 @@ fn merge_owned_steam_games(apps: &mut Vec<AppEntry>, installed: &[AppEntry]) {
     }
 }
 
-fn is_microsoft_store_product_id(value: &str) -> bool {
+pub(crate) fn is_microsoft_store_product_id(value: &str) -> bool {
     let trimmed = value.trim();
     trimmed.len() == 12
         && trimmed.bytes().all(|byte| byte.is_ascii_alphanumeric())
@@ -8822,6 +8823,8 @@ pub fn run() {
             steam_install_progress,
             store_metadata::fetch_store_metadata,
             store_metadata::fetch_xbox_store_metadata,
+            store_metadata::get_xbox_install_size,
+            storage_info::get_storage_info,
             get_pins,
             toggle_pin,
             get_hidden,

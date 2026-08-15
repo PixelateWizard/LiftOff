@@ -19,6 +19,15 @@ export interface App {
   [key: string]: unknown;
 }
 
+export interface DriveStorageInfo {
+  mountPoint: string;
+  label: string;
+  totalBytes: number;
+  freeBytes: number;
+  driveKind: "fixed" | "removable";
+  isDefaultInstallDrive: boolean;
+}
+
 export interface GameEntry extends App {
   app_type?: "game";
   runAsAdmin?: boolean;
@@ -348,6 +357,10 @@ export interface SettingsInfoItem extends SettingsItemBase {
   type: "info";
 }
 
+export interface SettingsStorageInfoItem extends SettingsItemBase {
+  type: "storage_info";
+}
+
 export interface SettingsCustomFoldersItem extends SettingsItemBase {
   type: "custom_folders";
 }
@@ -383,6 +396,7 @@ export type SettingsItem =
   | SettingsIconPreviewItem
   | SettingsControllerTestItem
   | SettingsInfoItem
+  | SettingsStorageInfoItem
   | SettingsCustomFoldersItem
   | SettingsAppearanceCategoryItem
   | SettingsHomeCollectionItem;
