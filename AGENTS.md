@@ -1,12 +1,9 @@
 # LiftOff Agent Instructions
 
-`CLAUDE.md` is the single source of truth for project context, constraints, and the active task.
+`CLAUDE.md` is the compact bootstrap for every task. Read it fully, update its `## ⚡ Active Task` block, then use `.agents/docs/README.md` to select only the relevant domain playbooks.
 
-Before starting any task:
+Source code and configuration are authoritative when routed documentation has drifted. Shipped history belongs in `CHANGELOG.md`; unresolved gates belong in `.agents/docs/known-issues.md`.
 
-1. Read `CLAUDE.md` fully.
-2. Update the `## ⚡ Active Task` block in `CLAUDE.md`.
+Before final handoff, run `npm run docs:check` if the task changed `CLAUDE.md`, `AGENTS.md`, anything under `.agents/docs/`, or either repo-workflow `SKILL.md` copy. This is agent validation only; do not add it to CI, Git hooks, builds, or normal test commands.
 
-At the end of every update, add the shipped change to the latest release section in `CHANGELOG.md` unless asked otherwise.
-
-If the user sends only a `.md` file, treat it as a project proposal and carry it out while following `CLAUDE.md`.
+At the end of each task, follow the validation and documentation workflow in `CLAUDE.md`. If the user sends only a `.md` file, treat it as a project proposal and carry it out through that workflow.

@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "test:all": "npm run test && npm run test:e2e"
+    "test:all": "npm run test && npm run test:e2e",
+    "docs:check": "node scripts/check-agent-docs.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "2.11.1",
