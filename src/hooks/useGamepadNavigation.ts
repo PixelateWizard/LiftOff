@@ -7,6 +7,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { App, Settings } from "../types";
 import { launchApp } from "./useLaunchApp";
 import { getBestGamepad, getActiveGamepad, readGpState, detectPlatform, rumble, type HapticPattern } from "../utils/gamepad";
+import { getLibraryEntryFocusSection } from "../utils/libraryFocus";
 import { buildSettingsItems, getSectionNavigableItems, getSettingCycleOptions, SETTINGS_SECTIONS } from "../views/settings";
 import {
   ACCENTS as DEFAULT_ACCENTS,
@@ -612,10 +613,15 @@ export function useGamepadNavigation(
     let defaultSection;
     if (newTab === "Home") defaultSection = "hero";
     else if (newTab === "Settings") defaultSection = "grid";
-    else {
-      const hasPinned = pinsRef.current.length > 0 && pinsRef.current.some(id => appsRef.current.find(a => a.id === id));
-      defaultSection = hasPinned ? "pinned" : "grid";
-    }
+    else defaultSection = getLibraryEntryFocusSection({
+      tab: newTab,
+      apps: appsRef.current,
+      pinnedIds: pinsRef.current,
+      gameSourceTab: "All",
+      appCollectionTab: appCollectionTabRef.current,
+      showUninstalledGames: settingsRef.current.show_uninstalled_games === true,
+      installFilter: "all",
+    });
     setFocusSection(defaultSection); focusSectionRef.current = defaultSection;
     setFocusIndex(0); focusIndexRef.current = 0;
     setHeroIndex(0); heroIndexRef.current = 0;
@@ -902,19 +908,29 @@ export function useGamepadNavigation(
       fPinned = sortGamesForView(filterByInstallState(fPinned));
     }
     const homePinnedVisible = currentTab === "Home" && (currentSettings.home_pinned_pos ?? "bottom") !== "none" && fPinned.length > 0;
-    const hasPinnedForGameSource = (source: string, installFilter = installFilterRef.current) =>
-      currentTab === "Games"
-      && source === "All"
-      && currentPins.some(id => {
-        const app = allApps.find(a => a.id === id);
-        if (!app || app.app_type !== "game") return false;
-        if (!showUninstalledGames && !isInstalled(app)) return false;
-        if (installFilter === "installed") return isInstalled(app);
-        if (installFilter === "notInstalled") return !isInstalled(app);
-        return true;
+    const currentLibraryEntrySection = getLibraryEntryFocusSection({
+      tab: currentTab,
+      apps: allApps,
+      pinnedIds: currentPins,
+      gameSourceTab: gameSourceTabRef.current,
+      appCollectionTab: appCollectionTabRef.current,
+      showUninstalledGames,
+      installFilter: installFilterRef.current,
+    });
+    const focusLibraryCards = (
+      source = gameSourceTabRef.current,
+      installFilter = installFilterRef.current,
+      appCollection = appCollectionTabRef.current,
+    ) => {
+      const nextSection = getLibraryEntryFocusSection({
+        tab: currentTab,
+        apps: allApps,
+        pinnedIds: currentPins,
+        gameSourceTab: source,
+        appCollectionTab: appCollection,
+        showUninstalledGames,
+        installFilter,
       });
-    const focusLibraryCards = (source = gameSourceTabRef.current, installFilter = installFilterRef.current) => {
-      const nextSection = hasPinnedForGameSource(source, installFilter) ? "pinned" : "grid";
       setFocusSection(nextSection); focusSectionRef.current = nextSection;
       setFocusIndex(0); focusIndexRef.current = 0;
     };
@@ -1468,8 +1484,7 @@ export function useGamepadNavigation(
           haptic("tab");
         }
         setAppCollectionTab(next); appCollectionTabRef.current = next;
-        setFocusSection("grid"); focusSectionRef.current = "grid";
-        setFocusIndex(0); focusIndexRef.current = 0;
+        focusLibraryCards(gameSourceTabRef.current, installFilterRef.current, next);
         playSound(); return;
       }
       if (key === "TriggerRight") {
@@ -1480,8 +1495,7 @@ export function useGamepadNavigation(
           haptic("tab");
         }
         setAppCollectionTab(next); appCollectionTabRef.current = next;
-        setFocusSection("grid"); focusSectionRef.current = "grid";
-        setFocusIndex(0); focusIndexRef.current = 0;
+        focusLibraryCards(gameSourceTabRef.current, installFilterRef.current, next);
         playSound(); return;
       }
     }
@@ -1503,9 +1517,7 @@ export function useGamepadNavigation(
         subtabFocusIndexRef.current = currentSubtabIndex;
       }
       if (key === "ArrowRight" || key === "ArrowLeft" || key === "ArrowDown" || key === "ArrowUp") {
-        if (fPinned.length > 0) { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(0); focusIndexRef.current = 0; }
-        else { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; }
-
+        focusLibraryCards();
         playSound();
       }
       else if (key === "Enter") {
@@ -1522,7 +1534,7 @@ export function useGamepadNavigation(
         : settingsRef.current.app_list_view
           ? Math.max(1, settingsRef.current.app_list_cols ?? 1)
           : Math.max(2, Math.round(COLS / (settingsRef.current.app_cover_scale ?? 1.0)));
-      if (fPinned.length === 0) { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; return; }
+      if (currentLibraryEntrySection !== "pinned") { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0; return; }
       if (key === "ArrowRight") { const ni = Math.min(index + 1, fPinned.length - 1); if (ni !== index) { setFocusIndex(ni); focusIndexRef.current = ni;  } }
       if (key === "ArrowLeft")  { const ni = Math.max(index - 1, 0);                  if (ni !== index) { setFocusIndex(ni); focusIndexRef.current = ni;  } }
       if (key === "ArrowUp") {
@@ -1556,7 +1568,7 @@ export function useGamepadNavigation(
       if (key === "ArrowDown")  { const ni = Math.min(index + cols, fApps.length - 1); if (ni !== index) { setFocusIndex(ni); focusIndexRef.current = ni;  } }
       if (key === "ArrowUp") {
         if (index < cols) {
-          if (fPinned.length > 0) {
+          if (currentLibraryEntrySection === "pinned") {
             const lastPinnedRowStart = Math.floor((fPinned.length - 1) / pinnedCols) * pinnedCols;
             const pinnedTarget = Math.min(lastPinnedRowStart + (index % pinnedCols), fPinned.length - 1);
             setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(pinnedTarget); focusIndexRef.current = pinnedTarget;
@@ -1658,7 +1670,11 @@ export function useGamepadNavigation(
             && !showSteamQrRef.current
             && !showXboxGuideRef.current
             && !showCloudPickerRef.current
-            && !detailsAppRef.current;
+            && !detailsAppRef.current
+            // SteamGridArtPickerModal owns its controller loop, including nested
+            // GamepadKeyboard input. Letting the app-level poll dispatch the same
+            // B edge closes the picker while the keyboard is consuming it.
+            && !artPickerAppRef?.current;
 
           // MENU (Start) gains a hold gesture when Spotify is connected:
           // hold to charge up and open the Spotify overlay (any tab); a tap

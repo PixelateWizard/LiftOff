@@ -16,14 +16,15 @@ interface ThumbnailCardProps extends React.HTMLAttributes<HTMLDivElement> {
   isSelected: boolean;
   accent: AccentColors;
   theme: ThemeColors;
-  thumbW: number;
+  thumbW: number | string;
   aspect: string;
+  focused?: boolean;
   onClick: () => void;
 }
 
 let activeThumbVideo: HTMLVideoElement | null = null;
 
-export function ThumbnailCard({ result, selected, isSelected, accent, theme: _theme, thumbW, aspect, onClick, ...rest }: ThumbnailCardProps) {
+export function ThumbnailCard({ result, selected, isSelected, accent, theme: _theme, thumbW, aspect, focused = false, onClick, ...rest }: ThumbnailCardProps) {
   const { t } = useTranslation();
   const [hovered, setHovered] = useState(false);
   const [videoSrc, setVideoSrc] = useState<string | null>(null);
@@ -69,9 +70,11 @@ export function ThumbnailCard({ result, selected, isSelected, accent, theme: _th
       style={{
         position: "relative", width: thumbW, aspectRatio: aspect, cursor: "pointer",
         borderRadius: 8, overflow: "hidden",
-        outline: selected ? `2px solid ${accent.primary}` : "2px solid transparent",
-        outlineOffset: -2, transition: "outline 0.1s", flexShrink: 0,
-        transform: "translateZ(0)", willChange: "opacity",
+        outline: focused ? `4px solid ${accent.primary}` : selected ? `2px solid ${accent.primary}` : "2px solid transparent",
+        outlineOffset: focused ? -4 : -2,
+        boxShadow: focused ? `0 0 0 2px rgba(0,0,0,0.75), 0 0 18px ${accent.glow}0.75)` : "none",
+        transition: "outline 0.1s, box-shadow 0.1s, transform 0.1s", flexShrink: 0,
+        transform: focused ? "translateZ(0) scale(0.985)" : "translateZ(0)", willChange: "opacity",
       }}
       onClick={onClick}
       onMouseEnter={() => setHovered(true)}

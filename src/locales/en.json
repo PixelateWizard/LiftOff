@@ -45,6 +45,9 @@
     "resetToDefault": "Reset to Default"
   },
   "sgdb": {
+    "searchPlaceholder": "Search SteamGridDB…",
+    "search": "Search",
+    "noGamesFound": "No games found",
     "hoverToPreview": "Hover to preview",
     "failedToLoad": "Failed to load results",
     "noResults": "No results found",

@@ -480,11 +480,16 @@ impl Default for Settings {
 #[derive(Deserialize)]
 struct SgdbSearchResponse {
     success: bool,
-    data: Option<Vec<SgdbGame>>,
+    data: Option<Vec<SgdbGameHit>>,
 }
-#[derive(Deserialize)]
-struct SgdbGame {
-    id: u64,
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SgdbGameHit {
+    pub id: u64,
+    pub name: String,
+    #[serde(default)]
+    pub release_date: Option<i64>,
+    #[serde(default)]
+    pub verified: bool,
 }
 #[derive(Deserialize)]
 struct SgdbGridResponse {
@@ -1704,33 +1709,39 @@ fn emit_steam_account_changed(app: &tauri::AppHandle) {
     let _ = app.emit("steam-account-changed", steam_status_inner());
 }
 
-fn merge_owned_steam_games(apps: &mut Vec<AppEntry>, installed: &[AppEntry]) {
-    let installed_ids: std::collections::HashSet<String> =
-        installed.iter().map(|app| app.id.clone()).collect();
-    for owned in load_owned_steam_games() {
-        let id = format!("steam://rungameid/{}", owned.appid);
-        if installed_ids.contains(&id) {
-            continue;
+fn merge_owned_steam_game(apps: &mut Vec<AppEntry>, owned: SteamOwnedGameCache) {
+    let id = format!("steam://rungameid/{}", owned.appid);
+    let last_played = (owned.rtime_last_played > 0).then_some(owned.rtime_last_played);
+    if let Some(installed) = apps.iter_mut().find(|app| app.id == id) {
+        installed.playtime_minutes = Some(owned.playtime_minutes);
+        installed.last_played = last_played;
+        installed.steam_appid = Some(owned.appid);
+        if installed.steam_icon_hash.is_none() {
+            installed.steam_icon_hash = owned.icon_hash;
         }
-        apps.push(AppEntry {
-            id: id.clone(),
-            name: owned.name,
-            icon_base64: None,
-            launch_path: id,
-            app_type: "game".to_string(),
-            source: "steam".to_string(),
-            install_dir: None,
-            installed: false,
-            playtime_minutes: Some(owned.playtime_minutes),
-            last_played: if owned.rtime_last_played > 0 {
-                Some(owned.rtime_last_played)
-            } else {
-                None
-            },
-            steam_appid: Some(owned.appid),
-            steam_icon_hash: owned.icon_hash,
-            xbox_product_id: None,
-        });
+        return;
+    }
+
+    apps.push(AppEntry {
+        id: id.clone(),
+        name: owned.name,
+        icon_base64: None,
+        launch_path: id,
+        app_type: "game".to_string(),
+        source: "steam".to_string(),
+        install_dir: None,
+        installed: false,
+        playtime_minutes: Some(owned.playtime_minutes),
+        last_played,
+        steam_appid: Some(owned.appid),
+        steam_icon_hash: owned.icon_hash,
+        xbox_product_id: None,
+    });
+}
+
+fn merge_owned_steam_games(apps: &mut Vec<AppEntry>) {
+    for owned in load_owned_steam_games() {
+        merge_owned_steam_game(apps, owned);
     }
 }
 
@@ -1821,52 +1832,159 @@ fn microsoft_game_config_product_id(install_location: &str) -> Option<String> {
     None
 }
 
-fn merge_owned_xbox_titles(apps: &mut Vec<AppEntry>) {
-    let installed_pfns: std::collections::HashSet<String> = apps
-        .iter()
-        .filter(|app| app.installed)
-        .filter_map(|app| app.id.split_once('!').map(|(pfn, _)| pfn))
-        .filter(|pfn| !pfn.trim().is_empty())
-        .map(|pfn| pfn.to_lowercase())
-        .collect();
-    let xcloud_lookup = xcloud_product_lookup();
-
-    for title in load_xbox_owned_titles() {
-        if title.name.trim().is_empty() || title.title_id.trim().is_empty() {
-            continue;
-        }
-        if let Some(pfn) = &title.pfn {
-            if installed_pfns.contains(&pfn.to_lowercase()) {
-                continue;
+fn merge_owned_xbox_title(
+    apps: &mut Vec<AppEntry>,
+    title: XboxOwnedTitleCache,
+    xcloud_lookup: &std::collections::HashMap<String, String>,
+) {
+    if title.name.trim().is_empty() || title.title_id.trim().is_empty() {
+        return;
+    }
+    let product_id = title
+        .product_id
+        .as_ref()
+        .map(|value| value.trim().to_string())
+        .filter(|value| is_microsoft_store_product_id(value))
+        .or_else(|| xcloud_product_id_for_name(xcloud_lookup, &title.name));
+    if let Some(pfn) = title.pfn.as_deref() {
+        if let Some(installed) = apps.iter_mut().find(|app| {
+            app.installed
+                && app
+                    .id
+                    .split_once('!')
+                    .map(|(installed_pfn, _)| installed_pfn.eq_ignore_ascii_case(pfn))
+                    .unwrap_or(false)
+        }) {
+            installed.last_played = title.last_played;
+            if installed.xbox_product_id.is_none() {
+                installed.xbox_product_id = product_id;
             }
+            return;
         }
-        let id = format!("xbox-owned:{}", title.title_id);
-        if apps.iter().any(|app| app.id == id) {
+    }
+    let id = format!("xbox-owned:{}", title.title_id);
+    if apps.iter().any(|app| app.id == id) {
+        return;
+    }
+    let launch_path = product_id
+        .as_ref()
+        .map(|value| format!("ms-windows-store://pdp/?ProductId={value}"))
+        .unwrap_or_else(|| "xbox://".to_string());
+    apps.push(AppEntry {
+        id,
+        name: title.name,
+        icon_base64: None,
+        launch_path,
+        app_type: "game".to_string(),
+        source: "xbox".to_string(),
+        install_dir: None,
+        installed: false,
+        xbox_product_id: product_id,
+        last_played: title.last_played,
+        ..Default::default()
+    });
+}
+
+fn merge_owned_xbox_titles(apps: &mut Vec<AppEntry>) {
+    let xcloud_lookup = xcloud_product_lookup();
+    for title in load_xbox_owned_titles() {
+        merge_owned_xbox_title(apps, title, &xcloud_lookup);
+    }
+}
+
+fn apply_local_play_history(apps: &mut [AppEntry], history: &[RecentEntry]) {
+    let last_played_by_id: std::collections::HashMap<&str, i64> = history
+        .iter()
+        .filter_map(|entry| {
+            i64::try_from(entry.launched_at)
+                .ok()
+                .map(|at| (entry.id.as_str(), at))
+        })
+        .collect();
+    for app in apps {
+        let Some(local_last_played) = last_played_by_id.get(app.id.as_str()).copied() else {
             continue;
-        }
-        let product_id = title
-            .product_id
-            .as_ref()
-            .map(|value| value.trim().to_string())
-            .filter(|value| is_microsoft_store_product_id(value))
-            .or_else(|| xcloud_product_id_for_name(&xcloud_lookup, &title.name));
-        let launch_path = product_id
-            .as_ref()
-            .map(|value| format!("ms-windows-store://pdp/?ProductId={value}"))
-            .unwrap_or_else(|| "xbox://".to_string());
-        apps.push(AppEntry {
-            id,
-            name: title.name,
-            icon_base64: None,
-            launch_path,
-            app_type: "game".to_string(),
-            source: "xbox".to_string(),
-            install_dir: None,
-            installed: false,
-            xbox_product_id: product_id,
-            last_played: title.last_played,
+        };
+        app.last_played = Some(app.last_played.unwrap_or_default().max(local_last_played));
+    }
+}
+
+#[cfg(test)]
+mod owned_game_metadata_tests {
+    use super::{
+        apply_local_play_history, merge_owned_steam_game, merge_owned_xbox_title, AppEntry,
+        RecentEntry, SteamOwnedGameCache, XboxOwnedTitleCache,
+    };
+    use std::collections::HashMap;
+
+    #[test]
+    fn steam_history_enriches_the_installed_entry() {
+        let mut apps = vec![AppEntry {
+            id: "steam://rungameid/620".to_string(),
+            name: "Portal 2".to_string(),
+            installed: true,
             ..Default::default()
-        });
+        }];
+
+        merge_owned_steam_game(
+            &mut apps,
+            SteamOwnedGameCache {
+                appid: 620,
+                name: "Portal 2".to_string(),
+                playtime_minutes: 321,
+                rtime_last_played: 1_755_000_000,
+                icon_hash: Some("icon".to_string()),
+            },
+        );
+
+        assert_eq!(apps.len(), 1);
+        assert!(apps[0].installed);
+        assert_eq!(apps[0].playtime_minutes, Some(321));
+        assert_eq!(apps[0].last_played, Some(1_755_000_000));
+    }
+
+    #[test]
+    fn xbox_history_enriches_the_installed_package_entry() {
+        let mut apps = vec![AppEntry {
+            id: "Publisher.Game_123!Game".to_string(),
+            name: "Example Game".to_string(),
+            installed: true,
+            ..Default::default()
+        }];
+        let title = XboxOwnedTitleCache {
+            title_id: "1234".to_string(),
+            name: "Example Game".to_string(),
+            pfn: Some("publisher.game_123".to_string()),
+            product_id: Some("9ABCDEFGHJKL".to_string()),
+            last_played: Some(1_755_000_000),
+        };
+
+        merge_owned_xbox_title(&mut apps, title, &HashMap::new());
+
+        assert_eq!(apps.len(), 1);
+        assert!(apps[0].installed);
+        assert_eq!(apps[0].last_played, Some(1_755_000_000));
+        assert_eq!(apps[0].xbox_product_id.as_deref(), Some("9ABCDEFGHJKL"));
+    }
+
+    #[test]
+    fn local_history_uses_the_newest_known_launch_time() {
+        let mut apps = vec![AppEntry {
+            id: "epic:example".to_string(),
+            last_played: Some(1_700_000_000),
+            ..Default::default()
+        }];
+        let history = vec![RecentEntry {
+            id: "epic:example".to_string(),
+            name: "Example".to_string(),
+            launch_path: "example://launch".to_string(),
+            app_type: "game".to_string(),
+            launched_at: 1_755_000_000,
+        }];
+
+        apply_local_play_history(&mut apps, &history);
+
+        assert_eq!(apps[0].last_played, Some(1_755_000_000));
     }
 }
 
@@ -4606,7 +4724,7 @@ fn get_recents() -> Vec<RecentEntry> {
 }
 #[tauri::command]
 fn get_recent_games() -> Vec<RecentEntry> {
-    load_recent_games()
+    load_recent_games().into_iter().take(20).collect()
 }
 #[tauri::command]
 fn set_gamepad_ready() {
@@ -4666,7 +4784,12 @@ fn clear_custom_art(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn search_sgdb_art(game_name: String, art_type: String) -> Vec<SgdbArtResult> {
+fn search_sgdb_games(query: String) -> Vec<SgdbGameHit> {
+    let trimmed = query.trim();
+    if trimmed.is_empty() {
+        return vec![];
+    }
+
     let client = match reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(15))
         .build()
@@ -4675,23 +4798,69 @@ fn search_sgdb_art(game_name: String, art_type: String) -> Vec<SgdbArtResult> {
         Err(_) => return vec![],
     };
 
-    let search_url = format!(
+    let url = format!(
         "https://www.steamgriddb.com/api/v2/search/autocomplete/{}",
-        urlencoding::encode(&game_name)
+        urlencoding::encode(trimmed)
     );
-    let game_id = match client
-        .get(&search_url)
+
+    client
+        .get(&url)
         .header("Authorization", format!("Bearer {}", SGDB_KEY))
         .send()
         .ok()
         .and_then(|r| r.json::<SgdbSearchResponse>().ok())
         .filter(|d| d.success)
         .and_then(|d| d.data)
-        .and_then(|items| items.into_iter().next())
-        .map(|g| g.id)
+        .unwrap_or_default()
+}
+
+#[cfg(test)]
+mod sgdb_game_search_tests {
+    use super::search_sgdb_games;
+
+    #[test]
+    fn blank_queries_return_without_results() {
+        assert!(search_sgdb_games(String::new()).is_empty());
+        assert!(search_sgdb_games("   \t".to_string()).is_empty());
+    }
+}
+
+#[tauri::command]
+fn search_sgdb_art(
+    game_name: String,
+    art_type: String,
+    game_id: Option<u64>,
+) -> Vec<SgdbArtResult> {
+    let client = match reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
     {
+        Ok(c) => c,
+        Err(_) => return vec![],
+    };
+
+    let game_id = match game_id {
         Some(id) => id,
-        None => return vec![],
+        None => {
+            let search_url = format!(
+                "https://www.steamgriddb.com/api/v2/search/autocomplete/{}",
+                urlencoding::encode(&game_name)
+            );
+            match client
+                .get(&search_url)
+                .header("Authorization", format!("Bearer {}", SGDB_KEY))
+                .send()
+                .ok()
+                .and_then(|r| r.json::<SgdbSearchResponse>().ok())
+                .filter(|d| d.success)
+                .and_then(|d| d.data)
+                .and_then(|items| items.into_iter().next())
+                .map(|g| g.id)
+            {
+                Some(id) => id,
+                None => return vec![],
+            }
+        }
     };
 
     let fetch_art = |url: &str| -> Vec<SgdbArtItem> {
@@ -7215,9 +7384,8 @@ fn get_apps_inner(app: tauri::AppHandle) -> Vec<AppEntry> {
 
     // 3. Steam Games scan (this adds the games, not the app)
     if settings.scan_steam {
-        let installed = scan_steam_games(&mut icon_cache, &mut icon_stats);
-        apps.extend(installed.clone());
-        merge_owned_steam_games(&mut apps, &installed);
+        apps.extend(scan_steam_games(&mut icon_cache, &mut icon_stats));
+        merge_owned_steam_games(&mut apps);
     }
     push_scan_timing(&mut scan_timing, "steam", steam_phase_started);
 
@@ -7242,6 +7410,7 @@ fn get_apps_inner(app: tauri::AppHandle) -> Vec<AppEntry> {
     }
     push_scan_timing(&mut scan_timing, "other_launchers", other_phase_started);
 
+    apply_local_play_history(&mut apps, &load_recent_games());
     drop_shadowed_xbox_duplicates(&mut apps);
 
     let mut seen = std::collections::HashSet::new();
@@ -7368,9 +7537,8 @@ fn get_all_apps_inner(app: tauri::AppHandle) -> Vec<AppEntry> {
     }
 
     if settings.scan_steam {
-        let installed = scan_steam_games(&mut icon_cache, &mut icon_stats);
-        apps.extend(installed.clone());
-        merge_owned_steam_games(&mut apps, &installed);
+        apps.extend(scan_steam_games(&mut icon_cache, &mut icon_stats));
+        merge_owned_steam_games(&mut apps);
     }
     push_scan_timing(&mut scan_timing, "steam", steam_phase_started);
 
@@ -7393,6 +7561,8 @@ fn get_all_apps_inner(app: tauri::AppHandle) -> Vec<AppEntry> {
         apps.extend(scan_epic_games(&mut icon_cache, &mut icon_stats));
     }
     push_scan_timing(&mut scan_timing, "other_launchers", other_phase_started);
+
+    apply_local_play_history(&mut apps, &load_recent_games());
 
     // Deduplicate only — no hidden filter
     let mut seen = std::collections::HashSet::new();
@@ -8372,7 +8542,6 @@ async fn launch_app(
         let mut recent_games = load_recent_games();
         recent_games.retain(|r| r.id != game_entry.id);
         recent_games.insert(0, game_entry);
-        recent_games.truncate(20);
         save_recent_games(&recent_games);
     }
 
@@ -8833,6 +9002,7 @@ pub fn run() {
             set_custom_art,
             clear_custom_art,
             get_screen_resolution,
+            search_sgdb_games,
             search_sgdb_art,
             download_sgdb_art,
             list_dir,

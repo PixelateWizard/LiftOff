@@ -9,9 +9,10 @@ interface Props {
   confirmLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  zIndex?: number;
 }
 
-export default function ConfirmModal({ message, confirmLabel, onConfirm, onCancel }: Props) {
+export default function ConfirmModal({ message, confirmLabel, onConfirm, onCancel, zIndex = 2500 }: Props) {
   const { glass, accent, theme, isDark } = useTheme();
   const { t } = useTranslation();
   const label = confirmLabel ?? t("confirm.yes");
@@ -21,8 +22,13 @@ export default function ConfirmModal({ message, confirmLabel, onConfirm, onCance
     let rafId: number;
     let suppressFrames = 20;
     const poll = () => {
-      if (suppressFrames > 0) { suppressFrames--; rafId = requestAnimationFrame(poll); return; }
       const gp = getBestGamepad();
+      if (suppressFrames > 0) {
+        suppressFrames--;
+        if (gp) Object.assign(last, readGpState(gp));
+        rafId = requestAnimationFrame(poll);
+        return;
+      }
       if (gp) {
         const state = readGpState(gp);
         if (state.Enter  && !last.Enter)  { onConfirm(); }
@@ -45,7 +51,7 @@ export default function ConfirmModal({ message, confirmLabel, onConfirm, onCance
       title={message}
       shortcuts={shortcuts}
       width={380}
-      zIndex={2500}
+      zIndex={zIndex}
     />
   );
 }

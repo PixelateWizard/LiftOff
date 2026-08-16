@@ -13,6 +13,7 @@ Read for gamepad mapping, focus movement, repeated input, modal behavior, scroll
 - `useGamepadNavigation` owns the main RAF poll, repeat timing, focus state machine, tab/source movement, and mirrored refs used inside long-lived callbacks.
 - Modal and overlay controllers must isolate main navigation while open and suppress held buttons until release when closing. A close-confirm press must never activate the surface underneath.
 - Keep one active scroll/focus owner. Warm-mounted inactive Games/Apps panes must use private refs and cannot own the shared active refs.
+- Library entry focus must resolve against the destination view: use the first visible pinned card only in an All view that actually renders matching pins; otherwise use the first visible grid card. Source/collection switches must not leave focus in hidden header or toolbar sections.
 - Avoid `scrollIntoView()` for scaled main card navigation. Measure the focused element against the intended inner scroller, compensate for `ui_scale`, and preserve header/footer clearance.
 - Horizontal shelves need explicit container refs and should reset index zero to their designed left padding.
 - Repeated navigation should avoid stacking smooth-scroll animations; use immediate correction during held repeat and smoother correction for discrete movement.

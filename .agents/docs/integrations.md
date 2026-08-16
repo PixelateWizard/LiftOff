@@ -14,7 +14,7 @@ Read for Steam, Microsoft Store/Xbox, Spotify, Cloud gaming, SteamGridDB, GitHub
 - Steam owned-library/auth state uses native backend plumbing and Credential Manager for refresh tokens. Manifest bytes are not reliable live progress; use the current phase/checkpoint model.
 - Microsoft/Xbox account refresh tokens use Credential Manager. Store product IDs must be validated; title-history numeric IDs are not automatically Store product IDs.
 - The word “Xbox” and Xbox logo must not appear in shipped UI without trademark approval. Generic account/gamepad visuals are required; internal source identifiers may remain technical values.
-- Microsoft Store uninstall is limited to current-user packages in the resolved package family and must preserve Steam-only Verify behavior.
+- Microsoft Store uninstall is limited to current-user packages in the resolved package family and requires a controller-isolated LiftOff confirmation. Steam uninstall dispatches directly to Steam without a LiftOff confirmation, and Verify remains Steam-only.
 - Spotify Client ID remains user-supplied. Tokens never enter logs, DOM, JSON, or bundled configuration. Spotify Connect is the reliable playback target; do not revive the embedded Web Playback SDK path without resolving WebView2 DRM/license failures.
 - SGDB API keys remain user-supplied and unbundled. Preserve cache-first art behavior and provider rate limits.
 - Cloud seed generation uses exact verified joins and skips unmatched titles rather than guessing product IDs. Runtime uses cached/bundled fallback so the picker is not network-dependent.

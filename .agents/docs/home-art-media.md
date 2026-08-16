@@ -16,6 +16,7 @@ Read for Home layout/focus, hero media, pinned/recents/collections, Game Details
 - Semi/Normal Home uses a fixed snap slot tied to card scale and hero height. Do not restore page-flow spacers or allow the outer Home shell to expose blank scroll space.
 - Immersive Home owns a slide-up collections/recents drawer and must preserve hero/pinned visibility, bottom-lane, and drawer-scroll relationships.
 - Art priority is user custom art, then fetched/cached art, then icon/fallback. Missing-result sentinels and forced retries must not create request loops.
+- The SGDB art picker browse tab resolves an explicit game match before loading art. Its modal-local controller order is search, horizontally scrolling game matches, then the art grid; the active section and focused item use distinct focus treatments, and fluid art columns consume the available modal width. Selecting a match changes only the picker request and does not persist a library-wide SGDB remap.
 - Hero media playback belongs to the rendered Home view; only active media plays, and app blur/launch pause must suspend expensive media/background work.
 - Store metadata is on-demand and cache-first. Do not bulk prefetch an entire library from rate-limited provider endpoints.
 - Fullscreen Details media is one modal level deeper: B closes media back to Details, not all the way to the grid.

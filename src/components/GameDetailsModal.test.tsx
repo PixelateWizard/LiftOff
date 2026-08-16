@@ -173,4 +173,37 @@ describe("Microsoft catalog install confirmation", () => {
     expect(container.querySelector('[role="dialog"]')).toBeNull();
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it("pauses Details controller actions while a parent confirmation is open", () => {
+    let pressed: number[] = [];
+    const gamepad = (): Gamepad => ({
+      mapping: "standard",
+      axes: [0, 0, 0, 0],
+      buttons: Array.from({ length: 16 }, (_, index) => ({
+        pressed: pressed.includes(index),
+        touched: pressed.includes(index),
+        value: pressed.includes(index) ? 1 : 0,
+      })),
+    } as Gamepad);
+    Object.defineProperty(navigator, "getGamepads", {
+      configurable: true,
+      value: () => [gamepad()],
+    });
+    const onPlay = vi.fn();
+    act(() => root.render(
+      <GameDetailsModal
+        {...baseProps()}
+        installed
+        canXboxInstall={false}
+        interactionBlocked
+        onPlay={onPlay}
+      />,
+    ));
+    for (let frame = 0; frame < 21; frame += 1) runFrame(frame * 16);
+
+    pressed = [0];
+    runFrame(400);
+
+    expect(onPlay).not.toHaveBeenCalled();
+  });
 });

@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Storage visibility and install pre-check — implemented; Ally validation pending:** Added fail-open storage/catalog-size commands, a non-focusable Settings storage block, and a controller-isolated Details confirmation that blocks only confirmed shortfalls plus 500 MB headroom. Desktop/native tests pass; microSD/default-target behavior, themed rendering, and physical-controller flows remain device gates.
+- **Library top-row boundary — implemented; controller-feel validation pending:** Up from the top grid row now enters pinned only when the current All view renders matching pins; otherwise focus remains on the top card. Focus tests and frontend checks pass while left-stick toolbar skipping remains unchanged.
 
 ## Start-of-Task Workflow
 

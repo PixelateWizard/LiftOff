@@ -23,13 +23,13 @@ Read before bug triage, FSE/controller work, Microsoft Store uninstall changes, 
 
 ## Open Gates and Warnings
 
+### SGDB art picker game browser
+
+Code, browser build, Rust tests, and direct SGDB endpoint checks confirm the two-stage search/id contract, but Ally validation remains required at 1280x800 for Glass, Material, and win9x layout; search/game/grid focus visibility; held horizontal pill repeat and scrolling; GamepadKeyboard close-button bleed suppression; B-depth; hero LT/RT filtering; and saving art selected from a non-default game match. Do not claim those WebView2/controller paths are validated from compilation or direct API responses.
+
 ### Device storage and install pre-check
 
 Desktop/native checks confirm that Windows' default package-volume API resolves to `C:` in the current unpackaged process, the storage snapshot returns plausible drives with exactly one default target, and live catalog/cache checks return the expected Hades size. Ally hardware validation remains required for microSD enumeration and default-target selection, the Settings block across Glass/Material/win9x, and enough/insufficient/unknown confirmation flows with physical controller input. Do not claim those device-visible paths are validated from compilation, unit tests, or desktop runtime checks.
-
-### Game uninstall requires two activations
-
-Pressing Uninstall from game Details does not act on the first activation. The user must press Uninstall a second time before the game uninstalls or, for Steam games, Steam's uninstall prompt opens. This is an unresolved cross-source uninstall bug; reproduce it for both package-backed and Steam games before changing the shared Details confirmation/action flow.
 
 ### Microsoft Store game uninstall
 
@@ -39,8 +39,9 @@ Desktop/code checks are complete, but Ally validation remains required before ca
 2. Uninstall a GDK/package-family title and confirm every intended current-user package full name is removed without touching unrelated packages.
 3. Attempt uninstall while the game is running and confirm a clear Store-specific failure with stable UI recovery.
 4. Keep Details open across completion and confirm stale installed/action state reconciles correctly.
+5. Confirm one Uninstall activation opens the visible LiftOff confirmation, the opening A press cannot confirm until released, and a second deliberate A starts removal.
 
-Steam uninstall and Steam-only Verify files must remain unchanged.
+Steam uninstall and Steam-only Verify files must remain unchanged. Confirm one Steam Uninstall activation opens Steam's uninstall prompt directly without a LiftOff confirmation.
 
 ### FSE acceptance constraint
 

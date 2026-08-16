@@ -66,6 +66,7 @@ import { SteamQrModal } from "./components/steam/SteamQrModal";
 import { XboxConnectGuide } from "./components/xbox/XboxConnectGuide";
 import { AUDIO_PROFILES, resolveAudioProfile } from "./audio/audioProfiles";
 import { detectPlatform } from "./utils/gamepad";
+import { getLibraryEntryFocusSection } from "./utils/libraryFocus";
 import { xboxPackageFamilyNameFor, xboxProductIdFor } from "./utils/xboxProductId";
 import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO, UPDATE_CHECK_INTERVAL_HOURS,
@@ -315,7 +316,6 @@ export default function App() {
   const [installProgress, setInstallProgress] = useState({});
   const [xboxInstallProgress, setXboxInstallProgress] = useState({});
   const [installErrors, setInstallErrors] = useState({});
-  const [steamUninstallRequest, setSteamUninstallRequest] = useState(null);
   const [xboxUninstallRequest, setXboxUninstallRequest] = useState(null);
   const {
     appCollections, setAppCollections, appCollectionsRef,
@@ -958,16 +958,14 @@ export default function App() {
       },
       exit: () => {
         setSortOpen(false);
-        const shouldLandOnPinned = gameSourceTabRef.current === "All"
-          && pinsRef.current.some((id) => {
-            const app = allAppsRef.current.find((entry) => entry.id === id);
-            if (!app || app.app_type !== "game") return false;
-            if (!showUninstalledGames && app.installed === false) return false;
-            if (installFilterRef.current === "installed") return app.installed !== false;
-            if (installFilterRef.current === "notInstalled") return app.installed === false;
-            return true;
-          });
-        const nextSection = shouldLandOnPinned ? "pinned" : "grid";
+        const nextSection = getLibraryEntryFocusSection({
+          tab: "Games",
+          apps: allAppsRef.current,
+          pinnedIds: pinsRef.current,
+          gameSourceTab: gameSourceTabRef.current,
+          showUninstalledGames,
+          installFilter: installFilterRef.current,
+        });
         setFocusSection(nextSection);
         focusSectionRef.current = nextSection;
         setFocusIndex(0);
@@ -2677,15 +2675,45 @@ export default function App() {
     if (i !== headerActiveIndex) {
       setSubtabMotionDirection(i < headerActiveIndex ? "back" : "forward");
     }
-    if (tab === "Games") { const src = _hdrSources[i]; setGameSourceTab(src); gameSourceTabRef.current = src; }
-    else if (tab === "Apps") { const col = _hdrAppCols[i]; setAppCollectionTab(col); appCollectionTabRef.current = col; }
+    if (tab === "Games") {
+      const src = _hdrSources[i];
+      setGameSourceTab(src);
+      gameSourceTabRef.current = src;
+      const nextSection = getLibraryEntryFocusSection({
+        tab,
+        apps: allAppsRef.current,
+        pinnedIds: pinsRef.current,
+        gameSourceTab: src,
+        showUninstalledGames,
+        installFilter: installFilterRef.current,
+      });
+      setFocusSection(nextSection);
+      focusSectionRef.current = nextSection;
+      setFocusIndex(0);
+      focusIndexRef.current = 0;
+    }
+    else if (tab === "Apps") {
+      const col = _hdrAppCols[i];
+      setAppCollectionTab(col);
+      appCollectionTabRef.current = col;
+      const nextSection = getLibraryEntryFocusSection({
+        tab,
+        apps: allAppsRef.current,
+        pinnedIds: pinsRef.current,
+        appCollectionTab: col,
+      });
+      setFocusSection(nextSection);
+      focusSectionRef.current = nextSection;
+      setFocusIndex(0);
+      focusIndexRef.current = 0;
+    }
     else if (tab === "Settings") {
       setSettingsSection(i); settingsSectionRef.current = i;
       setAppearanceGroup(null, { animate: false });
       setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
       if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
     }
-    if (tab !== "Settings") { setFocusSection("subtabs"); focusSectionRef.current = "subtabs"; setSubtabFocusIndex(i); subtabFocusIndexRef.current = i; setFocusIndex(0); focusIndexRef.current = 0; }
+    if (tab !== "Settings") { setSubtabFocusIndex(i); subtabFocusIndexRef.current = i; }
   };
 
   // ── Header right actions (Manage button inline with subtab pills) ─
@@ -2941,22 +2969,11 @@ export default function App() {
           onCancel={() => setCloseRequest(null)}
         />
       )}
-      {steamUninstallRequest && (
-        <ConfirmModal
-          message={t("install.confirmUninstall", { name: steamUninstallRequest.name })}
-          confirmLabel={t("install.uninstall")}
-          onConfirm={() => {
-            const app = steamUninstallRequest;
-            setSteamUninstallRequest(null);
-            runSteamUninstall(app);
-          }}
-          onCancel={() => setSteamUninstallRequest(null)}
-        />
-      )}
       {xboxUninstallRequest && (
         <ConfirmModal
           message={t("install.confirmUninstall", { name: xboxUninstallRequest.name })}
           confirmLabel={t("install.uninstall")}
+          zIndex={10000}
           onConfirm={() => {
             const app = xboxUninstallRequest;
             setXboxUninstallRequest(null);
@@ -2992,6 +3009,7 @@ export default function App() {
           xboxInstallProgress={xboxInstallProgress[detailsApp.id]}
           installError={installErrors[detailsApp.id]}
           running={isRunning(detailsApp.id)}
+          interactionBlocked={!!xboxUninstallRequest}
           hapticEnabled={settings.haptic_feedback ?? true}
           onPlay={() => { triggerLaunch(detailsApp, recentRef.current); closeDetailsModal(false); }}
           onCloseGame={() => {
@@ -3005,7 +3023,7 @@ export default function App() {
           onXboxInstallFallback={() => openXboxInstallFallback(detailsApp)}
           onCancelInstall={() => cancelSteamInstall(detailsApp)}
           onUninstall={String(detailsApp.source ?? "").toLowerCase() === "steam"
-            ? () => setSteamUninstallRequest(detailsApp)
+            ? () => runSteamUninstall(detailsApp)
             : xboxPackageFamilyNameFor(detailsApp)
               ? () => setXboxUninstallRequest(detailsApp)
               : undefined}

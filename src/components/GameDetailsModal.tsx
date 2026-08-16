@@ -53,6 +53,7 @@ interface GameDetailsModalProps {
   xboxInstallProgress?: XboxInstallProgress;
   installError?: string;
   running?: boolean;
+  interactionBlocked?: boolean;
   onPlay: () => void;
   onCloseGame?: () => void;
   onInstall?: () => void;
@@ -170,6 +171,7 @@ export function GameDetailsModal({
   xboxInstallProgress,
   installError,
   running = false,
+  interactionBlocked = false,
   onPlay,
   onCloseGame,
   onInstall,
@@ -215,6 +217,7 @@ export function GameDetailsModal({
   const primaryActionRef = useRef<() => void>(() => {});
   const closeRef = useRef<() => void>(() => {});
   const hapticEnabledRef = useRef(hapticEnabled);
+  const interactionBlockedRef = useRef(interactionBlocked);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const focusRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -453,6 +456,7 @@ export function GameDetailsModal({
   primaryActionRef.current = handlePrimaryAction;
   closeRef.current = onClose;
   hapticEnabledRef.current = hapticEnabled;
+  interactionBlockedRef.current = interactionBlocked;
   xboxConfirmActionsRef.current = xboxSpaceVerdict === "insufficient"
     ? [closeXboxConfirm]
     : [confirmXboxInstall, closeXboxConfirm];
@@ -534,6 +538,11 @@ export function GameDetailsModal({
       const gp = getBestGamepad();
       if (gp) {
         const state = readGpState(gp);
+        if (interactionBlockedRef.current) {
+          Object.assign(last, state);
+          rafId = requestAnimationFrame(poll);
+          return;
+        }
         if (xboxConfirmOpenRef.current) {
           const actions = xboxConfirmActionsRef.current;
           const nextPressed =
