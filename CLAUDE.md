@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Library top-row boundary — implemented; controller-feel validation pending:** Up from the top grid row now enters pinned only when the current All view renders matching pins; otherwise focus remains on the top card. Focus tests and frontend checks pass while left-stick toolbar skipping remains unchanged.
+- **Steam Deck compatibility and controller support — implemented; Tauri visual pass pending:** Steam Details now lazily shows cached Deck and controller-support chips behind the existing metadata setting. Live Valve payloads and automated checks pass; representative WebView/theme inspection remains.
 
 ## Start-of-Task Workflow
 

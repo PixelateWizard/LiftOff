@@ -4,8 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
 import { GameDetailsModal } from "./GameDetailsModal";
 
+const hookState = vi.hoisted(() => ({
+  deckCompat: undefined as undefined | { category: "unknown" | "unsupported" | "playable" | "verified"; fetchedAt: number },
+  storeData: null as null | { controllerSupport: "full" | "partial" | "none" },
+}));
+
 vi.mock("../hooks/useStoreMetadata", () => ({
-  useStoreMetadata: () => ({ data: null, loading: false, error: null }),
+  useStoreMetadata: () => ({ data: hookState.storeData, loading: false, error: null }),
+}));
+vi.mock("../hooks/useDeckCompat", () => ({
+  useDeckCompat: () => hookState.deckCompat,
 }));
 vi.mock("./ui/StoreBadge", () => ({ StoreBadge: () => null }));
 
@@ -21,6 +29,13 @@ const labels: Record<string, string> = {
   "install.spaceUnknownNote": "Storage could not be confirmed",
   "install.confirmInstall": "Install",
   "install.close": "Cancel",
+  "details.deckCompat.verified": "Deck verified",
+  "details.deckCompat.playable": "Deck playable",
+  "details.deckCompat.unsupported": "Deck unsupported",
+  "details.deckCompat.unknown": "Deck compatibility unknown",
+  "details.controllerSupport.full": "Full controller support",
+  "details.controllerSupport.partial": "Partial controller support",
+  "details.controllerSupport.none": "No controller support",
 };
 
 const baseProps = (): ComponentProps<typeof GameDetailsModal> => ({
@@ -58,6 +73,8 @@ describe("Microsoft catalog install confirmation", () => {
   let nextFrame: FrameRequestCallback | undefined;
 
   beforeEach(() => {
+    hookState.deckCompat = undefined;
+    hookState.storeData = null;
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     vi.stubGlobal("requestAnimationFrame", vi.fn((callback: FrameRequestCallback) => {
       nextFrame = callback;
@@ -205,5 +222,48 @@ describe("Microsoft catalog install confirmation", () => {
     runFrame(400);
 
     expect(onPlay).not.toHaveBeenCalled();
+  });
+
+  it("shows Deck and controller chips for a non-verified Steam game", () => {
+    hookState.deckCompat = { category: "playable", fetchedAt: 1 };
+    hookState.storeData = { controllerSupport: "partial" };
+    act(() => root.render(
+      <GameDetailsModal
+        {...baseProps()}
+        app={{ id: "steam:440", name: "Team Fortress 2", source: "steam", steam_appid: 440 }}
+        installed
+        canXboxInstall={false}
+        storeMetaEnabled
+      />,
+    ));
+
+    expect(container.textContent).toContain("Deck playable");
+    expect(container.textContent).toContain("Partial controller support");
+  });
+
+  it("hides the redundant controller chip for a Deck-verified game", () => {
+    hookState.deckCompat = { category: "verified", fetchedAt: 1 };
+    hookState.storeData = { controllerSupport: "full" };
+    act(() => root.render(
+      <GameDetailsModal
+        {...baseProps()}
+        app={{ id: "steam:620", name: "Portal 2", source: "steam", steam_appid: 620 }}
+        installed
+        canXboxInstall={false}
+        storeMetaEnabled
+      />,
+    ));
+
+    expect(container.textContent).toContain("Deck verified");
+    expect(container.textContent).not.toContain("Full controller support");
+  });
+
+  it("does not render compatibility chips for non-Steam games", () => {
+    hookState.deckCompat = { category: "playable", fetchedAt: 1 };
+    hookState.storeData = { controllerSupport: "partial" };
+    act(() => root.render(<GameDetailsModal {...baseProps()} storeMetaEnabled />));
+
+    expect(container.textContent).not.toContain("Deck playable");
+    expect(container.textContent).not.toContain("Partial controller support");
   });
 });

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { IoChevronBackOutline, IoChevronDownOutline, IoChevronForwardOutline, IoCloseOutline, IoPlay } from "react-icons/io5";
+import { IoChevronBackOutline, IoChevronDownOutline, IoChevronForwardOutline, IoCloseOutline, IoGameControllerOutline, IoPlay } from "react-icons/io5";
 import { StoreBadge } from "./ui/StoreBadge";
+import { useDeckCompat, type DeckCompatCategory } from "../hooks/useDeckCompat";
 import { useStoreMetadata } from "../hooks/useStoreMetadata";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, rumble, type GpState } from "../utils/gamepad";
 import { formatBytes } from "../utils/formatBytes";
@@ -231,6 +232,9 @@ export function GameDetailsModal({
   const isSteam = source === "steam";
   const isXbox = source === "xbox";
   const steamAppId = app.steam_appid != null ? String(app.steam_appid) : undefined;
+  const numericSteamAppId = steamAppId && /^\d+$/.test(steamAppId)
+    ? Number(steamAppId)
+    : undefined;
   const xboxProductId = xboxProductIdFor(app) ?? undefined;
   const store = useStoreMetadata(
     app.source,
@@ -238,6 +242,11 @@ export function GameDetailsModal({
     xboxProductId,
     storeMetaEnabled && (isSteam || (isXbox && !!xboxProductId)),
   );
+  const deckCompat = useDeckCompat(
+    isSteam && Number.isSafeInteger(numericSteamAppId) ? numericSteamAppId : undefined,
+    !!storeMetaEnabled && isSteam,
+  );
+  const controllerSupport = store.data?.controllerSupport;
   const movies: StoreMovie[] = store.data?.movies ?? [];
   const screenshots = store.data?.screenshots ?? [];
   const shortDescription = store.data?.shortDescription ?? "";
@@ -291,6 +300,27 @@ export function GameDetailsModal({
     surfaceStyle === "obsidian" ? 10 :
     12;
   const chipRadius = isPixel ? 0 : surfaceStyle === "material" || surfaceStyle === "clear" ? 8 : 10;
+  const positiveTone = isDark
+    ? { bg: "rgba(74,232,138,0.16)", fg: "#4ae88a" }
+    : { bg: "rgba(31,180,99,0.14)", fg: "#159653" };
+  const cautionTone = isDark
+    ? { bg: "rgba(232,190,74,0.16)", fg: "#e8be4a" }
+    : { bg: "rgba(169,117,0,0.14)", fg: "#8a6100" };
+  const mutedTone = {
+    bg: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.055)",
+    fg: theme.textFaint,
+  };
+  const deckTone: Record<DeckCompatCategory, { bg: string; fg: string }> = {
+    verified: positiveTone,
+    playable: cautionTone,
+    unsupported: mutedTone,
+    unknown: mutedTone,
+  };
+  const controllerTone = {
+    full: positiveTone,
+    partial: cautionTone,
+    none: mutedTone,
+  } as const;
   const mediaTileStyle = (focused: boolean): CSSProperties => ({
     position: "relative",
     flex: "0 0 auto",
@@ -994,6 +1024,43 @@ export function GameDetailsModal({
                 </div>
               ))}
             </div>
+
+            {isSteam && deckCompat && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  borderRadius: chipRadius,
+                  border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid transparent",
+                  padding: "8px 10px",
+                  background: deckTone[deckCompat.category].bg,
+                  color: deckTone[deckCompat.category].fg,
+                }}>
+                  <IoGameControllerOutline size={14} aria-hidden="true" />
+                  <span style={{ fontSize: 13, fontWeight: 700 }}>
+                    {t(`details.deckCompat.${deckCompat.category}`)}
+                  </span>
+                </div>
+                {deckCompat.category !== "verified" && controllerSupport && (
+                  <div style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    borderRadius: chipRadius,
+                    border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid transparent",
+                    padding: "8px 10px",
+                    background: controllerTone[controllerSupport].bg,
+                    color: controllerTone[controllerSupport].fg,
+                  }}>
+                    <IoGameControllerOutline size={14} aria-hidden="true" />
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>
+                      {t(`details.controllerSupport.${controllerSupport}`)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div style={{
               display: "flex",

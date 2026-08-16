@@ -520,6 +520,17 @@
     "playtime": "TODO(fr) Playtime",
     "sizeOnDisk": "TODO(fr) Size on disk",
     "downloadSize": "TODO(fr) Download size",
+    "deckCompat": {
+      "verified": "TODO(fr) Deck verified",
+      "playable": "TODO(fr) Deck playable",
+      "unsupported": "TODO(fr) Deck unsupported",
+      "unknown": "TODO(fr) Deck compatibility unknown"
+    },
+    "controllerSupport": {
+      "full": "TODO(fr) Full controller support",
+      "partial": "TODO(fr) Partial controller support",
+      "none": "TODO(fr) No controller support"
+    },
     "never": "TODO(fr) Never played"
   },
   "library": {

@@ -521,6 +521,17 @@
     "playtime": "Playtime",
     "sizeOnDisk": "Size on disk",
     "downloadSize": "Download size",
+    "deckCompat": {
+      "verified": "Deck verified",
+      "playable": "Deck playable",
+      "unsupported": "Deck unsupported",
+      "unknown": "Deck compatibility unknown"
+    },
+    "controllerSupport": {
+      "full": "Full controller support",
+      "partial": "Partial controller support",
+      "none": "No controller support"
+    },
     "never": "Never played"
   },
   "library": {

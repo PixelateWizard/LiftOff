@@ -6,8 +6,47 @@ use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const CACHE_TTL_SECS: u64 = 60 * 60 * 24 * 14;
-const CACHE_SCHEMA_VERSION: u32 = 4;
+const CACHE_SCHEMA_VERSION: u32 = 5;
 const XBOX_SIZE_CACHE_TTL_SECS: u64 = 60 * 60 * 24 * 14;
+const DECK_COMPAT_CACHE_TTL_SECS: u64 = 60 * 60 * 24 * 14;
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ControllerSupport {
+    Full,
+    Partial,
+    #[default]
+    None,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DeckCompatCategory {
+    Unknown,
+    Unsupported,
+    Playable,
+    Verified,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SteamDeckCompat {
+    pub category: DeckCompatCategory,
+    pub fetched_at: u64,
+}
+
+#[derive(Deserialize)]
+struct DeckCompatApiResponse {
+    success: u8,
+    results: Option<DeckCompatApiResults>,
+}
+
+#[derive(Deserialize)]
+struct DeckCompatApiResults {
+    #[allow(dead_code)]
+    appid: u32,
+    resolved_category: Option<u8>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct XboxInstallSizeCache {
@@ -65,6 +104,8 @@ pub struct StoreMetadata {
     pub screenshots: Vec<StoreScreenshot>,
     #[serde(default)]
     pub movies: Vec<StoreMovie>,
+    #[serde(default)]
+    pub controller_support: ControllerSupport,
     pub fetched_at: u64,
 }
 
@@ -80,6 +121,83 @@ fn cache_path(cache_root: &Path, source: &str, app_id: &str) -> PathBuf {
         .join("store_metadata")
         .join(source)
         .join(format!("{app_id}.json"))
+}
+
+fn deck_compat_cache_path(cache_root: &Path, app_id: u32) -> PathBuf {
+    cache_path(cache_root, "steam_deck", &app_id.to_string())
+}
+
+fn deck_compat_category_from_raw(raw: u8) -> DeckCompatCategory {
+    // Valve does not document these values; this mapping follows the live Steam endpoint.
+    match raw {
+        1 => DeckCompatCategory::Unsupported,
+        2 => DeckCompatCategory::Playable,
+        3 => DeckCompatCategory::Verified,
+        _ => DeckCompatCategory::Unknown,
+    }
+}
+
+fn deck_compat_category_from_response(
+    response: DeckCompatApiResponse,
+) -> Option<DeckCompatCategory> {
+    if response.success != 1 {
+        return None;
+    }
+    Some(
+        response
+            .results
+            .and_then(|results| results.resolved_category)
+            .map(deck_compat_category_from_raw)
+            .unwrap_or(DeckCompatCategory::Unknown),
+    )
+}
+
+fn read_deck_compat_cache(cache_root: &Path, app_id: u32) -> Option<SteamDeckCompat> {
+    let bytes = std::fs::read(deck_compat_cache_path(cache_root, app_id)).ok()?;
+    let compat: SteamDeckCompat = serde_json::from_slice(&bytes).ok()?;
+    if now_secs().saturating_sub(compat.fetched_at) <= DECK_COMPAT_CACHE_TTL_SECS {
+        Some(compat)
+    } else {
+        None
+    }
+}
+
+fn write_deck_compat_cache(cache_root: &Path, app_id: u32, compat: &SteamDeckCompat) {
+    let path = deck_compat_cache_path(cache_root, app_id);
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(bytes) = serde_json::to_vec_pretty(compat) {
+        let _ = std::fs::write(path, bytes);
+    }
+}
+
+fn controller_support_from_appdetails(data: &serde_json::Value) -> ControllerSupport {
+    if data
+        .get("controller_support")
+        .and_then(|value| value.as_str())
+        .is_some_and(|value| value.eq_ignore_ascii_case("full"))
+    {
+        return ControllerSupport::Full;
+    }
+
+    let category_descriptions = data
+        .get("categories")
+        .and_then(|value| value.as_array())
+        .into_iter()
+        .flatten()
+        .filter_map(|category| category.get("description").and_then(|value| value.as_str()));
+
+    for description in category_descriptions {
+        if description.eq_ignore_ascii_case("full controller support") {
+            return ControllerSupport::Full;
+        }
+        if description.eq_ignore_ascii_case("partial controller support") {
+            return ControllerSupport::Partial;
+        }
+    }
+
+    ControllerSupport::None
 }
 
 fn xbox_size_cache_path(cache_root: &Path, product_id: &str) -> PathBuf {
@@ -333,6 +451,7 @@ async fn fetch_steam(client: &reqwest::Client, app_id: &str) -> Result<StoreMeta
         .and_then(|value| value.as_str())
         .filter(|value| !value.is_empty())
         .map(|value| value.to_string());
+    let controller_support = controller_support_from_appdetails(data);
 
     Ok(StoreMetadata {
         cache_version: CACHE_SCHEMA_VERSION,
@@ -362,8 +481,42 @@ async fn fetch_steam(client: &reqwest::Client, app_id: &str) -> Result<StoreMeta
             .map(|value| value.to_string()),
         screenshots,
         movies,
+        controller_support,
         fetched_at: now_secs(),
     })
+}
+
+async fn fetch_deck_compat_remote(
+    client: &reqwest::Client,
+    cache_root: &Path,
+    app_id: u32,
+) -> Option<SteamDeckCompat> {
+    let url = format!(
+        "https://store.steampowered.com/saleaction/ajaxgetdeckappcompatibilityreport?nAppID={app_id}&l=english&cc=US"
+    );
+    let response = client.get(url).send().await.ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    let parsed: DeckCompatApiResponse = response.json().await.ok()?;
+    let category = deck_compat_category_from_response(parsed)?;
+    let compat = SteamDeckCompat {
+        category,
+        fetched_at: now_secs(),
+    };
+    write_deck_compat_cache(cache_root, app_id, &compat);
+    Some(compat)
+}
+
+pub async fn get_steam_deck_compat_cached_or_fetch(
+    client: &reqwest::Client,
+    cache_root: &Path,
+    app_id: u32,
+) -> Option<SteamDeckCompat> {
+    if let Some(cached) = read_deck_compat_cache(cache_root, app_id) {
+        return Some(cached);
+    }
+    fetch_deck_compat_remote(client, cache_root, app_id).await
 }
 
 async fn resolve_xbox_video_url(
@@ -567,6 +720,7 @@ async fn fetch_xbox(client: &reqwest::Client, product_id: &str) -> Result<StoreM
         background: None,
         screenshots,
         movies,
+        controller_support: ControllerSupport::None,
         fetched_at: now_secs(),
     })
 }
@@ -722,6 +876,21 @@ pub async fn get_xbox_install_size(product_id: String) -> Result<Option<u64>, St
 }
 
 #[tauri::command]
+pub async fn get_steam_deck_compat(appid: u32) -> Result<Option<SteamDeckCompat>, String> {
+    if !crate::load_settings_inner().fetch_store_metadata {
+        return Err("store metadata fetching is disabled in settings".to_string());
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(15))
+        .user_agent("LiftOff store metadata/1.0")
+        .build()
+        .map_err(|error| format!("could not build http client: {error}"))?;
+
+    Ok(get_steam_deck_compat_cached_or_fetch(&client, &crate::liftoff_dir(), appid).await)
+}
+
+#[tauri::command]
 pub async fn fetch_xbox_store_metadata(
     product_id: String,
     force: Option<bool>,
@@ -755,6 +924,135 @@ mod tests {
                 "Payload": { "ApproximateSizeInBytes": 0 }
             })),
             None
+        );
+    }
+
+    #[test]
+    fn maps_live_deck_compatibility_categories_and_unknown_values() {
+        assert_eq!(
+            deck_compat_category_from_raw(1),
+            DeckCompatCategory::Unsupported
+        );
+        assert_eq!(
+            deck_compat_category_from_raw(2),
+            DeckCompatCategory::Playable
+        );
+        assert_eq!(
+            deck_compat_category_from_raw(3),
+            DeckCompatCategory::Verified
+        );
+        assert_eq!(
+            deck_compat_category_from_raw(99),
+            DeckCompatCategory::Unknown
+        );
+    }
+
+    #[test]
+    fn treats_null_or_missing_deck_results_as_unknown_and_failed_calls_as_absent() {
+        let null_category: DeckCompatApiResponse = serde_json::from_value(serde_json::json!({
+            "success": 1,
+            "results": { "appid": 2020900, "resolved_category": null }
+        }))
+        .unwrap();
+        let missing_results: DeckCompatApiResponse = serde_json::from_value(serde_json::json!({
+            "success": 1,
+            "results": null
+        }))
+        .unwrap();
+        let failed: DeckCompatApiResponse = serde_json::from_value(serde_json::json!({
+            "success": 0,
+            "results": null
+        }))
+        .unwrap();
+
+        assert_eq!(
+            deck_compat_category_from_response(null_category),
+            Some(DeckCompatCategory::Unknown)
+        );
+        assert_eq!(
+            deck_compat_category_from_response(missing_results),
+            Some(DeckCompatCategory::Unknown)
+        );
+        assert_eq!(deck_compat_category_from_response(failed), None);
+    }
+
+    #[test]
+    fn reuses_a_fresh_deck_compatibility_cache_entry_without_network() {
+        let cache_root = std::env::temp_dir().join(format!(
+            "liftoff-deck-cache-{}-{}",
+            std::process::id(),
+            now_secs()
+        ));
+        let expected = SteamDeckCompat {
+            category: DeckCompatCategory::Playable,
+            fetched_at: now_secs(),
+        };
+        write_deck_compat_cache(&cache_root, 440, &expected);
+        assert!(deck_compat_cache_path(&cache_root, 440).ends_with(
+            Path::new("store_metadata")
+                .join("steam_deck")
+                .join("440.json")
+        ));
+
+        let offline_client = reqwest::Client::builder()
+            .proxy(reqwest::Proxy::all("http://127.0.0.1:9").unwrap())
+            .timeout(Duration::from_millis(50))
+            .build()
+            .unwrap();
+        let cached = tauri::async_runtime::block_on(get_steam_deck_compat_cached_or_fetch(
+            &offline_client,
+            &cache_root,
+            440,
+        ))
+        .unwrap();
+
+        assert_eq!(cached.category, DeckCompatCategory::Playable);
+        let _ = std::fs::remove_dir_all(&cache_root);
+    }
+
+    #[test]
+    fn parses_full_partial_and_absent_controller_support() {
+        let full = serde_json::json!({
+            "controller_support": "full",
+            "categories": [{ "id": 28, "description": "Full controller support" }]
+        });
+        let partial = serde_json::json!({
+            "categories": [{ "id": 18, "description": "Partial Controller Support" }]
+        });
+        let none = serde_json::json!({
+            "categories": [{ "id": 2, "description": "Single-player" }]
+        });
+
+        assert_eq!(
+            controller_support_from_appdetails(&full),
+            ControllerSupport::Full
+        );
+        assert_eq!(
+            controller_support_from_appdetails(&partial),
+            ControllerSupport::Partial
+        );
+        assert_eq!(
+            controller_support_from_appdetails(&none),
+            ControllerSupport::None
+        );
+    }
+
+    #[test]
+    fn controller_description_matching_is_case_insensitive_and_exact() {
+        let full = serde_json::json!({
+            "categories": [{ "id": 28, "description": "FULL CONTROLLER SUPPORT" }]
+        });
+        let device_specific = serde_json::json!({
+            "categories": [{ "id": 55, "description": "DualShock Controller Support" }]
+        });
+
+        assert_eq!(
+            controller_support_from_appdetails(&full),
+            ControllerSupport::Full
+        );
+        assert_eq!(
+            controller_support_from_appdetails(&device_specific),
+            ControllerSupport::None
         );
     }
 }

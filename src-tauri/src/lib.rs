@@ -8992,6 +8992,7 @@ pub fn run() {
             steam_install_progress,
             store_metadata::fetch_store_metadata,
             store_metadata::fetch_xbox_store_metadata,
+            store_metadata::get_steam_deck_compat,
             store_metadata::get_xbox_install_size,
             storage_info::get_storage_info,
             get_pins,

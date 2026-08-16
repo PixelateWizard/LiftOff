@@ -83,6 +83,7 @@ export interface StoreMetadata {
   background?: string | null;
   screenshots: StoreScreenshot[];
   movies: StoreMovie[];
+  controllerSupport: "full" | "partial" | "none";
   fetchedAt: number;
 }
 
