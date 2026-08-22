@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Helper bar:** Added full/minimal/hidden bottom-bar modes, MENU-hold/chevron tray access, Spotify transport and playlist routing, native volume/brightness controls, shortcuts, controls help, legacy migration, and isolated controller ownership. Remaining gate: physical Ally/WebView2 validation of native controls, 1280x800 surfaces, Spotify states, peeks, and input feel/bleed.
+- **Delivered — Helper bar usability follow-up:** Made the tray substantially more opaque, added A-gated Volume/Brightness adjustment while preserving Left/Right slider navigation, and changed Minimal mode to advertise and open the tray with one MENU press. Remaining gate: physical Ally/WebView2 validation of 1280x800 theme surfaces and controller feel/bleed.
 
 ## Start-of-Task Workflow
 

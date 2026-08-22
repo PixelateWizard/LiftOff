@@ -1681,8 +1681,8 @@ export function useGamepadNavigation(
             // B edge closes the picker while the keyboard is consuming it.
             && !artPickerAppRef?.current;
 
-          // MENU (Start) hold opens the helper tray on any tab. A tap keeps the
-          // current per-tab Start action and is dispatched on release.
+          // Minimal mode reserves a MENU tap for the helper tray. Full and
+          // Hidden retain the hold gesture so their per-tab tap actions remain.
           if (key === "Start") {
             const TRAY_HOLD_MS = 850;
             const setHoldProgress = (value: number) => {
@@ -1690,6 +1690,20 @@ export function useGamepadNavigation(
               spotifyHoldProgressRef.current = value;
               setSpotifyHoldProgress(value);
             };
+            const currentSettings = settingsRef?.current;
+            const bottomBarMode = currentSettings?.bottombar_mode
+              || (currentSettings?.hide_bottom_bar ? "minimal" : "full");
+            if (bottomBarMode === "minimal") {
+              startHoldRef.current = null;
+              setHoldProgress(0);
+              if (pressed && !wasPressed && canNavigate) {
+                suppressUntilRelease.current[key] = true;
+                playSoundAlt();
+                onOpenHelperTray();
+              }
+              lastBtn.current[key] = pressed;
+              return;
+            }
             if (pressed && !wasPressed) {
               startHoldRef.current = canNavigate ? { since: now, fired: false } : null;
             } else if (pressed && wasPressed && startHoldRef.current && !startHoldRef.current.fired) {

@@ -18,7 +18,7 @@ test.beforeEach(async ({ page }) => {
 
     const responses: Record<string, unknown> = {
       get_screen_resolution: { width: 1920, height: 1080 },
-      get_settings: { default_tab: "Home", animated_heroes: "static" },
+      get_settings: { default_tab: "Home", animated_heroes: "static", bottombar_mode: "minimal" },
       get_app_memberships: {},
       get_game_memberships: {},
       get_custom_data: { apps: [], folders: [] },
@@ -29,12 +29,19 @@ test.beforeEach(async ({ page }) => {
       steam_account_status: { connected: false, owned_count: 0 },
       xbox_account_status: { connected: false, owned_count: 0 },
       spotify_status: { connected: false, client_id_set: false, product: "" },
+      get_system_volume: { percent: 45, muted: false },
+      get_brightness: 40,
       "plugin:window|is_focused": true,
     };
 
+    const gamepadButtons = Array.from({ length: 16 }, () => ({ pressed: false, touched: false, value: 0 }));
+    const gamepad = { mapping: "standard", axes: [0, 0, 0, 0], buttons: gamepadButtons };
+    (window as any).__setGamepadButton = (index: number, pressed: boolean) => {
+      gamepadButtons[index] = { pressed, touched: pressed, value: pressed ? 1 : 0 };
+    };
     Object.defineProperty(navigator, "getGamepads", {
       configurable: true,
-      value: () => [],
+      value: () => [gamepad],
     });
 
     window.fetch = async () => new Response("[]", {
@@ -77,9 +84,29 @@ test("boots the Home shell with mocked Tauri commands", async ({ page }) => {
   await expect(page.getByText("Home", { exact: true }).first()).toBeVisible({ timeout: 10_000 });
   await expect(page.locator("#root")).not.toBeEmpty();
 
-  await page.getByRole("button", { name: "Open helper tray" }).click();
+  await expect(page.getByRole("img", { name: "MENU button" })).toBeVisible();
+  await page.evaluate(() => (window as any).__setGamepadButton(9, true));
   await expect(page.getByText("Helper", { exact: true })).toBeVisible();
+  await page.evaluate(() => (window as any).__setGamepadButton(9, false));
   await expect(page.getByText(/^Volume/)).toBeVisible();
+  await expect(page.getByText(/^Brightness/)).toBeVisible();
   await expect(page.getByRole("button", { name: /Controls/ })).toBeVisible();
+
+  const sliders = page.locator('input[type="range"]');
+  await expect(sliders).toHaveCount(2);
+  await expect(sliders.nth(0)).toHaveValue("45");
+  await expect(sliders.nth(1)).toHaveValue("40");
+
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowRight");
+  await expect(sliders.nth(0)).toHaveValue("45");
+  await expect(sliders.nth(1)).toHaveValue("40");
+
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("ArrowLeft");
+  await expect(sliders.nth(1)).toHaveValue("35");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("ArrowLeft");
+  await expect(sliders.nth(1)).toHaveValue("35");
   expect(pageErrors).toEqual([]);
 });

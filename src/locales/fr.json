@@ -152,6 +152,9 @@
     "playlists": "TODO(fr)",
     "volume": "TODO(fr)",
     "brightness": "TODO(fr)",
+    "adjust": "TODO(fr)",
+    "done": "TODO(fr)",
+    "menuButtonHint": "TODO(fr)",
     "settings": "TODO(fr)",
     "power": "TODO(fr)",
     "refreshLibrary": "TODO(fr)",
@@ -161,6 +164,7 @@
   },
   "controls": {
     "title": "TODO(fr)",
+    "menuTapTray": "TODO(fr)",
     "menuHoldTray": "TODO(fr)",
     "menuTapOptions": "TODO(fr)"
   },

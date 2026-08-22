@@ -88,7 +88,7 @@ export function AppBottomBar({
     settings.bottombar_alignment === "right" ? "0 18px 18px auto" :
     settings.bottombar_alignment === "center" ? "0 auto 18px" :
     "0 auto 18px 18px";
-  const minimalPill = (
+  const minimalPill = (showMenuButton = false) => (
     <div style={{
       ...solidBarGlass,
       width: "fit-content",
@@ -101,14 +101,16 @@ export function AppBottomBar({
     }}>
       {spotifyHasTrack && spotifyMiniBar}
       {spotifyHasTrack && <span aria-hidden style={{ width: 1, alignSelf: "stretch", background: isDark ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.12)" }} />}
-      <IoVolumeHighOutline size={19} color={theme.textDim} aria-hidden />
+      {showMenuButton
+        ? <span role="img" aria-label={t("helper.menuButtonHint")}><GamepadBtn btn="MENU" label="" /></span>
+        : <IoVolumeHighOutline size={19} color={theme.textDim} aria-hidden />}
       {chevron(true)}
     </div>
   );
 
   if (mode === "minimal") {
     if (trayOpen) return null;
-    return <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, pointerEvents: "none" }}><div style={{ width: "fit-content", margin: pillMargin }}>{minimalPill}</div></div>;
+    return <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, pointerEvents: "none" }}><div style={{ width: "fit-content", margin: pillMargin }}>{minimalPill(true)}</div></div>;
   }
 
   if (mode === "hidden") {
@@ -131,7 +133,7 @@ export function AppBottomBar({
           }}
           style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 10, pointerEvents: "auto" }}
         />
-        {visible && <div className="lo-anim-modal" style={{ position: "absolute", bottom: 0, left: 0, right: 0, width: "fit-content", margin: pillMargin }}>{minimalPill}</div>}
+        {visible && <div className="lo-anim-modal" style={{ position: "absolute", bottom: 0, left: 0, right: 0, width: "fit-content", margin: pillMargin }}>{minimalPill()}</div>}
       </div>
     );
   }

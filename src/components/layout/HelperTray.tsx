@@ -48,13 +48,15 @@ export function HelperTray({
   onOpenControls,
 }: HelperTrayProps) {
   const { t } = useTranslation();
-  const { glassBar, accent, theme, isDark, surfaceStyle, resolvedTheme } = useTheme();
+  const { glassBar, accent, theme, isDark, surfaceStyle, surface, resolvedTheme } = useTheme();
   const { volume, brightness, requestVolume, requestBrightness } = useSystemControls(open);
   const track = spotify.track;
   const [focusKey, setFocusKey] = useState("play");
   const focusKeyRef = useRef("play");
   const [seekDraft, setSeekDraft] = useState<number | null>(null);
   const seekDraftRef = useRef<number | null>(null);
+  const [sliderEditKey, setSliderEditKey] = useState<string | null>(null);
+  const sliderEditKeyRef = useRef<string | null>(null);
   const closedRef = useRef(false);
 
   const focusItems = useMemo<FocusItem[]>(() => {
@@ -88,14 +90,24 @@ export function HelperTray({
     setFocusKey(key);
   };
 
+  const setSliderEdit = (key: string | null) => {
+    sliderEditKeyRef.current = key;
+    setSliderEditKey(key);
+  };
+
   useEffect(() => {
     if (!open) return;
     setFocus(track ? "play" : "playlists");
+    setSliderEdit(null);
     setSeekDraft(null);
     seekDraftRef.current = null;
   }, [open, track?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activate = (key: string) => {
+    if (key === "volume" || key === "brightness") {
+      setSliderEdit(sliderEditKeyRef.current === key ? null : key);
+      return;
+    }
     if (key === "previous") spotify.previous();
     if (key === "play") track?.isPlaying ? spotify.pause() : spotify.play();
     if (key === "next") spotify.next();
@@ -133,7 +145,11 @@ export function HelperTray({
     const items = focusItemsRef.current;
     const current = items.find((item) => item.key === focusKeyRef.current) ?? items[0];
     if (!current) return;
-    if ((current.key === "volume" || current.key === "brightness" || current.key === "seek") && (direction === "left" || direction === "right")) {
+    if (sliderEditKeyRef.current === current.key) {
+      if (direction === "left" || direction === "right") adjustRef.current(direction === "left" ? -1 : 1);
+      return;
+    }
+    if (current.key === "seek" && (direction === "left" || direction === "right")) {
       adjustRef.current(direction === "left" ? -1 : 1);
       return;
     }
@@ -162,7 +178,8 @@ export function HelperTray({
       onClose();
     };
     const handle = (key: string) => {
-      if (key === "Escape") close();
+      if (key === "Escape" && sliderEditKeyRef.current) setSliderEdit(null);
+      else if (key === "Escape") close();
       else if (key === "Enter") activateRef.current(focusKeyRef.current);
       else if (key === "ArrowUp") moveRef.current("up");
       else if (key === "ArrowDown") moveRef.current("down");
@@ -227,6 +244,9 @@ export function HelperTray({
   const squareCorners = resolvedTheme === "cyberpunk" || surfaceStyle === "win9x";
   const shellStyle: CSSProperties = {
     ...glassBar,
+    background: surfaceStyle === "material" || surfaceStyle === "win9x"
+      ? surface.panelBg
+      : `color-mix(in srgb, ${accent.primary} 6%, ${isDark ? "#090b10" : "#f7f7f9"} 94%)`,
     width: "min(980px, calc(100vw - 32px))",
     maxHeight: "calc(100vh - 32px)",
     overflowY: "auto",
@@ -259,7 +279,7 @@ export function HelperTray({
   );
 
   return (
-    <div className="lo-anim-overlay" style={{ position: "fixed", inset: 0, zIndex: 9200, background: "rgba(0,0,0,0.36)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: mode === "full" ? 78 : 18, boxSizing: "border-box" }} onClick={onClose}>
+    <div className="lo-anim-overlay" style={{ position: "fixed", inset: 0, zIndex: 9200, background: "rgba(0,0,0,0.56)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: mode === "full" ? 78 : 18, boxSizing: "border-box" }} onClick={onClose}>
       <div className="lo-anim-modal" style={shellStyle} onClick={(event) => event.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <strong style={{ color: theme.text }}>{t("helper.trayTitle")}</strong>
@@ -297,8 +317,8 @@ export function HelperTray({
         {spotify.requiresPremium && <div style={{ color: accent.primary, fontSize: 11, marginTop: 9 }}>{t("spotify.premiumHint")}</div>}
 
         <div style={{ display: "grid", gridTemplateColumns: brightness != null && brightness >= 0 ? "1fr 1fr" : "1fr", gap: 16, padding: "16px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}` }}>
-          <SliderControl icon={<IoVolumeHighOutline />} label={t("helper.volume")} focusKey="volume" focused={focusKey === "volume"} value={volume?.percent ?? 0} onFocus={setFocus} onChange={requestVolume} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />
-          {brightness != null && brightness >= 0 && <SliderControl icon={<IoSunnyOutline />} label={t("helper.brightness")} focusKey="brightness" focused={focusKey === "brightness"} value={brightness} onFocus={setFocus} onChange={requestBrightness} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />}
+          <SliderControl icon={<IoVolumeHighOutline />} label={t("helper.volume")} focusKey="volume" focused={focusKey === "volume"} editing={sliderEditKey === "volume"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={volume?.percent ?? 0} onFocus={setFocus} onChange={requestVolume} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />
+          {brightness != null && brightness >= 0 && <SliderControl icon={<IoSunnyOutline />} label={t("helper.brightness")} focusKey="brightness" focused={focusKey === "brightness"} editing={sliderEditKey === "brightness"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={brightness} onFocus={setFocus} onChange={requestBrightness} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />}
         </div>
 
         <div style={{ display: "flex", gap: 10, paddingTop: 16, flexWrap: "wrap" }}>
@@ -317,6 +337,9 @@ interface SliderControlProps {
   label: string;
   focusKey: string;
   focused: boolean;
+  editing: boolean;
+  adjustLabel: string;
+  doneLabel: string;
   value: number;
   onFocus: (key: string) => void;
   onChange: (value: number) => void;
@@ -326,14 +349,14 @@ interface SliderControlProps {
   square: boolean;
 }
 
-function SliderControl({ icon, label, focusKey, focused, value, onFocus, onChange, accent, text, dim, square }: SliderControlProps) {
+function SliderControl({ icon, label, focusKey, focused, editing, adjustLabel, doneLabel, value, onFocus, onChange, accent, text, dim, square }: SliderControlProps) {
   return (
-    <div onMouseMove={() => onFocus(focusKey)} style={{ padding: "9px 11px", borderRadius: square ? 0 : 10, outline: focused ? `2px solid ${accent}` : "2px solid transparent" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7, color: text, fontSize: 12, fontWeight: 700 }}>{icon}{label}<span style={{ marginLeft: "auto", color: dim }}>{Math.round(value)}%</span></div>
+    <div onMouseMove={() => onFocus(focusKey)} style={{ padding: "9px 11px", borderRadius: square ? 0 : 10, outline: focused ? `2px solid ${accent}` : "2px solid transparent", background: editing ? `color-mix(in srgb, ${accent} 14%, transparent)` : undefined }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7, color: text, fontSize: 12, fontWeight: 700 }}>{icon}{label}{focused && <span style={{ marginLeft: "auto" }}><GamepadBtn btn="A" label={editing ? doneLabel : adjustLabel} /></span>}<span style={{ marginLeft: focused ? 0 : "auto", color: dim }}>{Math.round(value)}%</span></div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <IoChevronBack size={13} color={focused ? accent : dim} />
+        <IoChevronBack size={13} color={editing ? accent : dim} />
         <input type="range" min={0} max={100} value={value} onChange={(event) => onChange(Number(event.target.value))} style={{ flex: 1, accentColor: accent }} />
-        <IoChevronForward size={13} color={focused ? accent : dim} />
+        <IoChevronForward size={13} color={editing ? accent : dim} />
       </div>
     </div>
   );

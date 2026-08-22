@@ -152,6 +152,9 @@
     "playlists": "Playlists",
     "volume": "Volume",
     "brightness": "Brightness",
+    "adjust": "Adjust",
+    "done": "Done",
+    "menuButtonHint": "MENU button",
     "settings": "Settings",
     "power": "Power",
     "refreshLibrary": "Refresh library",
@@ -161,6 +164,7 @@
   },
   "controls": {
     "title": "Controls — {{tab}}",
+    "menuTapTray": "Helper tray",
     "menuHoldTray": "Hold: helper tray",
     "menuTapOptions": "Tap: options"
   },
