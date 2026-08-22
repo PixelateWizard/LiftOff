@@ -98,6 +98,10 @@ function settingValueLabel(key: string, value: string, t: TFunction): string {
   if (key === "home_mode") {
     return String(t(`settings.homeModeValues.${value}`, String(t(`settings.values.${value}`, value))));
   }
+  if (key === "bottombar_mode") {
+    const suffix = value === "minimal" ? "Minimal" : value === "hidden" ? "Hidden" : "Full";
+    return String(t(`settings.bottombarMode${suffix}`, value));
+  }
   return String(t(`settings.values.${value}`, value));
 }
 
@@ -179,7 +183,8 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     ]},
 
     D("navbar", 0, 3),
-    { key: "hide_bottom_bar",     section: 0, group: 3, label: t("settings.hideBottomBar"),      type: "toggle" },
+    { key: "bottombar_mode",      section: 0, group: 3, label: t("settings.bottombarMode"),       type: "cycle", options: ["full", "minimal", "hidden"] },
+    { key: "bottombar_peek_on_track", section: 0, group: 3, label: t("settings.bottombarPeekOnTrack"), type: "toggle", indent: true },
     { key: "topbar_background",   section: 0, group: 3, label: t("settings.topbarBackground"),   type: "toggle" },
     { key: "tabbar_with_background", section: 0, group: 3, label: t("settings.tabbarBackground"), type: "toggle", subItems: [
       { key: "tabbar_background_compact", label: t("settings.tabbarBackgroundCompact"), type: "toggle" },
@@ -299,6 +304,7 @@ export function getSectionNavigableItems(
 ): (SettingsItem | SettingsSubItem | SettingsHomeCollectionItem)[] {
   const visibleItems = allItems
     .filter((i) => i.section === sectionIndex)
+    .filter((i) => i.key !== "bottombar_peek_on_track" || settings.bottombar_mode === "hidden")
     .filter((i) => sectionIndex !== 0 || visibleInAppearance(i, appearanceGroup))
     .filter((i) => !(sectionIndex === 0 && appearanceGroup !== null && i.type === "divider" && i.group === appearanceGroup))
     .flatMap((i): (SettingsItem | SettingsSubItem | SettingsHomeCollectionItem)[] => {
@@ -443,7 +449,8 @@ export function SettingsScreen({
   }, [settingsSection]);
 
   const ALL_ITEMS = buildSettingsItems(t, normalizeThemeKey(String(settings.theme)));
-  const sectionItems = getVisibleSectionItems(settingsSection, ALL_ITEMS, appearanceGroup);
+  const sectionItems = getVisibleSectionItems(settingsSection, ALL_ITEMS, appearanceGroup)
+    .filter((item) => item.key !== "bottombar_peek_on_track" || settings.bottombar_mode === "hidden");
   const navigableItems = getSectionNavigableItems(settingsSection, ALL_ITEMS, settings, { gameCollections, appCollections }, appearanceGroup);
   const isMaterial = surfaceStyle === "material";
   const isPixel = surfaceStyle === "win9x";

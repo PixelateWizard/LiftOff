@@ -76,5 +76,10 @@ test("boots the Home shell with mocked Tauri commands", async ({ page }) => {
 
   await expect(page.getByText("Home", { exact: true }).first()).toBeVisible({ timeout: 10_000 });
   await expect(page.locator("#root")).not.toBeEmpty();
+
+  await page.getByRole("button", { name: "Open helper tray" }).click();
+  await expect(page.getByText("Helper", { exact: true })).toBeVisible();
+  await expect(page.getByText(/^Volume/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Controls/ })).toBeVisible();
   expect(pageErrors).toEqual([]);
 });

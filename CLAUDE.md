@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Helper bar backend:** Added Core Audio volume and WMI brightness commands plus backward-compatible helper-bar settings fields. Remaining work is the dependent frontend tray, display modes, migration, and controller surfaces; native volume/brightness still require Ally validation.
+- **Delivered — Helper bar:** Added full/minimal/hidden bottom-bar modes, MENU-hold/chevron tray access, Spotify transport and playlist routing, native volume/brightness controls, shortcuts, controls help, legacy migration, and isolated controller ownership. Remaining gate: physical Ally/WebView2 validation of native controls, 1280x800 surfaces, Spotify states, peeks, and input feel/bleed.
 
 ## Start-of-Task Workflow
 

@@ -7,7 +7,7 @@ import type { SpotifyWebPlayerState } from "../../hooks/useSpotifyWebPlayer";
 interface SpotifyMiniBarProps {
   spotify: SpotifyController;
   webPlayer?: SpotifyWebPlayerState;
-  /** 0..1 charge level while MENU is held to open the Spotify overlay. */
+  /** 0..1 charge level while MENU is held to open the helper tray. */
   holdProgress?: number;
   variant?: SpotifyMiniBarVariant;
   onOpenPanel: () => void;
@@ -24,8 +24,8 @@ const formatTime = (ms: number) => {
 
 // The mini-bar is display-only: gamepad navigation cannot reach inline
 // transport buttons here, so the whole bar is a single click target that
-// opens the Spotify overlay where all controls live. Holding MENU on a
-// gamepad charges the bar up (filling ring + glow) and opens the overlay too;
+// opens the Spotify overlay where playlist browsing lives. Holding MENU on a
+// gamepad charges the bar up (filling ring + glow) and opens the helper tray;
 // the MENU badge stays visible as a hint for that gesture.
 export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant = "bar", onOpenPanel }: SpotifyMiniBarProps) {
   const { t } = useTranslation();
@@ -257,7 +257,7 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
             <div style={{ height: "100%", width: `${pct}%`, background: accent.primary }} />
           </div>
         </div>
-        {/* MENU hold hint. The chip is display-only; controls live in SpotifyOverlay. */}
+        {/* MENU hold hint. The chip remains a display-only Spotify entry point. */}
         {isCyberpunk ? (
           <div
             aria-hidden="true"

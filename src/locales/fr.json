@@ -144,6 +144,26 @@
       "generic": "{{message}}"
     }
   },
+  "helper": {
+    "trayTitle": "TODO(fr)",
+    "nothingPlaying": "TODO(fr)",
+    "openSpotify": "TODO(fr)",
+    "connectSpotify": "TODO(fr)",
+    "playlists": "TODO(fr)",
+    "volume": "TODO(fr)",
+    "brightness": "TODO(fr)",
+    "settings": "TODO(fr)",
+    "power": "TODO(fr)",
+    "refreshLibrary": "TODO(fr)",
+    "controls": "TODO(fr)",
+    "closeTray": "TODO(fr)",
+    "openTray": "TODO(fr)"
+  },
+  "controls": {
+    "title": "TODO(fr)",
+    "menuHoldTray": "TODO(fr)",
+    "menuTapOptions": "TODO(fr)"
+  },
   "steam": {
     "title": "TODO(fr) Steam account",
     "connect": "TODO(fr) Connect",
@@ -220,6 +240,11 @@
     },
     "immersiveHome": "Accueil immersif",
     "hideBottomBar": "Masquer la barre inférieure",
+    "bottombarMode": "TODO(fr)",
+    "bottombarModeFull": "TODO(fr)",
+    "bottombarModeMinimal": "TODO(fr)",
+    "bottombarModeHidden": "TODO(fr)",
+    "bottombarPeekOnTrack": "TODO(fr)",
     "navBumpersPos": "Badges palettes (LB/RB)",
     "tabbarBadges": "Badges gâchettes (LT/RT)",
     "tabbarTextTabs": "Onglets en texte seul",
