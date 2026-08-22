@@ -18,7 +18,7 @@ Read for Steam, Microsoft Store/Xbox, Spotify, Cloud gaming, SteamGridDB, GitHub
 - Microsoft Store uninstall is limited to current-user packages in the resolved package family and requires a controller-isolated LiftOff confirmation. Steam uninstall dispatches directly to Steam without a LiftOff confirmation, and Verify remains Steam-only.
 - Spotify Client ID remains user-supplied. Tokens never enter logs, DOM, JSON, or bundled configuration. Spotify Connect is the reliable playback target; do not revive the embedded Web Playback SDK path without resolving WebView2 DRM/license failures.
 - SGDB API keys remain user-supplied and unbundled. Preserve cache-first art behavior and provider rate limits.
-- Cloud seed generation uses exact verified joins and skips unmatched titles rather than guessing product IDs. Runtime uses cached/bundled fallback so the picker is not network-dependent.
+- Cloud seed generation uses exact verified joins and skips unmatched titles rather than guessing product IDs. Store catalog art URLs are resolved in rate-limited batches and baked into the seed; cached/remote lists fill missing art by product ID from that bundle. Picker previews reuse the lazy Store metadata provider for the selected product only, so the grid stays offline-first and never bulk-prefetches descriptions or media; trailer overlays follow Details' native MP4/WebM and lazy `hls.js` playback contract rather than treating HLS playlists as images.
 - Update checks respect Stable versus Alpha/Beta channels and should surface prompts only when the app is focused and interaction-safe.
 
 ## Current Source Anchors

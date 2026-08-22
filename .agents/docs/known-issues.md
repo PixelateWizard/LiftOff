@@ -35,6 +35,10 @@ Live endpoint checks and automated parsing/UI tests cover Playable, Verified, Un
 
 Code, browser build, Rust tests, and direct SGDB endpoint checks confirm the two-stage search/id contract, but Ally validation remains required at 1280x800 for Glass, Material, and win9x layout; search/game/grid focus visibility; held horizontal pill repeat and scrolling; GamepadKeyboard close-button bleed suppression; B-depth; hero LT/RT filtering; and saving art selected from a non-default game match. Do not claim those WebView2/controller paths are validated from compilation or direct API responses.
 
+### Cloud game store browser
+
+Seed generation and code checks confirm the bundled HTTPS art catalog, cached/remote art merge, grid/list logic, selected-product metadata request, HLS/native trailer source handling, spatial Add/Remove/Back/Media focus graph, and existing-entry removal routing. Ally validation remains required at 1280x800 for five-column density, unclipped focus, lazy art painting, preview layout and real Store trailer playback, light/dark and Material/Glass/win9x contrast, held D-pad visibility, LB/RB grid switching and media browsing, physical-keyboard search, GamepadKeyboard and preview/media B-depth, modal stacking above Library Actions, strong Add/Remove and Back focus visibility, and real add/remove library reconciliation. Do not claim those WebView2/controller paths are validated from compilation, mocked browser tests, or direct catalog responses.
+
 ### Device storage and install pre-check
 
 Desktop/native checks confirm that Windows' default package-volume API resolves to `C:` in the current unpackaged process, the storage snapshot returns plausible drives with exactly one default target, and live catalog/cache checks return the expected Hades size. Ally hardware validation remains required for microSD enumeration and default-target selection, the Settings block across Glass/Material/win9x, and enough/insufficient/unknown confirmation flows with physical controller input. Do not claim those device-visible paths are validated from compilation, unit tests, or desktop runtime checks.

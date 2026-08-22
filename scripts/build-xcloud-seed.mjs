@@ -128,6 +128,48 @@ async function readExisting() {
   }
 }
 
+const CATALOG_API = "https://displaycatalog.mp.microsoft.com/v7.0/products";
+const ART_BATCH_SIZE = 20;
+const ART_DELAY_MS = 400;
+
+async function fetchArtBatch(productIds) {
+  const bigIds = productIds.join(",");
+  const url = `${CATALOG_API}?bigIds=${bigIds}&market=US&languages=en-US&MS-CV=DGU1mcuYo0WMMp`;
+  let response;
+  try {
+    response = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
+  } catch (error) {
+    console.log(`  art batch fetch error: ${error.message}`);
+    return {};
+  }
+  if (!response.ok) {
+    console.log(`  art batch HTTP ${response.status}`);
+    return {};
+  }
+
+  let json;
+  try {
+    json = await response.json();
+  } catch {
+    console.log("  art batch: invalid JSON");
+    return {};
+  }
+
+  const urlsByProduct = {};
+  for (const product of json.Products ?? []) {
+    const images = product.LocalizedProperties?.[0]?.Images ?? [];
+    const image =
+      images.find((candidate) => candidate.ImagePurpose === "Poster") ??
+      images.find((candidate) => candidate.ImagePurpose === "BoxArt") ??
+      images.find((candidate) => candidate.ImagePurpose === "Logo");
+    if (!image?.Uri) continue;
+    urlsByProduct[product.ProductId] = image.Uri.startsWith("//")
+      ? `https:${image.Uri}`
+      : image.Uri;
+  }
+  return urlsByProduct;
+}
+
 const existing = await readExisting();
 const rowsByProduct = new Map(existing.map((row) => [row.productId, row]));
 
@@ -143,13 +185,55 @@ for (const game of games) {
     console.log(`skip: ${game.name} (${game.slug}) - not found in Xbox product index`);
     continue;
   }
-  const row = { name: game.name, slug: game.slug, productId };
-  rowsByProduct.set(row.productId, row);
+  const prior = rowsByProduct.get(productId);
+  const row = {
+    name: game.name,
+    slug: game.slug,
+    productId,
+    boxArtUrl: prior?.boxArtUrl ?? null,
+  };
+  rowsByProduct.set(productId, row);
   console.log(`ok: ${row.name} -> ${row.slug}/${row.productId}`);
 }
 
-const rows = [...rowsByProduct.values()].sort((a, b) =>
-  a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+const refreshArt = process.argv.includes("--refresh-art");
+const needsArt = [...rowsByProduct.values()].filter((row) => refreshArt || !row.boxArtUrl);
+console.log(
+  `\nFetching art for ${needsArt.length} products (${refreshArt ? "force refresh" : "missing only"})...`
 );
+
+for (let i = 0; i < needsArt.length; i += ART_BATCH_SIZE) {
+  const batch = needsArt.slice(i, i + ART_BATCH_SIZE);
+  const productIds = batch.map((row) => row.productId);
+  process.stdout.write(
+    `  batch ${Math.floor(i / ART_BATCH_SIZE) + 1}/${Math.ceil(needsArt.length / ART_BATCH_SIZE)} (${productIds[0]}…) `
+  );
+  const urlsByProduct = await fetchArtBatch(productIds);
+  let resolved = 0;
+  for (const row of batch) {
+    const boxArtUrl = urlsByProduct[row.productId];
+    if (!boxArtUrl) continue;
+    rowsByProduct.get(row.productId).boxArtUrl = boxArtUrl;
+    resolved++;
+  }
+  console.log(`-> ${resolved}/${batch.length} resolved`);
+  if (i + ART_BATCH_SIZE < needsArt.length) await sleep(ART_DELAY_MS);
+}
+
+const noArt = [...rowsByProduct.values()].filter((row) => !row.boxArtUrl);
+if (noArt.length > 0) {
+  console.log(`\nWarning: ${noArt.length} products have no art URL`);
+}
+
+const rows = [...rowsByProduct.values()]
+  .map(({ name, slug, productId, boxArtUrl }) => ({
+    name,
+    slug,
+    productId,
+    ...(boxArtUrl ? { boxArtUrl } : {}),
+  }))
+  .sort((left, right) =>
+    left.name.localeCompare(right.name, undefined, { sensitivity: "base" })
+  );
 await writeFile(OUT_PATH, `${JSON.stringify(rows, null, 2)}\n`, "utf8");
 console.log(`\nWrote ${rows.length} rows to ${path.relative(ROOT, OUT_PATH)}`);

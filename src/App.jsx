@@ -3154,6 +3154,8 @@ export default function App() {
       )}
       {showCloudPicker && (
         <CloudGamePickerModal
+          storeMetaEnabled={settings.fetch_store_metadata !== false}
+          isInLibrary={(selected) => allAppsRef.current.some((app) => app.id === `cloud:${selected.slug}`)}
           onConfirm={(selected) => {
             const launchPath = `https://www.xbox.com/en-us/play/games/${selected.slug}/${selected.productId}`;
             invoke("add_custom_app", {
@@ -3163,6 +3165,19 @@ export default function App() {
               appType: "game",
               source: "cloud",
             }).then(() => {
+              setShowCloudPicker(false);
+              refreshLibrary();
+            });
+          }}
+          onRemove={(selected) => {
+            const id = `cloud:${selected.slug}`;
+            invoke("remove_custom_app", { id }).then(() => {
+              setApps((previous) => {
+                const next = previous.filter((app) => app.id !== id);
+                appsRef.current = next;
+                return next;
+              });
+              allAppsRef.current = allAppsRef.current.filter((app) => app.id !== id);
               setShowCloudPicker(false);
               refreshLibrary();
             });

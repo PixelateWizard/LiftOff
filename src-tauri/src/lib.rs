@@ -593,6 +593,8 @@ struct XCloudGameEntry {
     name: String,
     slug: String,
     product_id: String,
+    #[serde(default)]
+    box_art_url: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -638,6 +640,10 @@ fn validated_xcloud_entries(entries: Vec<XCloudGameEntry>) -> Vec<XCloudGameEntr
         entry.name = entry.name.trim().to_string();
         entry.slug = entry.slug.trim().to_string();
         entry.product_id = entry.product_id.trim().to_string();
+        entry.box_art_url = entry.box_art_url.and_then(|url| {
+            let url = url.trim().to_string();
+            (url.starts_with("https://") && url.len() <= 2048).then_some(url)
+        });
         if entry.name.is_empty()
             || entry.name.len() > 200
             || !valid_xcloud_slug(&entry.slug)
@@ -663,10 +669,41 @@ fn bundled_xcloud_games() -> Vec<XCloudGameEntry> {
         .unwrap_or_default()
 }
 
+fn fill_xcloud_art_from_bundle(mut games: Vec<XCloudGameEntry>) -> Vec<XCloudGameEntry> {
+    let art_by_product: HashMap<String, String> = bundled_xcloud_games()
+        .into_iter()
+        .filter_map(|entry| entry.box_art_url.map(|url| (entry.product_id, url)))
+        .collect();
+    for game in &mut games {
+        if game.box_art_url.is_none() {
+            game.box_art_url = art_by_product.get(&game.product_id).cloned();
+        }
+    }
+    games
+}
+
+#[cfg(test)]
+mod xcloud_catalog_tests {
+    use super::{bundled_xcloud_games, fill_xcloud_art_from_bundle};
+
+    #[test]
+    fn remote_entries_recover_missing_bundled_art_by_product_id() {
+        let mut game = bundled_xcloud_games()
+            .into_iter()
+            .find(|entry| entry.box_art_url.is_some())
+            .expect("bundled Cloud seed should contain art");
+        let expected_art = game.box_art_url.take();
+
+        let merged = fill_xcloud_art_from_bundle(vec![game]);
+
+        assert_eq!(merged[0].box_art_url, expected_art);
+    }
+}
+
 fn read_xcloud_cache() -> Option<XCloudCache> {
     let raw = std::fs::read_to_string(xcloud_cache_path()).ok()?;
     let mut cache = serde_json::from_str::<XCloudCache>(&raw).ok()?;
-    cache.games = validated_xcloud_entries(cache.games);
+    cache.games = fill_xcloud_art_from_bundle(validated_xcloud_entries(cache.games));
     (!cache.games.is_empty()).then_some(cache)
 }
 
@@ -695,7 +732,7 @@ async fn fetch_xcloud_games() -> Result<Vec<XCloudGameEntry>, String> {
         .json::<Vec<XCloudGameEntry>>()
         .await
         .map_err(|error| error.to_string())?;
-    let games = validated_xcloud_entries(entries);
+    let games = fill_xcloud_art_from_bundle(validated_xcloud_entries(entries));
     if games.is_empty() {
         return Err("The downloaded xCloud list contained no valid games.".to_string());
     }
