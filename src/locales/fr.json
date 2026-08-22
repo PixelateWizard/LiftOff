@@ -75,8 +75,16 @@
   },
   "power": {
     "title": "Alimentation",
+    "groupApp": "TODO(fr) LiftOff",
+    "groupDevice": "TODO(fr) Device",
     "restartApp": "Redemarrer LiftOff",
-    "exitApp": "Quitter LiftOff"
+    "exitApp": "Quitter LiftOff",
+    "restartDevice": "TODO(fr) Restart PC",
+    "shutdownDevice": "TODO(fr) Shut Down PC",
+    "confirmRestartDevice": "TODO(fr) Restart this device?",
+    "confirmShutdownDevice": "TODO(fr) Shut down this device?",
+    "confirmRestartAction": "TODO(fr) Restart",
+    "confirmShutdownAction": "TODO(fr) Shut down"
   },
   "spotify": {
     "title": "Spotify",

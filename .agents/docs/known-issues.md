@@ -23,6 +23,10 @@ Read before bug triage, FSE/controller work, Microsoft Store uninstall changes, 
 
 ## Open Gates and Warnings
 
+### Power-menu device controls
+
+Frontend and Rust compilation cover the command registration, modal contract, and locale wiring, but the device actions were intentionally not invoked while the development workstation was in use. Before calling the feature device-validated, confirm on an appropriate Windows handheld that Restart PC schedules a reboot, Shut Down PC powers off through the hybrid path or full-shutdown fallback, confirmation paints above the power panel, and canceling with B returns to the four-row menu without closing it or re-firing an action. Do not exercise these destructive commands on an in-use workstation.
+
 ### Steam Deck compatibility metadata
 
 Live endpoint checks and automated parsing/UI tests cover Playable, Verified, Unsupported, Unknown, Full, Partial, and None values. The Valve compatibility endpoint is undocumented, ratings can change faster than LiftOff's current 14-day store-metadata cache, and the finished chips still need a Tauri/WebView visual pass across representative light/dark and Material/Glass/win9x surfaces. Team Fortress 2 currently reports Playable rather than the proposal's stale Verified example; use current endpoint data for runtime validation.

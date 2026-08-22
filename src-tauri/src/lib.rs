@@ -5081,6 +5081,68 @@ fn restart_app(app: tauri::AppHandle) {
     app.restart();
 }
 
+// Device power control.
+//
+// Uses shutdown.exe rather than InitiateShutdownW because shutdown.exe acquires
+// SeShutdownPrivilege for us; calling the Win32 API directly would require
+// OpenProcessToken + AdjustTokenPrivileges plumbing for no functional gain.
+// The absolute System32 path is used so a shutdown.exe earlier on PATH cannot
+// be substituted for the real one.
+#[cfg(windows)]
+fn shutdown_exe_path() -> std::path::PathBuf {
+    let root = std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_string());
+    std::path::Path::new(&root)
+        .join("System32")
+        .join("shutdown.exe")
+}
+
+#[cfg(windows)]
+fn run_shutdown_exe(args: &[&str]) -> Result<(), String> {
+    let status = std::process::Command::new(shutdown_exe_path())
+        .args(args)
+        .creation_flags(CREATE_NO_WINDOW)
+        .status()
+        .map_err(|e| format!("could not start shutdown.exe: {}", e))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!(
+            "shutdown.exe exited with code {}",
+            status.code().unwrap_or(-1)
+        ))
+    }
+}
+
+#[tauri::command]
+fn restart_device() -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        run_shutdown_exe(&["/r", "/t", "0"])
+    }
+    #[cfg(not(windows))]
+    {
+        Err("device restart is only supported on Windows".to_string())
+    }
+}
+
+#[tauri::command]
+fn shutdown_device() -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        // Hybrid shutdown mirrors the Windows power menu and keeps handheld boot
+        // times low. It is rejected when Fast Startup is off, so fall back to a
+        // full shutdown in that case.
+        if run_shutdown_exe(&["/s", "/hybrid", "/t", "0"]).is_ok() {
+            return Ok(());
+        }
+        run_shutdown_exe(&["/s", "/t", "0"])
+    }
+    #[cfg(not(windows))]
+    {
+        Err("device shutdown is only supported on Windows".to_string())
+    }
+}
+
 #[tauri::command]
 fn show_main_window(window: tauri::WebviewWindow) -> Result<(), String> {
     window.show().map_err(|e| e.to_string())?;
@@ -8951,6 +9013,8 @@ pub fn run() {
             open_uri,
             exit_app,
             restart_app,
+            restart_device,
+            shutdown_device,
             show_main_window,
             fse_watcher::show_liftoff,
             fse_watcher::force_webview_resume,

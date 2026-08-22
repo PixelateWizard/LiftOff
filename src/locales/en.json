@@ -75,8 +75,16 @@
   },
   "power": {
     "title": "Power",
+    "groupApp": "LiftOff",
+    "groupDevice": "Device",
     "restartApp": "Restart LiftOff",
-    "exitApp": "Exit LiftOff"
+    "exitApp": "Exit LiftOff",
+    "restartDevice": "Restart PC",
+    "shutdownDevice": "Shut Down PC",
+    "confirmRestartDevice": "Restart this device?",
+    "confirmShutdownDevice": "Shut down this device?",
+    "confirmRestartAction": "Restart",
+    "confirmShutdownAction": "Shut down"
   },
   "spotify": {
     "title": "Spotify",

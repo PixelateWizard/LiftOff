@@ -1,42 +1,100 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { IoPower, IoRefresh } from "react-icons/io5";
+import { IoHardwareChipOutline, IoPower, IoPowerOutline, IoRefresh, IoRefreshCircle } from "react-icons/io5";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
 import { useTheme } from "../../contexts/ThemeContext";
 import ModalShell from "./ModalShell";
+import ConfirmModal from "./ConfirmModal";
 
 interface PowerModalProps {
   onClose: () => void;
   onRestartApp: () => void;
   onExitApp: () => void;
+  onRestartDevice: () => void;
+  onShutdownDevice: () => void;
 }
 
-export default function PowerModal({ onClose, onRestartApp, onExitApp }: PowerModalProps) {
+export default function PowerModal({
+  onClose,
+  onRestartApp,
+  onExitApp,
+  onRestartDevice,
+  onShutdownDevice,
+}: PowerModalProps) {
   const { accent, theme, isDark } = useTheme();
   const { t } = useTranslation();
   const [focusIdx, setFocusIdx] = useState(0);
   const focusIdxRef = useRef(0);
+  const [confirmKey, setConfirmKey] = useState<string | null>(null);
+  const confirmKeyRef = useRef<string | null>(null);
+  const suppressAfterConfirmRef = useRef(false);
+  const closedRef = useRef(false);
 
   const actions = [
-    { key: "restart_app", label: t("power.restartApp"), run: onRestartApp, icon: <IoRefresh size={18} /> },
-    { key: "exit_app", label: t("power.exitApp"), run: onExitApp, danger: true, icon: <IoPower size={18} /> },
+    {
+      key: "restart_app",
+      group: "app" as const,
+      label: t("power.restartApp"),
+      run: onRestartApp,
+      icon: <IoRefresh size={18} />,
+    },
+    {
+      key: "exit_app",
+      group: "app" as const,
+      label: t("power.exitApp"),
+      run: onExitApp,
+      danger: true,
+      icon: <IoPower size={18} />,
+    },
+    {
+      key: "restart_device",
+      group: "device" as const,
+      label: t("power.restartDevice"),
+      run: onRestartDevice,
+      danger: true,
+      icon: <IoRefreshCircle size={18} />,
+      confirm: {
+        message: t("power.confirmRestartDevice"),
+        label: t("power.confirmRestartAction"),
+      },
+    },
+    {
+      key: "shutdown_device",
+      group: "device" as const,
+      label: t("power.shutdownDevice"),
+      run: onShutdownDevice,
+      danger: true,
+      icon: <IoPowerOutline size={18} />,
+      confirm: {
+        message: t("power.confirmShutdownDevice"),
+        label: t("power.confirmShutdownAction"),
+      },
+    },
   ];
   const actionsRef = useRef(actions);
   useEffect(() => { actionsRef.current = actions; });
 
-  useEffect(() => {
-    let closed = false;
+  const execute = (i: number) => {
+    const action = actionsRef.current[i];
+    if (!action) return;
+    if (action.confirm) {
+      // Hand control to the nested ConfirmModal. This modal's poll gates on
+      // confirmKeyRef so the two RAF loops never read the same button press.
+      setConfirmKey(action.key);
+      confirmKeyRef.current = action.key;
+      return;
+    }
+    closedRef.current = true;
+    action.run();
+    onClose();
+  };
 
-    const execute = (i: number) => {
-      const action = actionsRef.current[i];
-      if (!action) return;
-      closed = true;
-      action.run();
-      onClose();
-    };
+  useEffect(() => {
+    closedRef.current = false;
 
     const handle = (key: string) => {
-      if (closed) return;
+      if (closedRef.current) return;
+      if (confirmKeyRef.current) return;
       const total = actionsRef.current.length;
       if (key === "ArrowDown" || key === "ArrowRight") {
         const next = Math.min(focusIdxRef.current + 1, total - 1);
@@ -49,7 +107,7 @@ export default function PowerModal({ onClose, onRestartApp, onExitApp }: PowerMo
       } else if (key === "Enter") {
         execute(focusIdxRef.current);
       } else if (key === "Escape") {
-        closed = true;
+        closedRef.current = true;
         onClose();
       }
     };
@@ -76,8 +134,23 @@ export default function PowerModal({ onClose, onRestartApp, onExitApp }: PowerMo
     let escapeReleased = false;
 
     const poll = (now: number) => {
-      if (closed) return;
+      if (closedRef.current) return;
+      if (confirmKeyRef.current) {
+        rafId = requestAnimationFrame(poll);
+        return;
+      }
       const gp = getBestGamepad();
+      if (suppressAfterConfirmRef.current) {
+        if (gp) {
+          const state = readGpState(gp);
+          Object.assign(last, state);
+          if (!state.Enter && !state.Escape) suppressAfterConfirmRef.current = false;
+        } else {
+          suppressAfterConfirmRef.current = false;
+        }
+        rafId = requestAnimationFrame(poll);
+        return;
+      }
       if (gp) {
         const base = readGpState(gp);
         if (!base.Enter) enterReleased = true;
@@ -103,7 +176,7 @@ export default function PowerModal({ onClose, onRestartApp, onExitApp }: PowerMo
     rafId = requestAnimationFrame(poll);
 
     return () => {
-      closed = true;
+      closedRef.current = true;
       window.removeEventListener("keydown", onKey, true);
       cancelAnimationFrame(rafId);
     };
@@ -115,15 +188,33 @@ export default function PowerModal({ onClose, onRestartApp, onExitApp }: PowerMo
   ];
 
   return (
+    <>
     <ModalShell title={t("power.title")} shortcuts={shortcuts} width={400} zIndex={8600} onOverlayClick={onClose}>
       <div style={{ padding: "8px 0" }}>
         {actions.map((action, i) => {
           const focused = focusIdx === i;
           const color = action.danger ? "#e85a5a" : accent.primary;
+          const groupHeader = i === 0 || actions[i - 1].group !== action.group;
           return (
+            <div key={action.key}>
+            {groupHeader && (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: i === 0 ? "2px 24px 8px" : "16px 24px 8px",
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.09em",
+                textTransform: "uppercase",
+                color: theme.textFaint,
+              }}>
+                {action.group === "device" && <IoHardwareChipOutline size={12} />}
+                {action.group === "device" ? t("power.groupDevice") : t("power.groupApp")}
+              </div>
+            )}
             <div
-              key={action.key}
-              onClick={() => { setFocusIdx(i); focusIdxRef.current = i; action.run(); onClose(); }}
+              onClick={() => { setFocusIdx(i); focusIdxRef.current = i; execute(i); }}
               onMouseEnter={() => { setFocusIdx(i); focusIdxRef.current = i; }}
               style={{
                 display: "flex",
@@ -160,9 +251,37 @@ export default function PowerModal({ onClose, onRestartApp, onExitApp }: PowerMo
                 {action.label}
               </div>
             </div>
+            </div>
           );
         })}
       </div>
     </ModalShell>
+
+    {confirmKey && (() => {
+      const pending = actions.find((action) => action.key === confirmKey);
+      if (!pending || !pending.confirm) return null;
+      return (
+        <ConfirmModal
+          message={pending.confirm.message}
+          confirmLabel={pending.confirm.label}
+          zIndex={8700}
+          onConfirm={() => {
+            setConfirmKey(null);
+            confirmKeyRef.current = null;
+            closedRef.current = true;
+            pending.run();
+            onClose();
+          }}
+          onCancel={() => {
+            setConfirmKey(null);
+            confirmKeyRef.current = null;
+            // Wait for the confirm/cancel button to be released before the
+            // power menu resumes reading gamepad input.
+            suppressAfterConfirmRef.current = true;
+          }}
+        />
+      );
+    })()}
+    </>
   );
 }

@@ -3175,6 +3175,8 @@ export default function App() {
           onClose={closePowerModal}
           onRestartApp={() => { invoke("restart_app").catch(() => {}); }}
           onExitApp={() => { invoke("exit_app").catch(() => {}); }}
+          onRestartDevice={() => { invoke("restart_device").catch(() => {}); }}
+          onShutdownDevice={() => { invoke("shutdown_device").catch(() => {}); }}
         />
       )}
       {updateRelease && (

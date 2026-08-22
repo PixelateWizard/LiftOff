@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Steam Deck compatibility and controller support — implemented; Tauri visual pass pending:** Steam Details now lazily shows cached Deck and controller-support chips behind the existing metadata setting. Live Valve payloads and automated checks pass; representative WebView/theme inspection remains.
+- **Power-menu device controls — implemented; device validation pending:** The existing power menu now groups LiftOff and confirmed Restart PC/Shut Down PC actions, backed by absolute-path Windows shutdown commands with hybrid fallback. Compilation passes; destructive runtime and handheld controller/visual checks were intentionally skipped while the workstation was in use.
 
 ## Start-of-Task Workflow
 
