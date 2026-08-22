@@ -55,6 +55,10 @@ Steam uninstall and Steam-only Verify files must remain unchanged. Confirm one S
 
 The native L3+R3 summon shortcut is non-functional under FSE. Do not use it as a recovery acceptance path, and treat older A8 criteria that require physical L3+R3 as void. Validate the live no-hide foreground/GPU suspend-resume path instead.
 
+### FSE blank return regression
+
+The user reported from Ally/FSE testing on 2026-08-21: "when i would exit a game and return to the launcher, a lot of times the launcher still wouldn't \"start\", the screen would show blank and I'd have to force close the app and start it again". The exit watcher now always runs the full recovery sequence and resets WebView2 presentation before its verified resume, even if foreground churn previously marked the controller visible. This remains an open hardware gate: repeatedly launch and exit representative Steam and Microsoft package games under FSE, and confirm LiftOff paints and accepts controller input every time without a force-close. Compilation or desktop checks do not close this gate.
+
 ### Games-card install animation
 
 The indeterminate install bar at the bottom of a Games library card restarts or glitches when gamepad focus moves to another card. This remains deferred unless a task explicitly scopes it in.

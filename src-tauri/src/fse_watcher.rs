@@ -48,6 +48,11 @@ const FOREGROUND_RETRY_SLEEP_MS: u64 = 40;
 const RESUME_ATTEMPTS: u32 = 8;
 const RESUME_RETRY_SLEEP_MS: u64 = 60;
 const WEBVIEW_QUERY_TIMEOUT_MS: u64 = 400;
+// A visibility readback only proves the controller accepted IsVisible=true; it
+// does not prove that WebView2's composition surface is producing frames. On a
+// confirmed game exit, bounce presentation once so a stale visible surface is
+// detached before the normal verified resume and repaint sequence.
+const PRESENTATION_RESET_SLEEP_MS: u64 = 40;
 // Self-heal window after a game exits. AnyFSE can re-route its visible-window
 // slot for a beat after the game process tears down, so we keep checking.
 const POST_EXIT_HEAL_MS: u64 = 4_000;
@@ -437,6 +442,13 @@ fn resume_webview_verified(app: &AppHandle) -> bool {
     false
 }
 
+#[cfg(windows)]
+fn reset_webview_presentation(app: &AppHandle) -> bool {
+    let _ = set_webview_visible(app, false);
+    std::thread::sleep(Duration::from_millis(PRESENTATION_RESET_SLEEP_MS));
+    resume_webview_verified(app)
+}
+
 #[cfg(not(windows))]
 fn resume_webview_verified(app: &AppHandle) -> bool {
     let _ = app;
@@ -489,7 +501,7 @@ fn start_post_exit_heal(app: AppHandle, our_hwnd: isize) {
 // Full recovery sequence for "the game exited and LiftOff must come back".
 #[cfg(windows)]
 fn restore_after_game_exit(app: &AppHandle, our_hwnd: isize) {
-    let resumed = resume_webview_verified(app);
+    let resumed = reset_webview_presentation(app);
     if let Some(hwnd) = hwnd_from_value(our_hwnd) {
         unsafe {
             if IsIconic(hwnd).as_bool() {
@@ -675,13 +687,12 @@ pub fn start_gpu_release_watch(
                 std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
             }
 
-            // The game window is gone. Do not assume a single SetIsVisible(true)
-            // is enough: verify the resume, reclaim foreground from the FSE home
-            // slot, and force a recomposite. Otherwise LiftOff can end up
-            // foreground and completely black with no user-side recovery.
-            if webview_suspended {
-                restore_after_game_exit(&app, our_hwnd);
-            }
+            // The game window is gone. Always run the full recovery sequence.
+            // During FSE foreground churn the controller can report visible and
+            // flip `webview_suspended` false even though its composition surface
+            // is still blank. That state must not bypass the exit-time reset,
+            // foreground reclaim, and repaint.
+            restore_after_game_exit(&app, our_hwnd);
             app.state::<FseWatch>().cancel();
         });
     }

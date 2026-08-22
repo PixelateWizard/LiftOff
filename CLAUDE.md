@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Power-menu device controls — implemented; device validation pending:** The existing power menu now groups LiftOff and confirmed Restart PC/Shut Down PC actions, backed by absolute-path Windows shutdown commands with hybrid fallback. Compilation passes; destructive runtime and handheld controller/visual checks were intentionally skipped while the workstation was in use.
+- **FSE blank return regression — recovery fix implemented; Ally validation pending:** Confirmed game exits now always run the full foreground/repaint recovery, and WebView2 presentation is reset before verified resume so a stale visible-but-blank surface cannot bypass repair. Rust/frontend builds and documentation checks pass; repeated physical Ally/FSE launch-exit cycles remain required.
 
 ## Start-of-Task Workflow
 
