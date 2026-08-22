@@ -50,6 +50,11 @@
     "productId": "BX91DHSR4C5T"
   },
   {
+    "name": "A Hole New World",
+    "slug": "a-hole-new-world",
+    "productId": "C1D9Q10JKBJR"
+  },
+  {
     "name": "A Little To The Left",
     "slug": "a-little-to-the-left",
     "productId": "9NLDDF97GTJ0"
@@ -78,6 +83,11 @@
     "name": "A Tale of Paper: Refolded",
     "slug": "a-tale-of-paper-refolded",
     "productId": "9PC66H9PMVLF"
+  },
+  {
+    "name": "Aaero2",
+    "slug": "aaero2",
+    "productId": "9N0J8K190GR4"
   },
   {
     "name": "Abathor",
@@ -153,6 +163,11 @@
     "name": "Against the Storm",
     "slug": "against-the-storm",
     "productId": "9NRLRJPV4HWL"
+  },
+  {
+    "name": "Agarta",
+    "slug": "agarta",
+    "productId": "9NP0JW0LFWJC"
   },
   {
     "name": "Agatha Christie – Death on the Nile",
@@ -580,6 +595,16 @@
     "productId": "9N9QJG4S82B5"
   },
   {
+    "name": "Avatar: The Last Airbender – Quest for Balance",
+    "slug": "avatar-the-last-airbender-quest-for-balance",
+    "productId": "9N2QS4Z635WT"
+  },
+  {
+    "name": "AVICII Invector",
+    "slug": "avicii-invector",
+    "productId": "9P0BD1B6351B"
+  },
+  {
     "name": "Avowed",
     "slug": "avowed",
     "productId": "9NHRDQVFPQ34"
@@ -710,6 +735,16 @@
     "productId": "9N360TZQZ0TR"
   },
   {
+    "name": "Beholgar",
+    "slug": "beholgar",
+    "productId": "9NQ63JVXP11K"
+  },
+  {
+    "name": "Beholgar 2",
+    "slug": "beholgar-2",
+    "productId": "9P91R5HG0R41"
+  },
+  {
     "name": "Ben 10",
     "slug": "ben-10",
     "productId": "C2TKN8H27M78"
@@ -723,6 +758,11 @@
     "name": "Bendy and the Ink Machine",
     "slug": "bendy-and-the-ink-machine",
     "productId": "BTQ96QTQ58F3"
+  },
+  {
+    "name": "Beneath",
+    "slug": "beneath",
+    "productId": "9NSPD1LD2TMR"
   },
   {
     "name": "Beyond Blue",
@@ -1055,6 +1095,11 @@
     "productId": "9PC93B8QNLFN"
   },
   {
+    "name": "Canine",
+    "slug": "canine",
+    "productId": "9P2126B2Z7HW"
+  },
+  {
     "name": "Car Mechanic Shop Simulator",
     "slug": "car-mechanic-shop-simulator",
     "productId": "9PD9C7T2LXS7"
@@ -1128,6 +1173,11 @@
     "name": "Chants of Sennaar",
     "slug": "chants-of-sennaar",
     "productId": "9NR8V6M3QH57"
+  },
+  {
+    "name": "Chariot",
+    "slug": "chariot",
+    "productId": "C0C6BW2GB0GC"
   },
   {
     "name": "Charon’s Staircase",
@@ -1240,6 +1290,11 @@
     "productId": "9NKHKBQJSSC3"
   },
   {
+    "name": "Close to the Sun",
+    "slug": "close-to-the-sun",
+    "productId": "9N67QTH4Z1GP"
+  },
+  {
     "name": "CloverPit",
     "slug": "cloverpit",
     "productId": "9P8V7HR160B4"
@@ -1253,6 +1308,16 @@
     "name": "ClusterTruck",
     "slug": "clustertruck",
     "productId": "BX4J85JZNGXQ"
+  },
+  {
+    "name": "Cobra Kai 2: Dojos Rising",
+    "slug": "cobra-kai-2-dojos-rising",
+    "productId": "9NP4WZNSN0NN"
+  },
+  {
+    "name": "Cobra Kai: The Karate Kid Saga Continues",
+    "slug": "cobra-kai-the-karate-kid-saga-continues",
+    "productId": "9P3NZCCVQ0XB"
   },
   {
     "name": "Coffee Talk",
@@ -1565,6 +1630,16 @@
     "productId": "BSR9NLHVF1KL"
   },
   {
+    "name": "de Blob",
+    "slug": "de-blob",
+    "productId": "C092FLK91X41"
+  },
+  {
+    "name": "de Blob 2",
+    "slug": "de-blob-2",
+    "productId": "C360XV52R4NL"
+  },
+  {
     "name": "Dead Cells",
     "slug": "dead-cells",
     "productId": "BQSCNS1T8PHQ"
@@ -1630,6 +1705,11 @@
     "productId": "9MXKWW4K9LP2"
   },
   {
+    "name": "Deckline",
+    "slug": "deckline",
+    "productId": "9P5QWC7G9NTD"
+  },
+  {
     "name": "DEEEER Simulator: Your Average Everyday Deer Game",
     "slug": "deeeer-simulator-your-average-everyday-deer-game",
     "productId": "9NNBPBM2F60W"
@@ -1643,6 +1723,11 @@
     "name": "Deep Rock Galactic: Survivor",
     "slug": "deep-rock-galactic-survivor",
     "productId": "9PHGQPRBBSXK"
+  },
+  {
+    "name": "Defender of the Crown: The Legend Returns",
+    "slug": "defender-of-the-crown-the-legend-returns",
+    "productId": "9N4W35GX7MP6"
   },
   {
     "name": "Defunct",
@@ -1675,6 +1760,11 @@
     "productId": "C37XBX7DCBZ0"
   },
   {
+    "name": "Desperados III",
+    "slug": "desperados-iii",
+    "productId": "9P1ZX74WPL68"
+  },
+  {
     "name": "Despot’s Game",
     "slug": "despots-game",
     "productId": "9P5ZDVMCJMFD"
@@ -1698,6 +1788,11 @@
     "name": "Detective Dotson",
     "slug": "detective-dotson",
     "productId": "9NXGD1ZLJ1JL"
+  },
+  {
+    "name": "Deus Ex: Human Revolution",
+    "slug": "deus-ex-human-revolution",
+    "productId": "BZK0PF5LXPDV"
   },
   {
     "name": "Diablo II: Resurrected – Infernal Edition",
@@ -1738,6 +1833,11 @@
     "name": "Disney Dreamlight Valley",
     "slug": "disney-dreamlight-valley",
     "productId": "9NSF0BGH8D86"
+  },
+  {
+    "name": "Disney Epic Mickey 2: The Power of Two",
+    "slug": "disney-epic-mickey-2-the-power-of-two",
+    "productId": "BSQ928V7VD2W"
   },
   {
     "name": "Disney Epic Mickey: Rebrushed",
@@ -1798,6 +1898,11 @@
     "name": "Dome Keeper",
     "slug": "dome-keeper",
     "productId": "9P8XKV2D5DZ5"
+  },
+  {
+    "name": "Don’t let him in",
+    "slug": "dont-let-him-in",
+    "productId": "9NZDDFDWGT14"
   },
   {
     "name": "Donut County",
@@ -1950,6 +2055,11 @@
     "productId": "9PKZ29NH232G"
   },
   {
+    "name": "DreamWorks Trolls Remix Rescue",
+    "slug": "dreamworks-trolls-remix-rescue",
+    "productId": "9PFDC72VHK80"
+  },
+  {
     "name": "DREDGE",
     "slug": "dredge",
     "productId": "9MSVVM5NS9L6"
@@ -2098,6 +2208,11 @@
     "name": "Elemental War Clash",
     "slug": "elemental-war-clash",
     "productId": "9NQCRRS6FXSB"
+  },
+  {
+    "name": "ELEX",
+    "slug": "elex",
+    "productId": "BNJJGRCSH3RM"
   },
   {
     "name": "Embr",
@@ -2405,6 +2520,11 @@
     "productId": "9NZWW8K1KX6S"
   },
   {
+    "name": "File Destined",
+    "slug": "file-destined",
+    "productId": "9NFM9V0L7GJD"
+  },
+  {
     "name": "FINAL FANTASY II",
     "slug": "final-fantasy-ii",
     "productId": "9P8S1MN4066K"
@@ -2515,6 +2635,11 @@
     "productId": "9N6DGNBPNRNN"
   },
   {
+    "name": "Floor 9",
+    "slug": "floor-9",
+    "productId": "9NL7361NBJ49"
+  },
+  {
     "name": "Floppy Knights",
     "slug": "floppy-knights",
     "productId": "9NLM4TTHCWSH"
@@ -2588,6 +2713,11 @@
     "name": "Forza Motorsport",
     "slug": "forza-motorsport",
     "productId": "9P0TRPTHG7VF"
+  },
+  {
+    "name": "Fractured Minds",
+    "slug": "fractured-minds",
+    "productId": "BXX0NHDR1FNZ"
   },
   {
     "name": "FragPunk",
@@ -3100,6 +3230,11 @@
     "productId": "9N44WK3WV2HJ"
   },
   {
+    "name": "Hell Let Loose: Vietnam",
+    "slug": "hell-let-loose-vietnam",
+    "productId": "9PKS8XZC74X5"
+  },
+  {
     "name": "Hellblade: Senua’s Sacrifice",
     "slug": "hellblade-senuas-sacrifice",
     "productId": "9NCLP4LV5K7Z"
@@ -3218,6 +3353,11 @@
     "name": "Hogwarts Legacy",
     "slug": "hogwarts-legacy",
     "productId": "9MT5NJ5W7B8Z"
+  },
+  {
+    "name": "Holdfast: Nations At War",
+    "slug": "holdfast-nations-at-war",
+    "productId": "9PF53MDNSMHQ"
   },
   {
     "name": "Hole io",
@@ -3385,6 +3525,11 @@
     "productId": "C210ZQR369CW"
   },
   {
+    "name": "Ice Cream Surfer",
+    "slug": "ice-cream-surfer",
+    "productId": "9NNT2KHDCH9L"
+  },
+  {
     "name": "Iconoclasts",
     "slug": "iconoclasts",
     "productId": "9N7WRWNN5GZN"
@@ -3418,6 +3563,11 @@
     "name": "Immortals of Aveum",
     "slug": "immortals-of-aveum",
     "productId": "9NSD4HTWM8HT"
+  },
+  {
+    "name": "In Celebration of Violence",
+    "slug": "in-celebration-of-violence",
+    "productId": "9N75WCB775KP"
   },
   {
     "name": "INAYAH – Life after Gods",
@@ -3463,6 +3613,11 @@
     "name": "Infinity Strash: DRAGON QUEST The Adventure of Dai",
     "slug": "infinity-strash-dragon-quest-the-adventure-of-dai",
     "productId": "9NFP2NRQW050"
+  },
+  {
+    "name": "Inhuman Resources: A Literary Machination",
+    "slug": "inhuman-resources-a-literary-machination",
+    "productId": "9NXSZ9MBHRD3"
   },
   {
     "name": "Injustice 2",
@@ -3538,6 +3693,11 @@
     "name": "Jagged Alliance 3",
     "slug": "jagged-alliance-3",
     "productId": "9PJDQ1MKWN3D"
+  },
+  {
+    "name": "JanKenUP!",
+    "slug": "jankenup",
+    "productId": "9NMQK13LJR04"
   },
   {
     "name": "JellyCar Worlds",
@@ -3868,6 +4028,11 @@
     "name": "LEGO Party!",
     "slug": "lego-party",
     "productId": "9PHH78ZGBF96"
+  },
+  {
+    "name": "LEGO Pirates of the Caribbean: The Video Game",
+    "slug": "lego-pirates-of-the-caribbean-the-video-game",
+    "productId": "BRH7S5QHZ0Q8"
   },
   {
     "name": "LEGO Star Wars: The Skywalker Saga",
@@ -4430,6 +4595,11 @@
     "productId": "9MVFWHBPVGP8"
   },
   {
+    "name": "Monster Jam Steel Titans 2",
+    "slug": "monster-jam-steel-titans-2",
+    "productId": "9PJSD2FFQV56"
+  },
+  {
     "name": "Monster Sanctuary",
     "slug": "monster-sanctuary",
     "productId": "9MZNS9NZ97PF"
@@ -4543,6 +4713,11 @@
     "name": "Mute Crimson DX",
     "slug": "mute-crimson-dx",
     "productId": "9PM4DX0M36JT"
+  },
+  {
+    "name": "MX vs ATV All Out",
+    "slug": "mx-vs-atv-all-out",
+    "productId": "BWW1MP5KDLPB"
   },
   {
     "name": "MX vs ATV Legends",
@@ -5220,6 +5395,11 @@
     "productId": "9P2HHT3VS7MP"
   },
   {
+    "name": "Pneuma: Breath of Life",
+    "slug": "pneuma-breath-of-life",
+    "productId": "C0D102LM66W5"
+  },
+  {
     "name": "Pocket Academy",
     "slug": "pocket-academy",
     "productId": "9NL91C1DJ2S6"
@@ -5390,6 +5570,11 @@
     "productId": "9PLF73SS7M6J"
   },
   {
+    "name": "Race The Sun",
+    "slug": "race-the-sun",
+    "productId": "BS32DZLXBQ02"
+  },
+  {
     "name": "Raft",
     "slug": "raft",
     "productId": "9P7RBKDTN18T"
@@ -5468,6 +5653,11 @@
     "name": "REANIMAL",
     "slug": "reanimal",
     "productId": "9N67DHNP2M0T"
+  },
+  {
+    "name": "Rebel Cops",
+    "slug": "rebel-cops",
+    "productId": "9NHQJD5B40P0"
   },
   {
     "name": "ReCore",
@@ -5613,6 +5803,11 @@
     "name": "Risk Urban Assault",
     "slug": "risk-urban-assault",
     "productId": "BTDRTXBKDBRR"
+  },
+  {
+    "name": "Rivals of Aether",
+    "slug": "rivals-of-aether",
+    "productId": "BWSQ6832LWNL"
   },
   {
     "name": "River City Girls",
@@ -6060,6 +6255,11 @@
     "productId": "9N4KGH8QWH5R"
   },
   {
+    "name": "Sine Mora EX",
+    "slug": "sine-mora-ex",
+    "productId": "C07MPPVTXVVZ"
+  },
+  {
     "name": "SiNKR",
     "slug": "sinkr",
     "productId": "9P6MVCG6NT8F"
@@ -6218,6 +6418,11 @@
     "name": "South of the Circle",
     "slug": "south-of-the-circle",
     "productId": "9MTZBS6PF8MS"
+  },
+  {
+    "name": "SOUTH PARK: SNOW DAY!",
+    "slug": "south-park-snow-day",
+    "productId": "9PN2Q643P2Z0"
   },
   {
     "name": "South Park: The Fractured But Whole",
@@ -6395,6 +6600,11 @@
     "productId": "9P1P7DWHBDBD"
   },
   {
+    "name": "Star Wars The Force Unleashed II",
+    "slug": "star-wars-the-force-unleashed-ii",
+    "productId": "BS68QN8SV1BN"
+  },
+  {
     "name": "STAR WARS: Dark Forces Remaster",
     "slug": "star-wars-dark-forces-remaster",
     "productId": "9MZFGMJHBN99"
@@ -6403,6 +6613,11 @@
     "name": "STAR WARS: Squadrons",
     "slug": "star-wars-squadrons",
     "productId": "9NX17M8BNTX1"
+  },
+  {
+    "name": "Star Wars: The Force Unleashed",
+    "slug": "star-wars-the-force-unleashed",
+    "productId": "BP4TTT81TPPK"
   },
   {
     "name": "Starbound",
@@ -6895,6 +7110,11 @@
     "productId": "9PDNKZ70QC7L"
   },
   {
+    "name": "The Deer God",
+    "slug": "the-deer-god",
+    "productId": "C4DQXWTP8SS4"
+  },
+  {
     "name": "The Elder Scrolls III: Morrowind",
     "slug": "the-elder-scrolls-iii-morrowind",
     "productId": "BXVCFBJBNS17"
@@ -7098,6 +7318,11 @@
     "name": "The King is Watching",
     "slug": "the-king-is-watching",
     "productId": "9N24FWHR3V72"
+  },
+  {
+    "name": "The King’s Bird",
+    "slug": "the-kings-bird",
+    "productId": "9NZ5057NL64C"
   },
   {
     "name": "The Knight Witch",
@@ -7380,6 +7605,11 @@
     "productId": "BXBJQ1932138"
   },
   {
+    "name": "Thief",
+    "slug": "thief",
+    "productId": "BNQCGR7BX08D"
+  },
+  {
     "name": "Thief Simulator 2",
     "slug": "thief-simulator-2",
     "productId": "9NFH9N02KM20"
@@ -7398,6 +7628,11 @@
     "name": "Those Who Remain",
     "slug": "those-who-remain",
     "productId": "9NFC3G481KKQ"
+  },
+  {
+    "name": "Through the Darkest of Times",
+    "slug": "through-the-darkest-of-times",
+    "productId": "9NB0V51DKXM8"
   },
   {
     "name": "Thymesia",
@@ -7428,6 +7663,11 @@
     "name": "Tinykin",
     "slug": "tinykin",
     "productId": "9NLLP82XVSKH"
+  },
+  {
+    "name": "Titan Quest",
+    "slug": "titan-quest",
+    "productId": "BNC1BNGGSWHV"
   },
   {
     "name": "to a T",
@@ -7658,6 +7898,11 @@
     "name": "Trident’s Tale",
     "slug": "tridents-tale",
     "productId": "9N24NMZ07ZDX"
+  },
+  {
+    "name": "Trine 5: A Clockwork Conspiracy",
+    "slug": "trine-5-a-clockwork-conspiracy",
+    "productId": "9P9906TV3Z64"
   },
   {
     "name": "Trinity Fusion",
@@ -7980,6 +8225,11 @@
     "productId": "9MXNGTGKPP1W"
   },
   {
+    "name": "Warhammer: End Times – Vermintide",
+    "slug": "warhammer-end-times-vermintide",
+    "productId": "BWX7S94S2LMJ"
+  },
+  {
     "name": "Warhammer: Vermintide 2",
     "slug": "warhammer-vermintide-2",
     "productId": "BXZWT67JBZJH"
@@ -8085,6 +8335,11 @@
     "productId": "9NCVCS3CWNH1"
   },
   {
+    "name": "Wild Blue Skies",
+    "slug": "wild-blue-skies",
+    "productId": "9PLVS5P1ZSRX"
+  },
+  {
     "name": "WILD HEARTS",
     "slug": "wild-hearts",
     "productId": "9NFT3TR6MN9W"
@@ -8158,6 +8413,11 @@
     "name": "Wobbly Life",
     "slug": "wobbly-life",
     "productId": "9NS86BQ33SPX"
+  },
+  {
+    "name": "Wolfenstein 3D",
+    "slug": "wolfenstein-3d",
+    "productId": "BSXDD75Q561F"
   },
   {
     "name": "Wolfenstein II: The New Colossus",
