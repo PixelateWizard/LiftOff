@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Helper tray frontend integrated with current main:** Preserved the tested WebView2 Low/Normal memory-target handoff while landing the prioritized helper tray, universal MENU access, A-gated controls, and Full/Minimal/Hidden modes. Remaining gates are representative normal game exits, physical-controller return, and native Ally/WebView2 validation of helper-bar controls, 1280x800 layout, and controller feel.
+- **Delivered — Alpha 6 version and release notes:** Advanced every app-owned version marker to `2.0.0-alpha-6`, moved the complete former Unreleased changelog beneath Alpha 6, and added user-facing Markdown release notes. Static build, Rust, documentation, and diff validation passed; device- and service-dependent behaviors retain their existing runtime gates.
 
 ## Start-of-Task Workflow
 
@@ -32,7 +32,7 @@ If the user sends only a `.md` file, treat it as a project proposal and carry it
 - **Product:** LiftOff, a Windows controller-first game/app launcher.
 - **Stack:** Tauri 2, Rust backend, React frontend, incremental TypeScript adoption.
 - **Identifier:** `com.taylo.liftoff`.
-- **Current version:** `2.0.0-alpha-5.2`; app-owned version markers must move together for releases.
+- **Current version:** `2.0.0-alpha-6`; app-owned version markers must move together for releases.
 - **Frontend root:** `src/App.jsx`, with domain hooks, views, components, contexts, and theme helpers under `src/`.
 - **Backend root:** `src-tauri/src/lib.rs`, with specialized modules in `src-tauri/src/`.
 - **Development:** `npm run dev` plus `npm run tauri -- dev`.

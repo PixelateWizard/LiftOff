@@ -3,7 +3,7 @@ import type { FseReturnShortcut } from "./types";
 export const COLS = 6;
 export const GAME_COLS = 5;
 export const TABS = ["Home", "Games", "Apps", "Settings"] as const;
-export const APP_VERSION = "2.0.0-alpha-5.2";
+export const APP_VERSION = "2.0.0-alpha-6";
 export const GITHUB_REPO = "PixelateWizard/LiftOff";
 // Hours between automatic update checks. Twice a day is enough to be timely
 // without pressure on GitHub's unauthenticated rate limit.
