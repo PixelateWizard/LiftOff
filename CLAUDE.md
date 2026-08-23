@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Universal MENU tray access:** A single MENU press now opens the helper tray in Full, Minimal, and Hidden modes; obsolete hold timing/progress plumbing and hold-specific controller help were removed. Remaining gate: physical Ally/WebView2 validation of MENU edge isolation and controller feel.
+- **Delivered — Helper tray priority order:** Reordered the tray and focus graph to shortcuts first, Volume/Brightness second, and Spotify last, with Settings as the initial controller focus. Remaining gate: physical Ally/WebView2 validation of 1280x800 layout and controller feel.
 
 ## Start-of-Task Workflow
 

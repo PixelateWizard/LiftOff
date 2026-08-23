@@ -112,39 +112,49 @@ test("boots the Home shell with mocked Tauri commands", async ({ page }) => {
   await expect(page.getByText(/^Brightness/)).toBeVisible();
   await expect(page.getByRole("button", { name: /Controls/ })).toBeVisible();
 
-  const sliders = page.locator('input[type="range"]');
-  await expect(sliders).toHaveCount(3);
-  await expect(sliders.nth(0)).toHaveValue("30000");
-  await expect(sliders.nth(1)).toHaveValue("45");
-  await expect(sliders.nth(2)).toHaveValue("40");
-
   const tray = page.getByText("Helper", { exact: true }).locator("xpath=../..");
+  const seekSlider = tray.locator('input[type="range"][max="180000"]');
+  const systemSliders = tray.locator('input[type="range"][max="100"]');
+  await expect(seekSlider).toHaveValue("30000");
+  await expect(systemSliders).toHaveCount(2);
+  await expect(systemSliders.nth(0)).toHaveValue("45");
+  await expect(systemSliders.nth(1)).toHaveValue("40");
+
+  const settingsBox = await tray.getByRole("button", { name: "Settings" }).boundingBox();
+  const volumeBox = await tray.getByText(/^Volume/).boundingBox();
+  const spotifyBox = await tray.getByText("Test Track", { exact: true }).boundingBox();
+  expect(settingsBox?.y).toBeLessThan(volumeBox?.y ?? 0);
+  expect(volumeBox?.y).toBeLessThan(spotifyBox?.y ?? 0);
+
   const trayHeight = await tray.evaluate((element) => element.getBoundingClientRect().height);
 
-  await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("ArrowRight");
-  await page.keyboard.press("ArrowRight");
-  await expect(sliders.nth(0)).toHaveValue("30000");
-  expect(await tray.evaluate((element) => element.getBoundingClientRect().height)).toBeCloseTo(trayHeight, 1);
-
-  await page.keyboard.press("ArrowLeft");
-  await page.keyboard.press("Enter");
-  await page.keyboard.press("ArrowRight");
-  await expect(sliders.nth(0)).toHaveValue("40000");
-  await page.keyboard.press("Enter");
-
   await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await expect(seekSlider).toHaveValue("30000");
+  expect(await tray.evaluate((element) => element.getBoundingClientRect().height)).toBeCloseTo(trayHeight, 1);
+
   await page.keyboard.press("ArrowLeft");
-  await expect(sliders.nth(1)).toHaveValue("45");
-  await expect(sliders.nth(2)).toHaveValue("40");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("ArrowRight");
+  await expect(seekSlider).toHaveValue("40000");
+  await page.keyboard.press("Enter");
+
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowLeft");
+  await expect(systemSliders.nth(0)).toHaveValue("45");
+  await expect(systemSliders.nth(1)).toHaveValue("40");
   expect(await tray.evaluate((element) => element.getBoundingClientRect().height)).toBeCloseTo(trayHeight, 1);
 
   await page.keyboard.press("Enter");
   await page.keyboard.press("ArrowLeft");
-  await expect(sliders.nth(1)).toHaveValue("40");
+  await expect(systemSliders.nth(0)).toHaveValue("40");
   await page.keyboard.press("Escape");
   await page.keyboard.press("ArrowRight");
-  await expect(sliders.nth(1)).toHaveValue("40");
+  await expect(systemSliders.nth(0)).toHaveValue("40");
   expect(pageErrors).toEqual([]);
 });
 

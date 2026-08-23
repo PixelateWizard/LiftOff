@@ -51,8 +51,8 @@ export function HelperTray({
   const { glassBar, accent, theme, isDark, surfaceStyle, surface, resolvedTheme } = useTheme();
   const { volume, brightness, requestVolume, requestBrightness } = useSystemControls(open);
   const track = spotify.track;
-  const [focusKey, setFocusKey] = useState("play");
-  const focusKeyRef = useRef("play");
+  const [focusKey, setFocusKey] = useState("settings");
+  const focusKeyRef = useRef("settings");
   const [seekDraft, setSeekDraft] = useState<number | null>(null);
   const seekDraftRef = useRef<number | null>(null);
   const [adjustmentKey, setAdjustmentKey] = useState<string | null>(null);
@@ -62,24 +62,24 @@ export function HelperTray({
   const focusItems = useMemo<FocusItem[]>(() => {
     const music = track
       ? [
-          { key: "previous", row: 0, column: 0 },
-          { key: "play", row: 0, column: 1 },
-          { key: "next", row: 0, column: 2 },
-          { key: "seek", row: 0, column: 3 },
-          { key: "playlists", row: 0, column: 4 },
+          { key: "previous", row: 2, column: 0 },
+          { key: "play", row: 2, column: 1 },
+          { key: "next", row: 2, column: 2 },
+          { key: "seek", row: 2, column: 3 },
+          { key: "playlists", row: 2, column: 4 },
         ]
-      : [{ key: "playlists", row: 0, column: 0 }];
+      : [{ key: "playlists", row: 2, column: 0 }];
     const sliders = [
       { key: "volume", row: 1, column: 0 },
       ...(brightness != null && brightness >= 0 ? [{ key: "brightness", row: 1, column: 1 }] : []),
     ];
     return [
-      ...music,
+      { key: "settings", row: 0, column: 0 },
+      { key: "power", row: 0, column: 1 },
+      { key: "refresh", row: 0, column: 2 },
+      { key: "controls", row: 0, column: 3 },
       ...sliders,
-      { key: "settings", row: 2, column: 0 },
-      { key: "power", row: 2, column: 1 },
-      { key: "refresh", row: 2, column: 2 },
-      { key: "controls", row: 2, column: 3 },
+      ...music,
     ];
   }, [track, brightness]);
   const focusItemsRef = useRef(focusItems);
@@ -97,7 +97,7 @@ export function HelperTray({
 
   useEffect(() => {
     if (!open) return;
-    setFocus(track ? "play" : "playlists");
+    setFocus("settings");
     setAdjustment(null);
     setSeekDraft(null);
     seekDraftRef.current = null;
@@ -279,7 +279,19 @@ export function HelperTray({
           {mode !== "full" && <GamepadBtn btn="B" label={t("helper.closeTray")} />}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12, paddingBottom: 15, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}` }}>
+        <div style={{ display: "flex", gap: 10, paddingBottom: 16, flexWrap: "wrap", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}` }}>
+          {shortcut("settings", t("helper.settings"), <IoSettingsOutline />, onOpenSettings)}
+          {shortcut("power", t("helper.power"), <IoPowerOutline />, onOpenPower)}
+          {shortcut("refresh", t("helper.refreshLibrary"), <IoRefresh />, onRefreshLibrary)}
+          {shortcut("controls", t("helper.controls"), <IoGameControllerOutline />, onOpenControls)}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: brightness != null && brightness >= 0 ? "1fr 1fr" : "1fr", gap: 16, padding: "16px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}` }}>
+          <SliderControl icon={<IoVolumeHighOutline />} label={t("helper.volume")} focusKey="volume" focused={focusKey === "volume"} editing={adjustmentKey === "volume"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={volume?.percent ?? 0} onFocus={setFocus} onChange={requestVolume} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />
+          {brightness != null && brightness >= 0 && <SliderControl icon={<IoSunnyOutline />} label={t("helper.brightness")} focusKey="brightness" focused={focusKey === "brightness"} editing={adjustmentKey === "brightness"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={brightness} onFocus={setFocus} onChange={requestBrightness} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 15 }}>
           {track ? (
             <>
               <div style={{ width: 46, height: 46, borderRadius: squareCorners ? 0 : 9, overflow: "hidden", flexShrink: 0, background: `${accent.glow}0.18)`, display: "grid", placeItems: "center" }}>
@@ -312,18 +324,6 @@ export function HelperTray({
         </div>
 
         {spotify.requiresPremium && <div style={{ color: accent.primary, fontSize: 11, marginTop: 9 }}>{t("spotify.premiumHint")}</div>}
-
-        <div style={{ display: "grid", gridTemplateColumns: brightness != null && brightness >= 0 ? "1fr 1fr" : "1fr", gap: 16, padding: "16px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}` }}>
-          <SliderControl icon={<IoVolumeHighOutline />} label={t("helper.volume")} focusKey="volume" focused={focusKey === "volume"} editing={adjustmentKey === "volume"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={volume?.percent ?? 0} onFocus={setFocus} onChange={requestVolume} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />
-          {brightness != null && brightness >= 0 && <SliderControl icon={<IoSunnyOutline />} label={t("helper.brightness")} focusKey="brightness" focused={focusKey === "brightness"} editing={adjustmentKey === "brightness"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={brightness} onFocus={setFocus} onChange={requestBrightness} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />}
-        </div>
-
-        <div style={{ display: "flex", gap: 10, paddingTop: 16, flexWrap: "wrap" }}>
-          {shortcut("settings", t("helper.settings"), <IoSettingsOutline />, onOpenSettings)}
-          {shortcut("power", t("helper.power"), <IoPowerOutline />, onOpenPower)}
-          {shortcut("refresh", t("helper.refreshLibrary"), <IoRefresh />, onRefreshLibrary)}
-          {shortcut("controls", t("helper.controls"), <IoGameControllerOutline />, onOpenControls)}
-        </div>
       </div>
     </div>
   );
