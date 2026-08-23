@@ -14,6 +14,7 @@ Read when adding or changing a setting, persisted struct, app-data file, migrati
 - Every Rust `Settings` field must also be initialized in `impl Default for Settings`.
 - A user-facing setting must be mirrored in `src/types.ts`, `src/constants.ts`, the Settings UI, and locale files. A backend-only foundation may intentionally omit frontend support only when scope explicitly says so.
 - Preserve stored-value compatibility. If display labels change, migrate or normalize old values without casually renaming the persisted wire value.
+- `hide_bottom_bar` is legacy wire ballast. When `bottombar_mode` is empty, frontend bootstrap migrates false to `full` and true to `minimal`, saves through the existing normalization path, and does not resume writing the legacy field.
 - Write user data under `%LOCALAPPDATA%/LiftOff/`; never place refresh tokens or comparable secrets in JSON, logs, DOM state, or bundled configuration.
 - Spotify and Microsoft/Xbox refresh tokens use Windows Credential Manager. SGDB and Spotify client identifiers remain user-supplied where documented by the integration contract.
 - Migration tests that touch a real user settings file must save the original bytes and restore them byte-for-byte afterward.

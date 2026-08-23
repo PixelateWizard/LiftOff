@@ -147,6 +147,8 @@ export interface Settings {
   topbar_background: boolean;
   bottombar_background: boolean;
   hide_bottom_bar: boolean;
+  bottombar_mode: "full" | "minimal" | "hidden" | "";
+  bottombar_peek_on_track: boolean;
   default_tab: DefaultTab;
   scan_steam: boolean;
   scan_xbox: boolean;

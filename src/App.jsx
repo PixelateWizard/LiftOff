@@ -22,6 +22,7 @@ import LibraryActionsModal from "./components/modals/LibraryActionsModal";
 import CloudGamePickerModal from "./components/modals/CloudGamePickerModal";
 import EditNameModal from "./components/modals/EditNameModal";
 import PowerModal from "./components/modals/PowerModal";
+import ControlsModal from "./components/modals/ControlsModal";
 import UpdateAvailableModal from "./components/modals/UpdateAvailableModal";
 import { SettingsScreen, buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "./views/settings";
 import { ThemePickerModal } from "./components/ThemePickerModal";
@@ -34,6 +35,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { AppHeader } from "./components/layout/AppHeader";
 import { AppBottomBar } from "./components/layout/AppBottomBar";
+import { HelperTray } from "./components/layout/HelperTray";
 import { AppBackground } from "./components/app/AppBackground";
 import { AppMainContent } from "./components/app/AppMainContent";
 import { AppOverlays } from "./components/app/AppOverlays";
@@ -183,6 +185,18 @@ export default function App() {
   const setShowSpotifyOverlay = (value) => {
     showSpotifyOverlayRef.current = value;
     setShowSpotifyOverlayState(value);
+  };
+  const [showHelperTray, setShowHelperTrayState] = useState(false);
+  const showHelperTrayRef = useRef(false);
+  const setShowHelperTray = (value) => {
+    showHelperTrayRef.current = value;
+    setShowHelperTrayState(value);
+  };
+  const [showControlsModal, setShowControlsModalState] = useState(false);
+  const showControlsModalRef = useRef(false);
+  const setShowControlsModal = (value) => {
+    showControlsModalRef.current = value;
+    setShowControlsModalState(value);
   };
   const spotifyConnectedRef = useRef(false);
   const [showSteamQr, setShowSteamQrState] = useState(false);
@@ -390,6 +404,7 @@ export default function App() {
     onScanKeyChange: refreshLibrary,
     autoScaleRef,
   });
+  const helperBarMode = settings.bottombar_mode || (settings.hide_bottom_bar ? "minimal" : "full");
   useEffect(() => {
     sfxEnabledRef.current = settings.sfx_enabled !== false;
   }, [settings.sfx_enabled]);
@@ -417,6 +432,8 @@ export default function App() {
       || showSurfacePickerRef.current
       || showSpotifyGuideRef.current
       || showSpotifyOverlayRef.current
+      || showHelperTrayRef.current
+      || showControlsModalRef.current
       || showSteamQrRef.current
       || showXboxGuideRef.current
       || showCloudPickerRef.current
@@ -457,6 +474,30 @@ export default function App() {
   const viewbarSortIndex = showInstallToolbarFilters ? INSTALL_FILTERS.length : 0;
   const viewbarItemCount = viewbarSortIndex + 1;
   const spotify = useSpotify();
+  const [helperPeekActive, setHelperPeekActive] = useState(false);
+  const helperPeekTimerRef = useRef(null);
+  const previousSpotifyTrackIdRef = useRef(null);
+  useEffect(() => () => {
+    if (helperPeekTimerRef.current) window.clearTimeout(helperPeekTimerRef.current);
+  }, []);
+  useEffect(() => {
+    const trackId = spotify.track?.id ?? null;
+    const changed = trackId && trackId !== previousSpotifyTrackIdRef.current;
+    previousSpotifyTrackIdRef.current = trackId;
+    if (helperBarMode !== "hidden" || !settings.bottombar_peek_on_track) {
+      if (helperPeekTimerRef.current) window.clearTimeout(helperPeekTimerRef.current);
+      helperPeekTimerRef.current = null;
+      setHelperPeekActive(false);
+      return;
+    }
+    if (!changed) return;
+    setHelperPeekActive(true);
+    if (helperPeekTimerRef.current) window.clearTimeout(helperPeekTimerRef.current);
+    helperPeekTimerRef.current = window.setTimeout(() => {
+      helperPeekTimerRef.current = null;
+      setHelperPeekActive(false);
+    }, 2500);
+  }, [spotify.track?.id, helperBarMode, settings.bottombar_peek_on_track]);
   useEffect(() => {
     spotifyConnectedRef.current = !!spotify.status.connected;
   }, [spotify.status.connected]);
@@ -773,7 +814,6 @@ export default function App() {
     launchingApp,
     launchingAppRef,
     windowFocused,
-    spotifyHoldProgress,
     heroVideoRefs,
     setTab,
     setFocusSection,
@@ -850,6 +890,8 @@ export default function App() {
     showSurfacePickerRef,
     showSpotifyGuideRef,
     showSpotifyOverlayRef,
+    showHelperTrayRef,
+    showControlsModalRef,
     showSteamQrRef,
     showXboxGuideRef,
     showCloudPickerRef,
@@ -866,6 +908,7 @@ export default function App() {
     setShowSurfacePicker,
     onOpenSpotifyGuide: () => setShowSpotifyGuide(true),
     onOpenSpotifyOverlay: () => setShowSpotifyOverlay(true),
+    onOpenHelperTray: () => setShowHelperTray(true),
     onSpotifyDisconnect: () => spotify.disconnect(),
     spotifyConnectedRef,
     onOpenSteamQr: openSteamQr,
@@ -1073,7 +1116,7 @@ export default function App() {
     const sr = scroller.getBoundingClientRect();
     const rr = row.getBoundingClientRect();
     const headerHeight = !(settings.topbar_background ?? true) ? 0 : (tab === "Home" ? 72 : 124);
-    const bottomBarHeight = (!(settings.bottombar_background ?? true) || settings.hide_bottom_bar) ? 0 : 64;
+    const bottomBarHeight = (!(settings.bottombar_background ?? true) || helperBarMode !== "full") ? 0 : 64;
     const topClearance = headerHeight + 20;
     const bottomClearance = bottomBarHeight + 20;
     let rowTop = (rr.top - sr.top) / scale;
@@ -1100,7 +1143,7 @@ export default function App() {
       scroller.scrollTo({ top: newTop, behavior: rapidRepeat ? "auto" : "smooth" });
     }
     if (outerRef.current) outerRef.current.scrollTop = 0;
-  }, [settingsFocusIndex, settingsSection, tab, settings.ui_scale, settings.topbar_background, settings.bottombar_background, settings.hide_bottom_bar]);
+  }, [settingsFocusIndex, settingsSection, tab, settings.ui_scale, settings.topbar_background, settings.bottombar_background, helperBarMode]);
 
   useEffect(() => {
     if (resolvedTheme === "onyx" || settings.ui_motion === false || navRepeatingRef.current) return;
@@ -2055,7 +2098,7 @@ export default function App() {
       const sr = scroller.getBoundingClientRect();
       const cr = card.getBoundingClientRect();
       const headerHeight = !(settings.topbar_background ?? true) ? 0 : (tab === "Home" ? 72 : 124);
-      const bottomBarHeight = (!(settings.bottombar_background ?? true) || settings.hide_bottom_bar) ? 0 : 64;
+      const bottomBarHeight = (!(settings.bottombar_background ?? true) || helperBarMode !== "full") ? 0 : 64;
       const topClearance = headerHeight + 24;
       const bottomClearance = bottomBarHeight + 20;
       let cardTop = (cr.top - sr.top) / scale;
@@ -2140,7 +2183,7 @@ export default function App() {
             const sr = scroller.getBoundingClientRect();
             const rr = focusedRowRef.current.getBoundingClientRect();
             const headerHeight = !(settings.topbar_background ?? true) ? 0 : 72;
-            const bottomBarHeight = (!(settings.bottombar_background ?? true) || settings.hide_bottom_bar) ? 0 : 64;
+            const bottomBarHeight = (!(settings.bottombar_background ?? true) || helperBarMode !== "full") ? 0 : 64;
             const topClearance = headerHeight + 28;
             const bottomClearance = bottomBarHeight + 20;
             const rowTop = (rr.top - sr.top) / scale;
@@ -2201,7 +2244,7 @@ export default function App() {
     pinnedAppsReactive.length,
     settings.topbar_background,
     settings.bottombar_background,
-    settings.hide_bottom_bar
+    helperBarMode
   ]);
 
 
@@ -2875,7 +2918,7 @@ export default function App() {
   const spotifyHasTrack = spotify.status.connected && !!spotify.track;
   const immersiveHomeSpotifyChipActive =
     tab === "Home" &&
-    settings.hide_bottom_bar &&
+    helperBarMode !== "full" &&
     spotifyHasTrack &&
     (settings.cinematic_home || settings.home_mode === "immersive") &&
     !showSpotifyOverlay;
@@ -2886,8 +2929,7 @@ export default function App() {
     : (
       <SpotifyMiniBar
         spotify={spotify}
-        holdProgress={spotifyHoldProgress}
-        variant={settings.hide_bottom_bar ? "puck" : "bar"}
+        variant={helperBarMode === "full" ? "bar" : "puck"}
         onOpenPanel={() => setShowSpotifyOverlay(true)}
       />
     );
@@ -2895,7 +2937,6 @@ export default function App() {
     ? (
       <SpotifyMiniBar
         spotify={spotify}
-        holdProgress={spotifyHoldProgress}
         variant="heroChip"
         onOpenPanel={() => setShowSpotifyOverlay(true)}
       />
@@ -2905,7 +2946,7 @@ export default function App() {
   const topbarBg = settings.topbar_background ?? true;
   const bottombarBg = settings.bottombar_background ?? true;
   const headerHeightVal = !topbarBg ? 0 : (tab === "Home" ? 72 : 124);
-  const bottomBarHeightVal = (!bottombarBg || settings.hide_bottom_bar) ? 0 : 64;
+  const bottomBarHeightVal = (!bottombarBg || helperBarMode !== "full") ? 0 : 64;
   const fseHintText = t("fse.returnHint", {
     shortcut: fseReturnShortcutLabel(fseHintShortcut || fseReturnShortcut),
   });
@@ -3633,7 +3674,7 @@ export default function App() {
       )}
       </AppOverlays>
 
-      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || updateRelease || showSpotifyGuide || showSpotifyOverlay || showSteamQr || showXboxGuide || showCloudPicker || detailsApp) ? "none" : "auto" }}>
+      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || updateRelease || showSpotifyGuide || showSpotifyOverlay || showHelperTray || showControlsModal || showSteamQr || showXboxGuide || showCloudPicker || detailsApp) ? "none" : "auto" }}>
 
         {/* Topbar */}
         <AppHeader
@@ -3753,9 +3794,26 @@ export default function App() {
           spotifyMiniBar={immersiveHomeSpotifyChipActive ? null : spotifyMiniPlayer}
           spotifyConnected={spotify.status.connected}
           spotifyHasTrack={spotifyHasTrack}
-          spotifyHoldProgress={spotifyHoldProgress}
+          trayOpen={showHelperTray}
+          onToggleTray={() => setShowHelperTray(!showHelperTray)}
+          peekActive={helperPeekActive}
         />
       </div>
+
+      <HelperTray
+        open={showHelperTray}
+        mode={helperBarMode}
+        spotify={spotify}
+        repeatSpeed={settings.repeat_speed}
+        onClose={() => setShowHelperTray(false)}
+        onOpenPlaylists={() => { setShowHelperTray(false); setShowSpotifyOverlay(true); }}
+        onConnectSpotify={() => { setShowHelperTray(false); setShowSpotifyGuide(true); }}
+        onOpenSettings={() => { setShowHelperTray(false); switchTab("Settings"); }}
+        onOpenPower={() => { setShowHelperTray(false); setShowPowerModal(true); showPowerModalRef.current = true; }}
+        onRefreshLibrary={() => { setShowHelperTray(false); refreshLibrary(); }}
+        onOpenControls={() => { setShowHelperTray(false); setShowControlsModal(true); }}
+      />
+      {showControlsModal && <ControlsModal initialTab={tab} onClose={() => setShowControlsModal(false)} />}
 
       <AppOverlays>
       {contextMenu && (() => {

@@ -31,3 +31,18 @@ describe("Data settings navigation", () => {
     expect(getSectionNavigableItems(4, items, DEFAULT_SETTINGS).some((item) => item.key === "device_storage")).toBe(false);
   });
 });
+
+describe("Helper bar settings", () => {
+  it("offers all three display modes and only exposes track peeking in hidden mode", () => {
+    const t = (key: string) => key;
+    const items = buildSettingsItems(t as never, "default");
+    const mode = items.find((item) => item.key === "bottombar_mode");
+    expect(mode?.type).toBe("cycle");
+    if (mode?.type === "cycle") expect(mode.options).toEqual(["full", "minimal", "hidden"]);
+
+    const full = getSectionNavigableItems(0, items, { ...DEFAULT_SETTINGS, bottombar_mode: "full" }, undefined, 3);
+    const hidden = getSectionNavigableItems(0, items, { ...DEFAULT_SETTINGS, bottombar_mode: "hidden" }, undefined, 3);
+    expect(full.some((item) => item.key === "bottombar_peek_on_track")).toBe(false);
+    expect(hidden.some((item) => item.key === "bottombar_peek_on_track")).toBe(true);
+  });
+});

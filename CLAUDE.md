@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Post-launch RAM optimization integrated with current main:** Preserved the helper-bar backend while adding the tested WebView2 Low/Normal memory-target handoff. Native Ally validation measured 889.9 MB to 285.6 MB working set and 798.5 MB to 517.9 MB private memory; remaining gates are representative normal game exits, physical-controller return, and native helper-bar volume/brightness validation.
+- **Delivered — Helper tray frontend integrated with current main:** Preserved the tested WebView2 Low/Normal memory-target handoff while landing the prioritized helper tray, universal MENU access, A-gated controls, and Full/Minimal/Hidden modes. Remaining gates are representative normal game exits, physical-controller return, and native Ally/WebView2 validation of helper-bar controls, 1280x800 layout, and controller feel.
 
 ## Start-of-Task Workflow
 

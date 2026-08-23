@@ -144,6 +144,28 @@
       "generic": "{{message}}"
     }
   },
+  "helper": {
+    "trayTitle": "Helper",
+    "nothingPlaying": "Nothing playing",
+    "openSpotify": "Open Spotify",
+    "connectSpotify": "Connect Spotify",
+    "playlists": "Playlists",
+    "volume": "Volume",
+    "brightness": "Brightness",
+    "adjust": "Adjust",
+    "done": "Done",
+    "menuButtonHint": "MENU button",
+    "settings": "Settings",
+    "power": "Power",
+    "refreshLibrary": "Refresh library",
+    "controls": "Controls",
+    "closeTray": "Close tray",
+    "openTray": "Open helper tray"
+  },
+  "controls": {
+    "title": "Controls — {{tab}}",
+    "menuTapTray": "Helper tray"
+  },
   "steam": {
     "title": "Steam account",
     "connect": "Connect",
@@ -221,6 +243,11 @@
     },
     "immersiveHome": "Immersive Home",
     "hideBottomBar": "Hide Bottom Bar",
+    "bottombarMode": "Bottom Bar",
+    "bottombarModeFull": "Full",
+    "bottombarModeMinimal": "Minimal",
+    "bottombarModeHidden": "Hidden",
+    "bottombarPeekOnTrack": "Peek on Track Change",
     "navBumpersPos": "Bumper Badges (LB/RB)",
     "tabbarBadges": "Trigger Badges (LT/RT)",
     "tabbarTextTabs": "Text-Only Tabs",

@@ -103,6 +103,8 @@ export interface UseGamepadNavigationOptions {
   showSurfacePickerRef?: AnyRef<boolean>;
   showSpotifyGuideRef?: AnyRef<boolean>;
   showSpotifyOverlayRef?: AnyRef<boolean>;
+  showHelperTrayRef?: AnyRef<boolean>;
+  showControlsModalRef?: AnyRef<boolean>;
   showSteamQrRef?: AnyRef<boolean>;
   showXboxGuideRef?: AnyRef<boolean>;
   showCloudPickerRef?: AnyRef<boolean>;
@@ -116,6 +118,7 @@ export interface UseGamepadNavigationOptions {
   setShowSurfacePicker?: (value: boolean) => void;
   onOpenSpotifyGuide?: () => void;
   onOpenSpotifyOverlay?: () => void;
+  onOpenHelperTray?: () => void;
   onSpotifyDisconnect?: () => void;
   spotifyConnectedRef?: AnyRef<boolean>;
   onOpenSteamQr?: () => void;
@@ -261,12 +264,6 @@ export function useGamepadNavigation(
   const [heroActionIndex, setHeroActionIndex] = useState(0);
   const [launchingApp, setLaunchingApp] = useState<App | null>(null);
   const [windowFocused, setWindowFocused] = useState(true);
-  // 0..1 charge level while MENU (Start) is held to open the Spotify overlay.
-  // Drives the mini-player "gaining energy" micro-interaction.
-  const [spotifyHoldProgress, setSpotifyHoldProgress] = useState(0);
-  const spotifyHoldProgressRef = useRef(0);
-  const startHoldRef = useRef<{ since: number; fired: boolean } | null>(null);
-
   const tabRef = useRef(options.initialTab ?? "Home");
   const focusSectionRef = useRef("hero");
   const focusIndexRef = useRef(0);
@@ -354,6 +351,8 @@ export function useGamepadNavigation(
     showSurfacePickerRef = { current: false } as AnyRef<boolean>,
     showSpotifyGuideRef = { current: false } as AnyRef<boolean>,
     showSpotifyOverlayRef = { current: false } as AnyRef<boolean>,
+    showHelperTrayRef = { current: false } as AnyRef<boolean>,
+    showControlsModalRef = { current: false } as AnyRef<boolean>,
     showSteamQrRef = { current: false } as AnyRef<boolean>,
     showXboxGuideRef = { current: false } as AnyRef<boolean>,
     showCloudPickerRef = { current: false } as AnyRef<boolean>,
@@ -366,6 +365,7 @@ export function useGamepadNavigation(
     setShowSurfacePicker = noop as (value: boolean) => void,
     onOpenSpotifyGuide = noop,
     onOpenSpotifyOverlay = noop,
+    onOpenHelperTray = noop,
     onSpotifyDisconnect = noop,
     spotifyConnectedRef = { current: false } as AnyRef<boolean>,
     onOpenSteamQr = noop,
@@ -702,6 +702,8 @@ export function useGamepadNavigation(
     || !!showSurfacePickerRef?.current
     || !!showSpotifyGuideRef.current
     || !!showSpotifyOverlayRef.current
+    || !!showHelperTrayRef.current
+    || !!showControlsModalRef.current
     || !!showSteamQrRef.current
     || !!showXboxGuideRef.current
     || !!showCloudPickerRef.current
@@ -790,7 +792,7 @@ export function useGamepadNavigation(
       return;
     }
     // Modal intercepts all input via its own poll — main nav must not run
-    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current || updateReleaseRef?.current || showSpotifyGuideRef.current || showSpotifyOverlayRef.current || showSteamQrRef.current || showXboxGuideRef.current || showCloudPickerRef.current || detailsAppRef.current) return;
+    if (launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current || updateReleaseRef?.current || showSpotifyGuideRef.current || showSpotifyOverlayRef.current || showHelperTrayRef.current || showControlsModalRef.current || showSteamQrRef.current || showXboxGuideRef.current || showCloudPickerRef.current || detailsAppRef.current) return;
 
     // Art picker open — only Escape closes it (user interacts via touch/mouse)
     if (artPickerAppRef.current) {
@@ -1120,10 +1122,6 @@ export function useGamepadNavigation(
     // Start/Menu is intentionally reserved on Games for the future bottom-bar revamp.
     if (key === "Select" && (currentTab === "Games" || currentTab === "Apps")) {
       openLibraryActionsModal(); return;
-    }
-    if (key === "Select" && currentTab === "Home" && spotifyConnectedRef.current) {
-      onOpenSpotifyOverlay();
-      return;
     }
     if (key === "Start" && currentTab === "Games") {
       return;
@@ -1667,6 +1665,8 @@ export function useGamepadNavigation(
             && !updateReleaseRef?.current
             && !showSpotifyGuideRef.current
             && !showSpotifyOverlayRef.current
+            && !showHelperTrayRef.current
+            && !showControlsModalRef.current
             && !showSteamQrRef.current
             && !showXboxGuideRef.current
             && !showCloudPickerRef.current
@@ -1676,40 +1676,12 @@ export function useGamepadNavigation(
             // B edge closes the picker while the keyboard is consuming it.
             && !artPickerAppRef?.current;
 
-          // MENU (Start) gains a hold gesture when Spotify is connected:
-          // hold to charge up and open the Spotify overlay (any tab); a tap
-          // still performs the regular Start action, dispatched on release.
-          if (key === "Start" && spotifyConnectedRef.current) {
-            const SPOTIFY_HOLD_MS = 850;
-            const setHoldProgress = (value: number) => {
-              if (spotifyHoldProgressRef.current === value) return;
-              spotifyHoldProgressRef.current = value;
-              setSpotifyHoldProgress(value);
-            };
-            if (pressed && !wasPressed) {
-              startHoldRef.current = canNavigate ? { since: now, fired: false } : null;
-            } else if (pressed && wasPressed && startHoldRef.current && !startHoldRef.current.fired) {
-              if (!canNavigate) {
-                // A modal opened mid-hold; abandon the gesture.
-                startHoldRef.current = null;
-                setHoldProgress(0);
-              } else {
-                const progress = Math.min(1, (now - startHoldRef.current.since) / SPOTIFY_HOLD_MS);
-                setHoldProgress(progress);
-                if (progress >= 1) {
-                  startHoldRef.current.fired = true;
-                  setHoldProgress(0);
-                  suppressUntilRelease.current[key] = true;
-                  playSoundAlt();
-                  onOpenSpotifyOverlay();
-                }
-              }
-            } else if (!pressed && wasPressed) {
-              const hold = startHoldRef.current;
-              startHoldRef.current = null;
-              setHoldProgress(0);
-              // Released before the charge completed: run the normal tap action.
-              if (hold && !hold.fired && canNavigate) handleNavRef?.current?.(key);
+          // MENU opens the helper tray on its initial edge in every bar mode.
+          if (key === "Start") {
+            if (pressed && !wasPressed && canNavigate) {
+              suppressUntilRelease.current[key] = true;
+              playSoundAlt();
+              onOpenHelperTray();
             }
             lastBtn.current[key] = pressed;
             return;
@@ -1927,7 +1899,6 @@ export function useGamepadNavigation(
     launchingApp,
     launchingAppRef,
     windowFocused,
-    spotifyHoldProgress,
     heroVideoRefs,
     setTab,
     setFocusSection,

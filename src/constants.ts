@@ -159,7 +159,7 @@ export function fseReturnShortcutLabel(shortcut?: string | null): string {
 }
 
 export const DEFAULT_SETTINGS = {
-  accent: "ember", theme: "space", stars_enabled: true, ui_motion: true, lofi_music_enabled: true, sfx_enabled: true, wide_layout: false, wide_topbar: false, wide_bottombar: false, wide_games: false, wide_apps: false, wide_settings: false, topbar_background: true, bottombar_background: true, hide_bottom_bar: false,
+  accent: "ember", theme: "space", stars_enabled: true, ui_motion: true, lofi_music_enabled: true, sfx_enabled: true, wide_layout: false, wide_topbar: false, wide_bottombar: false, wide_games: false, wide_apps: false, wide_settings: false, topbar_background: true, bottombar_background: true, hide_bottom_bar: false, bottombar_mode: "full", bottombar_peek_on_track: true,
   default_tab: "Home", scan_steam: true, scan_xbox: true,
   scan_uwp: true, scan_desktop: true, scan_battlenet: true, scan_gog: true, scan_epic: true, fetch_store_metadata: true, show_uninstalled_games: false, steam_owned_library_seen: false, repeat_speed: "normal",
   launch_at_startup: false, animated_heroes: "animated", update_channel: "stable", auto_update_check: true, ui_scale: 1.0,
