@@ -2197,6 +2197,7 @@ dependencies = [
  "tauri-plugin-autostart",
  "tauri-plugin-opener",
  "urlencoding",
+ "webview2-com",
  "windows",
 ]
 

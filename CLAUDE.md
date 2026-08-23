@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Helper bar backend:** Added Core Audio volume and WMI brightness commands plus backward-compatible helper-bar settings fields. Remaining work is the dependent frontend tray, display modes, migration, and controller surfaces; native volume/brightness still require Ally validation.
+- **Delivered — Post-launch RAM optimization integrated with current main:** Preserved the helper-bar backend while adding the tested WebView2 Low/Normal memory-target handoff. Native Ally validation measured 889.9 MB to 285.6 MB working set and 798.5 MB to 517.9 MB private memory; remaining gates are representative normal game exits, physical-controller return, and native helper-bar volume/brightness validation.
 
 ## Start-of-Task Workflow
 
