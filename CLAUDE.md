@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Post-launch RAM target:** Audited backend retention and added an ordered WebView2 Low memory target after game handoff, with Normal restored before every visible return and compatibility fallback on older runtimes. Remaining gate: fresh baseline/patched Ally measurements after 120 seconds with a per-process breakdown and at least a 40 MB signal, plus repeated exit/summon repaint validation.
+- **Delivered — Native post-launch RAM validation:** On a ROG Xbox Ally X at 1920×1080, a fresh PEAK/Steam run reduced LiftOff's settled process-tree working set from 889.9 MB to 285.6 MB and private memory from 798.5 MB to 517.9 MB; three patched exit cycles returned visible, focused, and painting. Remaining gate: normal in-game exits for Steam and Microsoft package games plus physical-controller validation.
 
 ## Start-of-Task Workflow
 
