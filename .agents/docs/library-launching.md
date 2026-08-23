@@ -19,6 +19,7 @@ Read for scanner/source changes, library refresh, install state, launch routing,
 - Indirect apps and browser Cloud launches cannot always expose a distinct child/window; keep their bounded fast-success behavior separate from direct game window detection.
 - Running-state, Resume, Close, and return-to-LiftOff behavior depend on process/window/AUMID evidence, not title text alone.
 - FSE and foreground changes require hands-on validation. Do not replace the live no-hide GPU suspend/resume path with legacy hide/show fallback code without device evidence.
+- The no-hide game handoff pairs WebView2 inactivity with its Low memory-usage target and restores the Normal target before every visible resume. Keep the memory and visibility transitions ordered and preserve the best-effort fallback for WebView2 runtimes older than the v19 interface.
 
 ## Current Source Anchors
 

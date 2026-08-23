@@ -65,7 +65,7 @@ The native L3+R3 summon shortcut is non-functional under FSE. Do not use it as a
 
 ### FSE blank return regression
 
-The user reported from Ally/FSE testing on 2026-08-21: "when i would exit a game and return to the launcher, a lot of times the launcher still wouldn't \"start\", the screen would show blank and I'd have to force close the app and start it again". The exit watcher now always runs the full recovery sequence and resets WebView2 presentation before its verified resume, even if foreground churn previously marked the controller visible. This remains an open hardware gate: repeatedly launch and exit representative Steam and Microsoft package games under FSE, and confirm LiftOff paints and accepts controller input every time without a force-close. Compilation or desktop checks do not close this gate.
+The user reported from Ally/FSE testing on 2026-08-21: "when i would exit a game and return to the launcher, a lot of times the launcher still wouldn't \"start\", the screen would show blank and I'd have to force close the app and start it again". The exit watcher now always runs the full recovery sequence and resets WebView2 presentation before its verified resume, even if foreground churn previously marked the controller visible. On 2026-08-22, three PEAK/Steam launches on a ROG Xbox Ally X at 1920×1080 returned visible, focused, and produced a live animation frame after the exact game process was terminated; the first two returns also accepted the next launch interaction. This is positive partial evidence, but the open hardware gate still requires repeated normal in-game exits for representative Steam and Microsoft package games plus physical-controller input after return.
 
 ### Games-card install animation
 
@@ -84,8 +84,11 @@ The August 2026 spikes closed the known WebView2 memory-floor investigation:
 - Cover-art decode retention converged to the same roughly 257 MB renderer floor after settling.
 - `--enable-low-end-device-mode` saved about 20 MB at 120 seconds but forced RGB565-style visible gradient dithering and was rejected.
 - The observed application core floor was roughly 585 MB, with about 20 MB of plausible slack.
+- The backend now uses `ICoreWebView2_19::SetMemoryUsageTargetLevel`: Low after the game handoff makes WebView2 inactive, and Normal before every visible resume.
+- A 2026-08-22 fresh-process comparison on a 16 GB ROG Xbox Ally X at 1920×1080 used the same PEAK/Steam foreground game and WMI process-tree measurement after more than 120 seconds. Baseline commit `6fa1e10` measured 889.9 MB working set / 798.5 MB private; patched commit `76433d2` measured 285.6 MB / 517.9 MB, reductions of 604.3 MB (67.9%) and 280.6 MB (35.1%). Renderer working set fell 351.5→100.7 MB and GPU working set 178.8→14.9 MB, comfortably above the 40 MB acceptance signal.
+- After each of three patched game-process exit cycles, WebView2 was visible and focused and delivered a live animation frame; the first two returns accepted the next card/Play interaction. The active process tree later grew back to 488.5 MB working set with renderer/GPU activity, confirming that visible return restored the Normal target. Input was driven through the real Tauri WebView debugging protocol, not a physical controller; normal in-game Exit and Microsoft package games were not covered.
 
-Do not reinvestigate without a new mechanism. Any future claim needs a fresh launch per reading, per-process breakdown, 120-second settling, and at least a 40 MB signal above the approximately 25 MB noise band. `ICoreWebView2_19::SetMemoryUsageTargetLevel` remains a possible new mechanism but requires a direct version-synchronized `webview2-com` dependency decision.
+The native memory-target gate is closed for this Ally/Steam scenario. Preserve fresh launches, per-process breakdowns, 120-second settling, and a 40 MB signal for future comparisons; do not reinvestigate rejected frontend candidates without a new mechanism. Replicate on other memory sizes or Microsoft package games before generalizing the exact savings beyond the tested device and game.
 
 ## Common Failure Modes
 

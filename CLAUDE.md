@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Helper tray priority order:** Reordered the tray and focus graph to shortcuts first, Volume/Brightness second, and Spotify last, with Settings as the initial controller focus. Remaining gate: physical Ally/WebView2 validation of 1280x800 layout and controller feel.
+- **Delivered — Helper tray frontend integrated with current main:** Preserved the tested WebView2 Low/Normal memory-target handoff while landing the prioritized helper tray, universal MENU access, A-gated controls, and Full/Minimal/Hidden modes. Remaining gates are representative normal game exits, physical-controller return, and native Ally/WebView2 validation of helper-bar controls, 1280x800 layout, and controller feel.
 
 ## Start-of-Task Workflow
 

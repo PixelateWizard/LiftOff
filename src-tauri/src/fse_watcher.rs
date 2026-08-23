@@ -5,7 +5,12 @@ use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
 
 #[cfg(windows)]
-use windows::core::BOOL;
+use webview2_com::Microsoft::Web::WebView2::Win32::{
+    ICoreWebView2_19, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL,
+    COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW, COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
+};
+#[cfg(windows)]
+use windows::core::{Interface, BOOL};
 #[cfg(windows)]
 use windows::Win32::Foundation::{HWND, RECT};
 #[cfg(windows)]
@@ -77,6 +82,43 @@ const XINPUT_LEFT_SHOULDER: u16 = 0x0100;
 #[allow(dead_code)]
 const XINPUT_RIGHT_SHOULDER: u16 = 0x0200;
 const MAIN_WINDOW_LABEL: &str = "main";
+
+#[cfg(any(windows, test))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum WebviewMemoryTarget {
+    Normal,
+    Low,
+}
+
+#[cfg(any(windows, test))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum WebviewTransition {
+    SetVisible(bool),
+    SetMemoryTarget(WebviewMemoryTarget),
+}
+
+#[cfg(any(windows, test))]
+fn webview_transition(visible: bool) -> [WebviewTransition; 2] {
+    if visible {
+        [
+            WebviewTransition::SetMemoryTarget(WebviewMemoryTarget::Normal),
+            WebviewTransition::SetVisible(true),
+        ]
+    } else {
+        [
+            WebviewTransition::SetVisible(false),
+            WebviewTransition::SetMemoryTarget(WebviewMemoryTarget::Low),
+        ]
+    }
+}
+
+#[cfg(windows)]
+fn webview2_memory_target(target: WebviewMemoryTarget) -> COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL {
+    match target {
+        WebviewMemoryTarget::Normal => COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_NORMAL,
+        WebviewMemoryTarget::Low => COREWEBVIEW2_MEMORY_USAGE_TARGET_LEVEL_LOW,
+    }
+}
 
 #[derive(Default)]
 pub struct FseWatch {
@@ -374,7 +416,7 @@ fn summon_combo_triggered(hold_start: &mut Option<Instant>, shortcut: &str) -> b
 }
 
 #[cfg(windows)]
-fn set_webview_visible(app: &AppHandle, visible: bool) -> bool {
+fn set_webview_presentation_visible(app: &AppHandle, visible: bool) -> bool {
     let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
         return false;
     };
@@ -382,6 +424,38 @@ fn set_webview_visible(app: &AppHandle, visible: bool) -> bool {
     window
         .with_webview(move |webview| unsafe {
             let _ = webview.controller().SetIsVisible(visible);
+        })
+        .is_ok()
+}
+
+#[cfg(windows)]
+fn set_webview_visible(app: &AppHandle, visible: bool) -> bool {
+    let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
+        return false;
+    };
+
+    window
+        .with_webview(move |webview| unsafe {
+            let controller = webview.controller();
+            for transition in webview_transition(visible) {
+                match transition {
+                    WebviewTransition::SetVisible(next_visible) => {
+                        let _ = controller.SetIsVisible(next_visible);
+                    }
+                    WebviewTransition::SetMemoryTarget(target) => {
+                        // WebView2 Runtime 114+ can proactively discard renderer
+                        // resources while LiftOff is inactive. Older runtimes do
+                        // not expose ICoreWebView2_19, so visibility still changes
+                        // even when this best-effort memory hint is unavailable.
+                        if let Ok(core) = controller.CoreWebView2() {
+                            if let Ok(core_19) = core.cast::<ICoreWebView2_19>() {
+                                let _ = core_19
+                                    .SetMemoryUsageTargetLevel(webview2_memory_target(target));
+                            }
+                        }
+                    }
+                }
+            }
         })
         .is_ok()
 }
@@ -444,7 +518,10 @@ fn resume_webview_verified(app: &AppHandle) -> bool {
 
 #[cfg(windows)]
 fn reset_webview_presentation(app: &AppHandle) -> bool {
-    let _ = set_webview_visible(app, false);
+    // This short exit-time bounce repairs stale composition state; it is not a
+    // new background session, so preserve the current memory target until the
+    // verified resume restores Normal.
+    let _ = set_webview_presentation_visible(app, false);
     std::thread::sleep(Duration::from_millis(PRESENTATION_RESET_SLEEP_MS));
     resume_webview_verified(app)
 }
@@ -896,6 +973,8 @@ pub fn prefer_game_window(app: &AppHandle, game_hwnd: isize) -> bool {
 #[tauri::command]
 pub fn show_liftoff(app: AppHandle) {
     app.state::<FseWatch>().cancel();
+    #[cfg(windows)]
+    let _ = resume_webview_verified(&app);
     if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
         restore_liftoff_window(&window, 0);
     }
@@ -923,5 +1002,32 @@ pub fn force_webview_resume(app: AppHandle) {
     #[cfg(not(windows))]
     {
         let _ = app;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{webview_transition, WebviewMemoryTarget, WebviewTransition};
+
+    #[test]
+    fn background_transition_hides_before_requesting_low_memory() {
+        assert_eq!(
+            webview_transition(false),
+            [
+                WebviewTransition::SetVisible(false),
+                WebviewTransition::SetMemoryTarget(WebviewMemoryTarget::Low),
+            ]
+        );
+    }
+
+    #[test]
+    fn foreground_transition_restores_normal_memory_before_showing() {
+        assert_eq!(
+            webview_transition(true),
+            [
+                WebviewTransition::SetMemoryTarget(WebviewMemoryTarget::Normal),
+                WebviewTransition::SetVisible(true),
+            ]
+        );
     }
 }
