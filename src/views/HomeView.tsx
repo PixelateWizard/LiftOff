@@ -99,7 +99,8 @@ export function HomeView(props: HomeViewProps) {
   const [heroVideoPlaying, setHeroVideoPlaying] = useState<Record<string, boolean>>({});
   const semiSlotRef = useRef<HTMLDivElement>(null);
   const HOME_BOTTOM_CLEARANCE = 20;
-  const BOTTOM_BAR_H = settings.hide_bottom_bar ? 0 : 48;
+  const helperBarMode = settings.bottombar_mode || (settings.hide_bottom_bar ? "minimal" : "full");
+  const BOTTOM_BAR_H = helperBarMode === "full" ? 48 : 0;
   const semiHomeBase = Math.round(110 * (settings.home_cover_scale ?? 1.0));
   const CARD_H = Math.round(semiHomeBase * 1.5);
   const SLOT_FOCUS_BLEED = Math.max(18, Math.ceil(CARD_H * 0.04));
@@ -479,11 +480,11 @@ export function HomeView(props: HomeViewProps) {
           : "inset 0 1px 0 rgba(255,255,255,0.78), inset 0 -1px 0 rgba(0,0,0,0.08)",
       };
     };
-    const cinematicBottomLaneFree = settings.cinematic_home && settings.hide_bottom_bar && !settings.show_home_collections;
+    const cinematicBottomLaneFree = settings.cinematic_home && helperBarMode !== "full" && !settings.show_home_collections;
     const cinematicPinnedVisible = (settings.home_pinned_pos ?? "bottom") !== "none" && homePinnedApps.length > 0;
     const cinematicPinnedAtBottom = cinematicBottomLaneFree && cinematicPinnedVisible && !pinnedAtTop;
     const cinematicHeroAtBottom = cinematicBottomLaneFree && !cinematicPinnedVisible;
-    const cinematicHeroNearChevron = settings.cinematic_home && settings.hide_bottom_bar && settings.show_home_collections && !cinematicPinnedVisible;
+    const cinematicHeroNearChevron = settings.cinematic_home && helperBarMode !== "full" && settings.show_home_collections && !cinematicPinnedVisible;
     const cinematicHeroBottom = cinematicHeroAtBottom ? 24 : cinematicPinnedAtBottom ? 88 : cinematicHeroNearChevron ? 72 : 122;
     const showSpotifyHeroChip = !!spotifyHeroChip;
     const activeApp = (() => {

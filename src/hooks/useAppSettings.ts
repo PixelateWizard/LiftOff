@@ -53,6 +53,13 @@ export function useAppSettings({
       autoScaleRef.current = auto;
       // ui_scale is null when never saved; substitute the auto-detected value.
       const updated = { ...settingsRef.current, ...s, ui_scale: s.ui_scale ?? auto };
+      let needsSave = false;
+      // One-time migration from the legacy boolean. Minimal preserves the
+      // floating now-playing affordance that hide-bar users already saw.
+      if (!s.bottombar_mode) {
+        updated.bottombar_mode = s.hide_bottom_bar ? "minimal" : "full";
+        needsSave = true;
+      }
       if (updated.surface_style === "pixel") updated.surface_style = "win9x";
       // Migrate: if wide_layout was true but sub-settings were never saved, enable content/bottom areas.
       if (updated.wide_layout && !updated.wide_topbar && !updated.wide_games && !updated.wide_apps && !updated.wide_settings && !updated.wide_bottombar) {
@@ -64,17 +71,22 @@ export function useAppSettings({
       const migratedHomePinnedPosition = updated.home_mode === "semi" && updated.home_pinned_pos === "bottom";
       if (migratedHomePinnedPosition) updated.home_pinned_pos = "top";
       setSettings(updated);
-      if (s.surface_style === "pixel" || migratedHomePinnedPosition) invoke("save_settings", { settings: updated }).catch(console.error);
+      if (s.surface_style === "pixel" || migratedHomePinnedPosition || needsSave) invoke("save_settings", { settings: updated }).catch(console.error);
       applyDefaultTab(s.default_tab);
       if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
     }).catch(() => {
       invoke<Partial<Settings>>("get_settings").then(s => {
         const merged = { ...settingsRef.current, ...s };
+        let needsSave = false;
+        if (!s.bottombar_mode) {
+          merged.bottombar_mode = s.hide_bottom_bar ? "minimal" : "full";
+          needsSave = true;
+        }
         if (merged.surface_style === "pixel") merged.surface_style = "win9x";
         const migratedHomePinnedPosition = merged.home_mode === "semi" && merged.home_pinned_pos === "bottom";
         if (migratedHomePinnedPosition) merged.home_pinned_pos = "top";
         setSettings(merged);
-        if (s.surface_style === "pixel" || migratedHomePinnedPosition) invoke("save_settings", { settings: merged }).catch(console.error);
+        if (s.surface_style === "pixel" || migratedHomePinnedPosition || needsSave) invoke("save_settings", { settings: merged }).catch(console.error);
         applyDefaultTab(s.default_tab);
         if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
       });

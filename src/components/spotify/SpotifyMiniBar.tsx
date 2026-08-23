@@ -1,4 +1,3 @@
-import { IoMenu } from "react-icons/io5";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "../../contexts/ThemeContext";
 import type { SpotifyController } from "../../hooks/useSpotify";
@@ -7,8 +6,6 @@ import type { SpotifyWebPlayerState } from "../../hooks/useSpotifyWebPlayer";
 interface SpotifyMiniBarProps {
   spotify: SpotifyController;
   webPlayer?: SpotifyWebPlayerState;
-  /** 0..1 charge level while MENU is held to open the Spotify overlay. */
-  holdProgress?: number;
   variant?: SpotifyMiniBarVariant;
   onOpenPanel: () => void;
 }
@@ -24,10 +21,9 @@ const formatTime = (ms: number) => {
 
 // The mini-bar is display-only: gamepad navigation cannot reach inline
 // transport buttons here, so the whole bar is a single click target that
-// opens the Spotify overlay where all controls live. Holding MENU on a
-// gamepad charges the bar up (filling ring + glow) and opens the overlay too;
-// the MENU badge stays visible as a hint for that gesture.
-export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant = "bar", onOpenPanel }: SpotifyMiniBarProps) {
+// opens the Spotify overlay where playlist browsing lives. Controller hints
+// live on the helper bar rather than on the Spotify surface.
+export function SpotifyMiniBar({ spotify, webPlayer, variant = "bar", onOpenPanel }: SpotifyMiniBarProps) {
   const { t } = useTranslation();
   const { accent, theme, isDark, surfaceStyle, surface, resolvedTheme } = useTheme();
   const track = webPlayer?.track ?? spotify.track;
@@ -36,52 +32,6 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
   const pct = track.durationMs > 0 ? Math.min(100, (track.progressMs / track.durationMs) * 100) : 0;
   const isCyberpunk = resolvedTheme === "cyberpunk";
   const squared = surfaceStyle === "win9x" || surfaceStyle === "cyberpunk" || isCyberpunk;
-  const charge = Math.max(0, Math.min(1, holdProgress));
-  const renderMenuBadge = (size = 30, iconSize = 14, strokeWidth = 2) => {
-    const ringR = (size / 2) - 2.5;
-    const ringC = 2 * Math.PI * ringR;
-
-    return (
-      <div aria-hidden="true" style={{ position: "relative", width: size, height: size, pointerEvents: "none" }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ position: "absolute", inset: 0, display: "block" }}>
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={ringR}
-          fill={charge > 0 ? (isDark ? "rgba(8,8,10,0.62)" : "rgba(255,255,255,0.78)") : "transparent"}
-          stroke={isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.13)"}
-          strokeWidth={strokeWidth}
-        />
-        {charge > 0 && (
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={ringR}
-            fill="none"
-            stroke={accent.primary}
-            strokeWidth={strokeWidth + 0.5}
-            strokeLinecap="round"
-            strokeDasharray={ringC}
-            strokeDashoffset={(1 - charge) * ringC}
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-          />
-        )}
-      </svg>
-      <IoMenu
-        size={iconSize}
-        style={{
-          position: "absolute",
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%, -50%)",
-          color: charge > 0 ? theme.text : theme.textDim,
-        }}
-      />
-    </div>
-    );
-  };
-  const menuBadge = renderMenuBadge();
-
   if (variant === "puck") {
     const ringTrack = isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.14)";
     const progressDeg = Math.max(0, Math.min(360, pct * 3.6));
@@ -103,16 +53,13 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
           borderRadius: radius,
           cursor: "pointer",
           background: `conic-gradient(${accent.primary} ${progressDeg}deg, ${ringTrack} 0deg)`,
-          boxShadow: charge > 0
-            ? `0 0 ${Math.round(10 + 22 * charge)}px ${accent.glow}${(0.22 + 0.38 * charge).toFixed(2)})`
-            : surfaceStyle === "material"
-              ? "var(--material-shadow-medium)"
-              : "0 8px 24px rgba(0,0,0,0.34)",
+          boxShadow: surfaceStyle === "material"
+            ? "var(--material-shadow-medium)"
+            : "0 8px 24px rgba(0,0,0,0.34)",
           color: theme.text,
           font: "inherit",
           pointerEvents: "auto",
-          transition: "box-shadow 0.16s ease, transform 0.16s ease",
-          transform: charge > 0 ? "scale(1.04)" : "scale(1)",
+          transition: "box-shadow 0.16s ease",
         }}
       >
         <div
@@ -146,25 +93,6 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
             />
           )}
         </div>
-
-        <div
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            right: -3,
-            bottom: -3,
-            width: 24,
-            height: 24,
-            borderRadius: squared ? 0 : 999,
-            display: "grid",
-            placeItems: "center",
-            background: isDark ? "rgba(10,10,12,0.86)" : "rgba(255,255,255,0.92)",
-            border: `1px solid ${charge > 0 ? accent.primary : isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.14)"}`,
-            boxShadow: charge > 0 ? `0 0 12px ${accent.glow}0.45)` : "0 3px 10px rgba(0,0,0,0.28)",
-          }}
-        >
-          <IoMenu size={13} color={charge > 0 ? accent.primary : theme.textDim} />
-        </div>
       </button>
     );
   }
@@ -184,16 +112,14 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
           width: "min(360px, 100%)",
           minHeight: 46,
           display: "grid",
-          gridTemplateColumns: "36px minmax(0, 1fr) 26px",
+          gridTemplateColumns: "36px minmax(0, 1fr)",
           alignItems: "center",
           gap: 8,
           padding: "6px 8px",
           borderRadius: chipRadius,
           clipPath: chipClip,
           WebkitClipPath: chipClip,
-          border: `1px solid ${charge > 0
-            ? accent.primary
-            : isCyberpunk
+          border: `1px solid ${isCyberpunk
               ? `${accent.glow}0.58)`
             : surfaceStyle === "material"
               ? "var(--material-border-subtle)"
@@ -215,9 +141,7 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
                   : "rgba(255,255,255,0.52)",
           backdropFilter: surfaceStyle === "material" || surfaceStyle === "win9x" ? undefined : isCyberpunk ? "blur(10px) saturate(150%)" : "blur(14px) saturate(140%)",
           WebkitBackdropFilter: surfaceStyle === "material" || surfaceStyle === "win9x" ? undefined : isCyberpunk ? "blur(10px) saturate(150%)" : "blur(14px) saturate(140%)",
-          boxShadow: charge > 0
-            ? `0 0 18px ${accent.glow}0.35)`
-            : isCyberpunk
+          boxShadow: isCyberpunk
               ? `inset 0 0 0 1px ${accent.glow}0.20), 0 8px 22px rgba(0,0,0,0.38), 0 0 16px ${accent.glow}0.12)`
             : surfaceStyle === "material"
               ? "var(--material-shadow-low)"
@@ -229,8 +153,7 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
           color: "inherit",
           cursor: "pointer",
           pointerEvents: "auto",
-          transition: "border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease",
-          transform: charge > 0 ? "scale(1.015)" : "scale(1)",
+          transition: "border-color 0.16s ease, box-shadow 0.16s ease",
         }}
       >
         {track.image ? (
@@ -257,25 +180,6 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
             <div style={{ height: "100%", width: `${pct}%`, background: accent.primary }} />
           </div>
         </div>
-        {/* MENU hold hint. The chip is display-only; controls live in SpotifyOverlay. */}
-        {isCyberpunk ? (
-          <div
-            aria-hidden="true"
-            style={{
-              width: 26,
-              height: 26,
-              display: "grid",
-              placeItems: "center",
-              background: charge > 0 ? `${accent.glow}0.22)` : "rgba(0,0,0,0.24)",
-              border: `1px solid ${charge > 0 ? accent.primary : `${accent.glow}0.45)`}`,
-              boxShadow: charge > 0 ? `0 0 12px ${accent.glow}0.42)` : `inset 0 0 8px ${accent.glow}0.08)`,
-              clipPath: "polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%)",
-              WebkitClipPath: "polygon(0 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%)",
-            }}
-          >
-            <IoMenu size={12} color={charge > 0 ? accent.primary : theme.textDim} />
-          </div>
-        ) : renderMenuBadge(26, 12, 1.8)}
       </button>
     );
   }
@@ -293,7 +197,7 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
         maxWidth: "100%",
         flex: "0 0 auto",
         display: "grid",
-        gridTemplateColumns: "46px minmax(0, 1fr) 30px",
+        gridTemplateColumns: "46px minmax(0, 1fr)",
         alignItems: "center",
         gap: 10,
         padding: "0 2px",
@@ -320,8 +224,6 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
           <span style={{ fontSize: 10, color: theme.textFaint }}>{formatTime(track.progressMs)}</span>
         </div>
       </div>
-      {/* MENU hold hint: always visible; the ring fills while MENU is held. */}
-      {menuBadge}
     </button>
   );
 }

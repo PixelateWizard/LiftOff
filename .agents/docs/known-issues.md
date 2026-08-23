@@ -23,6 +23,10 @@ Read before bug triage, FSE/controller work, Microsoft Store uninstall changes, 
 
 ## Open Gates and Warnings
 
+### Helper bar native controls and controller surfaces
+
+Compilation, unit tests, and mocked-browser smoke coverage establish the command contracts, settings migration, tray composition, and app-poll gating, but Ally/WebView2 validation remains required. Confirm on the ROG Ally that Core Audio reads and changes the active render endpoint without flyout spam; raising volume unmutes; WMI brightness appears, changes the internal panel on AC and battery, and stays hidden on external-monitor-only systems; Full/Minimal/Hidden layouts paint correctly at 1280x800 across representative Glass/Material/win9x surfaces; the shortcut/system-control/Spotify priority order remains legible, sufficiently opaque over bright game art, and stable as focus moves; hidden hover and track-change peeks time out correctly; Spotify transport/seek and playlist entry points behave for Premium, Free, disconnected, and no-track states; single-press MENU tray access in every bar mode, A-gated scrubber/system-control adjustment, adjacent-control navigation, D-pad repeat, B close, Controls LB/RB, and tray-to-Power/modal transitions never leak an activation underneath.
+
 ### Power-menu device controls
 
 Frontend and Rust compilation cover the command registration, modal contract, and locale wiring, but the device actions were intentionally not invoked while the development workstation was in use. Before calling the feature device-validated, confirm on an appropriate Windows handheld that Restart PC schedules a reboot, Shut Down PC powers off through the hybrid path or full-shutdown fallback, confirmation paints above the power panel, and canceling with B returns to the four-row menu without closing it or re-firing an action. Do not exercise these destructive commands on an in-use workstation.
