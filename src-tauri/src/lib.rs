@@ -245,6 +245,13 @@ pub struct Settings {
     pub show_immersive_hero_art: bool,
     #[serde(default)]
     pub hide_bottom_bar: bool,
+    // Helper bar display mode: "full" | "minimal" | "hidden".
+    // Empty means the legacy hide_bottom_bar value has not been migrated yet.
+    #[serde(default)]
+    pub bottombar_mode: String,
+    // In hidden mode, briefly peek the pill when the Spotify track changes.
+    #[serde(default = "default_true")]
+    pub bottombar_peek_on_track: bool,
     #[serde(default = "default_true")]
     pub topbar_background: bool,
     #[serde(default = "default_true")]
@@ -436,6 +443,8 @@ impl Default for Settings {
             show_immersive_hero_art: true,
             onyx_top_light: true,
             hide_bottom_bar: false,
+            bottombar_mode: String::new(),
+            bottombar_peek_on_track: true,
             topbar_background: true,
             bottombar_background: true,
             home_cover_scale: 1.0,
@@ -474,6 +483,30 @@ impl Default for Settings {
             surface_style: "clear".to_string(),
             hide_on_launch: true,
         }
+    }
+}
+
+#[cfg(test)]
+mod settings_compat_tests {
+    use super::Settings;
+
+    #[test]
+    fn legacy_bottom_bar_setting_keeps_wire_value_and_defaults_helper_fields() {
+        let mut value = serde_json::to_value(Settings::default()).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.insert("hide_bottom_bar".to_string(), serde_json::json!(true));
+        object.remove("bottombar_mode");
+        object.remove("bottombar_peek_on_track");
+
+        let loaded: Settings = serde_json::from_value(value).unwrap();
+        assert!(loaded.hide_bottom_bar);
+        assert_eq!(loaded.bottombar_mode, "");
+        assert!(loaded.bottombar_peek_on_track);
+
+        let saved = serde_json::to_value(loaded).unwrap();
+        assert_eq!(saved["hide_bottom_bar"], true);
+        assert_eq!(saved["bottombar_mode"], "");
+        assert_eq!(saved["bottombar_peek_on_track"], true);
     }
 }
 
@@ -5222,6 +5255,151 @@ fn get_battery() -> BatteryInfo {
     }
 }
 
+// ── System volume (Core Audio) ───────────────────────────────────────────────
+// Reads and writes the default render endpoint on a blocking thread so slider
+// updates never initialize COM or touch Core Audio on the main thread.
+
+#[derive(Serialize, Clone)]
+pub struct SystemVolume {
+    pub percent: u32,
+    pub muted: bool,
+}
+
+#[cfg(windows)]
+fn with_endpoint_volume<T>(
+    f: impl FnOnce(
+        &windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume,
+    ) -> windows::core::Result<T>,
+) -> Result<T, String> {
+    use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
+    use windows::Win32::Media::Audio::{eConsole, eRender, IMMDeviceEnumerator, MMDeviceEnumerator};
+    use windows::Win32::System::Com::{
+        CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_ALL, COINIT_APARTMENTTHREADED,
+    };
+
+    unsafe {
+        let com = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+        let result = (|| -> Result<T, String> {
+            let enumerator: IMMDeviceEnumerator =
+                CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
+                    .map_err(|e| e.to_string())?;
+            let device = enumerator
+                .GetDefaultAudioEndpoint(eRender, eConsole)
+                .map_err(|e| e.to_string())?;
+            let volume: IAudioEndpointVolume = device
+                .Activate(CLSCTX_ALL, None)
+                .map_err(|e| e.to_string())?;
+            f(&volume).map_err(|e| e.to_string())
+        })();
+        if com.is_ok() {
+            CoUninitialize();
+        }
+        result
+    }
+}
+
+#[tauri::command]
+async fn get_system_volume() -> Result<SystemVolume, String> {
+    #[cfg(windows)]
+    {
+        tauri::async_runtime::spawn_blocking(|| {
+            with_endpoint_volume(|volume| unsafe {
+                let scalar = volume.GetMasterVolumeLevelScalar()?;
+                let muted = volume.GetMute()?.as_bool();
+                Ok(SystemVolume {
+                    percent: (scalar * 100.0).round().clamp(0.0, 100.0) as u32,
+                    muted,
+                })
+            })
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    }
+    #[cfg(not(windows))]
+    Err("unsupported platform".to_string())
+}
+
+#[tauri::command]
+async fn set_system_volume(percent: u32) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let scalar = (percent.min(100) as f32) / 100.0;
+        tauri::async_runtime::spawn_blocking(move || {
+            with_endpoint_volume(|volume| unsafe {
+                if scalar > 0.0 && volume.GetMute()?.as_bool() {
+                    volume.SetMute(false, std::ptr::null())?;
+                }
+                volume.SetMasterVolumeLevelScalar(scalar, std::ptr::null())
+            })
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    }
+    #[cfg(not(windows))]
+    Err("unsupported platform".to_string())
+}
+
+// ── Display brightness (WMI via hidden PowerShell) ────────────────────────────────
+// Internal panels only. A missing WMI instance is an unsupported result rather
+// than an error so the frontend can omit brightness controls on desktops.
+
+#[cfg(windows)]
+fn run_hidden_powershell(script: &str) -> Result<String, String> {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let output = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", script])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output()
+        .map_err(|e| e.to_string())?;
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+#[tauri::command]
+async fn get_brightness() -> Result<Option<u32>, String> {
+    #[cfg(windows)]
+    {
+        tauri::async_runtime::spawn_blocking(|| {
+            let output = run_hidden_powershell(
+                "(Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightness -ErrorAction SilentlyContinue).CurrentBrightness",
+            )?;
+            if output.is_empty() {
+                return Ok(None);
+            }
+            Ok(output
+                .lines()
+                .next()
+                .and_then(|line| line.trim().parse::<u32>().ok()))
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    }
+    #[cfg(not(windows))]
+    Ok(None)
+}
+
+#[tauri::command]
+async fn set_brightness(percent: u32) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let clamped = percent.min(100);
+        tauri::async_runtime::spawn_blocking(move || {
+            let script = format!(
+                "$m = Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightnessMethods -ErrorAction Stop | Select-Object -First 1; Invoke-CimMethod -InputObject $m -MethodName WmiSetBrightness -Arguments @{{ Timeout = 0; Brightness = {} }} | Out-Null",
+                clamped
+            );
+            run_hidden_powershell(&script).map(|_| ())
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    }
+    #[cfg(not(windows))]
+    Err("unsupported platform".to_string())
+}
+
 /// Read all three caches at once and return what's already stored — no HTTP calls.
 /// Used at startup to instantly hydrate cached art before making any API requests.
 #[tauri::command]
@@ -9042,6 +9220,10 @@ pub fn run() {
             get_recents,
             get_recent_games,
             get_battery,
+            get_system_volume,
+            set_system_volume,
+            get_brightness,
+            set_brightness,
             set_gamepad_ready,
             native_startup_rumble,
             get_settings,

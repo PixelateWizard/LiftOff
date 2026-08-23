@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Native post-launch RAM validation:** On a ROG Xbox Ally X at 1920×1080, a fresh PEAK/Steam run reduced LiftOff's settled process-tree working set from 889.9 MB to 285.6 MB and private memory from 798.5 MB to 517.9 MB; three patched exit cycles returned visible, focused, and painting. Remaining gate: normal in-game exits for Steam and Microsoft package games plus physical-controller validation.
+- **Delivered — Post-launch RAM optimization integrated with current main:** Preserved the helper-bar backend while adding the tested WebView2 Low/Normal memory-target handoff. Native Ally validation measured 889.9 MB to 285.6 MB working set and 798.5 MB to 517.9 MB private memory; remaining gates are representative normal game exits, physical-controller return, and native helper-bar volume/brightness validation.
 
 ## Start-of-Task Workflow
 
