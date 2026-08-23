@@ -28,7 +28,22 @@ test.beforeEach(async ({ page }) => {
       get_cached_art_bulk: {},
       steam_account_status: { connected: false, owned_count: 0 },
       xbox_account_status: { connected: false, owned_count: 0 },
-      spotify_status: { connected: false, client_id_set: false, product: "" },
+      spotify_status: { connected: true, client_id_set: true, product: "premium" },
+      spotify_playback_state: {
+        item: {
+          id: "track-1",
+          name: "Test Track",
+          artists: [{ name: "Test Artist" }],
+          album: { name: "Test Album", images: [] },
+          duration_ms: 180_000,
+        },
+        progress_ms: 30_000,
+        is_playing: false,
+        shuffle_state: false,
+        repeat_state: "off",
+      },
+      spotify_playlists: { items: [] },
+      spotify_devices: { devices: [] },
       get_system_volume: { percent: 45, muted: false },
       get_brightness: 40,
       "plugin:window|is_focused": true,
@@ -88,25 +103,43 @@ test("boots the Home shell with mocked Tauri commands", async ({ page }) => {
   await page.evaluate(() => (window as any).__setGamepadButton(9, true));
   await expect(page.getByText("Helper", { exact: true })).toBeVisible();
   await page.evaluate(() => (window as any).__setGamepadButton(9, false));
+  await expect(page.getByText("Test Track", { exact: true })).toBeVisible();
   await expect(page.getByText(/^Volume/)).toBeVisible();
   await expect(page.getByText(/^Brightness/)).toBeVisible();
   await expect(page.getByRole("button", { name: /Controls/ })).toBeVisible();
 
   const sliders = page.locator('input[type="range"]');
-  await expect(sliders).toHaveCount(2);
-  await expect(sliders.nth(0)).toHaveValue("45");
-  await expect(sliders.nth(1)).toHaveValue("40");
+  await expect(sliders).toHaveCount(3);
+  await expect(sliders.nth(0)).toHaveValue("30000");
+  await expect(sliders.nth(1)).toHaveValue("45");
+  await expect(sliders.nth(2)).toHaveValue("40");
+
+  const tray = page.getByText("Helper", { exact: true }).locator("xpath=../..");
+  const trayHeight = await tray.evaluate((element) => element.getBoundingClientRect().height);
+
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await expect(sliders.nth(0)).toHaveValue("30000");
+  expect(await tray.evaluate((element) => element.getBoundingClientRect().height)).toBeCloseTo(trayHeight, 1);
+
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("ArrowRight");
+  await expect(sliders.nth(0)).toHaveValue("40000");
+  await page.keyboard.press("Enter");
 
   await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("ArrowRight");
-  await expect(sliders.nth(0)).toHaveValue("45");
-  await expect(sliders.nth(1)).toHaveValue("40");
+  await page.keyboard.press("ArrowLeft");
+  await expect(sliders.nth(1)).toHaveValue("45");
+  await expect(sliders.nth(2)).toHaveValue("40");
+  expect(await tray.evaluate((element) => element.getBoundingClientRect().height)).toBeCloseTo(trayHeight, 1);
 
   await page.keyboard.press("Enter");
   await page.keyboard.press("ArrowLeft");
-  await expect(sliders.nth(1)).toHaveValue("35");
+  await expect(sliders.nth(1)).toHaveValue("40");
   await page.keyboard.press("Escape");
-  await page.keyboard.press("ArrowLeft");
-  await expect(sliders.nth(1)).toHaveValue("35");
+  await page.keyboard.press("ArrowRight");
+  await expect(sliders.nth(1)).toHaveValue("40");
   expect(pageErrors).toEqual([]);
 });

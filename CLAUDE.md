@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Helper bar usability follow-up:** Made the tray substantially more opaque, added A-gated Volume/Brightness adjustment while preserving Left/Right slider navigation, and changed Minimal mode to advertise and open the tray with one MENU press. Remaining gate: physical Ally/WebView2 validation of 1280x800 theme surfaces and controller feel/bleed.
+- **Delivered — Helper tray polish:** Made Spotify scrubbing A-gated so Right reaches Playlists normally, reserved focus-hint space to eliminate vertical reflow, and removed obsolete MENU badges from Spotify mini-player surfaces while retaining Minimal's helper-bar MENU affordance. Remaining gate: physical Ally/WebView2 validation of controller feel and 1280x800 theme surfaces.
 
 ## Start-of-Task Workflow
 

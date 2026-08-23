@@ -55,8 +55,8 @@ export function HelperTray({
   const focusKeyRef = useRef("play");
   const [seekDraft, setSeekDraft] = useState<number | null>(null);
   const seekDraftRef = useRef<number | null>(null);
-  const [sliderEditKey, setSliderEditKey] = useState<string | null>(null);
-  const sliderEditKeyRef = useRef<string | null>(null);
+  const [adjustmentKey, setAdjustmentKey] = useState<string | null>(null);
+  const adjustmentKeyRef = useRef<string | null>(null);
   const closedRef = useRef(false);
 
   const focusItems = useMemo<FocusItem[]>(() => {
@@ -90,32 +90,33 @@ export function HelperTray({
     setFocusKey(key);
   };
 
-  const setSliderEdit = (key: string | null) => {
-    sliderEditKeyRef.current = key;
-    setSliderEditKey(key);
+  const setAdjustment = (key: string | null) => {
+    adjustmentKeyRef.current = key;
+    setAdjustmentKey(key);
   };
 
   useEffect(() => {
     if (!open) return;
     setFocus(track ? "play" : "playlists");
-    setSliderEdit(null);
+    setAdjustment(null);
     setSeekDraft(null);
     seekDraftRef.current = null;
   }, [open, track?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activate = (key: string) => {
-    if (key === "volume" || key === "brightness") {
-      setSliderEdit(sliderEditKeyRef.current === key ? null : key);
+    if (key === "seek" || key === "volume" || key === "brightness") {
+      const finishing = adjustmentKeyRef.current === key;
+      if (finishing && key === "seek" && track && seekDraftRef.current != null) {
+        spotify.seek(seekDraftRef.current);
+        seekDraftRef.current = null;
+        setSeekDraft(null);
+      }
+      setAdjustment(finishing ? null : key);
       return;
     }
     if (key === "previous") spotify.previous();
     if (key === "play") track?.isPlaying ? spotify.pause() : spotify.play();
     if (key === "next") spotify.next();
-    if (key === "seek" && track) {
-      spotify.seek(seekDraftRef.current ?? track.progressMs);
-      seekDraftRef.current = null;
-      setSeekDraft(null);
-    }
     if (key === "playlists") {
       if (spotify.status.connected) onOpenPlaylists();
       else onConnectSpotify();
@@ -145,12 +146,8 @@ export function HelperTray({
     const items = focusItemsRef.current;
     const current = items.find((item) => item.key === focusKeyRef.current) ?? items[0];
     if (!current) return;
-    if (sliderEditKeyRef.current === current.key) {
+    if (adjustmentKeyRef.current === current.key) {
       if (direction === "left" || direction === "right") adjustRef.current(direction === "left" ? -1 : 1);
-      return;
-    }
-    if (current.key === "seek" && (direction === "left" || direction === "right")) {
-      adjustRef.current(direction === "left" ? -1 : 1);
       return;
     }
     if (direction === "left" || direction === "right") {
@@ -178,7 +175,7 @@ export function HelperTray({
       onClose();
     };
     const handle = (key: string) => {
-      if (key === "Escape" && sliderEditKeyRef.current) setSliderEdit(null);
+      if (key === "Escape" && adjustmentKeyRef.current) activateRef.current(adjustmentKeyRef.current);
       else if (key === "Escape") close();
       else if (key === "Enter") activateRef.current(focusKeyRef.current);
       else if (key === "ArrowUp") moveRef.current("up");
@@ -210,7 +207,6 @@ export function HelperTray({
         if (!base.Enter) enterReleased = true;
         if (!base.Escape) escapeReleased = true;
         const state = { ...base, Enter: enterReleased && base.Enter, Escape: escapeReleased && base.Escape };
-        const seekDirectionWasPressed = !!last.ArrowLeft || !!last.ArrowRight;
         let directionHandled = false;
         (Object.keys(state) as (keyof GpState)[]).forEach((key) => {
           const pressed = state[key];
@@ -225,9 +221,6 @@ export function HelperTray({
           }
           last[key] = pressed;
         });
-        if (focusKeyRef.current === "seek" && seekDirectionWasPressed && !state.ArrowLeft && !state.ArrowRight && seekDraftRef.current != null) {
-          activateRef.current("seek");
-        }
       }
       raf = requestAnimationFrame(poll);
     };
@@ -301,9 +294,13 @@ export function HelperTray({
                 {transportButton("play", track.isPlaying ? t("spotify.pause") : t("spotify.play"), track.isPlaying ? <IoPause size={18} /> : <IoPlay size={18} />, () => track.isPlaying ? spotify.pause() : spotify.play())}
                 {transportButton("next", t("spotify.next"), <IoPlayForward size={18} />, spotify.next)}
               </div>
-              <div style={{ flex: 1, minWidth: 150, ...focusStyle("seek"), borderRadius: squareCorners ? 0 : 10, padding: "6px 8px" }} onMouseMove={() => setFocus("seek")}>
+              <div style={{ flex: 1, minWidth: 150, ...focusStyle("seek"), borderRadius: squareCorners ? 0 : 10, padding: "6px 8px", background: adjustmentKey === "seek" ? `color-mix(in srgb, ${accent.primary} 14%, transparent)` : undefined }} onMouseMove={() => setFocus("seek")}>
                 <input type="range" min={0} max={track.durationMs || 1} value={progress} onChange={(event) => { const value = Number(event.target.value); seekDraftRef.current = value; setSeekDraft(value); }} onPointerUp={() => { spotify.seek(seekDraftRef.current ?? track.progressMs); seekDraftRef.current = null; setSeekDraft(null); }} style={{ width: "100%", accentColor: accent.primary }} />
-                <div style={{ display: "flex", justifyContent: "space-between", color: theme.textFaint, fontSize: 10 }}><span>{formatTime(progress)}</span><span>{formatTime(track.durationMs)}</span></div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", minHeight: 22, color: theme.textFaint, fontSize: 10 }}>
+                  <span>{formatTime(progress)}</span>
+                  <span style={{ visibility: focusKey === "seek" ? "visible" : "hidden" }}><GamepadBtn btn="A" label={adjustmentKey === "seek" ? t("helper.done") : t("helper.adjust")} /></span>
+                  <span style={{ justifySelf: "end" }}>{formatTime(track.durationMs)}</span>
+                </div>
               </div>
             </>
           ) : (
@@ -317,8 +314,8 @@ export function HelperTray({
         {spotify.requiresPremium && <div style={{ color: accent.primary, fontSize: 11, marginTop: 9 }}>{t("spotify.premiumHint")}</div>}
 
         <div style={{ display: "grid", gridTemplateColumns: brightness != null && brightness >= 0 ? "1fr 1fr" : "1fr", gap: 16, padding: "16px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}` }}>
-          <SliderControl icon={<IoVolumeHighOutline />} label={t("helper.volume")} focusKey="volume" focused={focusKey === "volume"} editing={sliderEditKey === "volume"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={volume?.percent ?? 0} onFocus={setFocus} onChange={requestVolume} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />
-          {brightness != null && brightness >= 0 && <SliderControl icon={<IoSunnyOutline />} label={t("helper.brightness")} focusKey="brightness" focused={focusKey === "brightness"} editing={sliderEditKey === "brightness"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={brightness} onFocus={setFocus} onChange={requestBrightness} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />}
+          <SliderControl icon={<IoVolumeHighOutline />} label={t("helper.volume")} focusKey="volume" focused={focusKey === "volume"} editing={adjustmentKey === "volume"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={volume?.percent ?? 0} onFocus={setFocus} onChange={requestVolume} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />
+          {brightness != null && brightness >= 0 && <SliderControl icon={<IoSunnyOutline />} label={t("helper.brightness")} focusKey="brightness" focused={focusKey === "brightness"} editing={adjustmentKey === "brightness"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={brightness} onFocus={setFocus} onChange={requestBrightness} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />}
         </div>
 
         <div style={{ display: "flex", gap: 10, paddingTop: 16, flexWrap: "wrap" }}>
@@ -352,7 +349,7 @@ interface SliderControlProps {
 function SliderControl({ icon, label, focusKey, focused, editing, adjustLabel, doneLabel, value, onFocus, onChange, accent, text, dim, square }: SliderControlProps) {
   return (
     <div onMouseMove={() => onFocus(focusKey)} style={{ padding: "9px 11px", borderRadius: square ? 0 : 10, outline: focused ? `2px solid ${accent}` : "2px solid transparent", background: editing ? `color-mix(in srgb, ${accent} 14%, transparent)` : undefined }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7, color: text, fontSize: 12, fontWeight: 700 }}>{icon}{label}{focused && <span style={{ marginLeft: "auto" }}><GamepadBtn btn="A" label={editing ? doneLabel : adjustLabel} /></span>}<span style={{ marginLeft: focused ? 0 : "auto", color: dim }}>{Math.round(value)}%</span></div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 22, marginBottom: 7, color: text, fontSize: 12, fontWeight: 700 }}>{icon}{label}<span style={{ marginLeft: "auto", minWidth: 76, visibility: focused ? "visible" : "hidden" }}><GamepadBtn btn="A" label={editing ? doneLabel : adjustLabel} /></span><span style={{ color: dim }}>{Math.round(value)}%</span></div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <IoChevronBack size={13} color={editing ? accent : dim} />
         <input type="range" min={0} max={100} value={value} onChange={(event) => onChange(Number(event.target.value))} style={{ flex: 1, accentColor: accent }} />
