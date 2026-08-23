@@ -80,8 +80,9 @@ The August 2026 spikes closed the known WebView2 memory-floor investigation:
 - Cover-art decode retention converged to the same roughly 257 MB renderer floor after settling.
 - `--enable-low-end-device-mode` saved about 20 MB at 120 seconds but forced RGB565-style visible gradient dithering and was rejected.
 - The observed application core floor was roughly 585 MB, with about 20 MB of plausible slack.
+- The backend now uses the new `ICoreWebView2_19::SetMemoryUsageTargetLevel` mechanism: Low after the game handoff makes WebView2 inactive, and Normal before every visible resume. Code and transition tests confirm the ordered/fallback integration, but its device-level RAM effect is not measured yet.
 
-Do not reinvestigate without a new mechanism. Any future claim needs a fresh launch per reading, per-process breakdown, 120-second settling, and at least a 40 MB signal above the approximately 25 MB noise band. `ICoreWebView2_19::SetMemoryUsageTargetLevel` remains a possible new mechanism but requires a direct version-synchronized `webview2-com` dependency decision.
+Do not reinvestigate the rejected frontend candidates without a new mechanism. To close the native memory-target gate, compare fresh-launch baseline and patched runs with a per-process breakdown after 120 seconds in the same foreground game, and require at least a 40 MB signal above the approximately 25 MB noise band. Also confirm repeated game exit/summon cycles repaint promptly after the target returns to Normal.
 
 ## Common Failure Modes
 

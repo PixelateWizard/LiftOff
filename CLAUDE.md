@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Cloud picker redesign and preview follow-up:** Added bundled/live cover art recovery, unclipped grid focus, lazy Store descriptions and HLS/native media, spatially accurate and strongly visible Add/Remove/Back/Media controller focus, and existing-entry removal. Remaining gate: physical Ally/WebView2 visual, trailer, controller, and real library reconciliation validation.
+- **Delivered — Post-launch RAM target:** Audited backend retention and added an ordered WebView2 Low memory target after game handoff, with Normal restored before every visible return and compatibility fallback on older runtimes. Remaining gate: fresh baseline/patched Ally measurements after 120 seconds with a per-process breakdown and at least a 40 MB signal, plus repeated exit/summon repaint validation.
 
 ## Start-of-Task Workflow
 
