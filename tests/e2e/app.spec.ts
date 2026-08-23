@@ -18,7 +18,7 @@ test.beforeEach(async ({ page }) => {
 
     const responses: Record<string, unknown> = {
       get_screen_resolution: { width: 1920, height: 1080 },
-      get_settings: { default_tab: "Home", animated_heroes: "static", bottombar_mode: "minimal" },
+      get_settings: { default_tab: "Home", animated_heroes: "static" },
       get_app_memberships: {},
       get_game_memberships: {},
       get_custom_data: { apps: [], folders: [] },
@@ -82,6 +82,10 @@ test.beforeEach(async ({ page }) => {
           return listenerId;
         }
         if (command === "plugin:event|unlisten" || command === "plugin:event|emit") return null;
+        if (command === "get_settings") {
+          const bottombarMode = new URLSearchParams(window.location.search).get("barMode") || "minimal";
+          return { ...(responses.get_settings as Record<string, unknown>), bottombar_mode: bottombarMode };
+        }
         if (emptyArrays.has(command)) return [];
         if (Object.prototype.hasOwnProperty.call(responses, command)) return responses[command];
         return null;
@@ -94,7 +98,7 @@ test("boots the Home shell with mocked Tauri commands", async ({ page }) => {
   const pageErrors: Error[] = [];
   page.on("pageerror", (error) => pageErrors.push(error));
 
-  await page.goto("/");
+  await page.goto("/?barMode=minimal");
 
   await expect(page.getByText("Home", { exact: true }).first()).toBeVisible({ timeout: 10_000 });
   await expect(page.locator("#root")).not.toBeEmpty();
@@ -143,3 +147,14 @@ test("boots the Home shell with mocked Tauri commands", async ({ page }) => {
   await expect(sliders.nth(1)).toHaveValue("40");
   expect(pageErrors).toEqual([]);
 });
+
+for (const mode of ["full", "hidden"] as const) {
+  test(`opens the helper tray on a single MENU press in ${mode} mode`, async ({ page }) => {
+    await page.goto(`/?barMode=${mode}`);
+    await expect(page.getByText("Home", { exact: true }).first()).toBeVisible({ timeout: 10_000 });
+
+    await page.evaluate(() => (window as any).__setGamepadButton(9, true));
+    await expect(page.getByText("Helper", { exact: true })).toBeVisible();
+    await page.evaluate(() => (window as any).__setGamepadButton(9, false));
+  });
+}

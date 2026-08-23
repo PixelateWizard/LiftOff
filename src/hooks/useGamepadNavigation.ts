@@ -264,11 +264,6 @@ export function useGamepadNavigation(
   const [heroActionIndex, setHeroActionIndex] = useState(0);
   const [launchingApp, setLaunchingApp] = useState<App | null>(null);
   const [windowFocused, setWindowFocused] = useState(true);
-  // 0..1 charge level while MENU (Start) is held to open the helper tray.
-  const [spotifyHoldProgress, setSpotifyHoldProgress] = useState(0);
-  const spotifyHoldProgressRef = useRef(0);
-  const startHoldRef = useRef<{ since: number; fired: boolean } | null>(null);
-
   const tabRef = useRef(options.initialTab ?? "Home");
   const focusSectionRef = useRef("hero");
   const focusIndexRef = useRef(0);
@@ -1681,53 +1676,12 @@ export function useGamepadNavigation(
             // B edge closes the picker while the keyboard is consuming it.
             && !artPickerAppRef?.current;
 
-          // Minimal mode reserves a MENU tap for the helper tray. Full and
-          // Hidden retain the hold gesture so their per-tab tap actions remain.
+          // MENU opens the helper tray on its initial edge in every bar mode.
           if (key === "Start") {
-            const TRAY_HOLD_MS = 850;
-            const setHoldProgress = (value: number) => {
-              if (spotifyHoldProgressRef.current === value) return;
-              spotifyHoldProgressRef.current = value;
-              setSpotifyHoldProgress(value);
-            };
-            const currentSettings = settingsRef?.current;
-            const bottomBarMode = currentSettings?.bottombar_mode
-              || (currentSettings?.hide_bottom_bar ? "minimal" : "full");
-            if (bottomBarMode === "minimal") {
-              startHoldRef.current = null;
-              setHoldProgress(0);
-              if (pressed && !wasPressed && canNavigate) {
-                suppressUntilRelease.current[key] = true;
-                playSoundAlt();
-                onOpenHelperTray();
-              }
-              lastBtn.current[key] = pressed;
-              return;
-            }
-            if (pressed && !wasPressed) {
-              startHoldRef.current = canNavigate ? { since: now, fired: false } : null;
-            } else if (pressed && wasPressed && startHoldRef.current && !startHoldRef.current.fired) {
-              if (!canNavigate) {
-                // A modal opened mid-hold; abandon the gesture.
-                startHoldRef.current = null;
-                setHoldProgress(0);
-              } else {
-                const progress = Math.min(1, (now - startHoldRef.current.since) / TRAY_HOLD_MS);
-                setHoldProgress(progress);
-                if (progress >= 1) {
-                  startHoldRef.current.fired = true;
-                  setHoldProgress(0);
-                  suppressUntilRelease.current[key] = true;
-                  playSoundAlt();
-                  onOpenHelperTray();
-                }
-              }
-            } else if (!pressed && wasPressed) {
-              const hold = startHoldRef.current;
-              startHoldRef.current = null;
-              setHoldProgress(0);
-              // Released before the charge completed: run the normal tap action.
-              if (hold && !hold.fired && canNavigate) handleNavRef?.current?.(key);
+            if (pressed && !wasPressed && canNavigate) {
+              suppressUntilRelease.current[key] = true;
+              playSoundAlt();
+              onOpenHelperTray();
             }
             lastBtn.current[key] = pressed;
             return;
@@ -1945,7 +1899,6 @@ export function useGamepadNavigation(
     launchingApp,
     launchingAppRef,
     windowFocused,
-    spotifyHoldProgress,
     heroVideoRefs,
     setTab,
     setFocusSection,

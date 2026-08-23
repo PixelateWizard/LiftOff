@@ -6,8 +6,6 @@ import type { SpotifyWebPlayerState } from "../../hooks/useSpotifyWebPlayer";
 interface SpotifyMiniBarProps {
   spotify: SpotifyController;
   webPlayer?: SpotifyWebPlayerState;
-  /** 0..1 charge level while MENU is held to open the helper tray. */
-  holdProgress?: number;
   variant?: SpotifyMiniBarVariant;
   onOpenPanel: () => void;
 }
@@ -23,9 +21,9 @@ const formatTime = (ms: number) => {
 
 // The mini-bar is display-only: gamepad navigation cannot reach inline
 // transport buttons here, so the whole bar is a single click target that
-// opens the Spotify overlay where playlist browsing lives. A helper-tray hold
-// may still charge the surface, but controller hints live on the helper bar.
-export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant = "bar", onOpenPanel }: SpotifyMiniBarProps) {
+// opens the Spotify overlay where playlist browsing lives. Controller hints
+// live on the helper bar rather than on the Spotify surface.
+export function SpotifyMiniBar({ spotify, webPlayer, variant = "bar", onOpenPanel }: SpotifyMiniBarProps) {
   const { t } = useTranslation();
   const { accent, theme, isDark, surfaceStyle, surface, resolvedTheme } = useTheme();
   const track = webPlayer?.track ?? spotify.track;
@@ -34,7 +32,6 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
   const pct = track.durationMs > 0 ? Math.min(100, (track.progressMs / track.durationMs) * 100) : 0;
   const isCyberpunk = resolvedTheme === "cyberpunk";
   const squared = surfaceStyle === "win9x" || surfaceStyle === "cyberpunk" || isCyberpunk;
-  const charge = Math.max(0, Math.min(1, holdProgress));
   if (variant === "puck") {
     const ringTrack = isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.14)";
     const progressDeg = Math.max(0, Math.min(360, pct * 3.6));
@@ -56,16 +53,13 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
           borderRadius: radius,
           cursor: "pointer",
           background: `conic-gradient(${accent.primary} ${progressDeg}deg, ${ringTrack} 0deg)`,
-          boxShadow: charge > 0
-            ? `0 0 ${Math.round(10 + 22 * charge)}px ${accent.glow}${(0.22 + 0.38 * charge).toFixed(2)})`
-            : surfaceStyle === "material"
-              ? "var(--material-shadow-medium)"
-              : "0 8px 24px rgba(0,0,0,0.34)",
+          boxShadow: surfaceStyle === "material"
+            ? "var(--material-shadow-medium)"
+            : "0 8px 24px rgba(0,0,0,0.34)",
           color: theme.text,
           font: "inherit",
           pointerEvents: "auto",
-          transition: "box-shadow 0.16s ease, transform 0.16s ease",
-          transform: charge > 0 ? "scale(1.04)" : "scale(1)",
+          transition: "box-shadow 0.16s ease",
         }}
       >
         <div
@@ -125,9 +119,7 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
           borderRadius: chipRadius,
           clipPath: chipClip,
           WebkitClipPath: chipClip,
-          border: `1px solid ${charge > 0
-            ? accent.primary
-            : isCyberpunk
+          border: `1px solid ${isCyberpunk
               ? `${accent.glow}0.58)`
             : surfaceStyle === "material"
               ? "var(--material-border-subtle)"
@@ -149,9 +141,7 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
                   : "rgba(255,255,255,0.52)",
           backdropFilter: surfaceStyle === "material" || surfaceStyle === "win9x" ? undefined : isCyberpunk ? "blur(10px) saturate(150%)" : "blur(14px) saturate(140%)",
           WebkitBackdropFilter: surfaceStyle === "material" || surfaceStyle === "win9x" ? undefined : isCyberpunk ? "blur(10px) saturate(150%)" : "blur(14px) saturate(140%)",
-          boxShadow: charge > 0
-            ? `0 0 18px ${accent.glow}0.35)`
-            : isCyberpunk
+          boxShadow: isCyberpunk
               ? `inset 0 0 0 1px ${accent.glow}0.20), 0 8px 22px rgba(0,0,0,0.38), 0 0 16px ${accent.glow}0.12)`
             : surfaceStyle === "material"
               ? "var(--material-shadow-low)"
@@ -163,8 +153,7 @@ export function SpotifyMiniBar({ spotify, webPlayer, holdProgress = 0, variant =
           color: "inherit",
           cursor: "pointer",
           pointerEvents: "auto",
-          transition: "border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease",
-          transform: charge > 0 ? "scale(1.015)" : "scale(1)",
+          transition: "border-color 0.16s ease, box-shadow 0.16s ease",
         }}
       >
         {track.image ? (

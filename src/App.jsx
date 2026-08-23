@@ -814,7 +814,6 @@ export default function App() {
     launchingApp,
     launchingAppRef,
     windowFocused,
-    spotifyHoldProgress,
     heroVideoRefs,
     setTab,
     setFocusSection,
@@ -2930,7 +2929,6 @@ export default function App() {
     : (
       <SpotifyMiniBar
         spotify={spotify}
-        holdProgress={spotifyHoldProgress}
         variant={helperBarMode === "full" ? "bar" : "puck"}
         onOpenPanel={() => setShowSpotifyOverlay(true)}
       />
@@ -2939,7 +2937,6 @@ export default function App() {
     ? (
       <SpotifyMiniBar
         spotify={spotify}
-        holdProgress={spotifyHoldProgress}
         variant="heroChip"
         onOpenPanel={() => setShowSpotifyOverlay(true)}
       />
@@ -3797,7 +3794,6 @@ export default function App() {
           spotifyMiniBar={immersiveHomeSpotifyChipActive ? null : spotifyMiniPlayer}
           spotifyConnected={spotify.status.connected}
           spotifyHasTrack={spotifyHasTrack}
-          spotifyHoldProgress={spotifyHoldProgress}
           trayOpen={showHelperTray}
           onToggleTray={() => setShowHelperTray(!showHelperTray)}
           peekActive={helperPeekActive}

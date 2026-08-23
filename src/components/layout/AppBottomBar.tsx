@@ -11,8 +11,6 @@ interface Props {
   spotifyMiniBar?: ReactNode;
   spotifyConnected?: boolean;
   spotifyHasTrack?: boolean;
-  /** 0..1 charge level while MENU is held to open the helper tray. */
-  spotifyHoldProgress?: number;
   trayOpen: boolean;
   onToggleTray: () => void;
   /** Forces the minimal pill visible briefly in hidden mode. */
@@ -23,13 +21,12 @@ export function AppBottomBar({
   tab,
   spotifyMiniBar,
   spotifyHasTrack = false,
-  spotifyHoldProgress = 0,
   trayOpen,
   onToggleTray,
   peekActive = false,
 }: Props) {
   const { t } = useTranslation();
-  const { glassBar, theme, isDark, surfaceStyle, accent, resolvedTheme } = useTheme();
+  const { glassBar, theme, isDark, surfaceStyle, resolvedTheme } = useTheme();
   const { settings } = useSettings();
   const [hoverPeek, setHoverPeek] = useState(false);
   const hoverLeavingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,10 +67,9 @@ export function AppBottomBar({
         width: compact ? 34 : 38,
         height: compact ? 34 : 38,
         borderRadius: squareCorners ? 0 : 999,
-        border: `1px solid ${spotifyHoldProgress > 0 ? accent.primary : isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.14)"}`,
-        background: spotifyHoldProgress > 0 ? `${accent.glow}${0.10 + spotifyHoldProgress * 0.22})` : "transparent",
-        boxShadow: spotifyHoldProgress > 0 ? `0 0 ${8 + spotifyHoldProgress * 14}px ${accent.glow}0.42)` : undefined,
-        color: spotifyHoldProgress > 0 ? accent.primary : theme.text,
+        border: `1px solid ${isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.14)"}`,
+        background: "transparent",
+        color: theme.text,
         display: "grid",
         placeItems: "center",
         padding: 0,

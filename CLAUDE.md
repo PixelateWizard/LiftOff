@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Helper tray polish:** Made Spotify scrubbing A-gated so Right reaches Playlists normally, reserved focus-hint space to eliminate vertical reflow, and removed obsolete MENU badges from Spotify mini-player surfaces while retaining Minimal's helper-bar MENU affordance. Remaining gate: physical Ally/WebView2 validation of controller feel and 1280x800 theme surfaces.
+- **Delivered — Universal MENU tray access:** A single MENU press now opens the helper tray in Full, Minimal, and Hidden modes; obsolete hold timing/progress plumbing and hold-specific controller help were removed. Remaining gate: physical Ally/WebView2 validation of MENU edge isolation and controller feel.
 
 ## Start-of-Task Workflow
 

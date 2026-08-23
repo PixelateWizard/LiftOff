@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { GamepadBtn } from "../GamepadBtn";
 import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
 import { useTheme } from "../../contexts/ThemeContext";
-import { useSettings } from "../../contexts/SettingsContext";
 import ModalShell from "./ModalShell";
 
 interface ControlsModalProps {
@@ -16,8 +15,6 @@ const TABS = ["Home", "Games", "Apps", "Settings"] as const;
 export default function ControlsModal({ initialTab, onClose }: ControlsModalProps) {
   const { t } = useTranslation();
   const { accent, theme, isDark, surfaceStyle } = useTheme();
-  const { settings } = useSettings();
-  const bottomBarMode = settings.bottombar_mode || (settings.hide_bottom_bar ? "minimal" : "full");
   const initial = Math.max(0, TABS.indexOf(initialTab as (typeof TABS)[number]));
   const [tabIndex, setTabIndex] = useState(initial);
   const tabIndexRef = useRef(initial);
@@ -83,8 +80,7 @@ export default function ControlsModal({ initialTab, onClose }: ControlsModalProp
       : []),
     ...(tab === "Games" ? [{ btn: "RS", label: t("grid.filter.dock") }] : []),
     ...(tab === "Games" ? [{ btn: "BACK", label: t("grid.manage") }] : []),
-    ...(bottomBarMode !== "minimal" && (tab === "Games" || tab === "Apps") ? [{ btn: "MENU", label: t("controls.menuTapOptions") }] : []),
-    { btn: "MENU", label: t(bottomBarMode === "minimal" ? "controls.menuTapTray" : "controls.menuHoldTray") },
+    { btn: "MENU", label: t("controls.menuTapTray") },
   ];
 
   return (

@@ -164,9 +164,7 @@
   },
   "controls": {
     "title": "Controls — {{tab}}",
-    "menuTapTray": "Helper tray",
-    "menuHoldTray": "Hold: helper tray",
-    "menuTapOptions": "Tap: options"
+    "menuTapTray": "Helper tray"
   },
   "steam": {
     "title": "Steam account",

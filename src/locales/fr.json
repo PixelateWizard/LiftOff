@@ -164,9 +164,7 @@
   },
   "controls": {
     "title": "TODO(fr)",
-    "menuTapTray": "TODO(fr)",
-    "menuHoldTray": "TODO(fr)",
-    "menuTapOptions": "TODO(fr)"
+    "menuTapTray": "TODO(fr)"
   },
   "steam": {
     "title": "TODO(fr) Steam account",
