@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Cloud picker redesign and preview follow-up:** Added bundled/live cover art recovery, unclipped grid focus, lazy Store descriptions and HLS/native media, spatially accurate and strongly visible Add/Remove/Back/Media controller focus, and existing-entry removal. Remaining gate: physical Ally/WebView2 visual, trailer, controller, and real library reconciliation validation.
+- **Delivered — Helper bar backend:** Added Core Audio volume and WMI brightness commands plus backward-compatible helper-bar settings fields. Remaining work is the dependent frontend tray, display modes, migration, and controller surfaces; native volume/brightness still require Ally validation.
 
 ## Start-of-Task Workflow
 
