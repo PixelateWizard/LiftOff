@@ -270,6 +270,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.49694.14145438528550207.013e00fa-2552-401d-a4c1-7eed8078a088.0ddf82c1-b105-4853-a4ce-f66b3900b216"
   },
   {
+    "name": "AK-xolotl: Together",
+    "slug": "ak-xolotl-together",
+    "productId": "9N0423W2ZVNQ",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.9891.13932897969197961.f7fadfdb-bbe2-4e18-ae5b-df85cbcac4e9.f2b32994-7423-4d2c-9d22-d2a406da3d4e"
+  },
+  {
     "name": "Akane",
     "slug": "akane",
     "productId": "9MXN7QK64DQV",
@@ -1176,6 +1182,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.58683.14508979435126955.4b584f4a-6e8c-4284-bad4-0a5290e09ce6.6e104ca3-dc1f-4e4d-a3f2-9b446055d354"
   },
   {
+    "name": "BRIGANDINE ABYSS",
+    "slug": "brigandine-abyss",
+    "productId": "9PC77K8TKXMN",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.25940.14179029502907745.a46f43a1-6fe5-415a-9bf5-1fa1e87c10e3.b26d786b-b083-4894-b039-911e58d502db"
+  },
+  {
     "name": "Brocula",
     "slug": "brocula",
     "productId": "9PMRPWFM01JF",
@@ -1872,6 +1884,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.20561.13893851604354559.6e97936c-c75e-444c-96e0-a176f4f8f13e.30da42f3-b102-400c-823b-23407b1c76a6"
   },
   {
+    "name": "Cursed to Golf",
+    "slug": "cursed-to-golf",
+    "productId": "9NRPWX7GB616",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.46309.14378626962245387.8a7dacd8-3300-4953-804b-c508e6e8cf73.5e2be167-a35b-419a-8c76-1b617b5f1cbc"
+  },
+  {
     "name": "Cyber Shadow",
     "slug": "cyber-shadow",
     "productId": "9NX9LJ5JSWH8",
@@ -2080,6 +2098,12 @@
     "slug": "defender-of-the-crown-the-legend-returns",
     "productId": "9N4W35GX7MP6",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.35932.13979480945810231.ca8338b9-5858-4c73-93cf-860c562aefef.9b699947-bc12-41fd-9d75-5018755f827e"
+  },
+  {
+    "name": "Defense Grid 2",
+    "slug": "defense-grid-2",
+    "productId": "BRK1B5GSB6W4",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.17923.69760344721355921.0ff3fed6-84df-419e-bd2f-565be1f20fdf.45c05acc-e745-42fc-97c0-505d5a2f4bd8"
   },
   {
     "name": "Defunct",
@@ -2904,6 +2928,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.1348.63413868670389858.a909f79f-bf9a-495a-9565-6895806c3525.4fb9db2d-c395-4076-9a58-6521ec1898e9"
   },
   {
+    "name": "Family Man",
+    "slug": "family-man",
+    "productId": "9PBLWHXZ8HSH",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.28113.14120966309122188.aca0ad5f-be5f-4fa8-9b85-018caec22c49.0ac05f18-d844-4a55-985f-763255c59d6b"
+  },
+  {
     "name": "Far Cry 3",
     "slug": "far-cry-3",
     "productId": "9PN0MPNNP92J",
@@ -3286,6 +3316,12 @@
     "slug": "freddy-farmer",
     "productId": "9N726G6L4PKS",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.19215.14007475997775821.03d9002f-802f-46be-af77-093faca8e3f7.fe06f3fd-e6f8-4abd-be58-8607741b5ec7"
+  },
+  {
+    "name": "Friends vs Friends",
+    "slug": "friends-vs-friends",
+    "productId": "9MWCJ0LCR9G6",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.57426.13841916038801377.8606d448-5cea-4d25-85b1-d890d5d8889a.b5034248-1cb0-43cb-a3b6-0f77bc5c0098"
   },
   {
     "name": "Frog Detective: The Entire Mystery",
@@ -3906,6 +3942,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.32079.14538027815579556.f358fa02-3caa-4f29-8eca-2536de6dba94.46ab4493-6956-4471-95a8-16f0fe2bc320"
   },
   {
+    "name": "HELLFRONT: HONEYMOON",
+    "slug": "hellfront-honeymoon",
+    "productId": "9MSTTVV5NK1B",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.59779.13825386973241403.aac42a36-638e-40c6-b958-2a0394cfccb8.6f82be22-f428-438b-8c62-5803605b3c0b"
+  },
+  {
     "name": "Hello Engineer",
     "slug": "hello-engineer",
     "productId": "9MXFM3J19R5H",
@@ -4140,6 +4182,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.1982.14023314147306487.8fec5dc6-0cc1-4255-8f54-e57299d9fdb1.8d727145-bad1-41c9-8081-d01b4007a84f"
   },
   {
+    "name": "Howl",
+    "slug": "howl",
+    "productId": "9NXK1JN52PRM",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.21068.14428754083338430.ff63b768-8591-4833-8b73-44c9e2aa6793.ba8d9144-c21e-4284-9e3e-a8199b971025"
+  },
+  {
     "name": "Human Fall Flat",
     "slug": "human-fall-flat",
     "productId": "BSMZH25V6V46",
@@ -4252,6 +4300,12 @@
     "slug": "iconoclasts",
     "productId": "9N7WRWNN5GZN",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.2973.14056695902010989.72926126-5cc1-4f63-a8d3-322f4e025c38.83fe0470-03c1-4811-afc0-aeb230d2af3d"
+  },
+  {
+    "name": "Idle Champions of the Forgotten Realms",
+    "slug": "idle-champions-of-the-forgotten-realms",
+    "productId": "BNZ2TD4Q2PVD",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.35648.67630815381189211.a04bba8d-45d6-471c-a70a-64cb741eab28.2aa3595c-fe68-49ba-b256-45737187adac"
   },
   {
     "name": "Ikenfell",
@@ -4650,6 +4704,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.21024.13979588110779567.5e6f9542-73ca-4800-a714-e6819fafc7f7.7b53caab-0160-44a9-8960-31c0a5f687f9"
   },
   {
+    "name": "Kingdom Eighties",
+    "slug": "kingdom-eighties",
+    "productId": "9PJRKNNFDN08",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.42412.14276639340532911.ae2f7dcb-c2a2-4e3b-9bb7-39741b6e4481.c339db0d-001b-4372-b233-d1ab352c91e4"
+  },
+  {
     "name": "Kingdom Rush",
     "slug": "kingdom-rush",
     "productId": "9P541N3KWMWD",
@@ -4666,6 +4726,12 @@
     "slug": "kingdom-two-crowns",
     "productId": "BWT2GPVWCH2F",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.50703.71673052342730938.755a1636-e311-4e76-b788-08cd89fc0781.6b300305-6096-42c6-a3b6-58256debb2ef"
+  },
+  {
+    "name": "Kingdom: New Lands",
+    "slug": "kingdom-new-lands",
+    "productId": "C3L6F8GL5LJK",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.7992.66084178781808662.5cbdeec6-594f-44e2-ab1a-acbdbbe8e331.4b46fba6-08dd-4c43-88b4-d5a76ec0e723"
   },
   {
     "name": "Kingdoms of Amalur: Re-Reckoning",
@@ -4800,6 +4866,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.21814.64262041090618072.97940a7d-67f7-47fc-b298-066b1e05a4b8.5da919d9-6b45-4449-922d-d381d50bf9ff"
   },
   {
+    "name": "LEGO Bricktales",
+    "slug": "lego-bricktales",
+    "productId": "9MSZQDN56D3G",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.40745.13599221130594431.8b8e655f-e7ea-48a9-b502-6b65fafe824e.3b7a81af-63bb-4c8d-aa94-af852b00ec33"
+  },
+  {
     "name": "LEGO CITY Undercover",
     "slug": "lego-city-undercover",
     "productId": "BS5RXLL3WQ2J",
@@ -4858,6 +4930,12 @@
     "slug": "lego-star-wars-the-skywalker-saga",
     "productId": "9NJN1MC1X5FK",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.15663.13677920620920924.f0d2262f-b971-4299-914b-194791cb9c5b.ce64672f-e040-481c-a781-28a49b0ecf6e"
+  },
+  {
+    "name": "LEGO The Hobbit",
+    "slug": "lego-the-hobbit",
+    "productId": "BXZSX21X0S7X",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.65316.63947935064990729.c2e56e2b-56a7-40a7-b697-2b3dc1838d17.c9d74019-af41-4fa2-8c33-3eb8ebd5cf32"
   },
   {
     "name": "LEGO The Incredibles",
@@ -4974,6 +5052,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.42325.13605545843678606.ba639605-7305-422e-9637-2411fb07e5f6.b0cdeb87-1dea-418a-82c3-84a977c47a4b"
   },
   {
+    "name": "Little League World Series Baseball 2022",
+    "slug": "little-league-world-series-baseball-2022",
+    "productId": "9NSFMFR04KVJ",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.63299.14364309548630983.ef760765-0514-4d21-8568-6a3bec49124d.3e7f774f-b74a-4e52-85a8-798f9a3ca5dd"
+  },
+  {
     "name": "Little Nightmares",
     "slug": "little-nightmares",
     "productId": "BWD88K55MK5W",
@@ -5002,6 +5086,12 @@
     "slug": "little-town-hero",
     "productId": "9NW0HVLB2GNG",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.46123.14459277324340361.839d390e-7883-4a76-84b5-1a3b1bd6c30e.57f67fd5-c1b2-47b6-8de5-b4c4532e308d"
+  },
+  {
+    "name": "Livelock",
+    "slug": "livelock",
+    "productId": "BNJTSCTSMXGM",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.49874.67941961513266504.4adff1e2-abb1-4d80-b8f3-5cafc3a62001.c8cfb5f6-e31e-49b1-919d-e9d519d60f51"
   },
   {
     "name": "Lock’s Quest",
@@ -5094,10 +5184,22 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.3162.64089320631905043.56573e02-7f68-4494-af22-bf85c9a1ca75.d8c4f430-9b6c-4514-9766-b05a6e072717"
   },
   {
+    "name": "Lovers in a Dangerous Spacetime",
+    "slug": "lovers-in-a-dangerous-spacetime",
+    "productId": "BQN4N3CGBV1N",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.42297.69233827492460525.13e00bd8-554e-4cd8-8342-afd8045886c2.ff9a5f9a-47b6-4924-87df-7ded3e737a9e"
+  },
+  {
     "name": "Lovish",
     "slug": "lovish",
     "productId": "9NXF610Q2P1D",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.2198.14426916967304681.fb396c1e-6785-41b9-b6b0-d9d3358acd4b.a3981535-23e9-48db-8a81-8f70cf3450bf"
+  },
+  {
+    "name": "Lumote: The Mastermote Chronicles",
+    "slug": "lumote-the-mastermote-chronicles",
+    "productId": "9MZV9H5HPCQ1",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.37805.13862944868854990.f70f7f7c-aabb-4eb0-8ada-a877a595e3a0.179d72d3-54f3-4f11-a297-e0381c29672a"
   },
   {
     "name": "LUNAR Remastered Collection",
@@ -5322,6 +5424,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.31648.14557190151741323.e49c5dc0-90ba-472c-9607-e05a6eef67db.aa9f67b8-764a-4d7a-a146-277b3bb4317a"
   },
   {
+    "name": "Metaball",
+    "slug": "metaball",
+    "productId": "9NHXKP9579JX",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.46654.13616962751651519.4b8ce6c1-770b-479f-ae6c-0bb45094d082.356260e7-1346-4181-8c39-0805adbfa27b"
+  },
+  {
     "name": "Metal Slug Tactics",
     "slug": "metal-slug-tactics",
     "productId": "9NGNZP1J1JN7",
@@ -5446,6 +5554,12 @@
     "slug": "miraculous-paris-under-siege",
     "productId": "9NSWRWW5S3ZG",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.5459.14359423370863383.060fb150-f5fa-4829-b3a0-75917b4b713c.811c2eba-788d-4475-a56c-593d7e22c973"
+  },
+  {
+    "name": "Miraculous: Rise of the Sphinx",
+    "slug": "miraculous-rise-of-the-sphinx",
+    "productId": "9NFN299RJKWT",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.45647.13591785127650672.5c2f2acb-cc2b-4922-b4a9-43e269f3543e.d72fc2e7-0f0b-4629-81d8-bf377a3d123c"
   },
   {
     "name": "Mirror’s Edge Catalyst",
@@ -5868,10 +5982,22 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.31475.14288058754217024.34c1b6b9-953f-418c-9ab0-c1ebd8ce9cbc.7e8f6172-8fe3-4dca-9c2e-ccd81356e743"
   },
   {
+    "name": "Nickelodeon Kart Racers 2: Grand Prix",
+    "slug": "nickelodeon-kart-racers-2-grand-prix",
+    "productId": "9N9P148DWN6N",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.59485.13529081475014503.9aa01db0-4d6b-4ab7-bfb6-6c336e1b3a55.dcac0b14-39a8-443f-b14d-08a5ccf1851f"
+  },
+  {
     "name": "Night Book",
     "slug": "night-book",
     "productId": "9MWV1BGFX935",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.34268.13832188317787988.bf6368da-ef1f-4bfe-a615-85ab1fae0aa8.022b33f4-1a88-4654-b717-7146f82d0f14"
+  },
+  {
+    "name": "Night Call",
+    "slug": "night-call",
+    "productId": "9NZKR4V4QGD4",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.16117.14474363206747411.f442d349-94f4-468f-b90f-b52503762d1d.d6a1aceb-940c-4703-ba06-2644a1c27b7b"
   },
   {
     "name": "Night in the Woods",
@@ -6066,6 +6192,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.49792.14222036234950961.3d38fa26-c189-4c31-88c5-f0c37baa35a0.3ed33d42-ef22-42bc-8d8f-fbc13bc851fe"
   },
   {
+    "name": "Once Human",
+    "slug": "once-human",
+    "productId": "9N0QWXC09MPT",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.26737.13916126641198036.93e1b525-8641-4737-a69b-7287498c268a.dc8a8b1c-9323-4ba2-8bcc-953be8a9c701"
+  },
+  {
     "name": "One Lonely Outpost",
     "slug": "one-lonely-outpost",
     "productId": "9NRCM30L6GRQ",
@@ -6220,6 +6352,12 @@
     "slug": "palworld",
     "productId": "9NKV34XDW014",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.49778.13654268679289325.ececb946-5639-4e77-b347-9d188d4e7e02.9102215b-349a-4f6d-b9a3-2c14908481f1"
+  },
+  {
+    "name": "Paper Cut Mansion",
+    "slug": "paper-cut-mansion",
+    "productId": "9N46HW26QGTK",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.35927.13993049709580416.be75621f-cf28-472e-bb45-ebd9df8cb8dd.ba16e646-48e2-4805-8c7f-2cb343a78ead"
   },
   {
     "name": "Paper io 2",
@@ -6444,6 +6582,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.18298.14041044108785223.82419c4d-359a-436a-b07d-12cf7137d8fc.e5e5d14b-cb4d-4d97-80f0-522af78eb772"
   },
   {
+    "name": "Pizza Possum",
+    "slug": "pizza-possum",
+    "productId": "9P2W72XG20S5",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.45079.14550048188415554.405cfe63-7933-42f0-a295-16f42bdbf26b.35f8a767-c834-4e88-8dfa-9413eb2a00d3"
+  },
+  {
     "name": "PJ MASKS: HEROES OF THE NIGHT",
     "slug": "pj-masks-heroes-of-the-night",
     "productId": "9NXMFJK7DSQD",
@@ -6558,6 +6702,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.1131.13943034552312825.b3c8c225-b90d-493d-933b-7c7739cdcd09.c3f867c4-80fe-4b8d-9982-942593e5e358"
   },
   {
+    "name": "Portal Knights",
+    "slug": "portal-knights",
+    "productId": "BNWM9F3C08B6",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.56819.67593303145070085.9e7f5b75-7e4b-46cd-88bb-4407d8b12b10.3fdaa1a6-98a1-45c3-ab43-ae186e7e6caa"
+  },
+  {
     "name": "Post Trauma",
     "slug": "post-trauma",
     "productId": "9P3K5N1H0P08",
@@ -6592,6 +6742,12 @@
     "slug": "predator-hunting-grounds",
     "productId": "9P38KTB806QP",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.13897.14547063878120358.ebe0207b-de9c-431d-8479-5dc272ef14a7.5795df25-4031-43de-ad47-9ba02e7b9b7d"
+  },
+  {
+    "name": "Predecessor",
+    "slug": "predecessor",
+    "productId": "9NKVBTRRWH6V",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.14014.13653755876663909.d2d31287-ac26-41c1-812a-864cd979b131.0ff2866d-a620-474d-ab56-aac830d397d6"
   },
   {
     "name": "Prey",
@@ -6766,6 +6922,12 @@
     "slug": "rainbow-billy-the-curse-of-the-leviathan",
     "productId": "9PMGFL6KM0T2",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.57077.14293952320453711.7b0495b8-be6b-4fbc-9d4c-95bf880b7637.40ffa38f-0bca-4264-969e-aa80c8bc2cba"
+  },
+  {
+    "name": "Rapala Fishing: Pro Series",
+    "slug": "rapala-fishing-pro-series",
+    "productId": "C1WMQR16L9GC",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.14566.65667294976924836.50ed7a27-5a7f-4142-86ae-9edcb7c1bf51.0aef8d05-e9c5-477c-929e-2a912b40f3ea"
   },
   {
     "name": "Rare Replay",
@@ -7048,6 +7210,12 @@
     "slug": "rocket-racing",
     "productId": "9PB4WLWQS892",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.24619.14129942185019927.03de3bd0-d372-42a1-a34c-56b51dc4a7ce.18768c45-b883-4f17-9d90-a21ac26ddf3f"
+  },
+  {
+    "name": "Rogue Company",
+    "slug": "rogue-company",
+    "productId": "BPHSZ44NGDB2",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.39502.68572682910762057.5f670f31-b833-44ab-b5af-270f720c6a8f.b979a00f-9d83-40d0-b833-2aff889ff275"
   },
   {
     "name": "Rogue Waters",
@@ -7896,6 +8064,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.52498.13763536664538375.1194c76e-c4bb-431e-a1ad-48b74b849bc8.04c9c3db-dfce-4aed-afa4-c7b83ffe86ab"
   },
   {
+    "name": "Star Renegades",
+    "slug": "star-renegades",
+    "productId": "9PHH0RQ51S5V",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.37892.14235934612999103.4c386374-63ac-4851-a81c-84761f0be92e.d8867f67-9a3a-4ca1-b52a-c4011bd88a5a"
+  },
+  {
     "name": "Star Trucker",
     "slug": "star-trucker",
     "productId": "9MT19Q3CRMQZ",
@@ -8160,6 +8334,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.55060.13736301732248840.30b1b0f6-6f7d-4bab-b6db-4838b855187c.adf08abd-e5db-4ac3-a1b1-24688a387df9"
   },
   {
+    "name": "Super Dungeon Bros",
+    "slug": "super-dungeon-bros",
+    "productId": "BR36ZLXRTK08",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.5475.68901902807955731.b706a66e-e2f1-4794-b5f9-f24105f2ff85.bb2bba2e-b2fa-4540-a1f6-5b59ca74aea1"
+  },
+  {
     "name": "Super Engine GT Turbo SPEC",
     "slug": "super-engine-gt-turbo-spec",
     "productId": "9NTP548W683Z",
@@ -8188,6 +8368,12 @@
     "slug": "super-mega-baseball-4",
     "productId": "9N93V5M3TG4N",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.4835.13544775904823019.d91cad4e-f16d-46e7-a43e-871f1ef1a3d4.b74a1118-97aa-48a5-b035-eab636046943"
+  },
+  {
+    "name": "Super Time Force",
+    "slug": "super-time-force",
+    "productId": "BS33QFX5JWN6",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.13930.69513894373098429.1122d76e-a258-4379-8450-aa6e3befebc6.61b028fb-f5a9-480f-98de-a03b6c40ef54"
   },
   {
     "name": "Superball",
@@ -8242,6 +8428,12 @@
     "slug": "suzerain",
     "productId": "9P92F1KSBQVQ",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.33980.14081128099846957.9970c9fb-1f50-47bc-89ad-d917227978f8.292e11f3-3b2d-4bbb-a73f-03eeb8916517"
+  },
+  {
+    "name": "Swordship",
+    "slug": "swordship",
+    "productId": "9NKDJFN3GPX4",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.31468.13662854197777863.b73f119c-89c3-40f7-b952-00caaf1e9978.5f4c7bbf-8cd9-4df8-b48d-b6ac990089cc"
   },
   {
     "name": "SWORN",
@@ -8826,6 +9018,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.50427.13762649903394503.ab6e32ef-5ac4-49a8-8d5d-4893cabe8968.80831f5f-9374-439b-bf35-bacbedc0ffd8"
   },
   {
+    "name": "The Last Worker",
+    "slug": "the-last-worker",
+    "productId": "9N6CQK7Z2CM1",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.57702.14020866406527584.29b96152-f942-47d0-a34e-8b7dbcbf44bd.9d30538b-2039-4473-a1a0-9db292b2ce57"
+  },
+  {
     "name": "The Legend of Tianding",
     "slug": "the-legend-of-tianding",
     "productId": "9NCBTKXHFF8K",
@@ -8844,10 +9042,22 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.39278.66928923068968049.ecc88210-5e53-4f2b-b6b2-831522e31cb1.17efe40c-1449-4cc1-9ef1-11efc64cf183"
   },
   {
+    "name": "The LEGO NINJAGO Movie Video Game",
+    "slug": "the-lego-ninjago-movie-video-game",
+    "productId": "BQKKNPKX1C4P",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.2204.69139473148334582.b7290ab6-508c-479e-8827-a21822bbed42.5f6b5cc8-3234-4d2a-b3b1-2c3926697754"
+  },
+  {
     "name": "The Long Dark",
     "slug": "the-long-dark",
     "productId": "9NFKN56ZBMR0",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.29824.13597521366015513.fe820bcf-9c60-4f57-a3a7-7cf9ca9f1fc1.2d8ba7ec-aee2-4217-b504-3feb93b84f1d"
+  },
+  {
+    "name": "The Longest Road on Earth",
+    "slug": "the-longest-road-on-earth",
+    "productId": "9PKVL0BR9KMC",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.1835.14254981136462614.b75ab27d-b1a3-4b5e-95c5-7e50e8454468.e94eabbb-3f38-45bf-ae9b-e1fde57625f2"
   },
   {
     "name": "The Lord of the Rings: Gollum",
@@ -9096,6 +9306,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.23276.13864939885830854.7740e640-fe7b-4e1c-b519-69083e646b25.bb5a65d2-3437-4500-823a-2eb3a41e814e"
   },
   {
+    "name": "The Town of Light",
+    "slug": "the-town-of-light",
+    "productId": "BSCP6SP3QXZ7",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.9976.70255667364826842.e16d9b90-930e-4299-a1f7-d8d2f294252e.c3874103-4716-4618-bdba-3ee3be63527e"
+  },
+  {
     "name": "The Walking Dead: A New Frontier",
     "slug": "the-walking-dead-a-new-frontier",
     "productId": "9NBLGGH4VXPM",
@@ -9204,6 +9420,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.38573.13593756492296483.1387e73f-a2f8-405c-8b63-a0a8649a58d7.11fd5a88-cf56-482a-93cf-7893359e61c8"
   },
   {
+    "name": "Tiny Troopers Joint Ops",
+    "slug": "tiny-troopers-joint-ops",
+    "productId": "BS30VMKD7RVX",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.23229.69511614476217803.5bcb4219-49c6-4949-8be4-ea4be65087da.46b161b4-3ffc-4ce0-9ec1-470c5ab5dfe0"
+  },
+  {
     "name": "Tinykin",
     "slug": "tinykin",
     "productId": "9NLLP82XVSKH",
@@ -9232,6 +9454,12 @@
     "slug": "together-we-live",
     "productId": "9N4VR6NR3ZVX",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.39223.13979801800355091.5896d12a-6da8-4b3a-b6d1-7b89692a89d8.4fff3208-878b-4ad2-a49d-036f9b67c645"
+  },
+  {
+    "name": "Togges",
+    "slug": "togges",
+    "productId": "9NGN3TPMW9CP",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.47828.13646836177530012.0cd29849-39b3-43f2-9635-34a5a330cca9.99a60cab-4d1e-483a-a38d-e8c9e6f3ded9"
   },
   {
     "name": "Tom Clancy’s Ghost Recon Breakpoint",
@@ -9888,6 +10116,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.939.13528912654162373.752dd58c-93b6-40eb-ba0f-2d5ce3229dff.c6499c2f-2c1f-4613-9031-089cbe7d35d9"
   },
   {
+    "name": "Warhammer Age of Sigmar: Realms of Ruin",
+    "slug": "warhammer-age-of-sigmar-realms-of-ruin",
+    "productId": "9P0VN9WWF7TZ",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.41357.14519515039451176.1850ec54-9d13-483d-b04f-7963d7c27422.0156fd99-21c5-4408-b1a4-0916c83f8c99"
+  },
+  {
     "name": "Warhammer Age of Sigmar: Storm Ground",
     "slug": "warhammer-age-of-sigmar-storm-ground",
     "productId": "9MXNGTGKPP1W",
@@ -9936,6 +10170,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.18275.65664549497403424.a741b357-ecc5-4fa6-bfad-4f3a95f27506.87ae0e0d-537a-4730-a6bb-c2fbd19ae709"
   },
   {
+    "name": "Wavetale",
+    "slug": "wavetale",
+    "productId": "9N5CWNHPNQJ6",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.22943.14036040679162857.1a5e4315-1427-462f-9947-7c19ce347648.03107d80-bf2d-45fb-a181-9448f303ce51"
+  },
+  {
     "name": "Way of the Hunter",
     "slug": "way-of-the-hunter",
     "productId": "9PHW62DC4LGS",
@@ -9964,6 +10204,12 @@
     "slug": "werewolf-pinball",
     "productId": "9MV2TRX701DG",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.37424.13796886059199565.5e9d5fb5-9687-42c7-8e22-1f51db842e88.fcc4a260-b2d9-4f6d-8c2c-4fb56d7a08b7"
+  },
+  {
+    "name": "West of Dead",
+    "slug": "west-of-dead",
+    "productId": "9NV0540N4JRN",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.43910.14404765850801985.e18dd79a-b4d8-4403-a8d3-ee01732babbd.42ffc671-8cfc-45dc-892e-c05fe97f0c1f"
   },
   {
     "name": "Whacking Hell!",
@@ -10006,6 +10252,12 @@
     "slug": "while-true-learn",
     "productId": "9NRPGJZQRP2M",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.49826.14378884201378508.01c0dcc7-d4d2-4682-b126-f73dbf895aea.032dc0b1-f3c0-4bf4-8cac-3c0ed0c400dc"
+  },
+  {
+    "name": "Whisper Of The House",
+    "slug": "whisper-of-the-house",
+    "productId": "9NQ6XPGTPX86",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.19774.13774780544976425.7b2a0a8c-cfb7-4456-ab6f-913678a9a0ae.358ddf51-d47b-426e-a0aa-e88158980ebb"
   },
   {
     "name": "Who Pressed Mute on Uncle Marcus?",
