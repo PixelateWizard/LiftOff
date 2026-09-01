@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Steam refresh and helper-tray pins:** Manual refresh now waits for a connected Steam owned-cache update before rescanning, and the helper tray exposes controller-navigable pinned games/apps after system controls. Frontend build, 40 unit tests, 3 mocked-browser tests, 28 Rust tests, Rust check, docs check, and diff validation pass; live Steam-account freshness plus physical Ally/WebView2 controller feel remain runtime gates.
+- **Delivered — combined Steam/helper and return-surface work:** Resolved the merge by preserving Steam owned-cache refresh ordering, helper-tray pinned shortcuts, faster FSE game-exit restore, native theme-colour backgrounds, and translucent-surface settling. Frontend build, 42 unit tests, 3 mocked-browser tests, Rust check, 28 Rust tests, docs check, and diff validation pass; live Steam-account freshness, comparative return latency, first-frame WebView2 visuals, and physical-controller behavior remain device/runtime gates.
 
 ## Start-of-Task Workflow
 
