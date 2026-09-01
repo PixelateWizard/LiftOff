@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Alpha 6 version and release notes:** Advanced every app-owned version marker to `2.0.0-alpha-6`, moved the complete former Unreleased changelog beneath Alpha 6, and added user-facing Markdown release notes. Static build, Rust, documentation, and diff validation passed; device- and service-dependent behaviors retain their existing runtime gates.
+- **In progress — return latency and translucent-surface settling:** Reduce the no-hide game-exit black-screen interval without weakening WebView2 recovery, and remove persistent backdrop-root churn so translucent surfaces render correctly on their first visible frame. Keep legacy `start_fse_watch` behavior unchanged and retain physical Ally/WebView2 checks as explicit gates.
 
 ## Start-of-Task Workflow
 

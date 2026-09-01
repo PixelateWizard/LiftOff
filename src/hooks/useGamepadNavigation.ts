@@ -1814,23 +1814,30 @@ export function useGamepadNavigation(
     // Defensive: WebView2 can occasionally drop its focus event when the FSE
     // backend forces LiftOff foreground, but fse:restored is the reliable
     // signal that LiftOff is visually back and should resume controller input.
-    // requestAnimationFrame does not fire while WebView2 rendering is disabled.
-    // If the backend says it resumed but no frames land, the controller came
-    // back on a dead surface -- ask the backend to force a real resume.
+    // requestAnimationFrame does not fire while WebView2 rendering is disabled,
+    // so a silent frame count is a reliable proxy for a dead surface. The
+    // backend no longer forces a repaint on the happy path, which makes this
+    // watchdog the real recovery path -- so it needs to fire sooner than 700 ms
+    // and be willing to try twice before giving up.
     const verifyRenderResumed = () => {
-      let frames = 0;
-      let raf = 0;
-      const tick = () => {
-        frames += 1;
-        if (frames < 3) raf = requestAnimationFrame(tick);
-      };
-      raf = requestAnimationFrame(tick);
-      window.setTimeout(() => {
-        cancelAnimationFrame(raf);
-        if (frames === 0) {
+      let attempts = 0;
+      const runCheck = () => {
+        let frames = 0;
+        let raf = 0;
+        const tick = () => {
+          frames += 1;
+          if (frames < 3) raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        window.setTimeout(() => {
+          cancelAnimationFrame(raf);
+          if (frames > 0) return;
           invoke("force_webview_resume").catch(() => {});
-        }
-      }, 700);
+          attempts += 1;
+          if (attempts < 2) window.setTimeout(runCheck, 400);
+        }, 320);
+      };
+      runCheck();
     };
     listen("fse:restored", () => {
       resumeFromBackground();

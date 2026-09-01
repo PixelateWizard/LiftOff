@@ -34,6 +34,11 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 
 const POLL_INTERVAL_MS: u64 = 250;
+// The game-alive check is a single IsWindow call plus a GetForegroundWindow
+// call. It is cheap enough to run faster than the general poll, and every
+// millisecond of latency here is a millisecond of black screen after the game
+// closes.
+const GAME_ALIVE_POLL_MS: u64 = 120;
 const FOREGROUND_GRAB_TIMEOUT_MS: u64 = 12_000;
 const SUCCESSOR_GRACE_MS: u64 = 1_500;
 const PREFERRED_TARGET_HIDE_GRACE_MS: u64 = 500;
@@ -54,9 +59,9 @@ const RESUME_ATTEMPTS: u32 = 8;
 const RESUME_RETRY_SLEEP_MS: u64 = 60;
 const WEBVIEW_QUERY_TIMEOUT_MS: u64 = 400;
 // A visibility readback only proves the controller accepted IsVisible=true; it
-// does not prove that WebView2's composition surface is producing frames. On a
-// confirmed game exit, bounce presentation once so a stale visible surface is
-// detached before the normal verified resume and repaint sequence.
+// does not prove that WebView2's composition surface is producing frames. If
+// the early exit-time resume cannot be verified, bounce presentation once so a
+// stale surface is detached before the fallback resume sequence.
 const PRESENTATION_RESET_SLEEP_MS: u64 = 40;
 // Self-heal window after a game exits. AnyFSE can re-route its visible-window
 // slot for a beat after the game process tears down, so we keep checking.
@@ -577,8 +582,12 @@ fn start_post_exit_heal(app: AppHandle, our_hwnd: isize) {
 
 // Full recovery sequence for "the game exited and LiftOff must come back".
 #[cfg(windows)]
-fn restore_after_game_exit(app: &AppHandle, our_hwnd: isize) {
-    let resumed = reset_webview_presentation(app);
+fn restore_after_game_exit(app: &AppHandle, our_hwnd: isize, already_resumed: bool) {
+    let resumed = already_resumed || reset_webview_presentation(app);
+    // Tell the frontend that rendering is back before the foreground dance, so
+    // its render-liveness watchdog starts counting from the earliest frame that
+    // could possibly land rather than after the activation retries.
+    let _ = app.emit("fse:gpu-resumed", ());
     if let Some(hwnd) = hwnd_from_value(our_hwnd) {
         unsafe {
             if IsIconic(hwnd).as_bool() {
@@ -589,14 +598,21 @@ fn restore_after_game_exit(app: &AppHandle, our_hwnd: isize) {
         }
         raise_window_and_hold(hwnd);
         clear_topmost(hwnd);
-        nudge_webview_repaint(hwnd);
+        // The one-pixel resize round-trip forces a full page relayout and
+        // compositor rebuild, which re-rasterizes every backdrop-filter surface
+        // on screen. That is worth paying to escape a dead surface and not worth
+        // paying on every clean exit. The frontend liveness watchdog calls
+        // force_webview_resume, which nudges, when frames genuinely did not
+        // return.
+        if !resumed {
+            nudge_webview_repaint(hwnd);
+        }
     }
     if !resumed {
         // Last resort: the controller reported not-visible through every retry.
         // Issue one more unverified call before handing off to the heal thread.
         let _ = set_webview_visible(app, true);
     }
-    let _ = app.emit("fse:gpu-resumed", ());
     let _ = app.emit("fse:restored", ());
     start_post_exit_heal(app.clone(), our_hwnd);
 }
@@ -710,6 +726,16 @@ pub fn start_gpu_release_watch(
 
                 let alive = unsafe { IsWindow(Some(game_hwnd)).as_bool() };
                 if !alive {
+                    // Resume rendering now, not after the successor grace period.
+                    // The game window is already gone, so the user is already
+                    // looking at LiftOff's surface. Staying suspended through the
+                    // grace window is 1.5 seconds of guaranteed black screen for
+                    // the common case where no successor window ever appears. If a
+                    // successor does take over we suspend again below.
+                    if webview_suspended && resume_webview_verified(&app) {
+                        webview_suspended = false;
+                        let _ = app.emit("fse:gpu-resumed", ());
+                    }
                     let grace_end = Instant::now() + Duration::from_millis(SUCCESSOR_GRACE_MS);
                     let mut reacquired = false;
 
@@ -734,10 +760,16 @@ pub fn start_gpu_release_watch(
                             break;
                         }
 
-                        std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
+                        std::thread::sleep(Duration::from_millis(GAME_ALIVE_POLL_MS));
                     }
 
                     if reacquired {
+                        // A successor fullscreen window took the foreground.
+                        // Hand the GPU back to it.
+                        if !webview_suspended && suspend_webview(&app) {
+                            webview_suspended = true;
+                            let _ = app.emit("fse:gpu-suspended", ());
+                        }
                         continue;
                     }
                     break;
@@ -761,15 +793,14 @@ pub fn start_gpu_release_watch(
                     let _ = app.emit("fse:gpu-suspended", ());
                 }
 
-                std::thread::sleep(Duration::from_millis(POLL_INTERVAL_MS));
+                std::thread::sleep(Duration::from_millis(GAME_ALIVE_POLL_MS));
             }
 
-            // The game window is gone. Always run the full recovery sequence.
-            // During FSE foreground churn the controller can report visible and
-            // flip `webview_suspended` false even though its composition surface
-            // is still blank. That state must not bypass the exit-time reset,
-            // foreground reclaim, and repaint.
-            restore_after_game_exit(&app, our_hwnd);
+            // start_gpu_release_watch always suspends before entering the watch
+            // loop, so the restore path always applies here. webview_suspended
+            // is now only telling us whether the early exit path already brought
+            // rendering back, which lets restore skip a redundant verified resume.
+            restore_after_game_exit(&app, our_hwnd, !webview_suspended);
             app.state::<FseWatch>().cancel();
         });
     }
@@ -1002,6 +1033,23 @@ pub fn force_webview_resume(app: AppHandle) {
     #[cfg(not(windows))]
     {
         let _ = app;
+    }
+}
+
+// Paint the native window background in the app's own base colour so any
+// moment where WebView2 is not presenting (suspended during gameplay, cold
+// start before first paint) shows the theme instead of black.
+#[tauri::command]
+pub fn set_window_background_color(app: AppHandle, r: u8, g: u8, b: u8) {
+    #[cfg(windows)]
+    {
+        if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
+            let _ = window.set_background_color(Some(tauri::window::Color(r, g, b, 255)));
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (app, r, g, b);
     }
 }
 
