@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Alpha 6 version and release notes:** Advanced every app-owned version marker to `2.0.0-alpha-6`, moved the complete former Unreleased changelog beneath Alpha 6, and added user-facing Markdown release notes. Static build, Rust, documentation, and diff validation passed; device- and service-dependent behaviors retain their existing runtime gates.
+- **Delivered — Steam refresh and helper-tray pins:** Manual refresh now waits for a connected Steam owned-cache update before rescanning, and the helper tray exposes controller-navigable pinned games/apps after system controls. Frontend build, 40 unit tests, 3 mocked-browser tests, 28 Rust tests, Rust check, docs check, and diff validation pass; live Steam-account freshness plus physical Ally/WebView2 controller feel remain runtime gates.
 
 ## Start-of-Task Workflow
 

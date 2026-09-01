@@ -2137,7 +2137,7 @@ fn steam_qr_begin(app_handle: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn fetch_steam_owned_games(app_handle: tauri::AppHandle) -> Result<(), String> {
+async fn fetch_steam_owned_games(app_handle: tauri::AppHandle) -> Result<usize, String> {
     let status = steam_status_inner();
     let Some(account) = status.account_name else {
         return Err("Steam account not connected".to_string());
@@ -2145,20 +2145,23 @@ fn fetch_steam_owned_games(app_handle: tauri::AppHandle) -> Result<(), String> {
     let Some(steamid) = status.steamid else {
         return Err("Steam account id missing".to_string());
     };
-    tauri::async_runtime::spawn_blocking(move || {
-        let result = generate_steam_access_token(&account, &steamid)
-            .and_then(|session| cache_owned_games_for_session(&session).map(|games| games.len()));
-        match result {
-            Ok(count) => {
-                let _ = app_handle.emit("steam-owned-refresh", count);
-                emit_steam_account_changed(&app_handle);
-            }
-            Err(_) => {
-                let _ = app_handle.emit("steam-login-error", "Steam library refresh failed");
-            }
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        generate_steam_access_token(&account, &steamid)
+            .and_then(|session| cache_owned_games_for_session(&session).map(|games| games.len()))
+    })
+    .await
+    .map_err(|_| "Steam library refresh task failed".to_string())?;
+    match result {
+        Ok(count) => {
+            let _ = app_handle.emit("steam-owned-refresh", count);
+            emit_steam_account_changed(&app_handle);
+            Ok(count)
         }
-    });
-    Ok(())
+        Err(error) => {
+            let _ = app_handle.emit("steam-login-error", "Steam library refresh failed");
+            Err(error)
+        }
+    }
 }
 
 #[tauri::command]

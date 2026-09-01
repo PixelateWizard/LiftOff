@@ -69,6 +69,7 @@ import { XboxConnectGuide } from "./components/xbox/XboxConnectGuide";
 import { AUDIO_PROFILES, resolveAudioProfile } from "./audio/audioProfiles";
 import { detectPlatform } from "./utils/gamepad";
 import { getLibraryEntryFocusSection } from "./utils/libraryFocus";
+import { refreshLibrarySources } from "./utils/libraryRefresh";
 import { xboxPackageFamilyNameFor, xboxProductIdFor } from "./utils/xboxProductId";
 import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO, UPDATE_CHECK_INTERVAL_HOURS,
@@ -223,6 +224,7 @@ export default function App() {
   const [steamQrError, setSteamQrError] = useState("");
   const steamConnectedRef = useRef(false);
   const steamStartupRefreshRef = useRef(false);
+  const librarySourceRefreshRef = useRef(null);
   const [xboxStatus, setXboxStatus] = useState({ connected: false, owned_count: 0 });
   const [xboxAuthPhase, setXboxAuthPhase] = useState("idle");
   const [xboxAuthError, setXboxAuthError] = useState("");
@@ -548,11 +550,25 @@ export default function App() {
     setResolvedDetailsApp(app);
   }, [artPickerApp, setResolvedDetailsApp]);
 
-  const refreshSteamStatus = () => {
+  const refreshSteamStatus = useCallback(() => {
     invoke("steam_account_status")
       .then((status) => setSteamStatus(status || { connected: false, owned_count: 0 }))
       .catch(() => setSteamStatus({ connected: false, owned_count: 0 }));
-  };
+  }, []);
+
+  const refreshLibraryFromSources = useCallback(() => {
+    if (librarySourceRefreshRef.current) return librarySourceRefreshRef.current;
+    const refresh = refreshLibrarySources({
+      steamConnected: steamConnectedRef.current,
+      refreshSteamOwned: () => invoke("fetch_steam_owned_games"),
+      refreshSteamStatus,
+      refreshLocalLibrary: refreshLibrary,
+    }).finally(() => {
+      librarySourceRefreshRef.current = null;
+    });
+    librarySourceRefreshRef.current = refresh;
+    return refresh;
+  }, [refreshLibrary, refreshSteamStatus]);
 
   const openSteamQr = () => {
     setSteamQrUrl("");
@@ -672,7 +688,6 @@ export default function App() {
       unsubs.push(await listen("steam-owned-refresh", () => {
         if (!disposed) {
           refreshSteamStatus();
-          refreshLibrary();
         }
       }));
       unsubs.push(await listen("xbox-login-success", (event) => {
@@ -718,8 +733,8 @@ export default function App() {
   useEffect(() => {
     if (!steamStatus.connected || steamStartupRefreshRef.current) return;
     steamStartupRefreshRef.current = true;
-    invoke("fetch_steam_owned_games").catch(() => {});
-  }, [steamStatus.connected]);
+    refreshLibraryFromSources();
+  }, [steamStatus.connected, refreshLibraryFromSources]);
   const requestClose = (app) => {
     if (!app) return;
     setCloseRequest({ app, force: false });
@@ -946,7 +961,7 @@ export default function App() {
     fireKey,
     setContextMenu,
     setShowFolderManager,
-    refreshLibrary,
+    refreshLibrary: refreshLibraryFromSources,
     updateStatus,
     checkForUpdates,
     handleClearRecents: () => handleClearRecentsRef.current?.(),
@@ -2664,7 +2679,7 @@ export default function App() {
       customFolders={customFolders}
       onOpenFolderManager={() => { setShowFolderManager(true); showFolderManagerRef.current = true; }}
       libraryRefreshStatus={libraryRefreshStatus}
-      refreshLibrary={refreshLibrary}
+      refreshLibrary={refreshLibraryFromSources}
       updateStatus={updateStatus}
       updateInfo={updateInfo}
       checkForUpdates={checkForUpdates}
@@ -3804,13 +3819,20 @@ export default function App() {
         open={showHelperTray}
         mode={helperBarMode}
         spotify={spotify}
+        pinnedApps={pinnedAppsFor("Home")}
+        pinnedArtwork={{ ...gameArt, ...customArt }}
         repeatSpeed={settings.repeat_speed}
         onClose={() => setShowHelperTray(false)}
         onOpenPlaylists={() => { setShowHelperTray(false); setShowSpotifyOverlay(true); }}
         onConnectSpotify={() => { setShowHelperTray(false); setShowSpotifyGuide(true); }}
         onOpenSettings={() => { setShowHelperTray(false); switchTab("Settings"); }}
         onOpenPower={() => { setShowHelperTray(false); setShowPowerModal(true); showPowerModalRef.current = true; }}
-        onRefreshLibrary={() => { setShowHelperTray(false); refreshLibrary(); }}
+        onRefreshLibrary={() => { setShowHelperTray(false); refreshLibraryFromSources(); }}
+        onOpenPinned={(app) => {
+          setShowHelperTray(false);
+          if (app.app_type === "game") openDetailsModal(app);
+          else triggerLaunch(app, recentRef.current);
+        }}
         onOpenControls={() => { setShowHelperTray(false); setShowControlsModal(true); }}
       />
       {showControlsModal && <ControlsModal initialTab={tab} onClose={() => setShowControlsModal(false)} />}

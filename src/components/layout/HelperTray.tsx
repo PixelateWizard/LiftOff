@@ -6,6 +6,7 @@ import {
   IoSettingsOutline, IoSunnyOutline, IoVolumeHighOutline,
 } from "react-icons/io5";
 import type { SpotifyController } from "../../hooks/useSpotify";
+import type { App } from "../../types";
 import { useSystemControls } from "../../hooks/useSystemControls";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -17,6 +18,8 @@ interface HelperTrayProps {
   open: boolean;
   mode: HelperBarMode;
   spotify: SpotifyController;
+  pinnedApps: App[];
+  pinnedArtwork?: Record<string, string>;
   repeatSpeed?: "slow" | "normal" | "fast";
   onClose: () => void;
   onOpenPlaylists: () => void;
@@ -25,9 +28,10 @@ interface HelperTrayProps {
   onOpenPower: () => void;
   onRefreshLibrary: () => void;
   onOpenControls: () => void;
+  onOpenPinned: (app: App) => void;
 }
 
-type FocusItem = { key: string; row: number; column: number };
+type FocusItem = { key: string; row: number; column: number; app?: App };
 
 const formatTime = (ms: number) => {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -38,6 +42,8 @@ export function HelperTray({
   open,
   mode,
   spotify,
+  pinnedApps,
+  pinnedArtwork = {},
   repeatSpeed = "normal",
   onClose,
   onOpenPlaylists,
@@ -46,6 +52,7 @@ export function HelperTray({
   onOpenPower,
   onRefreshLibrary,
   onOpenControls,
+  onOpenPinned,
 }: HelperTrayProps) {
   const { t } = useTranslation();
   const { glassBar, accent, theme, isDark, surfaceStyle, surface, resolvedTheme } = useTheme();
@@ -58,36 +65,60 @@ export function HelperTray({
   const [adjustmentKey, setAdjustmentKey] = useState<string | null>(null);
   const adjustmentKeyRef = useRef<string | null>(null);
   const closedRef = useRef(false);
+  const pinnedRowRef = useRef<HTMLDivElement | null>(null);
+  const pinnedButtonRefs = useRef(new Map<string, HTMLButtonElement>());
 
   const focusItems = useMemo<FocusItem[]>(() => {
+    const pinnedRow = pinnedApps.length > 0 ? 2 : null;
+    const musicRow = pinnedRow == null ? 2 : 3;
     const music = track
       ? [
-          { key: "previous", row: 2, column: 0 },
-          { key: "play", row: 2, column: 1 },
-          { key: "next", row: 2, column: 2 },
-          { key: "seek", row: 2, column: 3 },
-          { key: "playlists", row: 2, column: 4 },
+          { key: "previous", row: musicRow, column: 0 },
+          { key: "play", row: musicRow, column: 1 },
+          { key: "next", row: musicRow, column: 2 },
+          { key: "seek", row: musicRow, column: 3 },
+          { key: "playlists", row: musicRow, column: 4 },
         ]
-      : [{ key: "playlists", row: 2, column: 0 }];
+      : [{ key: "playlists", row: musicRow, column: 0 }];
     const sliders = [
       { key: "volume", row: 1, column: 0 },
       ...(brightness != null && brightness >= 0 ? [{ key: "brightness", row: 1, column: 1 }] : []),
     ];
+    const pinned = pinnedRow == null ? [] : pinnedApps.map((app, column) => ({
+      key: `pinned:${app.id}`,
+      row: pinnedRow,
+      column,
+      app,
+    }));
     return [
       { key: "settings", row: 0, column: 0 },
       { key: "power", row: 0, column: 1 },
       { key: "refresh", row: 0, column: 2 },
       { key: "controls", row: 0, column: 3 },
       ...sliders,
+      ...pinned,
       ...music,
     ];
-  }, [track, brightness]);
+  }, [track, brightness, pinnedApps]);
   const focusItemsRef = useRef(focusItems);
   useEffect(() => { focusItemsRef.current = focusItems; }, [focusItems]);
 
   const setFocus = (key: string) => {
     focusKeyRef.current = key;
     setFocusKey(key);
+    if (key.startsWith("pinned:")) {
+      const row = pinnedRowRef.current;
+      const button = pinnedButtonRefs.current.get(key);
+      if (row && button) {
+        const rowRect = row.getBoundingClientRect();
+        const buttonRect = button.getBoundingClientRect();
+        if (buttonRect.left < rowRect.left) {
+          row.scrollTo({ left: Math.max(0, row.scrollLeft + buttonRect.left - rowRect.left - 2), behavior: "smooth" });
+        } else if (buttonRect.right > rowRect.right) {
+          row.scrollTo({ left: row.scrollLeft + buttonRect.right - rowRect.right + 2, behavior: "smooth" });
+        }
+      }
+    }
   };
 
   const setAdjustment = (key: string | null) => {
@@ -125,6 +156,8 @@ export function HelperTray({
     if (key === "power") onOpenPower();
     if (key === "refresh") onRefreshLibrary();
     if (key === "controls") onOpenControls();
+    const pinned = focusItemsRef.current.find((item) => item.key === key)?.app;
+    if (pinned) onOpenPinned(pinned);
   };
   const activateRef = useRef(activate);
   useEffect(() => { activateRef.current = activate; });
@@ -290,6 +323,47 @@ export function HelperTray({
           <SliderControl icon={<IoVolumeHighOutline />} label={t("helper.volume")} focusKey="volume" focused={focusKey === "volume"} editing={adjustmentKey === "volume"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={volume?.percent ?? 0} onFocus={setFocus} onChange={requestVolume} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />
           {brightness != null && brightness >= 0 && <SliderControl icon={<IoSunnyOutline />} label={t("helper.brightness")} focusKey="brightness" focused={focusKey === "brightness"} editing={adjustmentKey === "brightness"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={brightness} onFocus={setFocus} onChange={requestBrightness} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />}
         </div>
+
+        {pinnedApps.length > 0 && (
+          <div style={{ padding: "14px 0 16px", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}` }}>
+            <div style={{ color: theme.textDim, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 9 }}>
+              {t("helper.pinned")}
+            </div>
+            <div ref={pinnedRowRef} style={{ display: "flex", gap: 9, overflowX: "auto", padding: "2px", scrollbarWidth: "thin" }}>
+              {pinnedApps.map((app) => {
+                const key = `pinned:${app.id}`;
+                const artwork = pinnedArtwork[app.id];
+                return (
+                  <button
+                    key={app.id}
+                    ref={(node) => {
+                      if (node) pinnedButtonRefs.current.set(key, node);
+                      else pinnedButtonRefs.current.delete(key);
+                    }}
+                    type="button"
+                    data-helper-pinned={app.id}
+                    aria-label={app.name}
+                    onClick={() => onOpenPinned(app)}
+                    onMouseMove={() => setFocus(key)}
+                    style={{ ...buttonStyle(key), width: 164, minWidth: 164, padding: "8px 10px", display: "flex", alignItems: "center", gap: 9, textAlign: "left" }}
+                  >
+                    <span style={{ width: 38, height: 38, borderRadius: squareCorners ? 0 : 8, overflow: "hidden", flexShrink: 0, display: "grid", placeItems: "center", background: `${accent.glow}0.18)`, color: accent.primary, fontWeight: 800 }}>
+                      {artwork ? (
+                        <img src={artwork} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : app.icon_base64 ? (
+                        <img src={`data:image/png;base64,${app.icon_base64}`} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                      ) : app.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: "block", color: theme.text, fontSize: 12, fontWeight: 750, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</span>
+                      <span style={{ display: "block", color: theme.textFaint, fontSize: 10, marginTop: 2 }}>{t(app.app_type === "game" ? "home.game" : "home.app")}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 15 }}>
           {track ? (

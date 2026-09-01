@@ -159,6 +159,7 @@
     "power": "Power",
     "refreshLibrary": "Refresh library",
     "controls": "Controls",
+    "pinned": "Pinned",
     "closeTray": "Close tray",
     "openTray": "Open helper tray"
   },

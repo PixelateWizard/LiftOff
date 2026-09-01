@@ -11,6 +11,7 @@ Read for scanner/source changes, library refresh, install state, launch routing,
 ## Durable Constraints
 
 - Startup performs one authoritative all-apps scan; frontend hidden filtering must not trigger a second equivalent scan.
+- A user-requested library refresh waits for the connected Steam owned-library cache write before starting its authoritative local rescan, so newly acquired uninstalled games are part of the same result. If the remote refresh fails, still complete the local rescan.
 - Supported source families currently include Steam, Microsoft Store/Xbox/UWP, Desktop shortcuts, Battle.net, GOG, Epic, Cloud bookmarks, custom sources, and collections. Search current scanners before extending source logic.
 - Categorization overrides may change `app_type` and `source`, but must not mutate identity or launch paths.
 - Installed entries must be enriched with matching launcher-owned play metadata before owned-library duplicates are skipped. Keep complete local per-game launch history for Details, independently of bounded Home recents/carousels.

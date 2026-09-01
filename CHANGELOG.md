@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+- **Pinned helper shortcuts** - The helper tray now includes a controller-navigable row for every visible pinned game and app, using available cover art or icons and preserving the existing Details-first game behavior plus direct app launching.
+
+### Fixed
+- **Steam library refresh freshness** - Manual library refresh now waits for a connected Steam owned-library fetch to finish writing its cache before rescanning, so newly acquired games appear without signing out or restarting LiftOff; a failed remote refresh still performs the local launcher scan.
+
 ## [2.0.0-alpha-6] - Alpha 6
 
 ### Added

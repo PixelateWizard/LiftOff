@@ -159,6 +159,7 @@
     "power": "TODO(fr)",
     "refreshLibrary": "TODO(fr)",
     "controls": "TODO(fr)",
+    "pinned": "TODO(fr) Pinned",
     "closeTray": "TODO(fr)",
     "openTray": "TODO(fr)"
   },
