@@ -66,21 +66,35 @@ export default function ModalShell({
 
   return (
     <div
-      className="lo-anim-overlay"
       style={{
         position: "fixed", inset: 0, zIndex,
-        background: "rgba(0,0,0,0.7)",
-        backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
         display: "flex", alignItems: "center", justifyContent: "center",
         fontFamily: "'Segoe UI', sans-serif", userSelect: "none",
       }}
       onClick={onOverlayClick}
     >
+      {/* The dim and blur scrim is a sibling of the panel, not its ancestor. An
+          ancestor that carries backdrop-filter or an animating opacity is a
+          backdrop root, so the panel's own glass would sample that layer while
+          it is still being rasterized and visibly snap into place afterwards.
+          As a sibling painted below the panel it produces the same result with
+          no backdrop-root churn. */}
+      <div
+        className="lo-anim-overlay"
+        aria-hidden="true"
+        style={{
+          position: "absolute", inset: 0,
+          background: "rgba(0,0,0,0.7)",
+          backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+          pointerEvents: "none",
+        }}
+      />
       <div
         className={motion === "drill" ? "lo-anim-drill" : "lo-anim-modal"}
         data-modal=""
         style={{
           ...glass,
+          position: "relative",
           width: `min(${width}px, 90vw)`,
           ...(maxHeight ? { maxHeight } : {}),
           borderRadius: resolvedTheme === "cyberpunk" ? 0 : isPixel ? 0 : surfaceStyle === "material" ? 16 : 24,

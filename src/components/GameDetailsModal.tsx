@@ -847,14 +847,10 @@ export function GameDetailsModal({
 
   return (
     <div
-      className="lo-anim-overlay"
       style={{
         position: "fixed",
         inset: 0,
         zIndex: 9000,
-        background: "rgba(0,0,0,0.72)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -865,6 +861,19 @@ export function GameDetailsModal({
       }}
       onClick={onClose}
     >
+      {/* Scrim as a sibling of the panel. See ModalShell for the rationale. */}
+      <div
+        className="lo-anim-overlay"
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.72)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          pointerEvents: "none",
+        }}
+      />
       <section
         className="lo-anim-modal"
         data-modal=""
