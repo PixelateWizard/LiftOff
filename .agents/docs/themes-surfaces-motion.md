@@ -17,6 +17,8 @@ Read for themes, accents, light/dark behavior, surfaces, backgrounds, focus styl
 - Aero uses directional acrylic/specular treatment; Glass uses heavier frost; Clear remains flat; Onyx focus respects its effects/static mode.
 - Light accents with `darkText` require dark foregrounds on filled controls for contrast.
 - UI motion primitives live in `src/styles/motion.css`; new shared motion should not be added to the large injected global block in `App.jsx`.
+- Do not put persistent `will-change: transform`, `will-change: opacity`, `transform: translateZ(0)`, or opacity below 1 on an ancestor of a `backdrop-filter` surface. Each makes that ancestor a backdrop root, and creating or destroying one forces the translucent surfaces inside it to re-rasterize, which reads as Glass/Aero panels settling into place after they appear.
+- A modal scrim that carries `backdrop-filter` belongs beside the panel, not around it.
 - Effects-off keeps the environment visible but static. Reduced motion and UI-motion settings have distinct responsibilities.
 - Avoid animating full-screen SVG-filtered layers. On shared-GPU handhelds, visual changes need runtime GPU/feel validation, not CSS inspection alone.
 
@@ -35,6 +37,7 @@ Read for themes, accents, light/dark behavior, surfaces, backgrounds, focus styl
 - Applying a shared style change without protected-branch review.
 - Using translucent or blurred rows for Material/Cyberpunk paths that require opaque surfaces.
 - Animating `box-shadow` directly on a glass surface and destabilizing its compositing.
+- Adding a compositing hint to a motion primitive class that uses `animation-fill-mode: both`, so the promotion outlives the animation.
 - Treating the effects toggle as “remove background” instead of “freeze effects.”
 - Measuring a WebView2 memory/GPU result without fresh launches and a signal larger than run variance.
 

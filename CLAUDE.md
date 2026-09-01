@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Alpha 6 version and release notes:** Advanced every app-owned version marker to `2.0.0-alpha-6`, moved the complete former Unreleased changelog beneath Alpha 6, and added user-facing Markdown release notes. Static build, Rust, documentation, and diff validation passed; device- and service-dependent behaviors retain their existing runtime gates.
+- **Delivered — return latency and translucent-surface settling:** The no-hide exit watcher now resumes WebView2 as soon as the game window dies, re-suspends for successor windows, uses the expensive repaint only as liveness recovery, and syncs the native background to flat theme colours. Persistent motion promotions, nested blurred modal scrims, and Home opacity churn were removed. Rust/frontend/build/docs/diff checks pass; comparative latency, first-frame WebView2 visuals, motion feel, physical-controller return, and repeated Steam/Microsoft/direct/successor exits remain ROG Ally gates in `.agents/docs/known-issues.md`.
 
 ## Start-of-Task Workflow
 

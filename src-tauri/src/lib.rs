@@ -9237,6 +9237,7 @@ pub fn run() {
             show_main_window,
             fse_watcher::show_liftoff,
             fse_watcher::force_webview_resume,
+            fse_watcher::set_window_background_color,
             clear_art_cache,
             set_frontend_active,
             open_osk,

@@ -69,6 +69,7 @@ import { XboxConnectGuide } from "./components/xbox/XboxConnectGuide";
 import { AUDIO_PROFILES, resolveAudioProfile } from "./audio/audioProfiles";
 import { detectPlatform } from "./utils/gamepad";
 import { getLibraryEntryFocusSection } from "./utils/libraryFocus";
+import { resolveNativeBackgroundRgb } from "./utils/nativeBackground";
 import { xboxPackageFamilyNameFor, xboxProductIdFor } from "./utils/xboxProductId";
 import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO, UPDATE_CHECK_INTERVAL_HOURS,
@@ -1059,6 +1060,14 @@ export default function App() {
     accent,
   });
   const appBg = THEME_BG_COLORS[resolvedTheme] ?? _appBg;
+  useEffect(() => {
+    // Keep the native window background in sync with the resolved theme base so
+    // any unpainted WebView2 moment shows the theme colour rather than black.
+    const rgb = resolveNativeBackgroundRgb(appBg);
+    if (!rgb) return;
+    const [r, g, b] = rgb;
+    invoke("set_window_background_color", { r, g, b }).catch(() => {});
+  }, [appBg]);
   const glassBar = resolvedTheme === "onyx" ? {
     background: "rgba(5, 9, 22, 0.92)",
     backdropFilter: undefined,

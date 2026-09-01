@@ -83,18 +83,16 @@
   to { opacity: 0; transform: translateX(100%); }
 }
 
-.lo-anim-tab,
-.lo-anim-tab-rev,
-.lo-anim-drill,
-.lo-anim-modal,
-.lo-anim-overlay,
-.lo-anim-push-in,
-.lo-anim-push-out,
-.lo-anim-pop-in,
-.lo-anim-pop-out {
-  transform: translateZ(0);
-  will-change: transform, opacity;
-}
+/* No persistent compositing hint here on purpose. will-change: transform and
+   will-change: opacity both make an element a backdrop root, and these classes
+   are applied with animation-fill-mode: both and never removed, so the
+   promotion outlived the animation. Every backdrop-filter surface inside a
+   promoted element samples an unrasterized backdrop for the first frames after
+   the layer is created or destroyed, which is what made Glass and Aero panels
+   visibly settle into place. Chromium promotes an element for the duration of a
+   transform/opacity animation on its own, so the hint bought nothing.
+   Anything that genuinely needs a persistent layer should opt in locally and
+   carry a device measurement justifying it. */
 
 .lo-anim-tab { animation: lo-tab-enter var(--dur-base) var(--ease-decel) both; }
 .lo-anim-tab-rev { animation: lo-tab-enter-rev var(--dur-base) var(--ease-decel) both; }

@@ -1615,9 +1615,15 @@ export function HomeView(props: HomeViewProps) {
         overflowY: cinematicHome ? "visible" : semiHome ? "hidden" : "auto",
         overscrollBehavior: "contain",
         zIndex: active ? 2 : 0,
-        opacity: active ? 1 : 0.001,
+        // Hold opacity at 1 in both states. Anything below 1 makes this wrapper
+        // a backdrop root, so toggling across the boundary on every Home entry
+        // forced Chromium to rebuild the layer tree and re-rasterize every
+        // translucent surface on Home -- a visible settle on ordinary tab
+        // navigation. visibility takes the pane out of paint without creating
+        // or destroying a backdrop root.
+        opacity: 1,
+        visibility: active ? "visible" : "hidden",
         pointerEvents: active ? "auto" : "none",
-        transition: active ? "none" : "opacity 80ms ease",
         paddingTop: "var(--header-height)",
         paddingBottom: "var(--bottom-bar-height)",
         boxSizing: "border-box",
