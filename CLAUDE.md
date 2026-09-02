@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Details section-label contrast:** About/Media-style Game Details headings now use the active theme's primary foreground at a deliberately subdued but legible opacity instead of dimming an inherited browser color; a component regression test covers both labels. The full frontend test suite, production build, docs check, and diff validation pass; native WebView2 review across the full theme gallery remains the visual gate.
+- **Delivered — Details long-summary controller scrolling:** Vertical controller input now reveals the bottom and top edges of a long About/Media body while preserving the selected media tile, then returns to Play only from the top instead of jumping to the final screenshot or collapsing early. The focused and full frontend test suites, production build, docs check, and diff validation pass; physical Ally/WebView2 stick, D-pad, and held-repeat feel at 1280x800 remains the runtime gate.
 
 ## Start-of-Task Workflow
 

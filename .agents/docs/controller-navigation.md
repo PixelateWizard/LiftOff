@@ -17,6 +17,7 @@ Read for gamepad mapping, focus movement, repeated input, modal behavior, scroll
 - Library entry focus must resolve against the destination view: use the first visible pinned card only in an All view that actually renders matching pins; otherwise use the first visible grid card. Source/collection switches must not leave focus in hidden header or toolbar sections.
 - Avoid `scrollIntoView()` for scaled main card navigation. Measure the focused element against the intended inner scroller, compensate for `ui_scale`, and preserve header/footer clearance.
 - Horizontal shelves need explicit container refs and should reset index zero to their designed left padding.
+- In Game Details, treat the About/Media body as one vertically scrollable region and Media as one horizontal focus row. Vertical input must reveal clipped body edges before collapsing back to Play; it must not use the media-item count as a vertical grid stride.
 - Repeated navigation should avoid stacking smooth-scroll animations; use immediate correction during held repeat and smoother correction for discrete movement.
 - Web Gamepad mocks do not establish controller feel, non-standard mapping behavior, haptics, or native foreground input ownership.
 

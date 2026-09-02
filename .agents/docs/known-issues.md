@@ -23,6 +23,10 @@ Read before bug triage, FSE/controller work, Microsoft Store uninstall changes, 
 
 ## Open Gates and Warnings
 
+### Long Game Details controller scrolling
+
+Vitest/jsdom coverage establishes that vertical Details input scrolls a long About/Media body to its bottom and back to its top while retaining the first media selection, then collapses only on an additional Up input. Physical Ally/WebView2 validation at 1280x800 remains required with a long store summary and a wide media strip: confirm stick and D-pad taps plus held repeat reveal both body edges, Left/Right still traverse media in order, focus stays visibly on the selected tile, and Up from the body top returns to Play without skipping an intermediate scroll state.
+
 ### Helper bar native controls and controller surfaces
 
 Compilation, unit tests, and mocked-browser smoke coverage establish the command contracts, settings migration, tray composition, and app-poll gating, but Ally/WebView2 validation remains required. Confirm on the ROG Ally that Core Audio reads and changes the active render endpoint without flyout spam; raising volume unmutes; WMI brightness appears, changes the internal panel on AC and battery, and stays hidden on external-monitor-only systems; Full/Minimal/Hidden layouts paint correctly at 1280x800 across representative Glass/Material/win9x surfaces; the shortcut/system-control/pinned/Spotify priority order remains legible, sufficiently opaque over bright game art, and stable as focus moves; long pinned rows keep the focused shortcut visible; pinned games open Details and pinned apps launch without A-button bleed; hidden hover and track-change peeks time out correctly; Spotify transport/seek and playlist entry points behave for Premium, Free, disconnected, and no-track states; single-press MENU tray access in every bar mode, A-gated scrubber/system-control adjustment, adjacent-control navigation, D-pad repeat, B close, Controls LB/RB, and tray-to-Power/modal transitions never leak an activation underneath.

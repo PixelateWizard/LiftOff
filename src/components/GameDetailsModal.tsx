@@ -647,6 +647,15 @@ export function GameDetailsModal({
         const move = (next: number) => {
           setFocusedIndex(next);
         };
+        const scrollDetailsToEdge = (edge: "top" | "bottom") => {
+          const scroller = scrollRef.current;
+          if (!scroller) return false;
+          const maxScrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+          const target = edge === "bottom" ? maxScrollTop : 0;
+          if (Math.abs(scroller.scrollTop - target) <= 2) return false;
+          scroller.scrollTo({ top: target, behavior: "smooth" });
+          return true;
+        };
         if (controlsRevealedRef.current && shouldHandleDirectionRepeat("ArrowRight", state, last, now, pressTime, repeating)) {
           if (detailsMode && focusIdxRef.current > 0) {
             move(Math.min(mediaCountRef.current, focusIdxRef.current + 1));
@@ -670,12 +679,17 @@ export function GameDetailsModal({
             // the Play button and break the Up-to-collapse handler below, which
             // only collapses when focus is past index 0.
             move(1);
+          } else if (detailsMode) {
+            if (focusIdxRef.current === 0 && mediaCountRef.current > 0) move(1);
+            else scrollDetailsToEdge("bottom");
           } else {
             move(focusIdxRef.current === 0 ? 1 : focusIdxRef.current + cols);
           }
         }
         if (shouldHandleDirectionRepeat("ArrowUp", state, last, now, pressTime, repeating)) {
-          if (controlsRevealedRef.current && focusIdxRef.current <= cols) {
+          if (controlsRevealedRef.current && detailsMode && scrollDetailsToEdge("top")) {
+            // Keep the selected media tile while revealing the clipped About copy.
+          } else if (controlsRevealedRef.current && focusIdxRef.current <= cols) {
             collapseControls();
           } else {
             move(focusIdxRef.current <= cols ? 0 : focusIdxRef.current - cols);
@@ -1249,6 +1263,7 @@ export function GameDetailsModal({
 
           <div
             ref={scrollRef}
+            data-details-scroll=""
             style={{
               gridColumn: "1 / -1",
               display: "block",
@@ -1286,6 +1301,8 @@ export function GameDetailsModal({
                           {mediaItems.map((item, index) => (
                             <button
                               key={`${item.type}-${item.type === "trailer" ? item.movie.id || index : index}`}
+                              data-details-media-index={index}
+                              aria-current={focusIdx === 1 + index}
                               ref={(node) => { focusRefs.current[1 + index] = node; }}
                               onClick={() => {
                                 setFocusedIndex(1 + index);

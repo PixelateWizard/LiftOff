@@ -91,6 +91,12 @@ describe("Game Details modal", () => {
       configurable: true,
       value: vi.fn(),
     });
+    Object.defineProperty(HTMLElement.prototype, "scrollTo", {
+      configurable: true,
+      value: vi.fn(function scrollTo(options: ScrollToOptions) {
+        if (typeof options.top === "number") this.scrollTop = options.top;
+      }),
+    });
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -100,6 +106,7 @@ describe("Game Details modal", () => {
     act(() => root.unmount());
     container.remove();
     delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    delete (HTMLElement.prototype as { scrollTo?: unknown }).scrollTo;
     vi.unstubAllGlobals();
   });
 
@@ -228,6 +235,69 @@ describe("Game Details modal", () => {
     runFrame(400);
 
     expect(onPlay).not.toHaveBeenCalled();
+  });
+
+  it("scrolls long Details content before leaving the selected media row", () => {
+    let pressed: number[] = [];
+    const gamepad = (): Gamepad => ({
+      mapping: "standard",
+      axes: [0, 0, 0, 0],
+      buttons: Array.from({ length: 16 }, (_, index) => ({
+        pressed: pressed.includes(index),
+        touched: pressed.includes(index),
+        value: pressed.includes(index) ? 1 : 0,
+      })),
+    } as Gamepad);
+    Object.defineProperty(navigator, "getGamepads", {
+      configurable: true,
+      value: () => [gamepad()],
+    });
+    hookState.storeData = {
+      shortDescription: "A long store description that needs its own vertical reveal step.",
+      screenshots: Array.from({ length: 4 }, (_, index) => ({
+        thumb: `https://example.com/thumb-${index}.jpg`,
+        full: `https://example.com/full-${index}.jpg`,
+      })),
+    };
+    act(() => root.render(
+      <GameDetailsModal
+        {...baseProps()}
+        app={{ id: "steam:620", name: "Portal 2", source: "steam", steam_appid: 620 }}
+        installed
+        canXboxInstall={false}
+      />,
+    ));
+
+    const scroller = container.querySelector<HTMLElement>("[data-details-scroll]");
+    expect(scroller).not.toBeNull();
+    Object.defineProperties(scroller!, {
+      clientHeight: { configurable: true, value: 200 },
+      scrollHeight: { configurable: true, value: 500 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+    for (let frame = 0; frame < 21; frame += 1) runFrame(frame * 16);
+
+    const press = (button: number, now: number) => {
+      pressed = [button];
+      runFrame(now);
+      pressed = [];
+      runFrame(now + 16);
+    };
+    press(13, 400);
+    expect(scroller?.style.height).toBe("100%");
+    expect(container.querySelector('[data-details-media-index="0"]')?.getAttribute("aria-current")).toBe("true");
+
+    press(13, 440);
+    expect(scroller?.scrollTop).toBe(300);
+    expect(container.querySelector('[data-details-media-index="0"]')?.getAttribute("aria-current")).toBe("true");
+    expect(container.querySelector('[data-details-media-index="3"]')?.getAttribute("aria-current")).toBe("false");
+
+    press(12, 480);
+    expect(scroller?.scrollTop).toBe(0);
+    expect(scroller?.style.height).toBe("100%");
+
+    press(12, 520);
+    expect(scroller?.style.height).toBe("0px");
   });
 
   it("shows Deck and controller chips for a non-verified Steam game", () => {
