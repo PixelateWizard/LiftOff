@@ -300,6 +300,15 @@ export function GameDetailsModal({
     surfaceStyle === "obsidian" ? 10 :
     12;
   const chipRadius = isPixel ? 0 : surfaceStyle === "material" || surfaceStyle === "clear" ? 8 : 10;
+  const sectionLabelStyle: CSSProperties = {
+    marginBottom: 8,
+    color: theme.text,
+    fontSize: 11,
+    fontWeight: 800,
+    letterSpacing: "0.12em",
+    opacity: 0.78,
+    textTransform: "uppercase",
+  };
   const positiveTone = isDark
     ? { bg: "rgba(74,232,138,0.16)", fg: "#4ae88a" }
     : { bg: "rgba(31,180,99,0.14)", fg: "#159653" };
@@ -1260,7 +1269,7 @@ export function GameDetailsModal({
                   <div>
                     {shortDescription && (
                       <>
-                        <div style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.55, marginBottom: 8 }}>
+                        <div data-details-section-label="about" style={sectionLabelStyle}>
                           {t("details.about")}
                         </div>
                         <p style={{ fontSize: 15, lineHeight: 1.55, margin: "0 0 18px", maxWidth: 900, color: theme.text }}>
@@ -1270,7 +1279,7 @@ export function GameDetailsModal({
                     )}
                     {mediaCount > 0 && (
                       <>
-                        <div style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", opacity: 0.55, marginBottom: 8 }}>
+                        <div data-details-section-label="media" style={sectionLabelStyle}>
                           {t("details.media")}
                         </div>
                         <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 8 }}>

@@ -6,7 +6,11 @@ import { GameDetailsModal } from "./GameDetailsModal";
 
 const hookState = vi.hoisted(() => ({
   deckCompat: undefined as undefined | { category: "unknown" | "unsupported" | "playable" | "verified"; fetchedAt: number },
-  storeData: null as null | { controllerSupport: "full" | "partial" | "none" },
+  storeData: null as null | {
+    controllerSupport?: "full" | "partial" | "none";
+    screenshots?: Array<{ thumb: string; full: string }>;
+    shortDescription?: string;
+  },
 }));
 
 vi.mock("../hooks/useStoreMetadata", () => ({
@@ -36,6 +40,8 @@ const labels: Record<string, string> = {
   "details.controllerSupport.full": "Full controller support",
   "details.controllerSupport.partial": "Partial controller support",
   "details.controllerSupport.none": "No controller support",
+  "details.about": "ABOUT",
+  "details.media": "MEDIA",
 };
 
 const baseProps = (): ComponentProps<typeof GameDetailsModal> => ({
@@ -67,7 +73,7 @@ const baseProps = (): ComponentProps<typeof GameDetailsModal> => ({
   t: (key) => labels[key] ?? key,
 });
 
-describe("Microsoft catalog install confirmation", () => {
+describe("Game Details modal", () => {
   let container: HTMLDivElement;
   let root: Root;
   let nextFrame: FrameRequestCallback | undefined;
@@ -265,5 +271,28 @@ describe("Microsoft catalog install confirmation", () => {
 
     expect(container.textContent).not.toContain("Deck playable");
     expect(container.textContent).not.toContain("Partial controller support");
+  });
+
+  it("uses an explicit theme foreground for store section labels", () => {
+    hookState.storeData = {
+      shortDescription: "A store description",
+      screenshots: [{ thumb: "https://example.com/thumb.jpg", full: "https://example.com/full.jpg" }],
+    };
+    act(() => root.render(
+      <GameDetailsModal
+        {...baseProps()}
+        app={{ id: "steam:620", name: "Portal 2", source: "steam", steam_appid: 620 }}
+        installed
+        canXboxInstall={false}
+        theme={{ text: "var(--test-theme-text)", textDim: "#aaa", textFaint: "#777" }}
+      />,
+    ));
+
+    const sectionLabels = Array.from(container.querySelectorAll<HTMLElement>("[data-details-section-label]"));
+    expect(sectionLabels.map((label) => label.textContent)).toEqual(["ABOUT", "MEDIA"]);
+    for (const label of sectionLabels) {
+      expect(label.style.color).toBe("var(--test-theme-text)");
+      expect(label.style.opacity).toBe("0.78");
+    }
   });
 });

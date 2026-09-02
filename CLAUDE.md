@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — French localization backfill:** Replaced the current visible `TODO(fr)`/`TODO:fr` backlog, filled the two missing English-locale keys, preserved interpolation tokens and the existing French install-progress wording, and left runtime fallback behavior unchanged. Production build, locale/schema audit, mocked-browser French surface checks, docs check, and diff validation pass; moi952 native-speaker proofread and native Ally/WebView2/controller confirmation remain review/runtime gates.
+- **Delivered — Details section-label contrast:** About/Media-style Game Details headings now use the active theme's primary foreground at a deliberately subdued but legible opacity instead of dimming an inherited browser color; a component regression test covers both labels. The full frontend test suite, production build, docs check, and diff validation pass; native WebView2 review across the full theme gallery remains the visual gate.
 
 ## Start-of-Task Workflow
 
