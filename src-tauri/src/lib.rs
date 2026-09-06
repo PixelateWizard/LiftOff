@@ -7,9 +7,9 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::net::TcpListener;
 use std::os::windows::ffi::OsStrExt;
 use std::os::windows::process::CommandExt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::Emitter;
@@ -71,6 +71,7 @@ const ICON_EXPORT_PX: i32 = 128;
 const SHGFI_JUMBOICON: SHGFI_FLAGS = SHGFI_FLAGS(0x40000);
 
 static GAMEPAD_READY: AtomicBool = AtomicBool::new(false);
+static LAUNCH_WATCH_GENERATION: AtomicU64 = AtomicU64::new(0);
 static OUR_HWND: AtomicIsize = AtomicIsize::new(0);
 static FRONTEND_HAS_CONTROL: AtomicBool = AtomicBool::new(false);
 
@@ -8348,7 +8349,8 @@ fn match_launch_window_score(
     let source_lower = source.to_lowercase();
     let is_launcher_source = ["steam", "xbox", "uwp", "battle.net", "battlenet", "epic"]
         .iter()
-        .any(|s| source_lower.contains(s));
+        .any(|s| source_lower.contains(s))
+        || launch_path.starts_with("steam://");
     if is_launcher_source && is_launcher_exe(&candidate.exe_path) {
         return 0;
     }
@@ -8404,6 +8406,253 @@ fn match_launch_window_score(
     }
 
     score
+}
+
+#[cfg(test)]
+mod steam_launch_confirmation_tests {
+    use super::*;
+
+    #[test]
+    fn steam_popup_is_not_a_game_even_without_source_metadata() {
+        for source in ["steam", ""] {
+            let popup = LaunchWindowCandidate {
+                hwnd: 1,
+                pid: 2,
+                title: "PEAK - Starting game".into(),
+                exe_path: Some(r"C:\Steam\steam.exe".into()),
+            };
+            assert_eq!(
+                match_launch_window_score(&popup, "PEAK", "steam://rungameid/3527290", source),
+                0
+            );
+            let game = LaunchWindowCandidate {
+                title: "PEAK".into(),
+                exe_path: Some(r"C:\Steam\steamapps\common\PEAK\PEAK.exe".into()),
+                ..popup
+            };
+            assert!(
+                match_launch_window_score(&game, "PEAK", "steam://rungameid/3527290", source) >= 45
+            );
+        }
+    }
+
+    #[test]
+    fn steam_launch_signals_report_observed_work_in_order() {
+        let mut signals = SteamLaunchSignals::default();
+        assert_eq!(signals.phase(false, Duration::ZERO), "starting_steam");
+        assert_eq!(
+            signals.phase(true, Duration::from_millis(500)),
+            "contacting_steam"
+        );
+        assert_eq!(
+            signals.phase(true, Duration::from_secs(3)),
+            "waiting_for_steam"
+        );
+
+        signals.ingest(
+            "3527290",
+            "[1] [AppID 3527290] Starting sync (init,AC Launch,down,)",
+            "",
+            "",
+        );
+        assert_eq!(signals.phase(true, Duration::from_secs(3)), "syncing_cloud");
+
+        signals.ingest(
+            "3527290",
+            "[2] [AppID 3527290] Successfully synced to ChangeNumber 2",
+            "[2] AppID 3527290 App update changed : Running Update,Downloading,Staging,",
+            "",
+        );
+        assert_eq!(signals.phase(true, Duration::from_secs(4)), "updating_game");
+
+        signals.ingest(
+            "3527290",
+            "",
+            "[3] AppID 3527290 App update changed : None",
+            "[3] AppID 3527290 adding PID 6152 as a tracked process",
+        );
+        assert_eq!(
+            signals.phase(true, Duration::from_secs(5)),
+            "waiting_for_window"
+        );
+    }
+
+    #[test]
+    fn steam_launch_signals_ignore_other_appids() {
+        let mut signals = SteamLaunchSignals::default();
+        signals.ingest(
+            "3527290",
+            "[1] [AppID 294100] Starting sync (init,AC Launch,down,)",
+            "[1] AppID 294100 App update changed : Running Update,Downloading,",
+            "[1] AppID 294100 adding PID 42 as a tracked process",
+        );
+        assert_eq!(
+            signals.phase(true, Duration::from_secs(3)),
+            "waiting_for_steam"
+        );
+    }
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct LaunchPhasePayload {
+    launch_path: String,
+    phase: String,
+}
+
+#[derive(Default)]
+struct SteamLaunchSignals {
+    cloud_observed: bool,
+    cloud_active: bool,
+    update_active: bool,
+    game_process_started: bool,
+}
+
+impl SteamLaunchSignals {
+    fn ingest(&mut self, appid: &str, cloud: &str, content: &str, gameprocess: &str) {
+        let cloud_marker = format!("[AppID {appid}]");
+        for line in cloud.lines().filter(|line| line.contains(&cloud_marker)) {
+            if line.contains("Starting sync") && line.contains("Launch") {
+                self.cloud_observed = true;
+                self.cloud_active = true;
+            }
+            if self.cloud_active
+                && (line.contains("Successfully synced")
+                    || line.contains("Currently already synced")
+                    || line.contains("AutoCloud done")
+                    || line.contains("sync failed"))
+            {
+                self.cloud_active = false;
+            }
+        }
+
+        let app_marker = format!("AppID {appid} ");
+        for line in content.lines().filter(|line| line.contains(&app_marker)) {
+            if line.contains("App Running") {
+                self.game_process_started = true;
+            }
+            if line.contains("finished update")
+                || line.contains("App update changed : None")
+                || line.contains("App update changed : Running Update,Stopping")
+            {
+                self.update_active = false;
+            } else if line.contains("Update Running")
+                || line.contains("App update changed : Running Update")
+                || line.contains("update started")
+            {
+                self.update_active = true;
+            }
+        }
+
+        if gameprocess
+            .lines()
+            .any(|line| line.contains(&app_marker) && line.contains("adding PID"))
+        {
+            self.game_process_started = true;
+        }
+    }
+
+    fn phase(&self, steam_running: bool, elapsed: Duration) -> &'static str {
+        if self.game_process_started {
+            "waiting_for_window"
+        } else if self.update_active {
+            "updating_game"
+        } else if self.cloud_active {
+            "syncing_cloud"
+        } else if !steam_running {
+            "starting_steam"
+        } else if self.cloud_observed {
+            "starting_game"
+        } else if elapsed < Duration::from_secs(2) {
+            "contacting_steam"
+        } else {
+            "waiting_for_steam"
+        }
+    }
+}
+
+struct SteamLaunchLogWatcher {
+    appid: String,
+    cloud_path: PathBuf,
+    content_path: PathBuf,
+    gameprocess_path: PathBuf,
+    cloud_offset: u64,
+    content_offset: u64,
+    gameprocess_offset: u64,
+    signals: SteamLaunchSignals,
+}
+
+impl SteamLaunchLogWatcher {
+    fn new(uri: &str) -> Option<Self> {
+        let appid = uri
+            .strip_prefix("steam://rungameid/")
+            .or_else(|| uri.strip_prefix("steam://run/"))?
+            .split(['/', '?'])
+            .next()
+            .and_then(|value| validate_steam_appid(value).ok())?;
+        let logs = Path::new(&get_steam_install_path()?).join("logs");
+        let cloud_path = logs.join("cloud_log.txt");
+        let content_path = logs.join("content_log.txt");
+        let gameprocess_path = logs.join("gameprocess_log.txt");
+        Some(Self {
+            appid,
+            cloud_offset: log_length(&cloud_path),
+            content_offset: log_length(&content_path),
+            gameprocess_offset: log_length(&gameprocess_path),
+            cloud_path,
+            content_path,
+            gameprocess_path,
+            signals: SteamLaunchSignals::default(),
+        })
+    }
+
+    fn poll(&mut self, steam_running: bool, elapsed: Duration) -> &'static str {
+        let cloud = read_log_since(&self.cloud_path, &mut self.cloud_offset);
+        let content = read_log_since(&self.content_path, &mut self.content_offset);
+        let gameprocess = read_log_since(&self.gameprocess_path, &mut self.gameprocess_offset);
+        self.signals
+            .ingest(&self.appid, &cloud, &content, &gameprocess);
+        self.signals.phase(steam_running, elapsed)
+    }
+}
+
+fn log_length(path: &Path) -> u64 {
+    std::fs::metadata(path)
+        .map(|metadata| metadata.len())
+        .unwrap_or(0)
+}
+
+fn read_log_since(path: &Path, offset: &mut u64) -> String {
+    const MAX_INCREMENT_BYTES: u64 = 128 * 1024;
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return String::new();
+    };
+    let Ok(length) = file.metadata().map(|metadata| metadata.len()) else {
+        return String::new();
+    };
+    if length < *offset {
+        *offset = 0;
+    }
+    let start = (*offset).max(length.saturating_sub(MAX_INCREMENT_BYTES));
+    if file.seek(SeekFrom::Start(start)).is_err() {
+        return String::new();
+    }
+    let mut bytes = Vec::with_capacity(length.saturating_sub(start) as usize);
+    if file.read_to_end(&mut bytes).is_err() {
+        return String::new();
+    }
+    *offset = length;
+    String::from_utf8_lossy(&bytes).into_owned()
+}
+
+fn emit_launch_phase(app: &tauri::AppHandle, launch_path: &str, phase: &str) {
+    let _ = app.emit(
+        "launch-phase",
+        LaunchPhasePayload {
+            launch_path: launch_path.to_string(),
+            phase: phase.to_string(),
+        },
+    );
 }
 
 fn confidence_for_score(score: u32) -> String {
@@ -8797,6 +9046,7 @@ async fn launch_app(
     run_as_admin: Option<bool>,
     app_handle: tauri::AppHandle,
 ) -> Result<LaunchAppResult, String> {
+    let watch_generation = LAUNCH_WATCH_GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
     let id_for_tracking = id.clone();
     let name_for_tracking = name.clone();
     let path_for_tracking = path.clone();
@@ -8843,6 +9093,9 @@ async fn launch_app(
     // not race the check. If Steam is already up, skip straight to the game phase.
     let is_steam_launch = path.starts_with("steam://");
     let steam_was_running = is_steam_launch && is_process_running("steam.exe");
+    let mut steam_log_watcher = is_steam_launch
+        .then(|| SteamLaunchLogWatcher::new(&path))
+        .flatten();
 
     // child_pid: Some(pid) when we spawn the game directly (allows precise matching);
     // None for launcher-mediated paths where the game process is a grandchild.
@@ -8884,14 +9137,13 @@ async fn launch_app(
         launch_mode = "battlenet".to_string();
         child_pid = 0;
     } else if path.starts_with("steam://") {
-        // Ensure Steam is running silently (no window) before dispatching the
-        // game URI. If Steam is not yet running this starts it with -silent
-        // -nochatui -nofriendsui so no Steam UI window appears.
+        // Submit one request to the registered client, which also starts Steam
+        // when needed. Separately spawning Steam and waiting for its process
+        // does not establish readiness and races cold-start URI delivery.
         // Route through explorer.exe so the launch is always dispatched at
         // Medium integrity (normal user level), even when LiftOff is elevated.
         // This keeps tools like AnyFSE, which hook into game launches at
         // normal integrity, able to intercept the launch correctly.
-        ensure_steam_running_silent();
         dispatch_steam_uri(&path)?;
         launch_mode = "steam-uri".to_string();
         child_pid = 0;
@@ -9044,7 +9296,9 @@ async fn launch_app(
         }
     }
 
-    if app_type == "game" {
+    // Steam client/prompt windows are not a game handoff target. Start its GPU
+    // watch only after the matching game window has been acquired below.
+    if app_type == "game" && !is_steam_launch {
         let settings = load_settings_inner();
         if settings.hide_on_launch {
             fse_watcher::start_gpu_release_watch(
@@ -9068,36 +9322,55 @@ async fn launch_app(
     std::thread::spawn(move || {
         if is_lnk_or_indirect {
             std::thread::sleep(std::time::Duration::from_millis(1500));
-            let _ = handle.emit("launch-success", ());
+            if LAUNCH_WATCH_GENERATION.load(Ordering::SeqCst) == watch_generation {
+                let _ = handle.emit("launch-success", &watch_path);
+            }
             return;
         }
 
-        // Honest two-phase messaging: only show "Launching Steam…" when Steam was
-        // not already running. Once a matching window appears (or after a short
-        // grace) we advance to the game phase so the overlay never lies or sticks.
-        let mut phase_is_steam = is_steam_launch && !steam_was_running;
-        if phase_is_steam {
-            let _ = handle.emit("launch-phase", "steam");
-        }
+        let mut last_steam_phase: Option<&'static str> = None;
+        let mut last_steam_phase_emit = Instant::now();
 
         // Full window-detection path for direct exe apps and all games.
         // Games confirm on the best-scoring window that matches THIS title/exe/source,
         // never on "any new window" — that false match is usually Steam's own
         // launching popup or client, not the game.
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+        // Cloud sync, updates and first-run setup can outlast the old 15-second
+        // window. Keep watching Steam without re-dispatching a duplicate launch.
+        let timeout_secs = if is_steam_launch { 90 } else { 15 };
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
         let started = std::time::Instant::now();
         let mut found: isize = 0;
 
         loop {
+            if LAUNCH_WATCH_GENERATION.load(Ordering::SeqCst) != watch_generation {
+                return;
+            }
+            if is_steam_launch {
+                let next_phase = steam_log_watcher
+                    .as_mut()
+                    .map(|watcher| watcher.poll(is_process_running("steam.exe"), started.elapsed()))
+                    .unwrap_or_else(|| {
+                        if !steam_was_running && !is_process_running("steam.exe") {
+                            "starting_steam"
+                        } else if started.elapsed() < Duration::from_secs(2) {
+                            "contacting_steam"
+                        } else {
+                            "waiting_for_steam"
+                        }
+                    });
+                if last_steam_phase != Some(next_phase)
+                    || last_steam_phase_emit.elapsed() >= Duration::from_secs(1)
+                {
+                    emit_launch_phase(&handle, &watch_path, next_phase);
+                    last_steam_phase = Some(next_phase);
+                    last_steam_phase_emit = Instant::now();
+                }
+            }
             // 1) Preferred: a window that specifically matches this game.
             if let Some((hwnd, score)) =
                 poll_for_matched_window(&watch_name, &watch_path, &watch_source)
             {
-                // A real matching window means the game is presenting — leave the Steam phase.
-                if phase_is_steam {
-                    let _ = handle.emit("launch-phase", "game");
-                    phase_is_steam = false;
-                }
                 // Confident match (medium+, score >= 45) — confirm immediately.
                 if score >= 45 {
                     found = hwnd;
@@ -9132,29 +9405,24 @@ async fn launch_app(
                 }
             }
 
-            // Advance to the game phase after a short grace even without a window yet,
-            // so the overlay does not sit on "Launching Steam…" indefinitely.
-            if phase_is_steam && started.elapsed() >= std::time::Duration::from_secs(2) {
-                let _ = handle.emit("launch-phase", "game");
-                phase_is_steam = false;
-            }
-
             if std::time::Instant::now() >= deadline {
                 break;
             }
             std::thread::sleep(std::time::Duration::from_millis(250));
         }
 
+        if LAUNCH_WATCH_GENERATION.load(Ordering::SeqCst) != watch_generation {
+            return;
+        }
         if found != 0 {
-            let fse_was_active = fse_watcher::prefer_game_window(&handle, found);
+            // Steam starts a fresh watch here, replacing any previous game's
+            // watch rather than retargeting an already-acquired window.
+            let fse_was_active =
+                !is_steam_launch && fse_watcher::prefer_game_window(&handle, found);
             if !fse_was_active && watch_is_game && load_settings_inner().hide_on_launch {
                 let foreground_matches_found = unsafe { GetForegroundWindow().0 as isize == found };
-                if foreground_matches_found {
-                    fse_watcher::start_gpu_release_watch(
-                        handle.clone(),
-                        our_hwnd,
-                        Some(found),
-                    );
+                if is_steam_launch || foreground_matches_found {
+                    fse_watcher::start_gpu_release_watch(handle.clone(), our_hwnd, Some(found));
                 }
             }
             unsafe {
@@ -9164,11 +9432,13 @@ async fn launch_app(
             }
         }
 
-        // Decision 2A: the spawn itself succeeded, so emit success whether or not a
-        // window was confirmed. Steam fullscreen-exclusive games never present a
-        // pollable window; the overlay's verify step softly dismisses them rather
-        // than showing a scary "could not confirm" error.
-        let _ = handle.emit("launch-success", ());
+        // Dispatch acceptance is not evidence that Steam started the game.
+        // An unconfirmed launch may still be syncing or awaiting a Steam prompt.
+        if is_steam_launch && found == 0 {
+            let _ = handle.emit("launch-unconfirmed", &watch_path);
+        } else {
+            let _ = handle.emit("launch-success", &watch_path);
+        }
     });
 
     Ok(LaunchAppResult {

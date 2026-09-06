@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented — Cold-boot FSE window identity:** Removed the legacy initializer that overwrote LiftOff's HWND with the foreground shell/window handle. Recovery now verifies the managed main window and PID; startup calibration retries temporary focus loss, and PID-tagged diagnostics capture app-switcher returns. Cargo check, 32 Rust tests, production/NSIS builds, docs check, and diff validation pass. Direct-to-FSE reboot testing for both normal game exit and app-switcher return remains required; see the [cold-boot gate](.agents/docs/known-issues.md#fse-blank-return-regression).
+- **Implemented — Steam launch status:** The overlay now reports target-specific client startup/contact, Steam Cloud sync, update, wait, game-process, and window-acquisition phases using only log entries appended for the launched AppID. The existing confirmation and deferred FSE handoff remain intact. Production build, 8 focused frontend tests, Rust check, 35 Rust tests, docs check, and diff validation pass. Phase accuracy and controller-visible transitions still require repeated PEAK cold/warm FSE plus desktop validation; see the [Steam launch gate](.agents/docs/known-issues.md#steam-first-attempt-launch-reliability).
 
 ## Start-of-Task Workflow
 

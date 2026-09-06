@@ -1193,8 +1193,10 @@ pub fn start_gpu_release_watch(
 
                 let fg = unsafe { GetForegroundWindow() };
                 let fg_value = hwnd_value(fg);
+                let preferred_game_hwnd = app.state::<FseWatch>().preferred_game_hwnd();
                 let fg_is_other = fg_value != 0
                     && fg_value != our_hwnd
+                    && preferred_game_hwnd.map_or(true, |target| hwnd_value(target) == fg_value)
                     && unsafe { IsWindowVisible(fg).as_bool() }
                     && is_fullscreen_like(fg);
 
@@ -1202,7 +1204,6 @@ pub fn start_gpu_release_watch(
                     break fg;
                 }
 
-                let preferred_game_hwnd = app.state::<FseWatch>().preferred_game_hwnd();
                 if let Some(preferred) = preferred_game_hwnd {
                     let preferred_alive = unsafe {
                         IsWindow(Some(preferred)).as_bool() && IsWindowVisible(preferred).as_bool()

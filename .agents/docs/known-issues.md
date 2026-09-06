@@ -23,6 +23,12 @@ Read before bug triage, FSE/controller work, Microsoft Store uninstall changes, 
 
 ## Open Gates and Warnings
 
+### Steam first-attempt launch reliability
+
+The user reports PEAK and likely other Steam games sometimes need two or three launch attempts in FSE: Steam's syncing/starting popup disappears, LiftOff says Launched and plays success, but no game appears. Desktop reproduction is unknown. Source confirmed unconditional success after a 15-second window timeout and frontend success even after negative verification. Those paths are corrected for Steam; confirmation now waits up to 90 seconds, Steam dispatch no longer separately starts the client before URI delivery, and FSE acquisition waits for the matching game window. These changes do not yet prove the cause of Steam abandoning an attempt or establish faster game startup.
+
+Required gate: compare repeated PEAK first launches and retries on the patched native build in cold-boot FSE, warm FSE, and desktop, with Steam already running and stopped. Include cloud-sync/setup delays, an update, and a Steam prompt that blocks startup; confirm each visible phase matches Steam's per-AppID logs, no premature success or suspension occurs for Steam's client, and game foreground ownership, B dismissal, normal exit, and controller recovery remain correct. Correlate attempt times with Steam gameprocess logs and LiftOff FSE logs. The inspected September 6 local PEAK log contains process starts and clean exits but does not identify the reported failed attempt; it is not a reproduction. Regression-check a non-Steam game and an indirect app. The new Steam progress strings and `launch.unconfirmed` remain TODO:fr.
+
 ### Long Game Details controller scrolling
 
 Vitest/jsdom coverage establishes that vertical Details input scrolls a long About/Media body to its bottom and back to its top while retaining the first media selection, then collapses only on an additional Up input. Physical Ally/WebView2 validation at 1280x800 remains required with a long store summary and a wide media strip: confirm stick and D-pad taps plus held repeat reveal both body edges, Left/Right still traverse media in order, focus stays visibly on the selected tile, and Up from the body top returns to Play without skipping an intermediate scroll state.

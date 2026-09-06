@@ -7,6 +7,12 @@ import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, rumble, type 
 
 type LaunchStatus = "launching" | "verifying" | "focused" | "running_unfocused" | "unconfirmed" | "failed";
 type FocusedAction = "focus" | "dismiss";
+type SteamLaunchPhase = "starting_steam" | "contacting_steam" | "syncing_cloud" | "updating_game" | "starting_game" | "waiting_for_steam" | "waiting_for_window";
+
+interface LaunchPhasePayload {
+  launchPath: string;
+  phase: SteamLaunchPhase;
+}
 
 interface LaunchOverlayProps {
   app: App | null;
@@ -22,7 +28,9 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSucce
   const { t } = useTranslation();
   const art = app?.app_type === "game" ? (customArt?.[app.id] || gameArt[app.id]) : null;
   const [status, setStatus] = useState<LaunchStatus>("launching");
-  const [phase, setPhase] = useState<"app" | "steam" | "game">("app");
+  const [steamPhase, setSteamPhase] = useState<SteamLaunchPhase | null>(() =>
+    app?.launch_path.startsWith("steam://") ? "contacting_steam" : null
+  );
   const [focusedAction, setFocusedAction] = useState<FocusedAction>("dismiss");
   const rafRef = useRef<number | null>(null);
   const lastGp = useRef<Partial<GpState>>({});
@@ -71,17 +79,16 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSucce
 
     let unlistenSuccess: (() => void) | undefined;
     let unlistenFailed: (() => void) | undefined;
+    let unlistenUnconfirmed: (() => void) | undefined;
     let unlistenPhase: (() => void) | undefined;
-    listen<string>("launch-phase", (e) => {
-      if (!mounted.current) return;
-      if (e.payload === "steam") setPhase("steam");
-      else if (e.payload === "game") setPhase("game");
+    listen<LaunchPhasePayload>("launch-phase", (event) => {
+      if (!mounted.current || event.payload.launchPath !== launchTarget.launch_path) return;
+      setSteamPhase(event.payload.phase);
     }).then(fn => { unlistenPhase = fn; });
-    listen("launch-success", async () => {
-      if (!mounted.current) return;
-
-      success?.();
-      rumble("launch", hapticEnabled);
+    listen<string>("launch-success", async (event) => {
+      if (!mounted.current || event.payload !== launchTarget.launch_path) return;
+      const requiresConfirmation = launchTarget.launch_path.startsWith("steam://")
+        && launchTarget.app_type === "game";
       setStatus("verifying");
 
       try {
@@ -92,6 +99,13 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSucce
         });
 
         if (!mounted.current) return;
+
+        if (requiresConfirmation && !result.focused && !result.running) {
+          setStatus("unconfirmed");
+          return;
+        }
+        success?.();
+        rumble("launch", hapticEnabled);
 
         if (result.focused) {
           setStatus("focused");
@@ -111,17 +125,21 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSucce
             if (mounted.current) done();
           }, 700);
         } else {
-          // Launched but never presented a pollable window (e.g. Steam
-          // fullscreen-exclusive). Assume success and dismiss quietly rather
-          // than surfacing an error (Decision 2A).
+          // Preserve bounded dismissal for non-Steam indirect launches.
           setStatus("focused");
           window.setTimeout(() => {
             if (mounted.current) done();
           }, 900);
         }
       } catch {
-        // Verify failed outright — still soft-dismiss; the spawn itself succeeded.
+        // A failed verification must not become a Steam game success cue.
         if (mounted.current) {
+          if (requiresConfirmation) {
+            setStatus("unconfirmed");
+            return;
+          }
+          success?.();
+          rumble("launch", hapticEnabled);
           setStatus("focused");
           window.setTimeout(() => {
             if (mounted.current) done();
@@ -130,6 +148,9 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSucce
       }
     })
       .then(fn => { unlistenSuccess = fn; });
+    listen<string>("launch-unconfirmed", (event) => {
+      if (mounted.current && event.payload === launchTarget.launch_path) setStatus("unconfirmed");
+    }).then(fn => { unlistenUnconfirmed = fn; });
     listen("launch-failed", () => { if (mounted.current) setStatus("failed"); })
       .then(fn => { unlistenFailed = fn; });
 
@@ -199,6 +220,7 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSucce
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       unlistenSuccess?.();
       unlistenFailed?.();
+      unlistenUnconfirmed?.();
       unlistenPhase?.();
     };
   }, []);
@@ -210,8 +232,23 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSucce
     : status === "focused"
       ? "rgba(145,255,175,0.95)"
       : "rgba(255,255,255,0.72)";
+  const steamPhaseText = steamPhase === "starting_steam"
+    ? t("launch.startingSteam")
+    : steamPhase === "contacting_steam"
+      ? t("launch.contactingSteam")
+      : steamPhase === "syncing_cloud"
+        ? t("launch.syncingCloud")
+        : steamPhase === "updating_game"
+          ? t("launch.updatingGame", { name: app?.name })
+          : steamPhase === "starting_game"
+            ? t("launch.startingGame", { name: app?.name })
+            : steamPhase === "waiting_for_steam"
+              ? t("launch.waitingForSteam", { name: app?.name })
+              : steamPhase === "waiting_for_window"
+                ? t("launch.waitingForWindow", { name: app?.name })
+                : t("launch.launching");
   const statusText = status === "launching"
-    ? (phase === "steam" ? t("launch.launchingSteam") : t("launch.launching"))
+    ? steamPhaseText
     : status === "verifying"
       ? t("launch.verifying")
       : status === "focused"
