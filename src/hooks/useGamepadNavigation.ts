@@ -8,6 +8,7 @@ import type { App, Settings } from "../types";
 import { launchApp } from "./useLaunchApp";
 import { getBestGamepad, getActiveGamepad, readGpState, detectPlatform, rumble, type HapticPattern } from "../utils/gamepad";
 import { getLibraryEntryFocusSection } from "../utils/libraryFocus";
+import { moveGridFocus, type GridDirection } from "../utils/gridNavigation";
 import { buildSettingsItems, getSectionNavigableItems, getSettingCycleOptions, SETTINGS_SECTIONS } from "../views/settings";
 import {
   ACCENTS as DEFAULT_ACCENTS,
@@ -741,19 +742,18 @@ export function useGamepadNavigation(
     if (showThemePickerRef.current) {
       const cur = themePickerFocusIndexRef.current;
       const cols = 3;
-      const max = THEME_OPTIONS.length - 1;
-      const moveTo = (idx: number) => {
-        const ni = Math.max(0, Math.min(max, idx));
+      const moveTo = (direction: GridDirection) => {
+        const ni = moveGridFocus(cur, THEME_OPTIONS.length, cols, direction);
         if (ni === themePickerFocusIndexRef.current) return;
         setThemePickerFocusIndex(ni);
         themePickerFocusIndexRef.current = ni;
 
         playSound();
       };
-      if (key === "ArrowRight") moveTo(cur + 1);
-      else if (key === "ArrowLeft") moveTo(cur - 1);
-      else if (key === "ArrowDown") moveTo(cur + cols);
-      else if (key === "ArrowUp") moveTo(cur - cols);
+      if (key === "ArrowRight") moveTo("right");
+      else if (key === "ArrowLeft") moveTo("left");
+      else if (key === "ArrowDown") moveTo("down");
+      else if (key === "ArrowUp") moveTo("up");
       else if (key === "Escape") {
         closeThemePicker();
         playSoundAlt();
@@ -768,19 +768,18 @@ export function useGamepadNavigation(
     if (showSurfacePickerRef.current) {
       const cur = surfacePickerFocusIndexRef.current;
       const cols = 3;
-      const max = SURFACE_STYLE_OPTIONS.length - 1;
-      const moveTo = (idx: number) => {
-        const ni = Math.max(0, Math.min(max, idx));
+      const moveTo = (direction: GridDirection) => {
+        const ni = moveGridFocus(cur, SURFACE_STYLE_OPTIONS.length, cols, direction);
         if (ni === surfacePickerFocusIndexRef.current) return;
         setSurfacePickerFocusIndex(ni);
         surfacePickerFocusIndexRef.current = ni;
 
         playSound();
       };
-      if (key === "ArrowRight") moveTo(cur + 1);
-      else if (key === "ArrowLeft") moveTo(cur - 1);
-      else if (key === "ArrowDown") moveTo(cur + cols);
-      else if (key === "ArrowUp") moveTo(cur - cols);
+      if (key === "ArrowRight") moveTo("right");
+      else if (key === "ArrowLeft") moveTo("left");
+      else if (key === "ArrowDown") moveTo("down");
+      else if (key === "ArrowUp") moveTo("up");
       else if (key === "Escape") {
         closeSurfacePicker();
         playSoundAlt();

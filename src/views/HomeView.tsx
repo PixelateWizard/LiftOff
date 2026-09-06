@@ -609,7 +609,7 @@ export function HomeView(props: HomeViewProps) {
       return (
         <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
           onClick={() => { select(); if (app.app_type === "game") onOpenDetails?.(app); }}
-          onMouseEnter={select}
+          onMouseMove={select}
           onDoubleClick={app.app_type === "game" ? undefined : () => activateSemiEntry(app)}
           style={wrapperStyle}>
           <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ position: "absolute", inset: 0, borderRadius: surfaceCardRadius, overflow: "hidden", transition: "border-color 0.15s ease, box-shadow 0.15s ease",
@@ -645,7 +645,7 @@ export function HomeView(props: HomeViewProps) {
         return (
           <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
             onClick={() => { select(); if (app.app_type === "game") onOpenDetails?.(app); }}
-            onMouseEnter={select}
+            onMouseMove={select}
             onDoubleClick={app.app_type === "game" ? undefined : () => activateSemiEntry(app)}
             style={wrapperStyle}>
             <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ position: "absolute", inset: 0, borderRadius: surfaceCardRadius, overflow: "hidden", transition: "border-color 0.15s ease, box-shadow 0.15s ease",
@@ -672,7 +672,7 @@ export function HomeView(props: HomeViewProps) {
       return (
         <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
           onClick={select}
-          onMouseEnter={select}
+          onMouseMove={select}
           onDoubleClick={() => triggerLaunch(app, recentRef.current)}
           style={wrapperStyle}>
           <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={{ ...glass, background: surfaceStyle === "material" ? "var(--material-elevation-2)" : surfaceStyle === "obsidian" ? glass.background : isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.52)", backdropFilter: cardBackdropFilter, WebkitBackdropFilter: cardBackdropFilter,
@@ -702,7 +702,7 @@ export function HomeView(props: HomeViewProps) {
         return (
           <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
             onClick={() => { select(); onOpenDetails?.(app); }}
-            onMouseEnter={select}
+            onMouseMove={select}
             style={{ flexShrink: 0, width: semiCardW, height: semiCardH, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative" }}>
             <div style={{ position: "absolute", inset: 0, borderRadius: surfaceCardRadius, overflow: "hidden", transition: "box-shadow 0.15s ease",
               outline: (focused && !isOnyx) ? `2px solid ${accent.primary}` : "2px solid transparent",
@@ -727,7 +727,7 @@ export function HomeView(props: HomeViewProps) {
       return (
         <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
           onClick={select}
-          onMouseEnter={select}
+          onMouseMove={select}
           onDoubleClick={() => activateSemiEntry(app)}
           style={{ ...glass, flexShrink: 0, width: semiCardW, height: semiCardH, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative",
             outline: focused && !isOnyx ? `2px solid ${accent.primary}` : "2px solid transparent",

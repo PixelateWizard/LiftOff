@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented — Steam launch status:** The overlay now reports target-specific client startup/contact, Steam Cloud sync, update, wait, game-process, and window-acquisition phases using only log entries appended for the launched AppID. The existing confirmation and deferred FSE handoff remain intact. Production build, 8 focused frontend tests, Rust check, 35 Rust tests, docs check, and diff validation pass. Phase accuracy and controller-visible transitions still require repeated PEAK cold/warm FSE plus desktop validation; see the [Steam launch gate](.agents/docs/known-issues.md#steam-first-attempt-launch-reliability).
+- **Implemented — controller focus regressions:** Home shelves and the theme/surface pickers now change hover focus only after real pointer movement, so controller-driven scrolling cannot let content moving beneath a parked pointer overwrite the selected item. Appearance grids also keep horizontal focus within each visible row and use column-aware vertical movement, including the surface grid's incomplete last row. All 59 frontend tests, the production build, docs check, and diff validation pass; post-Steam-return and picker navigation still require physical Ally/WebView2 confirmation.
 
 ## Start-of-Task Workflow
 

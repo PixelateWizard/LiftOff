@@ -172,7 +172,7 @@ export function ThemePickerModal({ onClose, focusIndex, setFocusIndex }: ThemePi
                 key={key}
                 ref={isFocused ? focusedCardRef : undefined}
                 onClick={() => handleSelect(key)}
-                onMouseEnter={() => {
+                onMouseMove={() => {
                   setFocusIndex(idx);
                 }}
                 style={{

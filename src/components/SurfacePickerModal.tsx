@@ -212,7 +212,7 @@ export function SurfacePickerModal({ onClose, focusIndex, setFocusIndex }: Surfa
                 key={key}
                 ref={isFocused ? focusedCardRef : undefined}
                 onClick={() => handleSelect(key)}
-                onMouseEnter={() => setFocusIndex(idx)}
+                onMouseMove={() => setFocusIndex(idx)}
                 style={{
                   position: "relative",
                   borderRadius: surfaceStyle === "win9x" ? 0 : 14,
