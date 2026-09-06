@@ -329,6 +329,8 @@ pub struct Settings {
     pub surface_style: String,
     #[serde(default = "default_true")]
     pub hide_on_launch: bool,
+    #[serde(default = "default_true")]
+    pub fse_hard_reload_recovery: bool,
 }
 
 fn default_language() -> String {
@@ -482,6 +484,7 @@ impl Default for Settings {
             topbar_show_bumpers: false,
             surface_style: "clear".to_string(),
             hide_on_launch: true,
+            fse_hard_reload_recovery: true,
         }
     }
 }
@@ -1038,6 +1041,14 @@ fn save_hero_animated_cache(cache: &HashMap<String, String>) {
     if let Ok(json) = serde_json::to_string(cache) {
         let _ = std::fs::write(path, json);
     }
+}
+
+pub(crate) fn fse_hard_reload_recovery_enabled() -> bool {
+    load_settings_inner().fse_hard_reload_recovery
+}
+
+pub(crate) fn fse_return_shortcut_setting() -> String {
+    load_settings_inner().fse_return_shortcut
 }
 
 fn load_settings_inner() -> Settings {
@@ -4800,8 +4811,9 @@ fn get_recent_games() -> Vec<RecentEntry> {
     load_recent_games().into_iter().take(20).collect()
 }
 #[tauri::command]
-fn set_gamepad_ready() {
+fn set_gamepad_ready(app: tauri::AppHandle) {
     GAMEPAD_READY.store(true, Ordering::Relaxed);
+    fse_watcher::calibrate_presentation_baseline(app);
 }
 
 fn set_xinput_vibration(left_motor_speed: u16, right_motor_speed: u16) {
@@ -5221,6 +5233,7 @@ fn show_main_window(window: tauri::WebviewWindow) -> Result<(), String> {
     window.show().map_err(|e| e.to_string())?;
     window.set_focus().map_err(|e| e.to_string())?;
     if let Ok(hwnd) = window.hwnd() {
+        OUR_HWND.store(hwnd.0 as isize, Ordering::Relaxed);
         fse_watcher::claim_foreground_on_startup(hwnd.0 as isize);
     }
     Ok(())
@@ -8706,15 +8719,11 @@ fn get_running_launched() -> Vec<RunningEntry> {
 }
 
 #[tauri::command]
-fn focus_self() -> bool {
-    let hwnd = OUR_HWND.load(Ordering::Relaxed);
-    if hwnd == 0 {
-        return false;
-    }
+fn focus_self(window: tauri::WebviewWindow) -> bool {
+    let Ok(hwnd) = window.hwnd() else { return false; };
     unsafe {
-        let window = windows::Win32::Foundation::HWND(hwnd as _);
-        let _ = ShowWindow(window, SW_SHOW);
-        SetForegroundWindow(window).as_bool()
+        let _ = ShowWindow(hwnd, SW_SHOW);
+        SetForegroundWindow(hwnd).as_bool()
     }
 }
 
@@ -9170,33 +9179,6 @@ async fn launch_app(
     })
 }
 
-fn is_our_window_focused() -> bool {
-    let stored_hwnd = OUR_HWND.load(Ordering::Relaxed);
-    if stored_hwnd == 0 {
-        return true;
-    }
-    unsafe {
-        let foreground_hwnd = GetForegroundWindow();
-        foreground_hwnd.0 as isize == stored_hwnd || foreground_hwnd.0.is_null()
-    }
-}
-
-fn start_gamepad_listener(_app_handle: tauri::AppHandle) {
-    unsafe {
-        let foreground_hwnd = GetForegroundWindow();
-        if foreground_hwnd.0 as isize != 0 {
-            OUR_HWND.store(foreground_hwnd.0 as isize, Ordering::Relaxed);
-        }
-    }
-    std::thread::spawn(move || loop {
-        if FRONTEND_HAS_CONTROL.load(Ordering::Relaxed) {
-            std::thread::sleep(std::time::Duration::from_millis(500));
-            continue;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(100));
-    });
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -9324,7 +9306,9 @@ pub fn run() {
             let window = app.get_webview_window("main").unwrap();
             let hwnd = window.hwnd().unwrap();
             OUR_HWND.store(hwnd.0 as isize, Ordering::Relaxed);
-            start_gamepad_listener(app.handle().clone());
+            // Only the managed main window may define our identity. The foreground
+            // window at cold boot can belong to the FSE shell or another process.
+            fse_watcher::log_main_window_identity(app.handle());
             tauri::async_runtime::spawn(async {
                 let _ = load_xcloud_games(false).await;
             });

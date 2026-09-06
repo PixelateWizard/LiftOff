@@ -173,6 +173,7 @@ export const DEFAULT_SETTINGS = {
   surface_style: "clear",
   onyx_top_light: true,
   hide_on_launch: true,
+  fse_hard_reload_recovery: true,
 } as const;
 
 export type AccentKey = keyof typeof ACCENTS;

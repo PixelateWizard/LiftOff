@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Delivered — Details long-summary controller scrolling:** Vertical controller input now reveals the bottom and top edges of a long About/Media body while preserving the selected media tile, then returns to Play only from the top instead of jumping to the final screenshot or collapsing early. The focused and full frontend test suites, production build, docs check, and diff validation pass; physical Ally/WebView2 stick, D-pad, and held-repeat feel at 1280x800 remains the runtime gate.
+- **Implemented — Cold-boot FSE window identity:** Removed the legacy initializer that overwrote LiftOff's HWND with the foreground shell/window handle. Recovery now verifies the managed main window and PID; startup calibration retries temporary focus loss, and PID-tagged diagnostics capture app-switcher returns. Cargo check, 32 Rust tests, production/NSIS builds, docs check, and diff validation pass. Direct-to-FSE reboot testing for both normal game exit and app-switcher return remains required; see the [cold-boot gate](.agents/docs/known-issues.md#fse-blank-return-regression).
 
 ## Start-of-Task Workflow
 

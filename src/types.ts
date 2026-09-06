@@ -211,6 +211,7 @@ export interface Settings {
   fse_return_shortcut: FseReturnShortcut;
   surface_style: string;
   hide_on_launch: boolean;
+  fse_hard_reload_recovery?: boolean;
 }
 
 /** Custom folder entry from the backend */

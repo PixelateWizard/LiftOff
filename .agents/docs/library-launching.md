@@ -22,6 +22,16 @@ Read for scanner/source changes, library refresh, install state, launch routing,
 - FSE and foreground changes require hands-on validation. Do not replace the live no-hide GPU suspend/resume path with legacy hide/show fallback code without device evidence.
 - The no-hide game handoff pairs WebView2 inactivity with its Low memory-usage target and restores the Normal target before every visible resume. Keep the memory and visibility transitions ordered and preserve the best-effort fallback for WebView2 runtimes older than the v19 interface.
 
+## FSE Presentation Recovery
+
+- LiftOff window identity comes only from the managed Tauri main window. Never overwrite it from GetForegroundWindow during startup: cold FSE boot can have a shell HWND in foreground, which breaks both exit recovery and app-switcher resume. Recovery entry points validate the managed HWND and its owning PID; diagnostic lines include the LiftOff PID, startup managed/foreground handles, and foreground-return snapshots.
+- Composition nudges use WebView2 controller SetBounds shrink/restore with an acknowledged first update and NotifyParentWindowPositionChanged; never briefly shrink the host HWND. Full-monitor host geometry correction is separate and runs around exit raising and each recovery stage.
+- Controller IsVisible and frontend rAF are diagnostics, not proof of displayed pixels. The 6x6 screen-DC sample is a heuristic whose FSE behavior requires hardware validation. After set_gamepad_ready (which follows splash exit), retry calibration for up to 15 seconds while the managed main window owns foreground. Keep the first valid baseline; abandon a pending startup sample when a new game watch begins, so a dead post-game surface cannot become the baseline. Disable escalation for an unavailable or overly dark baseline, and require two valid near-black samples while LiftOff owns foreground. Missing pixels must not count as a dead screen.
+- Preserve stage order: initial presentation reset/geometry/raise/controller nudge, controller visibility cycle, host visibility cycle, then hard page reload. Automatic reload honors persisted fse_hard_reload_recovery (default true; intentionally no UI). The frontend watchdog marshals all blocking recovery work to a worker thread.
+- Recovery workers are serialized; new game watches invalidate old recovery generations. The 20-second post-exit XInput watch requests a manual reload after a 1.5-second configured shortcut hold, regardless of the automatic setting. Native shortcut availability under FSE remains an explicit gate.
+- A best-effort sessionStorage flag skips recovery splash exit delay and startup sound/haptics while preserving the normal library load/error path and gamepad-ready signal. It cannot guarantee total boot latency or execution in a stalled renderer.
+- %LOCALAPPDATA%/LiftOff/logs/fse.log records calibration, stage probes, window/monitor rects, iconic/visible/DWM-cloaked state, child/controller visibility, and foreground HWND. Writes are serialized and restart the log before it exceeds 512 KB; no window titles or credentials are logged.
+
 ## Current Source Anchors
 
 - `src-tauri/src/lib.rs`: scanners, library assembly, launch routing, process/window tracking, install/uninstall commands.
