@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented — controller focus regressions:** Home shelves and the theme/surface pickers now change hover focus only after real pointer movement, so controller-driven scrolling cannot let content moving beneath a parked pointer overwrite the selected item. Appearance grids also keep horizontal focus within each visible row and use column-aware vertical movement, including the surface grid's incomplete last row. All 59 frontend tests, the production build, docs check, and diff validation pass; post-Steam-return and picker navigation still require physical Ally/WebView2 confirmation.
+- **Implemented — Alpha 6.1 release cut:** App-owned version markers moved to `2.0.0-alpha-6.1` in `src/constants.ts`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`/lock, and `package.json`/lock. The `CHANGELOG.md` Unreleased body became `## [2.0.0-alpha-6.1] - Alpha 6.1` with an empty Unreleased above it, and `RELEASE-NOTES-Alpha-6.1.md` documents the release for users as a launch-focused bug-fix update. Website version copy was intentionally left alone for this alpha.
 
 ## Start-of-Task Workflow
 
@@ -32,7 +32,7 @@ If the user sends only a `.md` file, treat it as a project proposal and carry it
 - **Product:** LiftOff, a Windows controller-first game/app launcher.
 - **Stack:** Tauri 2, Rust backend, React frontend, incremental TypeScript adoption.
 - **Identifier:** `com.taylo.liftoff`.
-- **Current version:** `2.0.0-alpha-6`; app-owned version markers must move together for releases.
+- **Current version:** `2.0.0-alpha-6.1`; app-owned version markers must move together for releases.
 - **Frontend root:** `src/App.jsx`, with domain hooks, views, components, contexts, and theme helpers under `src/`.
 - **Backend root:** `src-tauri/src/lib.rs`, with specialized modules in `src-tauri/src/`.
 - **Development:** `npm run dev` plus `npm run tauri -- dev`.
