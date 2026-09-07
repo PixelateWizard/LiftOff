@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented — Alpha 6.1 release cut:** App-owned version markers moved to `2.0.0-alpha-6.1` in `src/constants.ts`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`/lock, and `package.json`/lock. The `CHANGELOG.md` Unreleased body became `## [2.0.0-alpha-6.1] - Alpha 6.1` with an empty Unreleased above it, and `RELEASE-NOTES-Alpha-6.1.md` documents the release for users as a launch-focused bug-fix update. Website version copy was intentionally left alone for this alpha.
+- **Implemented — French launch copy completed and repaired:** The final eight `TODO:fr` strings in `src/locales/fr.json` now carry French copy for the Steam launch phases and the revised `unconfirmed` message, leaving zero `TODO:fr` markers in the app. Also restored stripped accents in `launch.focused` ("Lance" -> "Lancé"), `launch.runningUnfocused`, `launch.verifying`, and `settings.surfacePickerHint`, and removed the orphaned `settings.wideBody` key so the French and English key sets match exactly. Because `2.0.0-alpha-6.1` is cut but unpublished, this folded into that changelog section and `RELEASE-NOTES-Alpha-6.1.md`. Locale copy only; no launch logic changed. Tests, build, docs check, and diff validation pass; the French copy still needs a native-speaker proofread and on-device rendering confirmation.
 
 ## Start-of-Task Workflow
 

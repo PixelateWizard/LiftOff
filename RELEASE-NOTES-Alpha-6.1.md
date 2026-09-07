@@ -30,9 +30,8 @@ Alpha 6.1 is a fix release focused on launching games and getting back to LiftOf
 ## Also New
 
 - **Pinned shortcuts in the helper tray.** The MENU helper tray now shows a controller-navigable row of your pinned games and apps with their cover art or icons. Games open Details as usual; apps launch directly.
-- **French translations filled in.** The French UI copy that was still missing - helper bar, power controls, Steam Deck compatibility, SteamGridDB and Cloud browsers, account and install flows, storage, and library labels - has been drafted and is now in the app, pending a native-speaker proofread.
+- **French translations filled in.** The French UI copy that was still missing - helper bar, power controls, Steam Deck compatibility, SteamGridDB and Cloud browsers, account and install flows, storage, and library labels - has been drafted and is now in the app. That now includes the new Steam launch progress messages and the revised "couldn't confirm" message, so the whole launch flow reads in French.
 
 ## Known Gaps
 
-- The new Steam launch progress messages and the revised "couldn't confirm" message are still English-only.
 - The French copy added in this release has not yet been proofread by a native speaker.
