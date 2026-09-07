@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [2.0.0-alpha-6.1] - Alpha 6.1
+
 ### Added
 - **Pinned helper shortcuts** - The helper tray now includes a controller-navigable row for every visible pinned game and app, using available cover art or icons and preserving the existing Details-first game behavior plus direct app launching.
 
