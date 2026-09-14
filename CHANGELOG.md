@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- **Art resolution visibility** - SteamGridDB cover and hero art choices now show their reported source dimensions, including a 4K marker for 3840x2160+ results. The upload tab reports the current/source image dimensions plus LiftOff's saved crop size, and Immersive Home overlays the loaded hero art resolution when the hero media finishes decoding.
+
 ## [2.0.0-alpha-6.1] - Alpha 6.1
 
 ### Added

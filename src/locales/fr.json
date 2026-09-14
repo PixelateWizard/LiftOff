@@ -49,6 +49,8 @@
     "noArt": "Pas d'image",
     "browseImage": "Parcourir",
     "saving": "Sauvegarde…",
+    "sourceResolution": "TODO:fr Source: {{resolution}}",
+    "savedResolution": "TODO:fr Enregistré: {{resolution}}",
     "resetToDefault": "Réinitialiser"
   },
   "sgdb": {
@@ -531,7 +533,8 @@
     "close": "Fermer",
     "noGames": "Lancez un jeu pour le voir ici",
     "noRecents": "Rien ici pour l'instant — lancez quelque chose !",
-    "pinHint": "Épinglez des apps avec X pour les afficher ici"
+    "pinHint": "Épinglez des apps avec X pour les afficher ici",
+    "heroResolution": "TODO:fr Art héros {{resolution}}"
   },
   "grid": {
     "pinned": "Épinglés",

@@ -31,16 +31,16 @@
   },
   "splash": {
     "status": {
-      "starting": "Starting up\u2026",
-      "scanning": "Scanning your library\u2026",
-      "findingGames": "Finding installed games\u2026",
-      "loadingArt": "Loading artwork\u2026",
-      "almostReady": "Almost ready\u2026",
-      "stillWorking": "Still working \u2014 large libraries can take a moment\u2026",
-      "scanDesktop": "Reading Start Menu and Desktop shortcuts\u2026",
-      "scanSteam": "Checking your Steam library\u2026",
-      "scanXbox": "Checking Game Pass\u2026",
-      "scanOther": "Checking other launchers\u2026"
+      "starting": "Starting up…",
+      "scanning": "Scanning your library…",
+      "findingGames": "Finding installed games…",
+      "loadingArt": "Loading artwork…",
+      "almostReady": "Almost ready…",
+      "stillWorking": "Still working — large libraries can take a moment…",
+      "scanDesktop": "Reading Start Menu and Desktop shortcuts…",
+      "scanSteam": "Checking your Steam library…",
+      "scanXbox": "Checking Game Pass…",
+      "scanOther": "Checking other launchers…"
     }
   },
   "artPicker": {
@@ -49,6 +49,8 @@
     "noArt": "No art",
     "browseImage": "Browse Image",
     "saving": "Saving…",
+    "sourceResolution": "Source: {{resolution}}",
+    "savedResolution": "Saved: {{resolution}}",
     "resetToDefault": "Reset to Default"
   },
   "sgdb": {
@@ -276,7 +278,7 @@
     "showRecentGamesOnly": "Games Only in Recents",
     "showStoreBadges": "Show Store Badges",
     "showStoreBadgesDesc": "Display a small store icon (Steam, Xbox, Battle.net, GOG, Epic, Cloud) on game covers",
-    "showHomePinned":"Show Pinned on Home",
+    "showHomePinned": "Show Pinned on Home",
     "homePinnedPos": "Pinned apps position",
     "accentColor": "Accent Color",
     "theme": "Theme",
@@ -531,6 +533,7 @@
     "close": "Close",
     "noGames": "Launch a game to see it here",
     "noRecents": "Nothing here yet — launch something!",
+    "heroResolution": "Hero art {{resolution}}",
     "pinHint": "Pin apps with X to show them here"
   },
   "grid": {

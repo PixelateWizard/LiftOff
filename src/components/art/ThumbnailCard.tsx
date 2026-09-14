@@ -8,6 +8,8 @@ export interface SgdbArtResult {
   is_animated: boolean;
   author?: string;
   upvotes?: number;
+  width?: number;
+  height?: number;
 }
 
 interface ThumbnailCardProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -34,6 +36,8 @@ export function ThumbnailCard({ result, selected, isSelected, accent, theme: _th
   const urlLower = result.url.toLowerCase();
   const isVideoFormat = /\.(webm|mp4)$/i.test(urlLower);
   const isGifOrWebp = /\.(gif|webp)$/i.test(urlLower);
+  const resolution = result.width && result.height ? `${result.width}x${result.height}` : null;
+  const isLikely4k = !!result.width && !!result.height && result.width >= 3840 && result.height >= 2160;
 
   useEffect(() => {
     if (active && !videoSrc) setVideoSrc(result.url);
@@ -114,6 +118,16 @@ export function ThumbnailCard({ result, selected, isSelected, accent, theme: _th
             style={{ ...fillStyle, opacity: active ? 1 : 0, transition: "opacity 0.15s" }}
           />
         ) : null
+      )}
+
+      {resolution && (
+        <div style={{
+          position: "absolute", top: 5, right: 5, padding: "2px 6px", borderRadius: 4,
+          background: isLikely4k ? "rgba(74,156,74,0.92)" : "rgba(0,0,0,0.72)", color: "white", fontSize: 8, fontWeight: 800, letterSpacing: "0.02em",
+          boxShadow: "0 1px 5px rgba(0,0,0,0.35)",
+        }}>
+          {resolution}{isLikely4k ? " 4K" : ""}
+        </div>
       )}
 
       {result.is_animated && hasStaticThumb && (

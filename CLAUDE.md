@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented — French launch copy completed and repaired:** The final eight `TODO:fr` strings in `src/locales/fr.json` now carry French copy for the Steam launch phases and the revised `unconfirmed` message, leaving zero `TODO:fr` markers in the app. Also restored stripped accents in `launch.focused` ("Lance" -> "Lancé"), `launch.runningUnfocused`, `launch.verifying`, and `settings.surfacePickerHint`, and removed the orphaned `settings.wideBody` key so the French and English key sets match exactly. Because `2.0.0-alpha-6.1` is cut but unpublished, this folded into that changelog section and `RELEASE-NOTES-Alpha-6.1.md`. Locale copy only; no launch logic changed. Tests, build, docs check, and diff validation pass; the French copy still needs a native-speaker proofread and on-device rendering confirmation.
+- **Implemented — art resolution visibility:** SteamGridDB cover/hero thumbnails now show reported source dimensions with a 4K marker for 3840x2160+ art, uploads show source/current dimensions plus the saved crop size, and Immersive Home displays the loaded hero media resolution after decode. Art priority, caching, crop behavior, Home layout, and controller ownership are unchanged. Build validation passed; WebView2, physical controller, and handheld visual checks remain runtime gates.
 
 ## Start-of-Task Workflow
 

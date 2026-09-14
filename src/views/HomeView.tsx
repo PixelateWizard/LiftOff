@@ -16,6 +16,7 @@ const mediaBase = (url?: string | null) => (url || "").split("?")[0].toLowerCase
 const isHeroVideoUrl = (url?: string | null) => /\.(webm|mp4)$/i.test(mediaBase(url));
 const isAnimatedImageUrl = (url?: string | null) => /\.(gif|webp)$/i.test(mediaBase(url));
 const isAnimatedMediaUrl = (url?: string | null) => isHeroVideoUrl(url) || isAnimatedImageUrl(url);
+const formatMediaDimensions = (dimensions?: { width: number; height: number } | null) => dimensions ? `${dimensions.width}x${dimensions.height}` : null;
 
 const PNG_ACCENTS = ["ember", "ocean", "neon", "rose", "midnight", "nova", "steel", "lunar", "atomic", "aqua", "sage", "copper"];
 const getHeroPlaceholder = (accent: string) =>
@@ -97,7 +98,16 @@ export function HomeView(props: HomeViewProps) {
   const { surface, resolvedTheme } = useTheme();
   const [heroMediaPaused, setHeroMediaPaused] = useState(false);
   const [heroVideoPlaying, setHeroVideoPlaying] = useState<Record<string, boolean>>({});
+  const [heroMediaDimensions, setHeroMediaDimensions] = useState<Record<string, { width: number; height: number }>>({});
   const semiSlotRef = useRef<HTMLDivElement>(null);
+  const rememberHeroMediaDimensions = useCallback((url: string | null | undefined, width: number, height: number) => {
+    if (!url || width <= 0 || height <= 0) return;
+    setHeroMediaDimensions(prev => {
+      const current = prev[url];
+      if (current?.width === width && current?.height === height) return prev;
+      return { ...prev, [url]: { width, height } };
+    });
+  }, []);
   const HOME_BOTTOM_CLEARANCE = 20;
   const helperBarMode = settings.bottombar_mode || (settings.hide_bottom_bar ? "minimal" : "full");
   const BOTTOM_BAR_H = helperBarMode === "full" ? 48 : 0;
@@ -520,6 +530,8 @@ export function HomeView(props: HomeViewProps) {
       : null;
 
     const visibleHeroBanner = showHeroArtwork ? heroBanner : null;
+    const visibleHeroResolution = formatMediaDimensions(visibleHeroBanner ? heroMediaDimensions[visibleHeroBanner] : null);
+    const visibleHeroIs4k = !!visibleHeroBanner && !!heroMediaDimensions[visibleHeroBanner] && heroMediaDimensions[visibleHeroBanner].width >= 3840 && heroMediaDimensions[visibleHeroBanner].height >= 2160;
     const heroRunning = !!heroGame && !!isRunning?.(heroGame.id);
     const heroResumeFocused = heroFocused && (!heroRunning || heroActionIndex === 0);
     const heroCloseFocused = heroFocused && heroRunning && heroActionIndex === 1;
@@ -774,7 +786,7 @@ export function HomeView(props: HomeViewProps) {
                   <div key={activeGame.id} style={{ position: "absolute", inset: 0, opacity: 1, zIndex: 1 }}>
                     {showHeroArtwork && !activeGameIsVideo && (
                       activeGameStaticBanner ? (
-                        <img src={activeGameStaticBanner} alt="" decoding="async" loading="eager" style={{ ...coverStyle, transform: "translateZ(0)" }} />
+                        <img src={activeGameStaticBanner} alt="" decoding="async" loading="eager" onLoad={(event) => rememberHeroMediaDimensions(activeGameStaticBanner, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)} style={{ ...coverStyle, transform: "translateZ(0)" }} />
                       ) : activeGameFallback ? (
                         <img src={activeGameFallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(10px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
                       ) : (
@@ -782,7 +794,7 @@ export function HomeView(props: HomeViewProps) {
                       )
                     )}
                     {showHeroArtwork && activeGameIsAnimatedImage && activeGameAnimatedUrl && (
-                      <img src={activeGameAnimatedUrl} alt="" decoding="async" loading="eager" style={{ ...coverStyle, position: "absolute", top: 0, left: 0, transform: "translateZ(0)", opacity: 1 }} />
+                      <img src={activeGameAnimatedUrl} alt="" decoding="async" loading="eager" onLoad={(event) => rememberHeroMediaDimensions(activeGameAnimatedUrl, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)} style={{ ...coverStyle, position: "absolute", top: 0, left: 0, transform: "translateZ(0)", opacity: 1 }} />
                     )}
                     {showHeroArtwork && activeGameIsVideo && activeGameAnimatedUrl && (
                       <video
@@ -802,6 +814,7 @@ export function HomeView(props: HomeViewProps) {
                         src={activeGameAnimatedUrl}
                         autoPlay={!appPaused && !heroMediaPaused && active}
                         loop muted playsInline preload="auto"
+                        onLoadedMetadata={(event) => rememberHeroMediaDimensions(activeGameAnimatedUrl, event.currentTarget.videoWidth, event.currentTarget.videoHeight)}
                         style={{
                           position: "absolute",
                           top: 0, left: 0,
@@ -841,7 +854,7 @@ export function HomeView(props: HomeViewProps) {
                   <div key={game.id} style={{ position: "absolute", inset: 0, opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
                     {isNearby && showHeroArtwork && !intendedVideo
                       ? (staticBanner
-                          ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
+                          ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} onLoad={(event) => rememberHeroMediaDimensions(staticBanner, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)} style={{ ...coverStyle, transform: "translateZ(0)" }} />
                           : fallback
                             ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(10px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
                             : <img src={getHeroPlaceholder(settings.accent)} alt="" style={{ ...coverStyle }} />)
@@ -851,6 +864,7 @@ export function HomeView(props: HomeViewProps) {
                       <img
                         src={primaryHeroMedia}
                         alt=""
+                        onLoad={(event) => rememberHeroMediaDimensions(primaryHeroMedia, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)}
                         decoding="async"
                         loading="eager"
                         style={{
@@ -881,6 +895,7 @@ export function HomeView(props: HomeViewProps) {
                         autoPlay={isActive && !mediaPaused}
                         onCanPlay={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
                         onLoadedData={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
+                        onLoadedMetadata={(event) => rememberHeroMediaDimensions(primaryHeroMedia, event.currentTarget.videoWidth, event.currentTarget.videoHeight)}
                         onPlaying={() => setHeroVideoPlaying(prev => prev[game.id] ? prev : { ...prev, [game.id]: true })}
                         loop muted playsInline preload={isNearby ? "auto" : "none"}
                         style={{
@@ -904,6 +919,11 @@ export function HomeView(props: HomeViewProps) {
             <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroSideOverlay }} />
             <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: materialHero ? "42%" : "55%", zIndex: 2, background: heroBottomOverlay }} />
             {materialHero && <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroTextAnchorOverlay }} />}
+            {settings.cinematic_home && visibleHeroResolution && showHeroArtwork && (
+              <div style={{ position: "absolute", top: 20, right: 24, zIndex: 4, padding: "6px 10px", borderRadius: surfaceStyle === "win9x" || resolvedTheme === "cyberpunk" ? 0 : 8, background: visibleHeroIs4k ? "rgba(74,156,74,0.82)" : "rgba(0,0,0,0.48)", color: "white", fontSize: 11, fontWeight: 800, letterSpacing: "0.02em", boxShadow: "0 4px 16px rgba(0,0,0,0.28)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", pointerEvents: "none" }}>
+                {t("home.heroResolution", { resolution: visibleHeroResolution })}{visibleHeroIs4k ? " 4K" : ""}
+              </div>
+            )}
           </div>
           {!settings.cinematic_home && (
             <div

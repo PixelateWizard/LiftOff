@@ -32,6 +32,8 @@ interface ArtPickerProps {
 
 const HERO_FILTERS = ["all", "animated", "static"] as const;
 type HeroFilter = typeof HERO_FILTERS[number];
+type ImageDimensions = { width: number; height: number };
+const formatDimensions = (dimensions?: ImageDimensions | null) => dimensions ? `${dimensions.width}x${dimensions.height}` : null;
 
 interface SgdbGameHit {
   id: number;
@@ -595,6 +597,7 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
   const [pendingData, setPendingData] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [focusedBtn, setFocusedBtn] = useState("browse");
+  const [previewDimensions, setPreviewDimensions] = useState<ImageDimensions | null>(null);
 
   const pendingDataRef = useRef<string | null>(null);
   const focusedBtnRef = useRef("browse");
@@ -650,6 +653,7 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
         const sy = (img.height - sh) / 2;
         ctx.drawImage(img, sx, sy, sw, sh, 0, 0, TW, TH);
         const url = canvas.toDataURL("image/jpeg", 0.88);
+        setPreviewDimensions({ width: img.width, height: img.height });
         setPreview(url);
         setPendingData(url);
         pendingDataRef.current = url;
@@ -698,6 +702,16 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
     return () => cancelAnimationFrame(rAFId);
   }, []);
 
+  useEffect(() => {
+    setPreview(currentArt || null);
+    setPendingData(null);
+    pendingDataRef.current = null;
+    setPreviewDimensions(null);
+  }, [currentArt]);
+
+  const previewResolution = formatDimensions(previewDimensions);
+  const outputResolution = cropMode === "square" ? "500x500" : cropMode === "hero" ? "1920x620" : "600x900";
+
   const btnStyle = (key: string, bg: string, color: string, extra: CSSProperties = {}) => {
     const focused = focusedBtn === key;
     return {
@@ -719,9 +733,13 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
         <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
           <div style={{ flexShrink: 0, width: cropMode === "hero" ? 220 : 110 }}>
             {preview
-              ? <img src={preview} alt="" style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? "1920/620" : "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
+              ? <img src={preview} alt="" onLoad={(event) => { if (!pendingDataRef.current) setPreviewDimensions({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight }); }} style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? "1920/620" : "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
               : <div style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? "1920/620" : "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>{t("artPicker.noArt")}</span></div>
             }
+            <div style={{ marginTop: 8, fontSize: 11, color: theme.textDim, lineHeight: 1.35 }}>
+              {previewResolution ? <div>{t("artPicker.sourceResolution", { resolution: previewResolution })}</div> : null}
+              <div>{t("artPicker.savedResolution", { resolution: outputResolution })}</div>
+            </div>
           </div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
             <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
