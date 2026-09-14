@@ -1290,6 +1290,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.16903.69718987761116351.7499bad4-77e3-40ba-85f6-18af92c5637c.d9b0857f-1374-448e-a82f-2ec5d8af933b"
   },
   {
+    "name": "Bus Simulator 27",
+    "slug": "bus-simulator-27",
+    "productId": "9PNHKN79L7NF",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.17727.14344202145078214.e8f20263-99f3-4096-a949-46738b2da0e5.aa38d983-a93e-437d-906d-be964e1a6bc9"
+  },
+  {
     "name": "Cafe Master Story",
     "slug": "cafe-master-story",
     "productId": "9P862DHBS20J",
@@ -1312,6 +1318,12 @@
     "slug": "call-of-duty-black-ops-6",
     "productId": "9P22THR57FV7",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.10491.14346543607136639.d932bf87-6edc-4da6-bbd5-c944ad33bc0d.f78757c0-6542-410f-a0cc-52fc592d79f1"
+  },
+  {
+    "name": "Call of Duty: Black Ops Cold War",
+    "slug": "call-of-duty-black-ops-cold-war",
+    "productId": "9N2DMQBN9RC4",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.54574.13958233436121605.1b468d8b-6591-4a41-bbbc-74f5a2da15ae.5782c5be-1533-4c56-85f8-60d00121684c"
   },
   {
     "name": "Call of Duty: Modern Warfare II",
@@ -2098,6 +2110,12 @@
     "slug": "deckline",
     "productId": "9P5QWC7G9NTD",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.45886.14634299900546213.ff1dd80f-60c3-490a-a703-4bd0e7ac77b7.270e50a6-c421-4a1a-97bd-7b0db697451a"
+  },
+  {
+    "name": "Deconstruction Simulator",
+    "slug": "deconstruction-simulator",
+    "productId": "9PD00MSD71M2",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.55567.14164434209407983.b1c050d0-e1c1-4cf0-a020-7d220194601d.c78a6141-7f4b-4f6f-b228-4225f2004467"
   },
   {
     "name": "DEEEER Simulator: Your Average Everyday Deer Game",
@@ -3484,6 +3502,12 @@
     "slug": "gears-5",
     "productId": "C2KDNLT2H7DM",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.10933.65494054591008504.4eae27ba-1cfe-4af2-950a-4af81f8cd22a.b5b2909d-8884-48d0-b25a-68d6518c9b73"
+  },
+  {
+    "name": "Gears of War",
+    "slug": "gears-of-war",
+    "productId": "BPN08ZDRPSFK",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.39791.68631123789499032.6299bbb9-6778-40d5-965f-080b552baa15.c327f5b7-91e3-410e-82c2-fa853abddf3a"
   },
   {
     "name": "Gears of War 2",
@@ -5478,6 +5502,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.46654.13616962751651519.4b8ce6c1-770b-479f-ae6c-0bb45094d082.356260e7-1346-4181-8c39-0805adbfa27b"
   },
   {
+    "name": "METAL EDEN",
+    "slug": "metal-eden",
+    "productId": "9PP1WHRP17BK",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.1800.14333489217828966.6bc2783f-ae9c-4152-87bd-f8927cdc2c92.8eb1d2e9-a074-44a8-94ad-56a598b00aba"
+  },
+  {
     "name": "Metal Slug Tactics",
     "slug": "metal-slug-tactics",
     "productId": "9NGNZP1J1JN7",
@@ -5500,6 +5530,12 @@
     "slug": "metro-exodus",
     "productId": "C1TBTQBVJMFL",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.17469.65642028844779555.c518e652-fc85-4d6e-99a2-3e9ae1656a91.6cace333-df13-4178-a46d-5938de4654a2"
+  },
+  {
+    "name": "Mewgenics",
+    "slug": "mewgenics",
+    "productId": "9NN5Z9BVRCH5",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.35047.13744661233787452.d1fb23d9-c4fe-41f2-a82e-e98cd79a4fe9.f9caa2db-075e-4deb-8bf7-1c084c4800cc"
   },
   {
     "name": "Mia and the Dragon Princess",
@@ -6832,6 +6868,12 @@
     "slug": "predecessor",
     "productId": "9NKVBTRRWH6V",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.14014.13653755876663909.d2d31287-ac26-41c1-812a-864cd979b131.0ff2866d-a620-474d-ab56-aac830d397d6"
+  },
+  {
+    "name": "Preserve",
+    "slug": "preserve",
+    "productId": "9PH4HH8FD5DC",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.45544.14238535908948944.9efcf000-4698-4d5b-88b2-fd832b1a5927.5e472781-b996-4e91-a970-1a3c752a5153"
   },
   {
     "name": "Prey",
@@ -9378,6 +9420,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.44243.14503626044492977.7208f0d9-85c4-4e8b-ae05-bd4b875bf1b3.2f032f23-1ee7-4b0c-9709-c9a11ca6de6f"
   },
   {
+    "name": "The Royal Writ",
+    "slug": "the-royal-writ",
+    "productId": "9N034X5G08B7",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.20206.13929128993190644.5fdad478-5d9a-4e47-b2a4-acc499d07c78.87b72de9-0d97-4e33-9dd0-d85784eb761c"
+  },
+  {
     "name": "The Safe Place",
     "slug": "the-safe-place",
     "productId": "9NLFWK4MN5XG",
@@ -10144,6 +10192,12 @@
     "slug": "unwording",
     "productId": "9NPPN73KTX21",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.18841.13785082219248050.9c32b4a8-a56f-4f84-a285-e5d056f2612b.fd71a455-4374-4f4d-a6ad-dcea24025ded"
+  },
+  {
+    "name": "Valheim",
+    "slug": "valheim",
+    "productId": "9NCBL78CG9N7",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.18542.13571084888216164.64efec07-99a1-43e6-9f9f-994d4517a3a8.f7b6b5f5-12b9-45ee-94de-f768e09e9fce"
   },
   {
     "name": "Valiant Hearts: The Great War",
