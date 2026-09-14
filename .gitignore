@@ -17,6 +17,9 @@ dist
 dist-ssr
 *.local
 
+# Native FSE bridge build output can remain after switching branches
+/liftoff-fse-bridge/target/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
