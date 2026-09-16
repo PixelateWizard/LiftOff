@@ -57,6 +57,26 @@
   to { opacity: 1; }
 }
 
+@keyframes lo-tray-rise {
+  from { opacity: 0; transform: translateY(54px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes lo-tray-fall {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(30px) scale(0.99); }
+}
+
+@keyframes lo-tray-scrim-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes lo-tray-row-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes lo-focus-pulse {
   0% { box-shadow: 0 0 0 0 var(--accent-pulse); }
   40% { box-shadow: 0 0 0 6px var(--accent-pulse); }
@@ -114,6 +134,12 @@
 .lo-anim-drill { animation: lo-drill-in var(--dur-base) var(--ease-spring) both; }
 .lo-anim-modal { animation: lo-modal-rise var(--dur-base) var(--ease-decel) both; }
 .lo-anim-overlay { animation: lo-overlay-fade var(--dur-fast) var(--ease-standard) both; }
+.lo-anim-tray-scrim { animation: lo-overlay-fade var(--dur-fast) var(--ease-standard) both; }
+.lo-anim-tray { animation: lo-tray-rise var(--dur-slow) var(--ease-decel) both; }
+.lo-tray-row { animation: lo-tray-row-in var(--dur-base) var(--ease-decel) both; }
+[data-tray-state="closing"].lo-anim-tray-scrim { animation: lo-tray-scrim-out var(--dur-fast) var(--ease-accel) both; }
+[data-tray-state="closing"] .lo-anim-tray { animation: lo-tray-fall var(--dur-fast) var(--ease-accel) both; }
+[data-tray-state="closing"] .lo-tray-row { animation: none; opacity: 1; transform: none; }
 .lo-anim-pulse {
   position: relative;
 }
@@ -162,6 +188,9 @@
 [data-ui-motion="off"] .lo-anim-drill,
 [data-ui-motion="off"] .lo-anim-modal,
 [data-ui-motion="off"] .lo-anim-overlay,
+[data-ui-motion="off"] .lo-anim-tray-scrim,
+[data-ui-motion="off"] .lo-anim-tray,
+[data-ui-motion="off"] .lo-tray-row,
 [data-ui-motion="off"] .lo-anim-pulse::after,
 [data-ui-motion="off"] .lo-anim-push-in,
 [data-ui-motion="off"] .lo-anim-push-out,
@@ -179,6 +208,9 @@
 .app-launch-paused .lo-anim-drill,
 .app-launch-paused .lo-anim-modal,
 .app-launch-paused .lo-anim-overlay,
+.app-launch-paused .lo-anim-tray-scrim,
+.app-launch-paused .lo-anim-tray,
+.app-launch-paused .lo-tray-row,
 .app-launch-paused .lo-anim-pulse::after,
 .app-launch-paused .lo-anim-push-in,
 .app-launch-paused .lo-anim-push-out,
@@ -204,6 +236,9 @@
   .lo-anim-drill,
   .lo-anim-modal,
   .lo-anim-overlay,
+  .lo-anim-tray-scrim,
+  .lo-anim-tray,
+  .lo-tray-row,
   .lo-anim-pulse::after,
   .lo-anim-push-in,
   .lo-anim-push-out,

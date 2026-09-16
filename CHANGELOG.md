@@ -3,6 +3,7 @@
 ## Unreleased
 
 ### Fixed
+- **Translucent helper tray contrast** - Glass, Aero, Clear, and Obsidian helper trays now use denser theme-aware fills, keeping controls readable over Settings and Home content without losing their material treatment.`n- **Helper tray motion** - The helper tray now rises and falls independently of generic modal motion, staggers its title, shortcuts, system controls, and media rows, and reveals Settings focus after opening. Its local motion profile respects Win9X/Webcore instant behavior, the UI-motion setting, and reduced-motion preferences; exit remains mounted briefly so it no longer vanishes instantly.
 - **Onboarding controller navigation and labels** - Every setup step now includes Back, Next/Done, and Skip in controller focus, with a fixed footer and a separately scrolling body. Corrected the Store-app scan and hide-on-launch labels, and prevented a held opening A press from activating setup during its input grace period.
 - **Data-tab scrolling** - Settings no longer remounts and reloads storage rows on focus changes. Long drive lists also keep the first focused action visible instead of forcing the scroll position back to the section top.
 - **Modal and helper surfaces** - The helper tray, shared dialogs, account/art/file/keyboard panels, loading panels, and search overlay retain the selected surface's fill, blur, borders, and shadows. Glass-panel scrims no longer animate or blur their parent layer, Material keeps opaque elevation styling, and refresh/art loading indicators remain visible after the splash closes.

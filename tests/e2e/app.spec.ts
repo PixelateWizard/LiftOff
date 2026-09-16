@@ -292,9 +292,9 @@ for (const [theme, surface] of [["space", "glass"], ["sky", "aero"], ["wash", "m
     const controls = page.locator('[data-modal=""]');
     await expect(controls).toBeVisible();
     const standardStyle = await controls.evaluate(getSurface);
-    if (surface === "neon") {
+    if (["neon", "glass", "aero", "clear", "obsidian"].includes(surface)) {
       expect(helperStyle.background).not.toBe(standardStyle.background);
-      expect(helperStyle.blur).toContain("blur(12px)");
+      if (surface === "neon") expect(helperStyle.blur).toContain("blur(12px)");
     } else {
       expect(standardStyle).toEqual(helperStyle);
     }
@@ -305,7 +305,7 @@ for (const [theme, surface] of [["space", "glass"], ["sky", "aero"], ["wash", "m
     const refresh = page.locator('[data-modal="library-refresh"]');
     await expect(refresh).toBeVisible();
     expect((await refresh.locator(".lo-loading-spinner").boundingBox())!.width).toBeGreaterThan(0);
-    expect(await refresh.evaluate(getSurface)).toEqual(surface === "neon" ? standardStyle : helperStyle);
+    expect(await refresh.evaluate(getSurface)).toEqual(["neon", "glass", "aero", "clear", "obsidian"].includes(surface) ? standardStyle : helperStyle);
     expect(await refresh.locator("..").evaluate((element) => getComputedStyle(element).backdropFilter)).toBe("none");
     await page.screenshot({ path: info.outputPath("refresh.png") });
   });

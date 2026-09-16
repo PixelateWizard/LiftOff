@@ -18,6 +18,9 @@ vi.mock("../../contexts/ThemeContext", () => ({
     resolvedTheme: "space",
   }),
 }));
+vi.mock("../../contexts/SettingsContext", () => ({
+  useSettings: () => ({ settings: { ui_motion: true } }),
+}));
 vi.mock("../../hooks/useSystemControls", () => ({
   useSystemControls: () => ({
     volume: { percent: 50 },
@@ -60,6 +63,7 @@ describe("HelperTray pinned shortcuts", () => {
   let root: Root;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
@@ -77,6 +81,7 @@ describe("HelperTray pinned shortcuts", () => {
     container.remove();
     delete (HTMLElement.prototype as { scrollTo?: unknown }).scrollTo;
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("renders both pinned games and apps", () => {
@@ -95,5 +100,16 @@ describe("HelperTray pinned shortcuts", () => {
     }
 
     expect(props.onOpenPinned).toHaveBeenCalledWith(props.pinnedApps[0]);
+  });
+  it("keeps the tray mounted for its exit animation", () => {
+    const props = baseProps();
+    act(() => root.render(<HelperTray {...props} />));
+    act(() => root.render(<HelperTray {...props} open={false} />));
+
+    expect(container.querySelector('[data-modal="helper"]')).not.toBeNull();
+    expect(container.querySelector('[data-tray-state="closing"]')).not.toBeNull();
+
+    act(() => vi.advanceTimersByTime(160));
+    expect(container.querySelector('[data-modal="helper"]')).toBeNull();
   });
 });

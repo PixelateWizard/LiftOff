@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented — Neon helper readability:** only the Neon helper tray now uses a denser dark-accent tint and slightly stronger blur over busy Home artwork, retaining its glow, rounded geometry, and controller behavior. Targeted HelperTray unit and Neon mocked-browser surface checks passed, along with the production build; physical Ally/WebView2 visual validation remains the final device gate.
+- **Implemented — Helper tray density:** Glass, Aero, Clear, and Obsidian use denser theme-aware fills so tray controls stay legible over Settings/Home content without changing their blur, borders, motion, layout, or controller behavior. Automated validation passes; physical Ally/WebView2 surface review remains the final gate.
 
 ## Start-of-Task Workflow
 

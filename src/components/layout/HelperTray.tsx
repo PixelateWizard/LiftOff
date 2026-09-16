@@ -10,6 +10,7 @@ import type { App } from "../../types";
 import { useSystemControls } from "../../hooks/useSystemControls";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useSettings } from "../../contexts/SettingsContext";
 import { GamepadBtn } from "../GamepadBtn";
 import { modalPanelStyle } from "../modals/modalStyles";
 
@@ -33,6 +34,9 @@ interface HelperTrayProps {
 }
 
 type FocusItem = { key: string; row: number; column: number; app?: App };
+
+const TRAY_EXIT_MS = 160;
+const FOCUS_REVEAL_DELAY_MS = 300;
 
 const formatTime = (ms: number) => {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -58,8 +62,17 @@ export function HelperTray({
   const { t } = useTranslation();
   const themeValue = useTheme();
   const { accent, theme, isDark, surfaceStyle, resolvedTheme } = themeValue;
+  const { settings } = useSettings();
+  const motionProfile =
+    surfaceStyle === "win9x" || resolvedTheme === "webcore" ? "instant" :
+    surfaceStyle === "material" ? "crisp" :
+    resolvedTheme === "synthwave" ? "playful" :
+    "standard";
   const { volume, brightness, requestVolume, requestBrightness } = useSystemControls(open);
   const track = spotify.track;
+  const [visible, setVisible] = useState(open);
+  const [closing, setClosing] = useState(false);
+  const closeTimerRef = useRef<number | undefined>(undefined);
   const [focusKey, setFocusKey] = useState("settings");
   const focusKeyRef = useRef("settings");
   const [seekDraft, setSeekDraft] = useState<number | null>(null);
@@ -129,12 +142,38 @@ export function HelperTray({
   };
 
   useEffect(() => {
+    if (open) {
+      window.clearTimeout(closeTimerRef.current);
+      setVisible(true);
+      setClosing(false);
+    } else if (visible) {
+      setClosing(true);
+      closeTimerRef.current = window.setTimeout(() => {
+        setVisible(false);
+        setClosing(false);
+      }, TRAY_EXIT_MS);
+    }
+    return () => window.clearTimeout(closeTimerRef.current);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     if (!open) return;
     setFocus("settings");
     setAdjustment(null);
     setSeekDraft(null);
     seekDraftRef.current = null;
   }, [open, track?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!open) return;
+    if (motionProfile === "instant" || settings.ui_motion === false) {
+      setFocus("settings");
+      return;
+    }
+    setFocus("");
+    const timer = window.setTimeout(() => setFocus("settings"), FOCUS_REVEAL_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [open, motionProfile, settings.ui_motion]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activate = (key: string) => {
     if (key === "seek" || key === "volume" || key === "brightness") {
@@ -267,13 +306,18 @@ export function HelperTray({
     };
   }, [open, repeatSpeed]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!open) return null;
+  if (!visible) return null;
 
   const squareCorners = resolvedTheme === "cyberpunk" || surfaceStyle === "win9x";
+  const needsDenseTranslucentTray = surfaceStyle === "glass" || surfaceStyle === "aero" || surfaceStyle === "clear" || surfaceStyle === "obsidian";
   const shellStyle: CSSProperties = {
     ...modalPanelStyle(themeValue, { width: "min(980px, calc(100vw - 32px))", maxHeight: mode === "full" ? "calc(100vh - 94px)" : "calc(100vh - 34px)", padding: "18px" }),
-    // The tray is a dense control surface over Home art. Neon keeps its glow,
-    // but needs a stronger dark tint than ordinary panels for readability.
+    // The tray is a dense control surface over Home or Settings content.
+    ...(needsDenseTranslucentTray ? {
+      background: isDark
+        ? `linear-gradient(180deg, color-mix(in srgb, ${accent.primary} 4%, rgba(8,10,16,0.93) 96%), rgba(8,10,16,0.90))`
+        : `linear-gradient(180deg, color-mix(in srgb, ${accent.primary} 3%, rgba(255,255,255,0.94) 97%), rgba(250,250,252,0.91))`,
+    } : {}),
     ...(surfaceStyle === "neon" ? {
       background: `linear-gradient(180deg, color-mix(in srgb, ${accent.primary} 10%, rgba(3,6,12,0.88) 90%), color-mix(in srgb, ${accent.primary} 6%, rgba(1,3,7,0.84) 94%))`,
       backdropFilter: "blur(12px) saturate(120%)",
@@ -283,6 +327,7 @@ export function HelperTray({
   const focusStyle = (key: string): CSSProperties => ({
     outline: focusKey === key ? `2px solid ${accent.primary}` : "2px solid transparent",
     boxShadow: focusKey === key ? (surfaceStyle === "material" ? "var(--material-shadow-medium)" : `0 0 18px ${accent.glow}0.24)`) : undefined,
+    transition: "box-shadow var(--dur-base) var(--ease-decel), outline-color var(--dur-base) var(--ease-decel)",
   });
   const buttonStyle = (key: string): CSSProperties => ({
     ...focusStyle(key),
@@ -303,22 +348,22 @@ export function HelperTray({
   );
 
   return (
-    <div data-theme={resolvedTheme} style={{ position: "fixed", inset: 0, zIndex: 9200, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: mode === "full" ? 78 : 18, boxSizing: "border-box" }} onClick={onClose}>
-      <div className="lo-anim-overlay" aria-hidden="true" style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.56)" }} />
-      <div data-modal="helper" className="lo-anim-modal" style={shellStyle} onClick={(event) => event.stopPropagation()}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+    <div data-theme={resolvedTheme} data-tray-state={closing ? "closing" : "open"} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} className="lo-anim-tray-scrim" style={{ position: "fixed", inset: 0, zIndex: 9200, background: "rgba(0,0,0,0.56)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: mode === "full" ? 78 : 18, boxSizing: "border-box" }} onClick={() => { if (!closing) onClose(); }}>
+
+      <div data-modal="helper" className="lo-anim-tray" style={shellStyle} onClick={(event) => event.stopPropagation()}>
+        <div className="lo-tray-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, animationDelay: "60ms" }}>
           <strong style={{ color: theme.text }}>{t("helper.trayTitle")}</strong>
           {mode !== "full" && <GamepadBtn btn="B" label={t("helper.closeTray")} />}
         </div>
 
-        <div style={{ display: "flex", gap: 10, paddingBottom: 16, flexWrap: "wrap", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}` }}>
+        <div className="lo-tray-row" style={{ display: "flex", gap: 10, paddingBottom: 16, flexWrap: "wrap", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}`, animationDelay: "110ms" }}>
           {shortcut("settings", t("helper.settings"), <IoSettingsOutline />, onOpenSettings)}
           {shortcut("power", t("helper.power"), <IoPowerOutline />, onOpenPower)}
           {shortcut("refresh", t("helper.refreshLibrary"), <IoRefresh />, onRefreshLibrary)}
           {shortcut("controls", t("helper.controls"), <IoGameControllerOutline />, onOpenControls)}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: brightness != null && brightness >= 0 ? "1fr 1fr" : "1fr", gap: 16, padding: "16px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}` }}>
+        <div className="lo-tray-row" style={{ display: "grid", gridTemplateColumns: brightness != null && brightness >= 0 ? "1fr 1fr" : "1fr", gap: 16, padding: "16px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}`, animationDelay: "165ms" }}>
           <SliderControl icon={<IoVolumeHighOutline />} label={t("helper.volume")} focusKey="volume" focused={focusKey === "volume"} editing={adjustmentKey === "volume"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={volume?.percent ?? 0} onFocus={setFocus} onChange={requestVolume} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />
           {brightness != null && brightness >= 0 && <SliderControl icon={<IoSunnyOutline />} label={t("helper.brightness")} focusKey="brightness" focused={focusKey === "brightness"} editing={adjustmentKey === "brightness"} adjustLabel={t("helper.adjust")} doneLabel={t("helper.done")} value={brightness} onFocus={setFocus} onChange={requestBrightness} accent={accent.primary} text={theme.text} dim={theme.textDim} square={squareCorners} />}
         </div>
@@ -364,7 +409,7 @@ export function HelperTray({
           </div>
         )}
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 15 }}>
+        <div className="lo-tray-row" style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 15, animationDelay: "215ms" }}>
           {track ? (
             <>
               <div style={{ width: 46, height: 46, borderRadius: squareCorners ? 0 : 9, overflow: "hidden", flexShrink: 0, background: `${accent.glow}0.18)`, display: "grid", placeItems: "center" }}>
