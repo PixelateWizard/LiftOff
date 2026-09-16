@@ -11,6 +11,7 @@ import { useSystemControls } from "../../hooks/useSystemControls";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
 import { useTheme } from "../../contexts/ThemeContext";
 import { GamepadBtn } from "../GamepadBtn";
+import { modalPanelStyle } from "../modals/modalStyles";
 
 type HelperBarMode = "full" | "minimal" | "hidden";
 
@@ -55,7 +56,8 @@ export function HelperTray({
   onOpenPinned,
 }: HelperTrayProps) {
   const { t } = useTranslation();
-  const { glassBar, accent, theme, isDark, surfaceStyle, surface, resolvedTheme } = useTheme();
+  const themeValue = useTheme();
+  const { accent, theme, isDark, surfaceStyle, resolvedTheme } = themeValue;
   const { volume, brightness, requestVolume, requestBrightness } = useSystemControls(open);
   const track = spotify.track;
   const [focusKey, setFocusKey] = useState("settings");
@@ -269,22 +271,18 @@ export function HelperTray({
 
   const squareCorners = resolvedTheme === "cyberpunk" || surfaceStyle === "win9x";
   const shellStyle: CSSProperties = {
-    ...glassBar,
-    background: surfaceStyle === "material" || surfaceStyle === "win9x"
-      ? surface.panelBg
-      : `color-mix(in srgb, ${accent.primary} 6%, ${isDark ? "#090b10" : "#f7f7f9"} 94%)`,
-    width: "min(980px, calc(100vw - 32px))",
-    maxHeight: "calc(100vh - 32px)",
-    overflowY: "auto",
-    borderRadius: squareCorners ? 0 : surfaceStyle === "material" ? 16 : 22,
-    border: `1px solid ${accent.glow}0.34)`,
-    boxShadow: "0 -14px 50px rgba(0,0,0,0.48)",
-    padding: 18,
-    boxSizing: "border-box",
+    ...modalPanelStyle(themeValue, { width: "min(980px, calc(100vw - 32px))", maxHeight: mode === "full" ? "calc(100vh - 94px)" : "calc(100vh - 34px)", padding: "18px" }),
+    // The tray is a dense control surface over Home art. Neon keeps its glow,
+    // but needs a stronger dark tint than ordinary panels for readability.
+    ...(surfaceStyle === "neon" ? {
+      background: `linear-gradient(180deg, color-mix(in srgb, ${accent.primary} 10%, rgba(3,6,12,0.88) 90%), color-mix(in srgb, ${accent.primary} 6%, rgba(1,3,7,0.84) 94%))`,
+      backdropFilter: "blur(12px) saturate(120%)",
+      WebkitBackdropFilter: "blur(12px) saturate(120%)",
+    } : {}),
   };
   const focusStyle = (key: string): CSSProperties => ({
     outline: focusKey === key ? `2px solid ${accent.primary}` : "2px solid transparent",
-    boxShadow: focusKey === key ? `0 0 18px ${accent.glow}0.24)` : undefined,
+    boxShadow: focusKey === key ? (surfaceStyle === "material" ? "var(--material-shadow-medium)" : `0 0 18px ${accent.glow}0.24)`) : undefined,
   });
   const buttonStyle = (key: string): CSSProperties => ({
     ...focusStyle(key),
@@ -305,8 +303,9 @@ export function HelperTray({
   );
 
   return (
-    <div className="lo-anim-overlay" style={{ position: "fixed", inset: 0, zIndex: 9200, background: "rgba(0,0,0,0.56)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: mode === "full" ? 78 : 18, boxSizing: "border-box" }} onClick={onClose}>
-      <div className="lo-anim-modal" style={shellStyle} onClick={(event) => event.stopPropagation()}>
+    <div data-theme={resolvedTheme} style={{ position: "fixed", inset: 0, zIndex: 9200, display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: mode === "full" ? 78 : 18, boxSizing: "border-box" }} onClick={onClose}>
+      <div className="lo-anim-overlay" aria-hidden="true" style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.56)" }} />
+      <div data-modal="helper" className="lo-anim-modal" style={shellStyle} onClick={(event) => event.stopPropagation()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <strong style={{ color: theme.text }}>{t("helper.trayTitle")}</strong>
           {mode !== "full" && <GamepadBtn btn="B" label={t("helper.closeTray")} />}

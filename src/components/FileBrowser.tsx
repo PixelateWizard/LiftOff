@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
 import { GamepadBtn } from "./GamepadBtn";
 import { useTheme } from "../contexts/ThemeContext";
+import { modalSurfaceStyle } from "./modals/modalStyles";
 import { getBestGamepad, readGpState } from "../utils/gamepad";
 
 // function getBestGamepad() {
@@ -43,7 +44,8 @@ interface Props {
 }
 
 export default function FileBrowser({ mode = "file", repeatSpeed = "normal", onSelect, onClose }: Props) {
-  const { glass, accent, theme, isDark, surfaceStyle, surface } = useTheme();
+  const themeValue = useTheme();
+  const { accent, theme, isDark, surfaceStyle, surface } = themeValue;
   const isPixel = surfaceStyle === "win9x";
   const pixelShell = isPixel ? {
     background: surface.panelBg,
@@ -241,10 +243,8 @@ export default function FileBrowser({ mode = "file", repeatSpeed = "normal", onS
         pointerEvents: "none",
       }} />
       <div data-modal="" className="lo-anim-modal" style={{
-        ...glass, position: "relative", width: 560, maxHeight: "75vh", borderRadius: isPixel ? 0 : 20,
+        ...modalSurfaceStyle(themeValue), position: "relative", width: 560, maxHeight: "75vh",
         display: "flex", flexDirection: "column", overflow: "hidden",
-        border: `1px solid ${accent.glow}0.3)`,
-        boxShadow: `0 8px 48px rgba(0,0,0,0.6)`,
         ...pixelShell,
       }}>
         {isPixel && (

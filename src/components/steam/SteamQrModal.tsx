@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { useTheme } from "../../contexts/ThemeContext";
+import { modalSurfaceStyle } from "../modals/modalStyles";
 import { QRCodeSVG } from "qrcode.react";
 import { IoClose, IoRefresh } from "react-icons/io5";
 import type { CSSProperties } from "react";
@@ -30,11 +32,11 @@ export function SteamQrModal({
   theme,
   isDark,
   surfaceStyle,
-  glass,
   onBegin,
   onClose,
   t,
 }: SteamQrModalProps) {
+  const themeValue = useTheme();
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -48,7 +50,6 @@ export function SteamQrModal({
   if (!open) return null;
 
   const isPixel = surfaceStyle === "win9x";
-  const panelRadius = isPixel ? 0 : surfaceStyle === "material" ? 14 : surfaceStyle === "clear" ? 10 : 18;
   const primaryText = accent.darkText ? "#161616" : "#fff";
   const phaseText =
     phase === "starting" ? t("steam.qrStarting") :
@@ -66,20 +67,17 @@ export function SteamQrModal({
         display: "grid",
         placeItems: "center",
         padding: 24,
-        background: isDark ? "rgba(0,0,0,0.58)" : "rgba(10,16,24,0.38)",
-        backdropFilter: "blur(10px)",
       }}
       role="dialog"
       aria-modal="true"
       aria-label={t("steam.qrTitle")}
     >
-      <div
+      <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: isDark ? "rgba(0,0,0,0.58)" : "rgba(10,16,24,0.38)" }} />
+      <div data-modal="steam-qr"
         style={{
           width: "min(520px, 100%)",
-          ...glass,
-          borderRadius: panelRadius,
+          ...modalSurfaceStyle(themeValue),
           padding: 24,
-          boxShadow: isDark ? "0 24px 80px rgba(0,0,0,0.55)" : "0 24px 80px rgba(20,30,50,0.24)",
           position: "relative",
         }}
       >

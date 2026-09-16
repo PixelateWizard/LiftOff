@@ -1,9 +1,12 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     let callbackId = 0;
     let listenerId = 0;
+    const params = new URLSearchParams(window.location.search);
+    const counts: Record<string, number> = {};
+    (window as any).__invokeCounts = counts;
 
     const emptyArrays = new Set([
       "get_all_apps",
@@ -46,11 +49,13 @@ test.beforeEach(async ({ page }) => {
       spotify_devices: { devices: [] },
       get_system_volume: { percent: 45, muted: false },
       get_brightness: 40,
+      get_storage_info: Array.from({ length: 8 }, (_, index) => ({ mountPoint: `${String.fromCharCode(67 + index)}:/`, label: index === 0 ? "System" : "Games", totalBytes: 1000000000000, freeBytes: 400000000000, isDefaultInstallDrive: index === 0 })),
       "plugin:window|is_focused": true,
     };
 
     const gamepadButtons = Array.from({ length: 16 }, () => ({ pressed: false, touched: false, value: 0 }));
     const gamepad = { mapping: "standard", axes: [0, 0, 0, 0], buttons: gamepadButtons };
+    (window as any).__setGamepadAxis = (axis: number, value: number) => { gamepad.axes[axis] = value; };
     (window as any).__setGamepadButton = (index: number, pressed: boolean) => {
       gamepadButtons[index] = { pressed, touched: pressed, value: pressed ? 1 : 0 };
     };
@@ -77,6 +82,7 @@ test.beforeEach(async ({ page }) => {
         return callbackId;
       },
       invoke: async (command: string) => {
+        counts[command] = (counts[command] || 0) + 1;
         if (command === "plugin:event|listen") {
           listenerId += 1;
           return listenerId;
@@ -84,7 +90,13 @@ test.beforeEach(async ({ page }) => {
         if (command === "plugin:event|unlisten" || command === "plugin:event|emit") return null;
         if (command === "get_settings") {
           const bottombarMode = new URLSearchParams(window.location.search).get("barMode") || "minimal";
-          return { ...(responses.get_settings as Record<string, unknown>), bottombar_mode: bottombarMode };
+          return { ...(responses.get_settings as Record<string, unknown>), bottombar_mode: bottombarMode,
+            onboarding_complete: params.get("fresh") !== "true", theme: params.get("theme") || "space",
+            surface_style: params.get("surface") || "clear", ui_motion: false, ui_scale: 1, language: "en" };
+        }
+        if (command === "get_all_apps") {
+          if (params.has("holdRefresh") && counts[command] > 1) await new Promise((resolve) => { (window as any).__releaseScan = resolve; });
+          return params.has("catalog") ? [{ id: "steam://rungameid/620", name: "Portal 2", app_type: "game", installed: true }] : [];
         }
         if (emptyArrays.has(command)) return [];
         if (Object.prototype.hasOwnProperty.call(responses, command)) return responses[command];
@@ -157,6 +169,147 @@ test("boots the Home shell with mocked Tauri commands", async ({ page }) => {
   await expect(systemSliders.nth(0)).toHaveValue("40");
   expect(pageErrors).toEqual([]);
 });
+
+async function frames(page: Page, count: number) {
+  await page.evaluate(async (count) => {
+    for (let index = 0; index < count; index++) await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }, count);
+}
+
+async function pad(page: Page, button: number) {
+  await page.evaluate((index) => (window as any).__setGamepadButton(index, true), button);
+  await frames(page, 3);
+  await page.evaluate((index) => (window as any).__setGamepadButton(index, false), button);
+  await frames(page, 3);
+}
+
+test("onboarding exposes every footer to a pad and keeps it visible at 1280x800", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/?fresh=true&surface=glass");
+  const panel = page.locator("[data-onboarding-step]");
+  await expect(panel).toHaveAttribute("data-onboarding-step", "welcome");
+  await frames(page, 16);
+  for (const step of ["theme", "accent", "surface", "sources"]) {
+    await pad(page, 0);
+    await expect(panel).toHaveAttribute("data-onboarding-step", step);
+  }
+  await expect(panel.getByText("Scan Store Apps", { exact: true })).toBeVisible();
+  for (const [step, rows, next] of [["sources", 7, "accounts"], ["accounts", 3, "essentials"], ["essentials", 4, "done"]] as const) {
+    await expect(panel).toHaveAttribute("data-onboarding-step", step);
+    if (step === "essentials") await expect(panel.getByText("Hide LiftOff when a game launches")).toBeVisible();
+    for (let index = 0; index < rows; index++) await pad(page, 13);
+    await expect(panel.locator('[data-onboarding-action="next"]')).toHaveAttribute("data-focused", "true");
+    await pad(page, 12);
+    await expect(panel.locator('[data-onboarding-action="next"]')).toHaveAttribute("data-focused", "false");
+    await pad(page, 13);
+    await pad(page, 14);
+    await expect(panel.locator('[data-onboarding-action="back"]')).toHaveAttribute("data-focused", "true");
+    await pad(page, 15);
+    const bounds = await panel.boundingBox();
+    const button = await panel.locator('[data-onboarding-action="next"]').boundingBox();
+    expect(button!.y + button!.height).toBeLessThan(bounds!.y + bounds!.height);
+    await pad(page, 0);
+    await expect(panel).toHaveAttribute("data-onboarding-step", next);
+  }
+  await expect(panel.locator('[data-onboarding-action="next"]')).toHaveText("Done");
+  await pad(page, 14);
+  await pad(page, 0);
+  await expect(panel).toHaveAttribute("data-onboarding-step", "essentials");
+  await panel.getByRole("button", { name: "Next", exact: true }).click();
+  await pad(page, 0);
+  await expect(panel).toHaveCount(0);
+});
+
+for (const catalog of [false, true]) {
+  test(`fresh Home backdrop with ${catalog ? "detected games" : "no games"}`, async ({ page }, info) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(`/?fresh=true${catalog ? "&catalog" : ""}`);
+    await expect(page.locator("[data-onboarding-step]")).toBeVisible();
+    const home = page.locator("[data-home-root]");
+    if (catalog) await expect(home).toContainText("Portal 2");
+    else await expect(home).toContainText("Launch a game to see it here");
+    await page.screenshot({ path: info.outputPath("fresh-home.png") });
+  });
+}
+
+test("Data joystick scrolling preserves storage rows and moves monotonically", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await expect(page.getByText("Home", { exact: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: "Open helper tray", exact: true }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByText("Data", { exact: true }).click();
+  const storage = page.getByText("Device Storage", { exact: true }).locator("..");
+  await expect(storage).toContainText("D: — Games");
+  await storage.evaluate((element) => { (window as any).__storageRow = element; });
+  const callsBefore = await page.evaluate(() => (window as any).__invokeCounts.get_storage_info);
+  await frames(page, 16);
+  let previous = 0;
+  await page.evaluate(() => (window as any).__setGamepadAxis(1, 1));
+  for (let sample = 0; sample < 12; sample++) {
+    await page.waitForTimeout(100);
+    const current = await storage.evaluate((element) => {
+      let scroller = element.parentElement;
+      while (scroller && getComputedStyle(scroller).overflowY !== "auto") scroller = scroller.parentElement;
+      return scroller?.scrollTop || 0;
+    });
+    expect(current).toBeGreaterThanOrEqual(previous - 1);
+    previous = current;
+  }
+  await page.evaluate(() => (window as any).__setGamepadAxis(1, 0));
+  expect(previous).toBeGreaterThan(0);
+  await frames(page, 3);
+  await page.evaluate(() => (window as any).__setGamepadAxis(1, -1));
+  await page.waitForTimeout(900);
+  await page.evaluate(() => (window as any).__setGamepadAxis(1, 0));
+  const firstAction = page.locator("[data-settings-row].focused");
+  await expect(firstAction).toContainText("Clear Recently Played");
+  const bounds = await firstAction.boundingBox();
+  expect(bounds!.y).toBeGreaterThanOrEqual(124);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(800);
+  expect(await storage.evaluate((element) => element === (window as any).__storageRow)).toBe(true);
+  expect(await page.evaluate(() => (window as any).__invokeCounts.get_storage_info)).toBe(callsBefore);
+});
+
+for (const [theme, surface] of [["space", "glass"], ["sky", "aero"], ["wash", "material"], ["space", "clear"], ["lofi", "obsidian"], ["cyberpunk", "neon"], ["webcore", "win9x"], ["onyx", "clear"]]) {
+  test(`helper and refresh inherit ${theme}/${surface} surfaces`, async ({ page }, info) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(`/?theme=${theme}&surface=${surface}&holdRefresh`);
+    await expect(page.getByText("Home", { exact: true }).first()).toBeVisible();
+    await page.getByRole("button", { name: "Open helper tray", exact: true }).click();
+    const tray = page.locator('[data-modal="helper"]');
+    await expect(tray).toBeVisible();
+    const getSurface = (element: Element) => {
+      const style = getComputedStyle(element);
+      return { background: style.background, border: style.border, shadow: style.boxShadow, blur: style.backdropFilter, radius: style.borderRadius };
+    };
+    const helperStyle = await tray.evaluate(getSurface);
+    if (surface === "material" || surface === "win9x") expect(helperStyle.blur).toBe("none");
+    else expect(helperStyle.blur).toContain("blur(");
+    if (theme === "cyberpunk" || surface === "win9x") expect(helperStyle.radius).toBe("0px");
+    await page.screenshot({ path: info.outputPath("helper.png") });
+    await tray.getByRole("button", { name: "Controls", exact: true }).click();
+    const controls = page.locator('[data-modal=""]');
+    await expect(controls).toBeVisible();
+    const standardStyle = await controls.evaluate(getSurface);
+    if (surface === "neon") {
+      expect(helperStyle.background).not.toBe(standardStyle.background);
+      expect(helperStyle.blur).toContain("blur(12px)");
+    } else {
+      expect(standardStyle).toEqual(helperStyle);
+    }
+    await page.keyboard.press("Escape");
+    await expect(controls).toHaveCount(0);
+    await page.getByRole("button", { name: "Open helper tray", exact: true }).click();
+    await tray.getByRole("button", { name: /Refresh/ }).click();
+    const refresh = page.locator('[data-modal="library-refresh"]');
+    await expect(refresh).toBeVisible();
+    expect((await refresh.locator(".lo-loading-spinner").boundingBox())!.width).toBeGreaterThan(0);
+    expect(await refresh.evaluate(getSurface)).toEqual(surface === "neon" ? standardStyle : helperStyle);
+    expect(await refresh.locator("..").evaluate((element) => getComputedStyle(element).backdropFilter)).toBe("none");
+    await page.screenshot({ path: info.outputPath("refresh.png") });
+  });
+}
 
 for (const mode of ["full", "hidden"] as const) {
   test(`opens the helper tray on a single MENU press in ${mode} mode`, async ({ page }) => {

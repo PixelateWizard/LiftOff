@@ -377,6 +377,7 @@
     "defaultTab": "Default Tab",
     "repeatSpeed": "Stick Repeat Speed",
     "launchAtStartup": "Launch at Startup",
+    "hideOnLaunch": "Hide LiftOff when a game launches",
     "heroArtMode": "Hero Art Mode",
     "updateChannel": "Update Channel",
     "showImmersiveHeroArt": "Show Immersive Hero Art",
@@ -384,6 +385,7 @@
     "noController": "No controller detected — connect a gamepad and press any button.",
     "clearRecents": "Clear Recently Played",
     "clearCache": "Clear Art Cache",
+    "rerunOnboarding": "Run Setup Again",
     "deviceStorage": "Device Storage",
     "deviceStorageDefault": "installs here",
     "deviceStorageFree": "{{free}} free of {{total}}",
@@ -516,6 +518,49 @@
       "l3_r3": "L3 + R3",
       "view_menu": "View + Menu",
       "lb_rb": "LB + RB"
+    }
+  },
+  "onboarding": {
+    "on": "On",
+    "off": "Off",
+    "skip": "Y — Skip setup",
+    "controls": "D-pad move · A select · B back · LB/RB step",
+    "welcome": {
+      "title": "Welcome to LiftOff",
+      "hint": "A few quick choices and you're playing. Pick a language to start."
+    },
+    "theme": {
+      "title": "Pick a theme",
+      "hint": "Themes are environments. The background changes as you browse."
+    },
+    "accent": {
+      "title": "Pick an accent",
+      "hint": "Used for focus, highlights, and buttons throughout LiftOff."
+    },
+    "surface": {
+      "title": "Pick a surface style",
+      "hint": "Controls how panels and cards are rendered over the background."
+    },
+    "sources": {
+      "title": "Where are your games?",
+      "hint": "Turn off anything you don't use. You can change this later in Settings."
+    },
+    "accounts": {
+      "title": "Connect your accounts",
+      "hint": "All optional. Skip any of these and connect later from Settings.",
+      "connect": "Connect",
+      "connected": "Connected",
+      "spotifyHint": "Control playback from Home. Needs your own Spotify developer app."
+    },
+    "essentials": {
+      "title": "A few essentials",
+      "hint": "Left and right change the highlighted value."
+    },
+    "done": {
+      "title": "You're set",
+      "hint": "Everything here can be changed later.",
+      "body": "LiftOff is scanning your library now. Press Guide or Start any time to open the helper tray.",
+      "accounts": "Anything you skipped is waiting for you in Settings."
     }
   },
   "fse": {
@@ -682,6 +727,7 @@
     "add": "Add",
     "saving": "Saving…",
     "back": "Back",
+    "next": "Next",
     "done": "Done",
     "delete": "Delete"
   },

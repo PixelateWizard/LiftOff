@@ -27,6 +27,7 @@ export interface ModalState {
   editNameApp: App | null;
   showPowerModal: boolean;
   updateRelease: UpdateRelease | null;
+  showOnboarding: boolean;
   setShowHideModal: React.Dispatch<React.SetStateAction<boolean>>;
   setShowLibraryActions: React.Dispatch<React.SetStateAction<boolean>>;
   setShowFileBrowser: React.Dispatch<React.SetStateAction<FileBrowserMode>>;
@@ -41,6 +42,7 @@ export interface ModalState {
   setEditNameApp: React.Dispatch<React.SetStateAction<App | null>>;
   setShowPowerModal: React.Dispatch<React.SetStateAction<boolean>>;
   setUpdateRelease: React.Dispatch<React.SetStateAction<UpdateRelease | null>>;
+  setShowOnboarding: React.Dispatch<React.SetStateAction<boolean>>;
   showHideModalRef: React.MutableRefObject<boolean>;
   showLibraryActionsRef: React.MutableRefObject<boolean>;
   showFileBrowserRef: React.MutableRefObject<FileBrowserMode>;
@@ -55,6 +57,7 @@ export interface ModalState {
   editNameAppRef: React.MutableRefObject<App | null>;
   showPowerModalRef: React.MutableRefObject<boolean>;
   updateReleaseRef: React.MutableRefObject<UpdateRelease | null>;
+  showOnboardingRef: React.MutableRefObject<boolean>;
 }
 
 export function useModalState(): ModalState {
@@ -72,6 +75,7 @@ export function useModalState(): ModalState {
   const [editNameApp, setEditNameApp] = useState<App | null>(null);
   const [showPowerModal, setShowPowerModal] = useState(false);
   const [updateRelease, setUpdateRelease] = useState<UpdateRelease | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const showHideModalRef = useRef(false);
   const showLibraryActionsRef = useRef(false);
@@ -87,6 +91,7 @@ export function useModalState(): ModalState {
   const editNameAppRef = useRef<App | null>(null);
   const showPowerModalRef = useRef(false);
   const updateReleaseRef = useRef<UpdateRelease | null>(null);
+  const showOnboardingRef = useRef(false);
 
   useEffect(() => { showHideModalRef.current = showHideModal; }, [showHideModal]);
   useEffect(() => { showLibraryActionsRef.current = showLibraryActions; }, [showLibraryActions]);
@@ -102,6 +107,7 @@ export function useModalState(): ModalState {
   useEffect(() => { editNameAppRef.current = editNameApp; }, [editNameApp]);
   useEffect(() => { showPowerModalRef.current = showPowerModal; }, [showPowerModal]);
   useEffect(() => { updateReleaseRef.current = updateRelease; }, [updateRelease]);
+  useEffect(() => { showOnboardingRef.current = showOnboarding; }, [showOnboarding]);
 
   return {
     showHideModal,
@@ -118,6 +124,7 @@ export function useModalState(): ModalState {
     editNameApp,
     showPowerModal,
     updateRelease,
+    showOnboarding,
     setShowHideModal,
     setShowLibraryActions,
     setShowFileBrowser,
@@ -132,6 +139,7 @@ export function useModalState(): ModalState {
     setEditNameApp,
     setShowPowerModal,
     setUpdateRelease,
+    setShowOnboarding,
     showHideModalRef,
     showLibraryActionsRef,
     showFileBrowserRef,
@@ -146,5 +154,6 @@ export function useModalState(): ModalState {
     editNameAppRef,
     showPowerModalRef,
     updateReleaseRef,
+    showOnboardingRef,
   };
 }

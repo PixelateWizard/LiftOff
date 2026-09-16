@@ -64,7 +64,7 @@ interface ThemePreviewProps {
   accent: AccentColors;
 }
 
-function ThemePreview({ keyName, isLive, accent }: ThemePreviewProps) {
+export function ThemePreview({ keyName, isLive, accent }: ThemePreviewProps) {
   const meta = THEME_METADATA[keyName];
   const preview = meta.render(accent, isLive);
   return (
@@ -149,11 +149,10 @@ export function ThemePickerModal({ onClose, focusIndex, setFocusIndex }: ThemePi
       data-theme={resolvedTheme}
       data-motion={motionProfile}
       data-ui-motion={settings.ui_motion === false ? "off" : "on"}
-      className="lo-anim-overlay"
       style={modalOverlayStyle()}
       onClick={onClose}
     >
-      <div style={modalScrimStyle} />
+      <div className="lo-anim-overlay" style={modalScrimStyle} />
       <div data-modal="" className="lo-anim-modal" ref={panelRef} style={panelStyle} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
           <span style={{ fontSize: 16, fontWeight: 700 }}>{t("settings.themePickerTitle")}</span>

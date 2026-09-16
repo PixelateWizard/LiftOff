@@ -19,6 +19,7 @@ Read for themes, accents, light/dark behavior, surfaces, backgrounds, focus styl
 - UI motion primitives live in `src/styles/motion.css`; new shared motion should not be added to the large injected global block in `App.jsx`.
 - Do not put persistent `will-change: transform`, `will-change: opacity`, `transform: translateZ(0)`, or opacity below 1 on an ancestor of a `backdrop-filter` surface. Each makes that ancestor a backdrop root, and creating or destroying one forces the translucent surfaces inside it to re-rasterize, which reads as Glass/Aero panels settling into place after they appear.
 - A modal scrim that carries `backdrop-filter` belongs beside the panel, not around it.
+- Modal shells should inherit `modalSurfaceStyle`/`modalPanelStyle` from `components/modals/modalStyles.ts`; preserve the generated fill, filter, border, shadow, and Material variables together. Do not spread glass and then replace it with an opaque generic background or accent shadow. Progress indicators must not depend on styles owned by the splash component.
 - Effects-off keeps the environment visible but static. Reduced motion and UI-motion settings have distinct responsibilities.
 - Avoid animating full-screen SVG-filtered layers. On shared-GPU handhelds, visual changes need runtime GPU/feel validation, not CSS inspection alone.
 

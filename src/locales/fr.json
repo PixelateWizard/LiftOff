@@ -377,6 +377,7 @@
     "defaultTab": "Onglet par défaut",
     "repeatSpeed": "Vitesse de répétition",
     "launchAtStartup": "Lancer au démarrage",
+    "hideOnLaunch": "TODO(fr): Hide LiftOff when a game launches",
     "heroArtMode": "Mode art héros",
     "updateChannel": "Canal de mise a jour",
     "showImmersiveHeroArt": "Afficher l'art héros immersif",
@@ -384,6 +385,7 @@
     "noController": "Aucune manette détectée — connectez un contrôleur et appuyez sur un bouton.",
     "clearRecents": "Effacer l'historique",
     "clearCache": "Vider le cache art",
+    "rerunOnboarding": "TODO(fr) Run Setup Again",
     "deviceStorage": "Stockage de l'appareil",
     "deviceStorageDefault": "installe ici",
     "deviceStorageFree": "{{free}} libre sur {{total}}",
@@ -516,6 +518,49 @@
       "l3_r3": "L3 + R3",
       "view_menu": "View + Menu",
       "lb_rb": "LB + RB"
+    }
+  },
+  "onboarding": {
+    "on": "TODO(fr) On",
+    "off": "TODO(fr) Off",
+    "skip": "TODO(fr) Y — Skip setup",
+    "controls": "TODO(fr) D-pad move · A select · B back · LB/RB step",
+    "welcome": {
+      "title": "TODO(fr) Welcome to LiftOff",
+      "hint": "TODO(fr) A few quick choices and you're playing. Pick a language to start."
+    },
+    "theme": {
+      "title": "TODO(fr) Pick a theme",
+      "hint": "TODO(fr) Themes are environments. The background changes as you browse."
+    },
+    "accent": {
+      "title": "TODO(fr) Pick an accent",
+      "hint": "TODO(fr) Used for focus, highlights, and buttons throughout LiftOff."
+    },
+    "surface": {
+      "title": "TODO(fr) Pick a surface style",
+      "hint": "TODO(fr) Controls how panels and cards are rendered over the background."
+    },
+    "sources": {
+      "title": "TODO(fr) Where are your games?",
+      "hint": "TODO(fr) Turn off anything you don't use. You can change this later in Settings."
+    },
+    "accounts": {
+      "title": "TODO(fr) Connect your accounts",
+      "hint": "TODO(fr) All optional. Skip any of these and connect later from Settings.",
+      "connect": "TODO(fr) Connect",
+      "connected": "TODO(fr) Connected",
+      "spotifyHint": "TODO(fr) Control playback from Home. Needs your own Spotify developer app."
+    },
+    "essentials": {
+      "title": "TODO(fr) A few essentials",
+      "hint": "TODO(fr) Left and right change the highlighted value."
+    },
+    "done": {
+      "title": "TODO(fr) You're set",
+      "hint": "TODO(fr) Everything here can be changed later.",
+      "body": "TODO(fr) LiftOff is scanning your library now. Press Guide or Start any time to open the helper tray.",
+      "accounts": "TODO(fr) Anything you skipped is waiting for you in Settings."
     }
   },
   "fse": {
@@ -682,6 +727,7 @@
     "add": "Ajouter",
     "saving": "Sauvegarde…",
     "back": "Retour",
+    "next": "TODO(fr) Next",
     "done": "Terminé",
     "delete": "Supprimer"
   },

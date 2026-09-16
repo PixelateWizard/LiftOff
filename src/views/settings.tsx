@@ -254,6 +254,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "device_storage", section: 4, label: t("settings.deviceStorage"), type: "storage_info" },
     { key: "clear_recents", section: 4, label: t("settings.clearRecents"), type: "action" },
     { key: "clear_cache",   section: 4, label: t("settings.clearCache"),   type: "action" },
+    { key: "rerun_onboarding", section: 4, label: t("settings.rerunOnboarding"), type: "action" },
 
     // ── About ─────────────────────────────────────────────────────
     { key: "version",      section: 5, label: t("settings.version", { version: APP_VERSION }), type: "info" },
@@ -376,6 +377,7 @@ export interface SettingsScreenProps {
   onOpenXboxGuide?: () => void;
   onXboxDisconnect?: () => void;
   onXboxRefresh?: () => void;
+  onRerunOnboarding?: () => void;
 }
 
 export function getSettingCycleOptions(
@@ -426,6 +428,7 @@ export function SettingsScreen({
   onOpenXboxGuide,
   onXboxDisconnect,
   onXboxRefresh,
+  onRerunOnboarding,
 }: SettingsScreenProps) {
   const { t } = useTranslation();
   const { settingsRowGlass, accent, theme, isDark, glassEnabled, surfaceStyle, surface, resolvedTheme } = useTheme();
@@ -1036,10 +1039,11 @@ export function SettingsScreen({
           if (item.key === "clear_recents") onClearRecents();
           if (item.key === "clear_cache")   handleClearCache();
           if (item.key === "reset_scale")   updateSetting("ui_scale", autoScale);
+          if (item.key === "rerun_onboarding") onRerunOnboarding?.();
         }}>
-          <span style={{ fontSize: 14, fontWeight: 500, color: item.key === "reset_scale" ? theme.text : "#e84a4a" }}>{item.label}</span>
+          <span style={{ fontSize: 14, fontWeight: 500, color: item.key === "reset_scale" || item.key === "rerun_onboarding" ? theme.text : "#e84a4a" }}>{item.label}</span>
           <span style={{ fontSize: 12, color: theme.textDim }}>
-            {item.key === "reset_scale" ? t("settings.status.apply") : t("settings.status.confirm")}
+            {item.key === "reset_scale" ? t("settings.status.apply") : item.key === "rerun_onboarding" ? t("settings.status.open") : t("settings.status.confirm")}
           </span>
           {onyxRing}
         </div>

@@ -191,6 +191,10 @@ pub struct Settings {
     pub show_uninstalled_games: bool,
     #[serde(default)]
     pub steam_owned_library_seen: bool,
+    // False on a genuinely fresh install so first-run onboarding shows.
+    // Existing settings files are migrated to true on load; see load-time migration.
+    #[serde(default)]
+    pub onboarding_complete: bool,
     pub repeat_speed: String,
     pub launch_at_startup: bool,
     #[serde(
@@ -421,6 +425,7 @@ impl Default for Settings {
             fetch_store_metadata: true,
             show_uninstalled_games: false,
             steam_owned_library_seen: false,
+            onboarding_complete: false,
             repeat_speed: "normal".to_string(),
             launch_at_startup: false,
             animated_heroes: "animated".to_string(),
@@ -511,6 +516,23 @@ mod settings_compat_tests {
         assert_eq!(saved["hide_bottom_bar"], true);
         assert_eq!(saved["bottombar_mode"], "");
         assert_eq!(saved["bottombar_peek_on_track"], true);
+    }
+
+    #[test]
+    fn missing_onboarding_flag_reads_as_complete() {
+        let raw = r#"{"accent":"ember","theme":"space"}"#;
+        let mut settings: Settings = serde_json::from_str(raw).unwrap_or_default();
+        if let Ok(serde_json::Value::Object(map)) = serde_json::from_str::<serde_json::Value>(raw) {
+            if !map.contains_key("onboarding_complete") {
+                settings.onboarding_complete = true;
+            }
+        }
+        assert!(settings.onboarding_complete);
+    }
+
+    #[test]
+    fn fresh_default_is_not_complete() {
+        assert!(!Settings::default().onboarding_complete);
     }
 }
 
@@ -1054,13 +1076,24 @@ pub(crate) fn fse_return_shortcut_setting() -> String {
 
 fn load_settings_inner() -> Settings {
     let path = settings_path();
+    // A missing file is a genuine fresh install: leave onboarding_complete
+    // false so first-run setup shows.
     if !path.exists() {
         return Settings::default();
     }
-    std::fs::read_to_string(&path)
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+    let Some(raw) = std::fs::read_to_string(&path).ok() else {
+        return Settings::default();
+    };
+    let mut settings: Settings = serde_json::from_str(&raw).unwrap_or_default();
+    // A settings file that predates onboarding has no `onboarding_complete`
+    // key. Those users have already configured LiftOff, so mark them complete
+    // rather than replaying first-run setup after an update.
+    if let Ok(serde_json::Value::Object(map)) = serde_json::from_str::<serde_json::Value>(&raw) {
+        if !map.contains_key("onboarding_complete") {
+            settings.onboarding_complete = true;
+        }
+    }
+    settings
 }
 
 fn save_settings_inner(settings: &Settings) {

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { getBestGamepad, readGpState } from "../utils/gamepad";
 import { useTheme } from "../contexts/ThemeContext";
+import { modalSurfaceStyle } from "./modals/modalStyles";
 
 const KB_ALPHA = [
   ["q","w","e","r","t","y","u","i","o","p"],
@@ -23,7 +24,8 @@ interface Props {
 }
 
 export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, title = "" }: Props) {
-  const { glass, accent, theme, isDark, surfaceStyle, surface } = useTheme();
+  const themeValue = useTheme();
+  const { accent, theme, isDark, surfaceStyle, surface } = themeValue;
   const isPixel = surfaceStyle === "win9x";
   const pixelShell = isPixel ? {
     background: surface.panelBg,
@@ -134,12 +136,12 @@ export default function GamepadKeyboard({ value, onChange, onClose, onConfirm, t
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 3000,
-      background: "rgba(0,0,0,0.7)", backdropFilter: "blur(12px)",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       fontFamily: "'Segoe UI', sans-serif",
     }}>
-      <div data-modal="" style={{ ...glass, borderRadius: isPixel ? 0 : 20, padding: isPixel ? 0 : "20px 24px", width: 520, display: "flex", flexDirection: "column", gap: isPixel ? 0 : 14,
-        border: `1px solid ${accent.glow}0.3)`, boxShadow: "0 12px 60px rgba(0,0,0,0.7)", ...pixelShell }}>
+      <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)" }} />
+      <div data-modal="" style={{ ...modalSurfaceStyle(themeValue), position: "relative", padding: isPixel ? 0 : "20px 24px", width: 520, display: "flex", flexDirection: "column", gap: isPixel ? 0 : 14,
+        ...pixelShell }}>
 
         {isPixel && (
           <div style={{ margin: 3, height: 22, padding: "0 5px 0 7px", boxSizing: "border-box", background: surface.titleBarBg, borderBottom: surface.titleBarBorder, color: surface.titleBarText, display: "flex", alignItems: "center", justifyContent: "space-between" }}>

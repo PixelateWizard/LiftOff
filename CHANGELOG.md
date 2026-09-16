@@ -2,7 +2,14 @@
 
 ## Unreleased
 
+### Fixed
+- **Onboarding controller navigation and labels** - Every setup step now includes Back, Next/Done, and Skip in controller focus, with a fixed footer and a separately scrolling body. Corrected the Store-app scan and hide-on-launch labels, and prevented a held opening A press from activating setup during its input grace period.
+- **Data-tab scrolling** - Settings no longer remounts and reloads storage rows on focus changes. Long drive lists also keep the first focused action visible instead of forcing the scroll position back to the section top.
+- **Modal and helper surfaces** - The helper tray, shared dialogs, account/art/file/keyboard panels, loading panels, and search overlay retain the selected surface's fill, blur, borders, and shadows. Glass-panel scrims no longer animate or blur their parent layer, Material keeps opaque elevation styling, and refresh/art loading indicators remain visible after the splash closes.
+- **Neon helper readability** - The Neon helper tray now uses a denser dark-accent tint and stronger blur over busy Home artwork, while keeping its glow and translucent character.
+
 ### Added
+- **Controller-first first-run setup** - Fresh installs now open a full-screen onboarding flow after the splash for language, theme, accent, surface style, library scan sources, optional Steam/Microsoft/Spotify connections, and essential launch/controller behavior. Appearance choices preview against the live app without writing on every focus move, existing users are migrated past setup without a startup flash, Settings can run the flow again, and nested account dialogs isolate their controller input. New French onboarding copy remains marked `TODO(fr)` for moi952.
 - **Art resolution visibility** - SteamGridDB cover and hero art choices now show their reported source dimensions, including a 4K marker for 3840x2160+ results. The upload tab reports the current/source image dimensions plus LiftOff's saved crop size, and Immersive Home overlays the loaded hero art resolution when the hero media finishes decoding.
 
 ## [2.0.0-alpha-6.1] - Alpha 6.1

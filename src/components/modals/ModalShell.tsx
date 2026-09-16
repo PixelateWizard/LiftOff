@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { GamepadBtn } from "../GamepadBtn";
 import { useTheme } from "../../contexts/ThemeContext";
+import { modalSurfaceStyle } from "./modalStyles";
 
 export interface ShortcutItem {
   btn: string;
@@ -28,7 +29,8 @@ export default function ModalShell({
   onOverlayClick,
   motion = "modal",
 }: ModalShellProps) {
-  const { glass, accent, theme, isDark, surfaceStyle, surface, resolvedTheme } = useTheme();
+  const themeValue = useTheme();
+  const { theme, isDark, surfaceStyle, surface, resolvedTheme } = themeValue;
   const hasBody = children != null && children !== false;
   const isPixel = surfaceStyle === "win9x";
   const pixelShell = isPixel ? {
@@ -65,7 +67,7 @@ export default function ModalShell({
   } : {};
 
   return (
-    <div
+    <div data-theme={resolvedTheme}
       style={{
         position: "fixed", inset: 0, zIndex,
         display: "flex", alignItems: "center", justifyContent: "center",
@@ -93,15 +95,12 @@ export default function ModalShell({
         className={motion === "drill" ? "lo-anim-drill" : "lo-anim-modal"}
         data-modal=""
         style={{
-          ...glass,
+          ...modalSurfaceStyle(themeValue),
           position: "relative",
           width: `min(${width}px, 90vw)`,
           ...(maxHeight ? { maxHeight } : {}),
-          borderRadius: resolvedTheme === "cyberpunk" ? 0 : isPixel ? 0 : surfaceStyle === "material" ? 16 : 24,
           display: "flex", flexDirection: "column",
           overflow: "hidden",
-          border: `1px solid ${accent.glow}0.3)`,
-          boxShadow: "0 8px 48px rgba(0,0,0,0.6)",
           ...pixelShell,
         }}
         onClick={(e) => e.stopPropagation()}

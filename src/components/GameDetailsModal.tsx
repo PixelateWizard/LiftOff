@@ -85,6 +85,7 @@ interface GameDetailsModalProps {
   theme: ThemeColors;
   isDark: boolean;
   surfaceStyle: string;
+  resolvedTheme?: string;
   glass: CSSProperties;
   t: (k: string, o?: any) => string;
 }
@@ -203,6 +204,7 @@ export function GameDetailsModal({
   theme,
   isDark,
   surfaceStyle,
+  resolvedTheme,
   glass,
   t,
 }: GameDetailsModalProps) {
@@ -281,7 +283,7 @@ export function GameDetailsModal({
   const primaryText = accent.darkText ? "#1a1a1a" : "white";
   const isPixel = surfaceStyle === "win9x";
   const panelRadius =
-    isPixel ? 0 :
+    isPixel || resolvedTheme === "cyberpunk" ? 0 :
     surfaceStyle === "material" ? 14 :
     surfaceStyle === "clear" ? 10 :
     surfaceStyle === "neon" ? 6 :
@@ -909,8 +911,6 @@ export function GameDetailsModal({
           position: "relative",
           display: "flex",
           flexDirection: "column",
-          border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : `1px solid ${accent.glow}0.35)`,
-          boxShadow: surfaceStyle === "material" ? "var(--material-shadow-high)" : "0 28px 90px rgba(0,0,0,0.62)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1347,15 +1347,13 @@ export function GameDetailsModal({
               position: "absolute",
               inset: 0,
               zIndex: 60,
-              background: "rgba(0,0,0,0.76)",
-              backdropFilter: "blur(10px)",
-              WebkitBackdropFilter: "blur(10px)",
               display: "grid",
               placeItems: "center",
               padding: 28,
             }}
             onClick={closeXboxConfirm}
           >
+            <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.76)" }} />
             <div
               role="dialog"
               aria-modal="true"
@@ -1363,10 +1361,9 @@ export function GameDetailsModal({
               onClick={(event) => event.stopPropagation()}
               style={{
                 ...glass,
+                position: "relative",
                 width: "min(520px, 92%)",
                 borderRadius: panelRadius,
-                border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : `1px solid ${accent.glow}0.35)`,
-                boxShadow: surfaceStyle === "material" ? "var(--material-shadow-high)" : "0 24px 70px rgba(0,0,0,0.58)",
                 padding: 24,
                 color: theme.text,
               }}

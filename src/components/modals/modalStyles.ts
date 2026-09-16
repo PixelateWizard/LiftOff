@@ -21,25 +21,37 @@ export const modalScrimStyle: CSSProperties = {
   background: "rgba(0,0,0,0.85)",
 };
 
+// Preserve the selected material's fill, blur, border, and shadow together.
+export function modalSurfaceStyle(themeValue: ThemeValue): CSSProperties {
+  const { glass, materialTokens, surfaceStyle, resolvedTheme, surface } = themeValue;
+  return {
+    ...materialTokens,
+    ...glass,
+    ...(surfaceStyle === "win9x" ? {
+      background: surface.panelBg,
+      border: "2px solid",
+      borderColor: surface.borderRaised,
+      boxShadow: surface.panelShadow,
+    } : {}),
+    borderRadius: resolvedTheme === "cyberpunk" || surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 16 : 24,
+  };
+}
+
 export function modalPanelStyle(
   themeValue: ThemeValue,
   options: { width: string; maxHeight: string; padding: string }
 ): CSSProperties {
-  const { accent, glass, materialTokens, surfaceStyle, theme, resolvedTheme } = themeValue;
+  const { theme } = themeValue;
   return {
-    ...materialTokens,
-    ...glass,
+    ...modalSurfaceStyle(themeValue),
     position: "relative",
     zIndex: 1,
     width: options.width,
     maxHeight: options.maxHeight,
     overflowY: "auto",
     boxSizing: "border-box",
-    borderRadius: resolvedTheme === "cyberpunk" ? 0 : surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 16 : 24,
     padding: options.padding,
     color: theme.text,
     fontFamily: "'Segoe UI', sans-serif",
-    boxShadow: `${String(glass.boxShadow ?? "0 8px 40px rgba(0,0,0,0.3)")}, 0 20px 80px rgba(0,0,0,0.45)`,
-    outline: surfaceStyle === "material" ? undefined : `1px solid ${accent.glow}0.10)`,
   };
 }

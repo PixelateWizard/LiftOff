@@ -83,6 +83,21 @@
   to { opacity: 0; transform: translateX(100%); }
 }
 
+@keyframes onboardingPanelIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes onboardingStepIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes onboardingCardIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* No persistent compositing hint here on purpose. will-change: transform and
    will-change: opacity both make an element a backdrop root, and these classes
    are applied with animation-fill-mode: both and never removed, so the
@@ -115,6 +130,32 @@
 .lo-anim-push-out { animation: lo-push-out var(--dur-base) var(--ease-decel) both; }
 .lo-anim-pop-in { animation: lo-pop-in var(--dur-base) var(--ease-decel) both; }
 .lo-anim-pop-out { animation: lo-pop-out var(--dur-base) var(--ease-decel) both; }
+@keyframes lo-loading-spin { to { transform: rotate(360deg); } }
+.lo-loading-spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 3px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: lo-loading-spin 0.8s linear infinite;
+}
+[data-ui-motion="off"] .lo-loading-spinner { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .lo-loading-spinner { animation: none; }
+}
+
+.lo-onb-panel { animation: onboardingPanelIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.lo-onb-step { animation: onboardingStepIn 0.24s ease both; }
+.lo-onb-grid > .lo-onb-card { animation: onboardingCardIn 0.26s ease both; }
+.lo-onb-grid > .lo-onb-card:nth-child(1) { animation-delay: 0.02s; }
+.lo-onb-grid > .lo-onb-card:nth-child(2) { animation-delay: 0.04s; }
+.lo-onb-grid > .lo-onb-card:nth-child(3) { animation-delay: 0.06s; }
+.lo-onb-grid > .lo-onb-card:nth-child(4) { animation-delay: 0.08s; }
+.lo-onb-grid > .lo-onb-card:nth-child(5) { animation-delay: 0.10s; }
+.lo-onb-grid > .lo-onb-card:nth-child(6) { animation-delay: 0.12s; }
+.lo-onb-grid > .lo-onb-card:nth-child(n+7) { animation-delay: 0.14s; }
 
 [data-ui-motion="off"] .lo-anim-tab,
 [data-ui-motion="off"] .lo-anim-tab-rev,
@@ -126,6 +167,9 @@
 [data-ui-motion="off"] .lo-anim-push-out,
 [data-ui-motion="off"] .lo-anim-pop-in,
 [data-ui-motion="off"] .lo-anim-pop-out,
+[data-ui-motion="off"] .lo-onb-panel,
+[data-ui-motion="off"] .lo-onb-step,
+[data-ui-motion="off"] .lo-onb-card,
 [data-effects="static"] .lo-anim-pulse::after {
   animation-duration: 0ms !important;
 }
@@ -139,7 +183,10 @@
 .app-launch-paused .lo-anim-push-in,
 .app-launch-paused .lo-anim-push-out,
 .app-launch-paused .lo-anim-pop-in,
-.app-launch-paused .lo-anim-pop-out {
+.app-launch-paused .lo-anim-pop-out,
+.app-launch-paused .lo-onb-panel,
+.app-launch-paused .lo-onb-step,
+.app-launch-paused .lo-onb-card {
   animation-play-state: paused;
 }
 
@@ -161,7 +208,10 @@
   .lo-anim-push-in,
   .lo-anim-push-out,
   .lo-anim-pop-in,
-  .lo-anim-pop-out {
+  .lo-anim-pop-out,
+  .lo-onb-panel,
+  .lo-onb-step,
+  .lo-onb-card {
     animation-duration: 1ms !important;
   }
 }

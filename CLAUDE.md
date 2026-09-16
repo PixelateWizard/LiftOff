@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented — art resolution visibility:** SteamGridDB cover/hero thumbnails now show reported source dimensions with a 4K marker for 3840x2160+ art, uploads show source/current dimensions plus the saved crop size, and Immersive Home displays the loaded hero media resolution after decode. Art priority, caching, crop behavior, Home layout, and controller ownership are unchanged. Build validation passed; WebView2, physical controller, and handheld visual checks remain runtime gates.
+- **Implemented — Neon helper readability:** only the Neon helper tray now uses a denser dark-accent tint and slightly stronger blur over busy Home artwork, retaining its glow, rounded geometry, and controller behavior. Targeted HelperTray unit and Neon mocked-browser surface checks passed, along with the production build; physical Ally/WebView2 visual validation remains the final device gate.
 
 ## Start-of-Task Workflow
 
@@ -34,6 +34,7 @@ If the user sends only a `.md` file, treat it as a project proposal and carry it
 - **Identifier:** `com.taylo.liftoff`.
 - **Current version:** `2.0.0-alpha-6.1`; app-owned version markers must move together for releases.
 - **Frontend root:** `src/App.jsx`, with domain hooks, views, components, contexts, and theme helpers under `src/`.
+- **First-run setup:** `OnboardingFlow` owns a modal-local gamepad poll outside the scaled app root and is gated by `settings.onboarding_complete`; existing settings files without the key migrate to complete on load.
 - **Backend root:** `src-tauri/src/lib.rs`, with specialized modules in `src-tauri/src/`.
 - **Development:** `npm run dev` plus `npm run tauri -- dev`.
 - **Installer:** use the NSIS bundle from `src-tauri/target/release/bundle/nsis/` for release testing, not the raw executable.

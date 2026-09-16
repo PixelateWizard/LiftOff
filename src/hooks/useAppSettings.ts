@@ -29,6 +29,7 @@ export function useAppSettings({
 }: UseAppSettingsOptions) {
   const [settingsState, setSettingsState] = useState<Settings>({ ...DEFAULT_SETTINGS });
   const [defaultTab, setDefaultTab] = useState<string | null>(null);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const settingsRef = useRef<Settings>({ ...DEFAULT_SETTINGS });
 
   const setSettings = (action: SettingsAction) => {
@@ -71,6 +72,7 @@ export function useAppSettings({
       const migratedHomePinnedPosition = updated.home_mode === "semi" && updated.home_pinned_pos === "bottom";
       if (migratedHomePinnedPosition) updated.home_pinned_pos = "top";
       setSettings(updated);
+      setSettingsLoaded(true);
       if (s.surface_style === "pixel" || migratedHomePinnedPosition || needsSave) invoke("save_settings", { settings: updated }).catch(console.error);
       applyDefaultTab(s.default_tab);
       if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
@@ -86,6 +88,7 @@ export function useAppSettings({
         const migratedHomePinnedPosition = merged.home_mode === "semi" && merged.home_pinned_pos === "bottom";
         if (migratedHomePinnedPosition) merged.home_pinned_pos = "top";
         setSettings(merged);
+        setSettingsLoaded(true);
         if (s.surface_style === "pixel" || migratedHomePinnedPosition || needsSave) invoke("save_settings", { settings: merged }).catch(console.error);
         applyDefaultTab(s.default_tab);
         if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
@@ -128,6 +131,21 @@ export function useAppSettings({
     }
   };
 
+  /** Apply settings to live React state without writing to disk. */
+  const previewSettings = (updates: Partial<Settings>) => {
+    setSettings(prev => {
+      const updated = { ...prev, ...updates };
+      if (Object.prototype.hasOwnProperty.call(updates, "theme")) {
+        const nextTheme = normalizeThemeKey(updates.theme);
+        updated.theme = nextTheme;
+        if (!Object.prototype.hasOwnProperty.call(updates, "surface_style")) {
+          updated.surface_style = THEME_SURFACE_DEFAULTS[nextTheme] || updated.surface_style;
+        }
+      }
+      return updated;
+    });
+  };
+
   const updateSettingsBatch = (updates: Partial<Settings>) => {
     setSettings(prev => {
       const updated = { ...prev, ...updates };
@@ -148,6 +166,8 @@ export function useAppSettings({
     settingsRef,
     updateSetting,
     updateSettingsBatch,
+    previewSettings,
+    settingsLoaded,
     defaultTab,
   };
 }

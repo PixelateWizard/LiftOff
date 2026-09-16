@@ -16,6 +16,7 @@ import FolderManagerModal from "./components/modals/FolderManagerModal";
 import ColPickerModal from "./components/modals/ColPickerModal";
 import CollectionManagerModal from "./components/modals/CollectionManagerModal";
 import ModalShell from "./components/modals/ModalShell";
+import { modalOverlayStyle, modalPanelStyle, modalScrimStyle } from "./components/modals/modalStyles";
 import ContextMenuModal from "./components/modals/ContextMenuModal";
 import HideModal from "./components/modals/HideModal";
 import LibraryActionsModal from "./components/modals/LibraryActionsModal";
@@ -27,6 +28,7 @@ import UpdateAvailableModal from "./components/modals/UpdateAvailableModal";
 import { SettingsScreen, buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "./views/settings";
 import { ThemePickerModal } from "./components/ThemePickerModal";
 import { SurfacePickerModal } from "./components/SurfacePickerModal";
+import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
 import { HomeView } from "./views/HomeView";
 import { GamesView } from "./views/GamesView";
 import { AppsView } from "./views/AppsView";
@@ -271,6 +273,7 @@ export default function App() {
   const autoScaleRef          = useRef(1.0);
   const handleClearCacheRef   = useRef(null);
   const handleClearRecentsRef = useRef(null);
+  const rerunOnboardingRef    = useRef(null);
   const toggleHomeCollectionRef = useRef(null);
   const runningIdsRef = useRef(new Set());
   const scrollFocusRef = useRef({ tab: null, focusSection: null, focusIndex: 0, gameSourceTab: null, appCollectionTab: null, cols: 0 });
@@ -315,13 +318,13 @@ export default function App() {
   const {
     showHideModal, showLibraryActions, showFileBrowser, pendingFile,
     showColModal, colPickerApp, confirmDelete, showFolderManager,
-    artPickerApp, artPickerMode, contextMenu, editNameApp, showPowerModal, updateRelease,
+    artPickerApp, artPickerMode, contextMenu, editNameApp, showPowerModal, updateRelease, showOnboarding,
     setShowHideModal, setShowLibraryActions, setShowFileBrowser, setPendingFile,
     setShowColModal, setColPickerApp, setConfirmDelete, setShowFolderManager,
-    setArtPickerApp, setArtPickerMode, setContextMenu, setEditNameApp, setShowPowerModal, setUpdateRelease,
+    setArtPickerApp, setArtPickerMode, setContextMenu, setEditNameApp, setShowPowerModal, setUpdateRelease, setShowOnboarding,
     showHideModalRef, showLibraryActionsRef, showFileBrowserRef, pendingFileRef,
     showColModalRef, colPickerAppRef, confirmDeleteRef, showFolderManagerRef,
-    artPickerAppRef, artPickerModeRef, contextMenuRef, editNameAppRef, showPowerModalRef, updateReleaseRef,
+    artPickerAppRef, artPickerModeRef, contextMenuRef, editNameAppRef, showPowerModalRef, updateReleaseRef, showOnboardingRef,
   } = useModalState();
   const [detailsApp, setDetailsApp] = useState(null);
   const detailsAppRef = useRef(null);
@@ -402,11 +405,22 @@ export default function App() {
     settingsRef,
     updateSetting,
     updateSettingsBatch,
+    previewSettings,
+    settingsLoaded,
     defaultTab,
   } = useAppSettings({
     onScanKeyChange: refreshLibrary,
     autoScaleRef,
   });
+  const onboardingCheckedRef = useRef(false);
+  useEffect(() => {
+    if (loading || !settingsLoaded || onboardingCheckedRef.current) return;
+    onboardingCheckedRef.current = true;
+    if (!settingsRef.current.onboarding_complete) {
+      setShowOnboarding(true);
+      showOnboardingRef.current = true;
+    }
+  }, [loading, settingsLoaded]);
   const helperBarMode = settings.bottombar_mode || (settings.hide_bottom_bar ? "minimal" : "full");
   useEffect(() => {
     sfxEnabledRef.current = settings.sfx_enabled !== false;
@@ -431,6 +445,7 @@ export default function App() {
       || editNameAppRef.current
       || showPowerModalRef.current
       || updateReleaseRef.current
+      || showOnboardingRef.current
       || showThemePickerRef.current
       || showSurfacePickerRef.current
       || showSpotifyGuideRef.current
@@ -619,6 +634,27 @@ export default function App() {
     setXboxAuthError("");
     setShowXboxGuide(true);
   };
+
+  const onboardingAccounts = useMemo(() => ({
+    steam: {
+      connected: !!steamStatus?.connected,
+      label: steamStatus?.account_name ?? null,
+    },
+    microsoft: {
+      connected: !!xboxStatus?.connected,
+      label: xboxStatus?.gamertag ?? null,
+    },
+    spotify: {
+      connected: !!spotify?.status?.connected,
+      label: spotify?.status?.product ?? null,
+    },
+  }), [steamStatus, xboxStatus, spotify?.status]);
+
+  const openAccountFromOnboarding = useCallback((key) => {
+    if (key === "steam") { openSteamQr(); return; }
+    if (key === "microsoft") { openXboxGuide(); return; }
+    if (key === "spotify") setShowSpotifyGuide(true);
+  }, [openSteamQr, openXboxGuide, setShowSpotifyGuide]);
 
   const beginXboxAuth = () => {
     setXboxAuthError("");
@@ -902,6 +938,7 @@ export default function App() {
     editNameAppRef,
     showPowerModalRef,
     updateReleaseRef,
+    showOnboardingRef,
     showThemePickerRef,
     showSurfacePickerRef,
     showSpotifyGuideRef,
@@ -967,6 +1004,7 @@ export default function App() {
     checkForUpdates,
     handleClearRecents: () => handleClearRecentsRef.current?.(),
     handleClearCache: () => handleClearCacheRef.current?.(),
+    onRerunOnboarding: () => rerunOnboardingRef.current?.(),
     toggleHomeCollection: (colName) => toggleHomeCollectionRef.current?.(colName),
     isRunning: (id) => !!id && runningIdsRef.current.has(id),
     requestClose,
@@ -979,6 +1017,13 @@ export default function App() {
     ACCENTS,
     GITHUB_REPO,
   });
+  const rerunOnboarding = useCallback(() => {
+    switchTab("Home");
+    setShowOnboarding(true);
+    showOnboardingRef.current = true;
+  }, [switchTab]);
+  rerunOnboardingRef.current = rerunOnboarding;
+
   useEffect(() => {
     if (tab !== "Games") {
       utilityChromeRef.current = null;
@@ -1128,14 +1173,6 @@ export default function App() {
     const rapidRepeat = now - settingsScrollTimeRef.current < 180;
     settingsScrollTimeRef.current = now;
 
-    if (settingsFocusIndex <= 0) {
-      if (scroller.scrollTop > 1) {
-        scroller.scrollTo({ top: 0, behavior: rapidRepeat ? "auto" : "smooth" });
-      }
-      if (outerRef.current) outerRef.current.scrollTop = 0;
-      return;
-    }
-
     const scale = settings.ui_scale ?? 1;
     const sr = scroller.getBoundingClientRect();
     const rr = row.getBoundingClientRect();
@@ -1154,6 +1191,14 @@ export default function App() {
     if (node === scroller) {
       rowTop = layoutTop - scroller.scrollTop;
       rowBottom = rowTop + row.offsetHeight;
+    }
+
+    // Show the section header at its first action only when that action still
+    // fits. A long drive list must not leave the focused Data action offscreen.
+    if (settingsFocusIndex <= 0 && rowBottom + scroller.scrollTop <= scroller.clientHeight - bottomClearance) {
+      if (scroller.scrollTop > 1) scroller.scrollTo({ top: 0, behavior: rapidRepeat ? "auto" : "smooth" });
+      if (outerRef.current) outerRef.current.scrollTop = 0;
+      return;
     }
 
     let newTop = scroller.scrollTop;
@@ -2671,7 +2716,7 @@ export default function App() {
     if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "auto" });
   };
 
-  const SettingsScreenWrapper = ({
+  const renderSettingsScreen = ({
     section = settingsSection,
     appearanceGroup = appearanceGroupState,
     focusIndexOverride = settingsFocusIndex,
@@ -2715,6 +2760,7 @@ export default function App() {
       onOpenXboxGuide={openXboxGuide}
       onXboxDisconnect={disconnectXbox}
       onXboxRefresh={refreshXboxLibrary}
+      onRerunOnboarding={rerunOnboarding}
     />
   );
 
@@ -3147,6 +3193,7 @@ export default function App() {
           theme={theme}
           isDark={isDark}
           surfaceStyle={surfaceStyle}
+          resolvedTheme={resolvedTheme}
           glass={glass}
           storeMetaEnabled={settings.fetch_store_metadata !== false}
           t={t}
@@ -3519,13 +3566,10 @@ export default function App() {
         />
       )}
       {libraryRefreshStatus === "scanning" && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 5000, display: "flex", alignItems: "center", justifyContent: "center",
-          background: surfaceStyle === "material" ? (isDark ? "rgba(23,21,19,0.96)" : "rgba(244,240,235,0.96)") : isDark ? "rgba(10,5,2,0.75)" : "rgba(240,230,220,0.75)", backdropFilter: surfaceStyle === "material" ? undefined : "blur(12px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : "blur(12px)" }}>
-          <div data-modal="" style={{ ...glass, borderRadius: resolvedTheme === "cyberpunk" ? 0 : surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 16 : 24, padding: "32px 48px", display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
-            border: `1px solid ${accent.glow}0.25)`, boxShadow: `0 8px 40px rgba(0,0,0,0.3)` }}>
-            <div className="splash-dots" style={{ opacity: 1 }}>
-              <div className="splash-dot" /><div className="splash-dot" /><div className="splash-dot" />
-            </div>
+        <div style={modalOverlayStyle(5000)}>
+          <div className="lo-anim-overlay" style={modalScrimStyle} />
+          <div data-modal="library-refresh" role="status" className="lo-anim-modal" style={{ ...modalPanelStyle(themeValue, { width: "min(440px, 90vw)", maxHeight: "85vh", padding: "32px 48px" }), display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+            <div aria-hidden="true" className="lo-loading-spinner" style={{ color: accent.primary }} />
             <span style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{t('library.refreshing')}</span>
             <span style={{ fontSize: 12, color: theme.textDim }}>{t('library.scanning')}</span>
           </div>
@@ -3535,12 +3579,12 @@ export default function App() {
       {searchOpen && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 7000,
-          background: surfaceStyle === "material" ? (isDark ? "rgba(23,21,19,0.98)" : "rgba(244,240,235,0.98)") : isDark ? "rgba(10,5,2,0.95)" : "rgba(240,230,220,0.95)",
-          backdropFilter: surfaceStyle === "material" ? undefined : "blur(28px)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : "blur(28px)",
+          isolation: "isolate",
           display: "flex", flexDirection: "column",
           fontFamily: "'Segoe UI', sans-serif",
-          animation: "appFadeIn 0.18s ease forwards",
         }}>
+          <div aria-hidden="true" style={{ ...modalScrimStyle, zIndex: -1 }} />
+          <div aria-hidden="true" style={{ ...glassBar, position: "absolute", inset: 0, zIndex: -1, pointerEvents: "none" }} />
           {/* Search bar */}
           <div style={{ padding: "18px 24px 10px", flexShrink: 0 }}>
             <div style={{ ...glass, borderRadius: surfaceStyle === "win9x" ? 0 : 16, padding: "12px 20px", display: "flex", alignItems: "center", gap: 14,
@@ -3685,11 +3729,9 @@ export default function App() {
       )}
       {/* ══════════════ END SEARCH OVERLAY ══════════════ */}
       {cacheClearLoading && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 2147483000, display: "flex", alignItems: "center", justifyContent: "center", isolation: "isolate", fontFamily: "'Segoe UI', sans-serif" }}>
-          <div style={{ position: "absolute", inset: 0, zIndex: 0, background: "rgba(0,0,0,0.65)" }} />
-          <div style={{ position: "relative", zIndex: 1, background: surfaceStyle === "material" ? "var(--material-elevation-3)" : isDark ? "rgba(18,16,14,0.96)" : "rgba(252,248,244,0.96)", borderRadius: surfaceStyle === "win9x" ? 0 : 18, padding: "36px 52px", textAlign: "center", display: "flex", flexDirection: "column", gap: 14, alignItems: "center",
-            backdropFilter: surfaceStyle === "material" ? undefined : "blur(18px) saturate(140%)", WebkitBackdropFilter: surfaceStyle === "material" ? undefined : "blur(18px) saturate(140%)",
-            boxShadow: "0 20px 80px rgba(0,0,0,0.55)", border: `1px solid ${isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.14)"}` }}>
+        <div style={modalOverlayStyle(2147483000)}>
+          <div className="lo-anim-overlay" style={modalScrimStyle} />
+          <div data-modal="cache-clear" role="status" style={{ ...modalPanelStyle(themeValue, { width: "min(480px, 90vw)", maxHeight: "85vh", padding: "36px 52px" }), textAlign: "center", display: "flex", flexDirection: "column", gap: 14, alignItems: "center" }}>
             <div style={{ width: 32, height: 32, borderRadius: "50%", border: `3px solid ${accent.primary}`, borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
             <div style={{ fontSize: 15, fontWeight: 600, color: theme.text }}>{cacheClearStatus.line1}</div>
             <div style={{ fontSize: 13, color: theme.textDim }}>{cacheClearStatus.line2}</div>
@@ -3698,7 +3740,7 @@ export default function App() {
       )}
       </AppOverlays>
 
-      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showHideModal || showLibraryActions || showPowerModal || updateRelease || showSpotifyGuide || showSpotifyOverlay || showHelperTray || showControlsModal || showSteamQr || showXboxGuide || showCloudPicker || detailsApp) ? "none" : "auto" }}>
+      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showOnboarding || showHideModal || showLibraryActions || showPowerModal || updateRelease || showSpotifyGuide || showSpotifyOverlay || showHelperTray || showControlsModal || showSteamQr || showXboxGuide || showCloudPicker || detailsApp) ? "none" : "auto" }}>
 
         {/* Topbar */}
         <AppHeader
@@ -3727,7 +3769,7 @@ export default function App() {
           {tab === "Settings" && (
             <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain", zIndex: 2, paddingTop: "var(--header-height)", paddingBottom: "var(--bottom-bar-height)", boxSizing: "border-box" }}>
               <div key={settingsPanelKey} className={settingsMotionClass} style={{ position: "relative", minHeight: 0, paddingBottom: 20, zIndex: 2 }}>
-                <SettingsScreenWrapper />
+                {renderSettingsScreen()}
               </div>
             </div>
           )}
@@ -3909,6 +3951,23 @@ export default function App() {
         onClose={() => setShowSurfacePicker(false)}
         focusIndex={surfacePickerFocusIndex}
         setFocusIndex={setSurfacePickerFocusIndex}
+      />
+    )}
+    {showOnboarding && (
+      <OnboardingFlow
+        settings={settings}
+        previewSettings={previewSettings}
+        commitSettings={updateSettingsBatch}
+        playSound={playSound}
+        playSoundAlt={playSoundAlt}
+        accounts={onboardingAccounts}
+        onOpenAccount={openAccountFromOnboarding}
+        childModalOpen={showSteamQr || showXboxGuide || showSpotifyGuide}
+        onFinish={({ sourcesChanged, accountTouched }) => {
+          setShowOnboarding(false);
+          showOnboardingRef.current = false;
+          if (sourcesChanged && !accountTouched) refreshLibraryRef.current?.();
+        }}
       />
     )}
     </GamepadProvider>

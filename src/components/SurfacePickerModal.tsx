@@ -175,11 +175,10 @@ export function SurfacePickerModal({ onClose, focusIndex, setFocusIndex }: Surfa
       data-theme={resolvedTheme}
       data-motion={motionProfile}
       data-ui-motion={settings.ui_motion === false ? "off" : "on"}
-      className="lo-anim-overlay"
       onClick={onClose}
       style={modalOverlayStyle()}
     >
-      <div style={modalScrimStyle} />
+      <div className="lo-anim-overlay" style={modalScrimStyle} />
       <div
         data-modal=""
         className="lo-anim-modal"
