@@ -8,6 +8,7 @@
 ### Fixed
 - **Global power-menu shortcut** - The controller B shortcut now opens the power menu from Home, Games, Apps, and the Settings root. In a nested Appearance category, B returns to the Appearance root first; active dialogs and the search overlay retain their own B behavior.
 - **Transparent helper tray depth** - Opening the Glass, Aero, Clear, or Obsidian helper tray now explicitly blurs the underlying app layer, bypassing WebView2's unreliable backdrop sampling inside the scaled app root so large Home hero text cannot remain sharply readable through the controls. Opaque surface behavior and the tray's existing dense fills are preserved.
+- **Accent placeholder artwork** - Atomic, Aqua, Sage, and Copper now include portrait cover placeholders matching their existing wide hero artwork, so missing game and app art no longer resolves to broken images for those accent colors.
 
 ## [2.0.0] - 2.0.0
 

@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented — Reliable Helper Tray background blur:** Opening the tray on Glass, Aero, Clear, or Obsidian now filters the actual underlying app layer, bypassing the scaled WebView2 root's unreliable backdrop sampling. The tray remains crisp, opaque surfaces remain unblurred, and controller behavior is unchanged. Focused regression, production build, docs check, and diff validation pass; the running Ally/WebView2 visual remains the final gate.
+- **Implemented — Complete accent placeholder artwork:** Atomic, Aqua, Sage, and Copper now have portrait cover placeholders matching the established LiftOff rocket composition and their existing wide hero assets. Focused asset coverage, SVG structure checks, production build, docs validation, and diff validation pass; the native WebView2/theme-gallery visual remains the final gate.
 
 ## Start-of-Task Workflow
 
