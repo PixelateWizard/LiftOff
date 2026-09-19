@@ -38,6 +38,17 @@ type FocusItem = { key: string; row: number; column: number; app?: App };
 const TRAY_EXIT_MS = 160;
 const FOCUS_REVEAL_DELAY_MS = 300;
 
+const HELPER_TRAY_UNDERLAY_FILTERS: Record<string, string> = {
+  glass: "blur(18px) saturate(120%)",
+  aero: "blur(16px) saturate(125%)",
+  clear: "blur(12px) saturate(105%)",
+  obsidian: "blur(18px) saturate(110%)",
+};
+
+export function getHelperTrayUnderlayFilter(surfaceStyle: string): string | undefined {
+  return HELPER_TRAY_UNDERLAY_FILTERS[surfaceStyle];
+}
+
 const formatTime = (ms: number) => {
   const total = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
@@ -309,14 +320,22 @@ export function HelperTray({
   if (!visible) return null;
 
   const squareCorners = resolvedTheme === "cyberpunk" || surfaceStyle === "win9x";
-  const needsDenseTranslucentTray = surfaceStyle === "glass" || surfaceStyle === "aero" || surfaceStyle === "clear" || surfaceStyle === "obsidian";
+  const helperTrayUnderlayFilter = getHelperTrayUnderlayFilter(surfaceStyle);
+  const needsDenseTranslucentTray = helperTrayUnderlayFilter !== undefined;
+  const translucentTrayFilter = helperTrayUnderlayFilter;
+  const trayWidth = "min(980px, calc(100vw - 32px))";
+  const trayMaxHeight = mode === "full" ? "calc(100vh - 94px)" : "calc(100vh - 34px)";
   const shellStyle: CSSProperties = {
-    ...modalPanelStyle(themeValue, { width: "min(980px, calc(100vw - 32px))", maxHeight: mode === "full" ? "calc(100vh - 94px)" : "calc(100vh - 34px)", padding: "18px" }),
+    ...modalPanelStyle(themeValue, { width: trayWidth, maxHeight: trayMaxHeight, padding: "18px" }),
     // The tray is a dense control surface over Home or Settings content.
     ...(needsDenseTranslucentTray ? {
       background: isDark
         ? `linear-gradient(180deg, color-mix(in srgb, ${accent.primary} 4%, rgba(8,10,16,0.93) 96%), rgba(8,10,16,0.90))`
         : `linear-gradient(180deg, color-mix(in srgb, ${accent.primary} 3%, rgba(255,255,255,0.94) 97%), rgba(250,250,252,0.91))`,
+      // The moving panel stays unfiltered; App.jsx applies the reliable blur
+      // directly to the underlay while this translucent tray is open.
+      backdropFilter: "none",
+      WebkitBackdropFilter: "none",
     } : {}),
     ...(surfaceStyle === "neon" ? {
       background: `linear-gradient(180deg, color-mix(in srgb, ${accent.primary} 10%, rgba(3,6,12,0.88) 90%), color-mix(in srgb, ${accent.primary} 6%, rgba(1,3,7,0.84) 94%))`,
@@ -350,7 +369,24 @@ export function HelperTray({
   return (
     <div data-theme={resolvedTheme} data-tray-state={closing ? "closing" : "open"} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} className="lo-anim-tray-scrim" style={{ position: "fixed", inset: 0, zIndex: 9200, background: "rgba(0,0,0,0.56)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: mode === "full" ? 78 : 18, boxSizing: "border-box" }} onClick={() => { if (!closing) onClose(); }}>
 
-      <div data-modal="helper" className="lo-anim-tray" style={shellStyle} onClick={(event) => event.stopPropagation()}>
+      <div style={{ position: "relative", width: trayWidth, maxHeight: trayMaxHeight }}>
+        {needsDenseTranslucentTray && (
+          <div
+            aria-hidden="true"
+            data-helper-tray-frost
+            style={{
+              position: "absolute",
+              inset: 0,
+              zIndex: 0,
+              pointerEvents: "none",
+              borderRadius: shellStyle.borderRadius,
+              background: isDark ? "rgba(8,10,16,0.16)" : "rgba(255,255,255,0.14)",
+              backdropFilter: translucentTrayFilter,
+              WebkitBackdropFilter: translucentTrayFilter,
+            }}
+          />
+        )}
+        <div data-modal="helper" className="lo-anim-tray" style={{ ...shellStyle, zIndex: 1 }} onClick={(event) => event.stopPropagation()}>
         <div className="lo-tray-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, animationDelay: "60ms" }}>
           <strong style={{ color: theme.text }}>{t("helper.trayTitle")}</strong>
           {mode !== "full" && <GamepadBtn btn="B" label={t("helper.closeTray")} />}
@@ -442,6 +478,7 @@ export function HelperTray({
         </div>
 
         {spotify.requiresPremium && <div style={{ color: accent.primary, fontSize: 11, marginTop: 9 }}>{t("spotify.premiumHint")}</div>}
+      </div>
       </div>
     </div>
   );

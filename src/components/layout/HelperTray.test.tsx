@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { HelperTray } from "./HelperTray";
+import { HelperTray, getHelperTrayUnderlayFilter } from "./HelperTray";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -89,6 +89,20 @@ describe("HelperTray pinned shortcuts", () => {
 
     expect(container.querySelector('[data-helper-pinned="steam://rungameid/620"]')?.textContent).toContain("Portal 2");
     expect(container.querySelector('[data-helper-pinned="calculator"]')?.textContent).toContain("Calculator");
+  });
+
+  it("maps translucent tray surfaces to explicit underlay blur", () => {
+    act(() => root.render(<HelperTray {...baseProps()} />));
+
+    const tray = container.querySelector<HTMLElement>('[data-modal="helper"]');
+    const frost = container.querySelector<HTMLElement>("[data-helper-tray-frost]");
+    expect(frost?.style.backdropFilter).toBe("blur(18px) saturate(120%)");
+    expect(tray?.style.backdropFilter).toBe("none");
+    expect(getHelperTrayUnderlayFilter("glass")).toBe("blur(18px) saturate(120%)");
+    expect(getHelperTrayUnderlayFilter("aero")).toBe("blur(16px) saturate(125%)");
+    expect(getHelperTrayUnderlayFilter("clear")).toBe("blur(12px) saturate(105%)");
+    expect(getHelperTrayUnderlayFilter("obsidian")).toBe("blur(18px) saturate(110%)");
+    expect(getHelperTrayUnderlayFilter("material")).toBeUndefined();
   });
 
   it("moves from system controls into pins and activates the focused pin", () => {

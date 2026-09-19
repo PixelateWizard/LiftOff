@@ -346,6 +346,7 @@
     "wideSettings": "Paramètres",
     "wideBottombar": "Barre inférieure",
     "homeMode": "Mode accueil",
+    "homeLaunchGamesDirectly": "Lancer les jeux directement depuis l'accueil",
     "homeModeValues": {
       "normal": "Legacy",
       "semi": "Normal",
@@ -380,7 +381,7 @@
     "hideOnLaunch": "TODO(fr): Hide LiftOff when a game launches",
     "heroArtMode": "Mode art héros",
     "updateChannel": "Canal de mise a jour",
-    "showImmersiveHeroArt": "Afficher l'art héros immersif",
+    "showGameHeroBanner": "Afficher la bannière héros du jeu",
     "controllerTest": "Test manette",
     "noController": "Aucune manette détectée — connectez un contrôleur et appuyez sur un bouton.",
     "clearRecents": "Effacer l'historique",
@@ -523,6 +524,8 @@
   "onboarding": {
     "on": "TODO(fr) On",
     "off": "TODO(fr) Off",
+    "previousOption": "TODO(fr) Previous option",
+    "nextOption": "TODO(fr) Next option",
     "skip": "TODO(fr) Y — Skip setup",
     "controls": "TODO(fr) D-pad move · A select · B back · LB/RB step",
     "welcome": {
@@ -540,6 +543,11 @@
     "surface": {
       "title": "TODO(fr) Pick a surface style",
       "hint": "TODO(fr) Controls how panels and cards are rendered over the background."
+    },
+    "home": {
+      "title": "TODO(fr) Choose your Home style",
+      "hint": "TODO(fr) Pick a layout and whether Normal or Immersive Home shows game hero banners.",
+      "legacyHeroLocked": "TODO(fr) Always on in Legacy"
     },
     "sources": {
       "title": "TODO(fr) Where are your games?",

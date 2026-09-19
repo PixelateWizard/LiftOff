@@ -154,7 +154,8 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
 
     D("home", 0, 1),
     { key: "home_mode",              section: 0, group: 1, label: t("settings.homeMode"),            type: "cycle", options: ["normal", "semi", "immersive"] },
-    { key: "show_immersive_hero_art",section: 0, group: 1, label: t("settings.showImmersiveHeroArt"),type: "toggle" },
+    { key: "home_launch_games_directly", section: 0, group: 1, label: t("settings.homeLaunchGamesDirectly"), type: "toggle" },
+    { key: "show_immersive_hero_art",section: 0, group: 1, label: t("settings.showGameHeroBanner"),type: "toggle" },
     { key: "show_hero_cover",        section: 0, group: 1, label: t("settings.showHeroCover"),        type: "toggle" },
     { key: "home_pinned_pos",        section: 0, group: 1, label: t("settings.homePinnedPos"),         type: "cycle", options: ["none", "top", "bottom"] },
     { key: "show_home_recents",      section: 0, group: 1, label: t("settings.showHomeRecents"),      type: "toggle" },
@@ -306,6 +307,7 @@ export function getSectionNavigableItems(
   const visibleItems = allItems
     .filter((i) => i.section === sectionIndex)
     .filter((i) => i.key !== "bottombar_peek_on_track" || settings.bottombar_mode === "hidden")
+    .filter((i) => i.key !== "show_immersive_hero_art" || settings.home_mode !== "normal")
     .filter((i) => sectionIndex !== 0 || visibleInAppearance(i, appearanceGroup))
     .filter((i) => !(sectionIndex === 0 && appearanceGroup !== null && i.type === "divider" && i.group === appearanceGroup))
     .flatMap((i): (SettingsItem | SettingsSubItem | SettingsHomeCollectionItem)[] => {
@@ -451,7 +453,11 @@ export function SettingsScreen({
     };
   }, [settingsSection]);
 
-  const ALL_ITEMS = buildSettingsItems(t, normalizeThemeKey(String(settings.theme)));
+  const ALL_ITEMS: SettingsItem[] = buildSettingsItems(t, normalizeThemeKey(String(settings.theme))).map(item =>
+    item.key === "show_immersive_hero_art" && settings.home_mode === "normal"
+      ? { ...item, locked: true, lockedValue: true }
+      : item
+  );
   const sectionItems = getVisibleSectionItems(settingsSection, ALL_ITEMS, appearanceGroup)
     .filter((item) => item.key !== "bottombar_peek_on_track" || settings.bottombar_mode === "hidden");
   const navigableItems = getSectionNavigableItems(settingsSection, ALL_ITEMS, settings, { gameCollections, appCollections }, appearanceGroup);

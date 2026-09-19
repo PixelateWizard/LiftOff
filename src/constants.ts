@@ -3,7 +3,7 @@ import type { FseReturnShortcut } from "./types";
 export const COLS = 6;
 export const GAME_COLS = 5;
 export const TABS = ["Home", "Games", "Apps", "Settings"] as const;
-export const APP_VERSION = "2.0.0-alpha-6.1";
+export const APP_VERSION = "2.0.0";
 export const GITHUB_REPO = "PixelateWizard/LiftOff";
 // Hours between automatic update checks. Twice a day is enough to be timely
 // without pressure on GitHub's unauthenticated rate limit.
@@ -163,7 +163,7 @@ export const DEFAULT_SETTINGS = {
   default_tab: "Home", scan_steam: true, scan_xbox: true,
   scan_uwp: true, scan_desktop: true, scan_battlenet: true, scan_gog: true, scan_epic: true, fetch_store_metadata: true, show_uninstalled_games: false, steam_owned_library_seen: false, onboarding_complete: true, repeat_speed: "normal",
   launch_at_startup: false, animated_heroes: "animated", update_channel: "stable", auto_update_check: true, ui_scale: 1.0,
-  language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, app_cover_scale: 1.0, show_store_badges: true, games_sort: "recent", app_list_view: false, app_list_cols: 1, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false, home_mode: "semi", home_section_title_size: "small", show_home_recents: true, hero_content_pos: "bottom", show_immersive_hero_art: true,
+  language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, app_cover_scale: 1.0, show_store_badges: true, games_sort: "recent", app_list_view: false, app_list_cols: 1, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false, home_mode: "semi", home_launch_games_directly: false, home_section_title_size: "small", show_home_recents: true, hero_content_pos: "bottom", show_immersive_hero_art: true,
   nav_bumpers_pos: "bottom",
   tabbar_show_buttons: "tabbar", tabbar_text_tabs: false, tabbar_with_background: false, tabbar_background_compact: false, tabbar_font_weight: "medium", tabbar_icon_mode: "text",
   bottombar_alignment: "left", bottombar_compact: "off", tabbar_label_case: "default",

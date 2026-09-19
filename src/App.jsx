@@ -37,7 +37,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { SettingsProvider } from "./contexts/SettingsContext";
 import { AppHeader } from "./components/layout/AppHeader";
 import { AppBottomBar } from "./components/layout/AppBottomBar";
-import { HelperTray } from "./components/layout/HelperTray";
+import { HelperTray, getHelperTrayUnderlayFilter } from "./components/layout/HelperTray";
 import { AppBackground } from "./components/app/AppBackground";
 import { AppMainContent } from "./components/app/AppMainContent";
 import { AppOverlays } from "./components/app/AppOverlays";
@@ -3017,6 +3017,7 @@ export default function App() {
   const bottombarBg = settings.bottombar_background ?? true;
   const headerHeightVal = !topbarBg ? 0 : (tab === "Home" ? 72 : 124);
   const bottomBarHeightVal = (!bottombarBg || helperBarMode !== "full") ? 0 : 64;
+  const helperTrayUnderlayFilter = showHelperTray ? getHelperTrayUnderlayFilter(surfaceStyle) : undefined;
   const fseHintText = t("fse.returnHint", {
     shortcut: fseReturnShortcutLabel(fseHintShortcut || fseReturnShortcut),
   });
@@ -3740,7 +3741,7 @@ export default function App() {
       )}
       </AppOverlays>
 
-      <div style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, pointerEvents: (showOnboarding || showHideModal || showLibraryActions || showPowerModal || updateRelease || showSpotifyGuide || showSpotifyOverlay || showHelperTray || showControlsModal || showSteamQr || showXboxGuide || showCloudPicker || detailsApp) ? "none" : "auto" }}>
+      <div data-helper-underlay style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, filter: helperTrayUnderlayFilter ?? "none", transition: settings.ui_motion === false ? "none" : "filter 180ms var(--ease-standard)", pointerEvents: (showOnboarding || showHideModal || showLibraryActions || showPowerModal || updateRelease || showSpotifyGuide || showSpotifyOverlay || showHelperTray || showControlsModal || showSteamQr || showXboxGuide || showCloudPicker || detailsApp) ? "none" : "auto" }}>
 
         {/* Topbar */}
         <AppHeader

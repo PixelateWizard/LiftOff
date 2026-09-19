@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented — Helper tray density:** Glass, Aero, Clear, and Obsidian use denser theme-aware fills so tray controls stay legible over Settings/Home content without changing their blur, borders, motion, layout, or controller behavior. Automated validation passes; physical Ally/WebView2 surface review remains the final gate.
+- **Implemented — Reliable Helper Tray background blur:** Opening the tray on Glass, Aero, Clear, or Obsidian now filters the actual underlying app layer, bypassing the scaled WebView2 root's unreliable backdrop sampling. The tray remains crisp, opaque surfaces remain unblurred, and controller behavior is unchanged. Focused regression, production build, docs check, and diff validation pass; the running Ally/WebView2 visual remains the final gate.
 
 ## Start-of-Task Workflow
 
@@ -32,7 +32,7 @@ If the user sends only a `.md` file, treat it as a project proposal and carry it
 - **Product:** LiftOff, a Windows controller-first game/app launcher.
 - **Stack:** Tauri 2, Rust backend, React frontend, incremental TypeScript adoption.
 - **Identifier:** `com.taylo.liftoff`.
-- **Current version:** `2.0.0-alpha-6.1`; app-owned version markers must move together for releases.
+- **Current version:** `2.0.0`; app-owned version markers must move together for releases.
 - **Frontend root:** `src/App.jsx`, with domain hooks, views, components, contexts, and theme helpers under `src/`.
 - **First-run setup:** `OnboardingFlow` owns a modal-local gamepad poll outside the scaled app root and is gated by `settings.onboarding_complete`; existing settings files without the key migrate to complete on load.
 - **Backend root:** `src-tauri/src/lib.rs`, with specialized modules in `src-tauri/src/`.

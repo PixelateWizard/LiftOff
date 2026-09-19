@@ -95,6 +95,11 @@ export function HomeView(props: HomeViewProps) {
     iconColors,
     spotifyHeroChip = null,
   } = props;
+  const activateHomeGame = (app: any) => {
+    if (settings.home_launch_games_directly) triggerLaunch(app, recentRef.current);
+    else onOpenDetails?.(app);
+  };
+
   const { surface, resolvedTheme } = useTheme();
   const [heroMediaPaused, setHeroMediaPaused] = useState(false);
   const [heroVideoPlaying, setHeroVideoPlaying] = useState<Record<string, boolean>>({});
@@ -363,7 +368,7 @@ export function HomeView(props: HomeViewProps) {
     const defaultHome = semiHome && !settings.cinematic_home;
     const pinnedAtTop = defaultHome || settings.home_pinned_pos === "top";
     const isOnyx = resolvedTheme === "onyx";
-    const showHeroArtwork = !settings.cinematic_home || settings.show_immersive_hero_art !== false;
+    const showHeroArtwork = settings.home_mode === "normal" || settings.show_immersive_hero_art !== false;
     const heroFocused = focusSec === "hero";
     const webcoreHero = surfaceStyle === "win9x";
     const materialHero = surfaceStyle === "material" || webcoreHero;
@@ -600,7 +605,7 @@ export function HomeView(props: HomeViewProps) {
           : "radial-gradient(ellipse 46% 42% at 16% 72%, rgba(39,27,18,0.18) 0%, rgba(39,27,18,0.09) 34%, transparent 68%)")
       : "transparent";
     const activateSemiEntry = (app: any) => {
-      if (app.app_type === "game") onOpenDetails?.(app);
+      if (app.app_type === "game") activateHomeGame(app);
       else triggerLaunch(app, recentRef.current);
     };
     const renderSemiHeroCard = (app: any, i: number) => {
@@ -620,7 +625,7 @@ export function HomeView(props: HomeViewProps) {
 
       return (
         <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
-          onClick={() => { select(); if (app.app_type === "game") onOpenDetails?.(app); }}
+          onClick={() => { select(); if (app.app_type === "game") activateHomeGame(app); }}
           onMouseMove={select}
           onDoubleClick={app.app_type === "game" ? undefined : () => activateSemiEntry(app)}
           style={wrapperStyle}>
@@ -656,7 +661,7 @@ export function HomeView(props: HomeViewProps) {
       if (app.app_type === "game" || art) {
         return (
           <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
-            onClick={() => { select(); if (app.app_type === "game") onOpenDetails?.(app); }}
+            onClick={() => { select(); if (app.app_type === "game") activateHomeGame(app); }}
             onMouseMove={select}
             onDoubleClick={app.app_type === "game" ? undefined : () => activateSemiEntry(app)}
             style={wrapperStyle}>
@@ -713,7 +718,7 @@ export function HomeView(props: HomeViewProps) {
       if (app.app_type === "game") {
         return (
           <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
-            onClick={() => { select(); onOpenDetails?.(app); }}
+            onClick={() => { select(); activateHomeGame(app); }}
             onMouseMove={select}
             style={{ flexShrink: 0, width: semiCardW, height: semiCardH, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative" }}>
             <div style={{ position: "absolute", inset: 0, borderRadius: surfaceCardRadius, overflow: "hidden", transition: "box-shadow 0.15s ease",
@@ -772,7 +777,7 @@ export function HomeView(props: HomeViewProps) {
           transition: settings.cinematic_home
             ? "opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)"
             : "border-color 0.2s ease, box-shadow 0.2s ease",
-          background: (settings.cinematic_home && !showHeroArtwork) || (showHeroArtwork && (semiHome ? activeGameIsVideo : activeIsVideo)) ? "transparent" : materialHero ? appBg : isDark ? "#0a0502" : appBg,
+          background: ((settings.cinematic_home || defaultHome) && !showHeroArtwork) || (showHeroArtwork && (semiHome ? activeGameIsVideo : activeIsVideo)) ? "transparent" : materialHero ? appBg : isDark ? "#0a0502" : appBg,
           // Cyberpunk normal hero: corner-cut shape + a neon "border" drawn as the
           // padding frame (the cover art inset by padding reveals the accent edge,
           // which follows the diagonal cut because both layers are clipped).
@@ -827,11 +832,11 @@ export function HomeView(props: HomeViewProps) {
                       />
                     )}
                   </div>
-                ) : (
+                ) : showHeroArtwork ? (
                   <div style={{ position: "absolute", inset: 0, opacity: 1, zIndex: 1 }}>
                     <img src={getHeroPlaceholder(settings.accent)} alt="" style={{ ...coverStyle }} />
                   </div>
-                );
+                ) : null;
               }
 
               return heroGames.map((game, idx) => {
@@ -969,7 +974,7 @@ export function HomeView(props: HomeViewProps) {
                       idleBoxShadow={idlePinned.boxShadow}
                       idleColor={idlePinned.color}
                       activeTextColor={activeTextColor}
-                      onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; if (app.app_type === "game") onOpenDetails?.(app); }}
+                      onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; if (app.app_type === "game") activateHomeGame(app); }}
                       onDoubleClick={app.app_type === "game" ? undefined : () => triggerLaunch(app, recentRef.current)}
                     />
                   );
@@ -1178,7 +1183,7 @@ export function HomeView(props: HomeViewProps) {
                 const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
                 return (
                   <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
-                    onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; if (app.app_type === "game") onOpenDetails?.(app); }}
+                    onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; if (app.app_type === "game") activateHomeGame(app); }}
                     onDoubleClick={app.app_type === "game" ? undefined : () => triggerLaunch(app, recentRef.current)}
                     style={{
                       display: "flex", alignItems: "center", gap: 8, padding: "7px 12px",
@@ -1383,7 +1388,7 @@ export function HomeView(props: HomeViewProps) {
                   return (
                     // Outer wrapper — no overflow:hidden so ring can extend with gap
                     <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
-                      onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; onOpenDetails?.(app); }}
+                      onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; activateHomeGame(app); }}
                       onDoubleClick={undefined}
                       style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative", transition: "transform 0.15s ease",
                         transform: focused ? "scale(1.05) translateY(-3px)" : "scale(1)" }}>
@@ -1489,7 +1494,7 @@ export function HomeView(props: HomeViewProps) {
                         data-card=""
                         className={focused ? "focused" : ""}
                         ref={focused ? focusedCardRef : null}
-                        onClick={() => { setFocusSection("home_collections"); focusSectionRef.current = "home_collections"; setHomeColFocusRow(rowIdx); homeColFocusRowRef.current = rowIdx; setHomeColFocusCol(colIdx); homeColFocusColRef.current = colIdx; onOpenDetails?.(app); }}
+                        onClick={() => { setFocusSection("home_collections"); focusSectionRef.current = "home_collections"; setHomeColFocusRow(rowIdx); homeColFocusRowRef.current = rowIdx; setHomeColFocusCol(colIdx); homeColFocusColRef.current = colIdx; activateHomeGame(app); }}
                         onDoubleClick={undefined}
                         style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative",
                           scrollMarginTop: "120px",
@@ -1575,7 +1580,7 @@ export function HomeView(props: HomeViewProps) {
                           return (
                             <div key={app.id}
                               ref={recFocused ? focusedCardRef : null}
-                              onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; if (app.app_type === "game") onOpenDetails?.(app); }}
+                              onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; if (app.app_type === "game") activateHomeGame(app); }}
                               onDoubleClick={app.app_type === "game" ? undefined : () => triggerLaunch(app, recentRef.current)}
                               style={{ position: "relative", flexShrink: 0, width: CARD_W, height: CARD_H }}>
                               <div style={{

@@ -346,6 +346,7 @@
     "wideSettings": "Settings",
     "wideBottombar": "Bottom Bar",
     "homeMode": "Home mode",
+    "homeLaunchGamesDirectly": "Launch games directly from Home",
     "homeModeValues": {
       "normal": "Legacy",
       "semi": "Normal",
@@ -380,7 +381,7 @@
     "hideOnLaunch": "Hide LiftOff when a game launches",
     "heroArtMode": "Hero Art Mode",
     "updateChannel": "Update Channel",
-    "showImmersiveHeroArt": "Show Immersive Hero Art",
+    "showGameHeroBanner": "Show game hero banner",
     "controllerTest": "Controller Test",
     "noController": "No controller detected — connect a gamepad and press any button.",
     "clearRecents": "Clear Recently Played",
@@ -523,6 +524,8 @@
   "onboarding": {
     "on": "On",
     "off": "Off",
+    "previousOption": "Previous option",
+    "nextOption": "Next option",
     "skip": "Y — Skip setup",
     "controls": "D-pad move · A select · B back · LB/RB step",
     "welcome": {
@@ -540,6 +543,11 @@
     "surface": {
       "title": "Pick a surface style",
       "hint": "Controls how panels and cards are rendered over the background."
+    },
+    "home": {
+      "title": "Choose your Home style",
+      "hint": "Pick a layout and whether Normal or Immersive Home shows game hero banners.",
+      "legacyHeroLocked": "Always on in Legacy"
     },
     "sources": {
       "title": "Where are your games?",

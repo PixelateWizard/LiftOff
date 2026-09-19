@@ -15,6 +15,7 @@ Read for themes, accents, light/dark behavior, surfaces, backgrounds, focus styl
 - Shared active-tab styling belongs in `src/theme/tabStyle.ts`; broader surface tokens belong in `src/theme/surfaces.ts` and the root theme composition.
 - Material uses opaque layered surfaces and shadow elevation, not glass blur or glow-based depth. Paper grain stays Material-only.
 - Aero uses directional acrylic/specular treatment; Glass uses heavier frost; Clear remains flat; Onyx focus respects its effects/static mode.
+- The dense Helper Tray intentionally keeps transparent surfaces readable over Home/Settings: while it is open, Glass, Aero, Clear, and Obsidian explicitly filter the underlying app layer because the scaled WebView2 root prevents reliable backdrop sampling inside the tray. Opaque Material and Win9X leave the underlay sharp.
 - Light accents with `darkText` require dark foregrounds on filled controls for contrast.
 - UI motion primitives live in `src/styles/motion.css`; new shared motion should not be added to the large injected global block in `App.jsx`.
 - Do not put persistent `will-change: transform`, `will-change: opacity`, `transform: translateZ(0)`, or opacity below 1 on an ancestor of a `backdrop-filter` surface. Each makes that ancestor a backdrop root, and creating or destroying one forces the translucent surfaces inside it to re-rasterize, which reads as Glass/Aero panels settling into place after they appear.

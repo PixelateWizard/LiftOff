@@ -5,6 +5,7 @@ export type StepKey =
   | "theme"
   | "accent"
   | "surface"
+  | "home"
   | "sources"
   | "accounts"
   | "essentials"
@@ -15,6 +16,7 @@ export const STEP_ORDER: StepKey[] = [
   "theme",
   "accent",
   "surface",
+  "home",
   "sources",
   "accounts",
   "essentials",
@@ -25,6 +27,7 @@ export const PROGRESS_STEPS: StepKey[] = [
   "theme",
   "accent",
   "surface",
+  "home",
   "sources",
   "accounts",
   "essentials",
@@ -52,6 +55,15 @@ export const ACCOUNT_ROWS: Array<{ key: AccountKey; labelKey: string; hintKey: s
   { key: "microsoft", labelKey: "xbox.title", hintKey: "xbox.connectHint" },
   { key: "spotify", labelKey: "spotify.title", hintKey: "onboarding.accounts.spotifyHint" },
 ];
+export type HomeRow =
+  | { key: "home_mode"; kind: "cycle"; labelKey: string; options: readonly string[] }
+  | { key: "show_immersive_hero_art"; kind: "toggle"; labelKey: string };
+
+export const HOME_ROWS: HomeRow[] = [
+  { key: "home_mode", kind: "cycle", labelKey: "settings.homeMode", options: ["normal", "semi", "immersive"] },
+  { key: "show_immersive_hero_art", kind: "toggle", labelKey: "settings.showGameHeroBanner" },
+];
+
 
 export type EssentialRow =
   | { key: "default_tab"; kind: "cycle"; labelKey: string; options: readonly string[] }
@@ -80,6 +92,7 @@ export function stepCount(step: StepKey): number {
     case "theme": return THEME_ITEMS.length;
     case "accent": return ACCENT_ITEMS.length;
     case "surface": return SURFACE_ITEMS.length;
+    case "home": return HOME_ROWS.length;
     case "sources": return SOURCE_ROWS.length;
     case "accounts": return ACCOUNT_ROWS.length;
     case "essentials": return ESSENTIAL_ROWS.length;

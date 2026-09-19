@@ -12,7 +12,9 @@ Read for Home layout/focus, hero media, pinned/recents/collections, Game Details
 
 - Persisted Home mode values are `normal` for the displayed Legacy mode, `semi` for the displayed Normal mode, and `immersive` for Immersive. Fresh defaults use `semi`; do not infer display labels from generic stored values.
 - `recentGames` independently drives the Home hero; general `recent` drives the recents shelf. Do not recombine them.
-- Game cards open Details first across Home/library surfaces; app cards retain their established direct-launch behavior. The hero CTA remains a launch/resume action.
+- The persisted `show_immersive_hero_art` wire field is the user-facing “Show game hero banner” preference: it controls Normal and Immersive Home banners, while Legacy always renders hero art and shows the Settings row disabled. When Normal hides its banner, the hero area stays transparent so the active theme background remains visible; app focus must not inject placeholder art into that empty banner.
+- Onboarding exposes Home mode and the hero-banner preference using the same stored values and Legacy lock behavior as Settings. Its shared preference renderer shows a switch for every boolean row and both directional arrows for every cycle row; Legacy must additionally show an explicit forced-on lock label while controller focus skips that disabled banner row.
+- Home game selection, including controller selection of Legacy and Immersive heroes, follows the persisted `home_launch_games_directly` preference; the Games tab remains Details-first. App cards retain their established direct-launch behavior, and the explicit on-screen hero CTA remains a launch/resume action.
 - Semi/Normal Home uses a fixed snap slot tied to card scale and hero height. Do not restore page-flow spacers or allow the outer Home shell to expose blank scroll space.
 - Immersive Home owns a slide-up collections/recents drawer and must preserve hero/pinned visibility, bottom-lane, and drawer-scroll relationships.
 - Art priority is user custom art, then fetched/cached art, then icon/fallback. Missing-result sentinels and forced retries must not create request loops.

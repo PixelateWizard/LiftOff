@@ -181,6 +181,7 @@ export interface Settings {
   show_clock: boolean;
   cinematic_home: boolean;
   home_mode: string;
+  home_launch_games_directly: boolean;
   home_section_title_size: string;
   show_home_recents: boolean;
   hero_content_pos: string;

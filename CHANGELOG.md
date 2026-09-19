@@ -1,6 +1,15 @@
 # Changelog
 
 ## Unreleased
+### Added
+- **Home preferences** - Settings and onboarding now offer the Home style and game-hero-banner controls. Every onboarding boolean preference now has a visual switch, and every cycle selector has clickable left/right arrows; Legacy retains its explicit “Always on in Legacy” lock state. Selecting a game from any Home mode can open Game Details or launch immediately; the Games tab and explicit Hero Launch/Resume button are unchanged. Normal and Immersive can hide hero banners, including placeholder art while apps are focused, so the active theme remains visible; Legacy always keeps hero art.
+
+
+### Fixed
+- **Global power-menu shortcut** - The controller B shortcut now opens the power menu from Home, Games, Apps, and the Settings root. In a nested Appearance category, B returns to the Appearance root first; active dialogs and the search overlay retain their own B behavior.
+- **Transparent helper tray depth** - Opening the Glass, Aero, Clear, or Obsidian helper tray now explicitly blurs the underlying app layer, bypassing WebView2's unreliable backdrop sampling inside the scaled app root so large Home hero text cannot remain sharply readable through the controls. Opaque surface behavior and the tray's existing dense fills are preserved.
+
+## [2.0.0] - 2.0.0
 
 ### Fixed
 - **Translucent helper tray contrast** - Glass, Aero, Clear, and Obsidian helper trays now use denser theme-aware fills, keeping controls readable over Settings and Home content without losing their material treatment.`n- **Helper tray motion** - The helper tray now rises and falls independently of generic modal motion, staggers its title, shortcuts, system controls, and media rows, and reveals Settings focus after opening. Its local motion profile respects Win9X/Webcore instant behavior, the UI-motion setting, and reduced-motion preferences; exit remains mounted briefly so it no longer vanishes instantly.

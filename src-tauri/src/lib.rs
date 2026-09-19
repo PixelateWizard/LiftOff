@@ -240,6 +240,8 @@ pub struct Settings {
     pub cinematic_home: bool,
     #[serde(default = "default_home_mode")]
     pub home_mode: String,
+    #[serde(default)]
+    pub home_launch_games_directly: bool,
     #[serde(default = "default_home_section_title_size")]
     pub home_section_title_size: String,
     #[serde(default = "default_true")]
@@ -445,6 +447,7 @@ impl Default for Settings {
             wide_settings: false,
             cinematic_home: false,
             home_mode: "semi".to_string(),
+            home_launch_games_directly: false,
             home_section_title_size: "small".to_string(),
             show_home_recents: true,
             hero_content_pos: "bottom".to_string(),

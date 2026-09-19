@@ -1044,6 +1044,17 @@ export function useGamepadNavigation(
     }
     // ══ END SEARCH OVERLAY ════════════════════════════════════════
 
+    // B leaves a nested Appearance category before opening the global power menu.
+    if (key === "Escape" && !(
+      currentTab === "Settings"
+      && settingsSectionRef.current === 0
+      && appearanceGroupRef.current !== null
+    )) {
+      openPowerModal();
+      playSoundAlt();
+      return;
+    }
+
     if (section === "viewbar" && currentTab === "Games") {
       if (viewbarIndexRef.current >= viewbarItemCount) {
         setViewbarIndex(viewbarSortIndex);
@@ -1352,21 +1363,14 @@ export function useGamepadNavigation(
       const chainIdx  = chain.indexOf(section);
       const chainPrev = chain[chainIdx - 1] as string | undefined;
       const chainNext = chain[chainIdx + 1] as string | undefined;
-      const activateHomeEntry = (app: App, sourceSection = section) => {
-        const heroLaunchCta = sourceSection === "hero" && currentSettings.home_mode !== "semi";
-        if (!heroLaunchCta && app.app_type === "game") {
+      const activateHomeEntry = (app: App) => {
+        if (app.app_type === "game" && !currentSettings.home_launch_games_directly) {
           haptic("confirm");
           openDetailsModal(app);
         } else {
           triggerLaunch(app, rec);
         }
       };
-
-      if (key === "Escape" && section === chain[0]) {
-        openPowerModal();
-        playSoundAlt();
-        return;
-      }
 
       const goTo = (sec: string) => {
         setFocusSection(sec); focusSectionRef.current = sec;
@@ -1415,7 +1419,7 @@ export function useGamepadNavigation(
         if (key === "ArrowDown" && chainNext) goTo(chainNext);
         if (key === "Enter" && heroApp) {
           if (heroRunning && heroActionIndexRef.current === 1) requestClose(heroApp);
-          else activateHomeEntry(heroApp, "hero");
+          else activateHomeEntry(heroApp);
         }
         return;
       }

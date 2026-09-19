@@ -23,6 +23,21 @@ describe("Home pinned-position options", () => {
   });
 });
 
+describe("Home hero-banner setting", () => {
+  it("is skipped by controller navigation in Legacy Home but available in Normal and Immersive", () => {
+    const t = (key: string) => key;
+    const items = buildSettingsItems(t as never, "default");
+
+    for (const home_mode of ["semi", "immersive"]) {
+      const navigable = getSectionNavigableItems(0, items, { ...DEFAULT_SETTINGS, home_mode }, undefined, 1);
+      expect(navigable.some((item) => item.key === "show_immersive_hero_art")).toBe(true);
+    }
+
+    const legacy = getSectionNavigableItems(0, items, { ...DEFAULT_SETTINGS, home_mode: "normal" }, undefined, 1);
+    expect(legacy.some((item) => item.key === "show_immersive_hero_art")).toBe(false);
+  });
+});
+
 describe("Data settings navigation", () => {
   it("renders device storage but excludes it from gamepad focus", () => {
     const t = (key: string) => key;

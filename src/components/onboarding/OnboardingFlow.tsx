@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { IoChevronBack, IoChevronForward, IoLockClosedOutline } from "react-icons/io5";
 import i18n from "../../i18n";
 import { useTheme } from "../../contexts/ThemeContext";
+import { ToggleKnob } from "../ui";
 import {
   ACCENTS,
   THEME_LOCKED_SETTINGS,
@@ -18,6 +20,7 @@ import {
   ACCOUNT_ROWS,
   ACCENT_ITEMS,
   ESSENTIAL_ROWS,
+  HOME_ROWS,
   LANGUAGE_OPTIONS,
   PROGRESS_STEPS,
   SOURCE_ROWS,
@@ -104,6 +107,14 @@ export function OnboardingFlow({
     draftRef.current = { ...draftRef.current, ...updates };
     previewSettings(updates);
   }, [previewSettings]);
+  const setHomeMode = useCallback((homeMode: string) => {
+    const updates: Partial<Settings> = {
+      home_mode: homeMode,
+      cinematic_home: homeMode === "immersive",
+    };
+    if (homeMode === "semi" && settingsRef.current.home_pinned_pos === "bottom") updates.home_pinned_pos = "top";
+    setDraft(updates);
+  }, [setDraft]);
 
   const persistDraft = useCallback(() => {
     if (Object.keys(draftRef.current).length === 0) return;
@@ -189,6 +200,11 @@ export function OnboardingFlow({
     const current = cursorRef.current;
     const row = Math.floor(current / cols);
     const col = current % cols;
+    if (currentStep === "home" && settingsRef.current.home_mode === "normal" && current === 0 && direction === "down") {
+      focusFooter(1);
+      playSound();
+      return;
+    }
     if (direction === "down" && (row + 1) * cols >= count) {
       focusFooter(1);
       playSound();
@@ -228,6 +244,21 @@ export function OnboardingFlow({
       goToStep(stepIndexRef.current + 1);
       return;
     }
+    if (currentStep === "home") {
+      const row = HOME_ROWS[cursorRef.current];
+      if (row.kind === "toggle") {
+        if (settingsRef.current.home_mode === "normal") return;
+        const current = Boolean(settingsRef.current[row.key]);
+        setDraft({ [row.key]: !current } as Partial<Settings>);
+        playSoundAlt();
+      } else {
+        const current = row.options.indexOf(String(settingsRef.current[row.key]));
+        const next = row.options[(current + 1) % row.options.length];
+        setHomeMode(next);
+        playSoundAlt();
+      }
+      return;
+    }
     if (currentStep === "sources") {
       const row = SOURCE_ROWS[cursorRef.current];
       const current = Boolean(settingsRef.current[row.key]);
@@ -257,13 +288,23 @@ export function OnboardingFlow({
         playSoundAlt();
       }
     }
-  }, [applyFocusValue, closeFlow, goToStep, onOpenAccount, persistDraft, playSoundAlt, setDraft]);
+  }, [applyFocusValue, closeFlow, goToStep, onOpenAccount, persistDraft, playSoundAlt, setDraft, setHomeMode]);
 
   const horizontal = useCallback((direction: 1 | -1) => {
     const currentStep = stepRef.current;
     if (footerFocusRef.current !== null) {
       moveCursor(direction === 1 ? "right" : "left");
       return;
+    }
+    if (currentStep === "home") {
+      const row = HOME_ROWS[cursorRef.current];
+      if (row.kind === "cycle") {
+        const current = row.options.indexOf(String(settingsRef.current[row.key]));
+        const next = row.options[(current + direction + row.options.length) % row.options.length];
+        setHomeMode(next);
+        playSound();
+        return;
+      }
     }
     if (currentStep === "essentials") {
       const row = ESSENTIAL_ROWS[cursorRef.current];
@@ -277,7 +318,7 @@ export function OnboardingFlow({
     }
     if (stepCols(currentStep) === 1) return;
     moveCursor(direction === 1 ? "right" : "left");
-  }, [moveCursor, playSound, setDraft]);
+  }, [moveCursor, playSound, setDraft, setHomeMode]);
 
   const activateRef = useRef(activate);
   const closeFlowRef = useRef(closeFlow);
@@ -361,6 +402,7 @@ export function OnboardingFlow({
   const tileOutline = (focused: boolean, active: boolean) => focusOutline(footerFocus === null && focused, active);
 
   const focusCard = (index: number, preview = false) => {
+    if (stepRef.current === "home" && index === 1 && settingsRef.current.home_mode === "normal") return;
     focusFooter(null);
     if (cursorRef.current === index) return;
     cursorRef.current = index;
@@ -489,23 +531,44 @@ export function OnboardingFlow({
       );
     }
 
-    if (step === "sources" || step === "essentials") {
-      const rows = step === "sources" ? SOURCE_ROWS : ESSENTIAL_ROWS;
+    if (step === "home" || step === "sources" || step === "essentials") {
+      const rows = step === "home" ? HOME_ROWS : step === "sources" ? SOURCE_ROWS : ESSENTIAL_ROWS;
       return (
         <div className="lo-onb-grid" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {rows.map((row, index) => {
             const isCycle = "kind" in row && row.kind === "cycle";
             const value = settings[row.key];
+            const disabled = step === "home" && row.key === "show_immersive_hero_art" && settings.home_mode === "normal";
+            const shownValue = disabled ? true : Boolean(value);
             return (
-              <div key={row.key} className="lo-onb-card" onClick={() => { focusCard(index); activate(); }} onMouseMove={() => focusCard(index)}
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", cursor: "pointer", borderRadius: surfaceStyle === "win9x" ? 0 : 12, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", ...tileOutline(cursor === index, false) }}>
-                <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{t(row.labelKey)}</span>
+              <div key={row.key} className="lo-onb-card" aria-disabled={disabled} data-disabled={disabled || undefined} onClick={() => { if (disabled) return; focusCard(index); activate(); }} onMouseMove={() => { if (!disabled) focusCard(index); }}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, padding: "14px 18px", cursor: disabled ? "not-allowed" : "pointer", borderRadius: surfaceStyle === "win9x" ? 0 : 12, background: disabled ? (isDark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)") : isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", ...tileOutline(cursor === index && !disabled, false) }}>
+                <span style={{ fontSize: 14, fontWeight: 500, color: disabled ? theme.textDim : theme.text }}>{t(row.labelKey)}</span>
                 {isCycle ? (
-                  <span style={{ fontSize: 12, fontWeight: 700, color: accent.primary }}>{t(`settings.values.${String(value)}`, String(value))}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <button type="button" aria-label={t("onboarding.previousOption")} onClick={(event) => { event.stopPropagation(); focusCard(index); horizontal(-1); }}
+                        style={{ display: "grid", placeItems: "center", width: 28, height: 28, padding: 0, borderRadius: surfaceStyle === "win9x" ? 0 : 7, border: `1px solid ${theme.textFaint}`, background: "transparent", color: theme.text, cursor: "pointer" }}>
+                        <IoChevronBack size={16} />
+                      </button>
+                      <span style={{ minWidth: 72, textAlign: "center", fontSize: 12, fontWeight: 700, color: accent.primary }}>{t(row.key === "home_mode" ? `settings.homeModeValues.${String(value)}` : `settings.values.${String(value)}`, String(value))}</span>
+                      <button type="button" aria-label={t("onboarding.nextOption")} onClick={(event) => { event.stopPropagation(); focusCard(index); horizontal(1); }}
+                        style={{ display: "grid", placeItems: "center", width: 28, height: 28, padding: 0, borderRadius: surfaceStyle === "win9x" ? 0 : 7, border: `1px solid ${theme.textFaint}`, background: "transparent", color: theme.text, cursor: "pointer" }}>
+                        <IoChevronForward size={16} />
+                      </button>
+                    </div>
                 ) : (
-                  <span style={{ fontSize: 12, fontWeight: 700, color: value ? accent.primary : theme.textFaint }}>
-                    {value ? t("onboarding.on") : t("onboarding.off")}
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {disabled && (
+                      <span style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 7px", borderRadius: surfaceStyle === "win9x" ? 0 : 999, border: `1px solid ${theme.textFaint}`, fontSize: 10, fontWeight: 700, color: theme.textDim, whiteSpace: "nowrap" }}>
+                        <IoLockClosedOutline size={12} />
+                        {t("onboarding.home.legacyHeroLocked")}
+                      </span>
+                    )}
+                    <span style={{ fontSize: 11, fontWeight: 700, color: disabled ? theme.textDim : shownValue ? accent.primary : theme.textFaint }}>{shownValue ? t("onboarding.on") : t("onboarding.off")}</span>
+                    <div style={{ opacity: disabled ? 0.55 : 1 }}>
+                      <ToggleKnob value={shownValue} />
+                    </div>
+                  </div>
                 )}
               </div>
             );
