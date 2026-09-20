@@ -25,8 +25,8 @@ export interface AsciiRainProps {
   style?: CSSProperties;
 }
 
-const DEFAULT_CHARS =
-  "アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEF<>/\\|=+*:.";
+// Latin-only so Cascadia/Consolas/WebView2 never substitute CJK tofu or full-width glyphs.
+const DEFAULT_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<>/\\|=+*:.";
 
 // ---- Component ---------------------------------------------
 
