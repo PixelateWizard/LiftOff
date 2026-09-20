@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented — Complete accent placeholder artwork:** Atomic, Aqua, Sage, and Copper now have portrait cover placeholders matching the established LiftOff rocket composition and their existing wide hero assets. Focused asset coverage, SVG structure checks, production build, docs validation, and diff validation pass; the native WebView2/theme-gallery visual remains the final gate.
+- **Implemented:** Unboxed Immersive hero copy sits above Smart-bar clearance. Animated hero mode shows cached static banners when no video URL exists; art backfill includes installed games never attempted, and onboarding finish kicks a library art fetch. `npm run test` (heroMedia, smartBar, useArtBackfill), `npm run build`, `git diff --check`, and `docs:check` pass. Live Immersive Home + first-launch art in WebView2 was not re-checked.
 
 ## Start-of-Task Workflow
 
@@ -20,7 +20,7 @@ If the user sends only a `.md` file, treat it as a project proposal and carry it
 
 1. **English-only code comments.** Respond in the user's language, but keep every code comment in English.
 2. **Persisted Rust fields require serde defaults.** Every new field in `Settings` or another persisted Rust struct needs `#[serde(default)]` or `#[serde(default = "...")]` and a matching default initializer.
-3. **Mirror shipped settings across layers.** Keep Rust settings/defaults, TypeScript types/defaults, Settings UI, and locales aligned unless the request explicitly scopes a backend-only foundation.
+3. **Mirror shipped settings across layers.** Keep Rust settings/defaults, TypeScript types/defaults, Settings UI, and locales aligned unless the request explicitly scopes a backend-only foundation. Missing locale copy may be auto-translated from English; keep identical key trees, `{{placeholders}}`, and product names, and do not leave `TODO(fr)`/`TODO:es` markers unless the user asks for a native-speaker pass.
 4. **No unapproved Xbox branding in shipped UI.** Do not ship the Xbox logo or the word “Xbox” in user-facing UI without Microsoft trademark approval; use generic account/gamepad visuals. Technical source identifiers may remain internal.
 5. **Secrets stay out of source, JSON, logs, and DOM.** SGDB and Spotify identifiers remain user-supplied where required; refresh tokens belong in Windows Credential Manager.
 6. **Honor scope boundaries.** Do not expand a narrowly requested backend, frontend, theme, mode, or validation task into adjacent work.

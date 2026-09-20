@@ -36,7 +36,7 @@ export function LofiBg({ lofiVideoRef, lofiBg, lofiEffectsEnabled, appPaused }: 
       window.removeEventListener("focus", play);
       document.removeEventListener("visibilitychange", playOnVisible);
     };
-  }, [appPaused, lofiEffectsEnabled, lofiVideoRef]);
+  }, [appPaused, lofiEffectsEnabled, lofiVideoRef, lofiBg]);
 
   return (
     <>

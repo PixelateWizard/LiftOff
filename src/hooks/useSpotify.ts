@@ -50,6 +50,17 @@ interface PlaybackOverride {
   isPlaying?: boolean;
 }
 
+// Stop is local UI state: Spotify Connect only pauses, so a leftover paused
+// item would otherwise keep filling the now-playing bar until LiftOff exits.
+export function resolveStoppedPlayback(
+  nextTrack: SpotifyTrack | null,
+  stopped: boolean,
+): { track: SpotifyTrack | null; stopped: boolean } {
+  if (!stopped) return { track: nextTrack, stopped: false };
+  if (nextTrack?.isPlaying) return { track: nextTrack, stopped: false };
+  return { track: null, stopped: true };
+}
+
 const defaultStatus: SpotifyStatus = {
   connected: false,
   client_id_set: false,
@@ -129,6 +140,7 @@ export function useSpotify() {
   const statusRef = useRef(status);
   const trackRef = useRef<SpotifyTrack | null>(track);
   const playbackOverrideRef = useRef<PlaybackOverride | null>(null);
+  const stoppedRef = useRef(false);
 
   useEffect(() => {
     statusRef.current = status;
@@ -147,32 +159,32 @@ export function useSpotify() {
 
   const applyPlaybackOverride = useCallback((nextTrack: SpotifyTrack | null) => {
     const override = playbackOverrideRef.current;
-    if (!override) return nextTrack;
-    if (Date.now() > override.until) {
-      playbackOverrideRef.current = null;
-      return nextTrack;
+    let resolved = nextTrack;
+    if (override) {
+      if (Date.now() > override.until) {
+        playbackOverrideRef.current = null;
+      } else if (!nextTrack) {
+        resolved = nextTrack;
+      } else if (override.staleTrackId && nextTrack.id === override.staleTrackId) {
+        resolved = null;
+      } else if (override.staleTrackId && nextTrack.id !== override.staleTrackId) {
+        playbackOverrideRef.current = null;
+        resolved = nextTrack;
+      } else if (override.trackId && nextTrack.id && nextTrack.id !== override.trackId) {
+        playbackOverrideRef.current = null;
+        resolved = nextTrack;
+      } else {
+        resolved = {
+          ...nextTrack,
+          progressMs: override.progressMs ?? nextTrack.progressMs,
+          isPlaying: override.isPlaying ?? nextTrack.isPlaying,
+        };
+      }
     }
 
-    if (!nextTrack) return nextTrack;
-
-    if (override.staleTrackId && nextTrack.id === override.staleTrackId) {
-      return null;
-    }
-    if (override.staleTrackId && nextTrack.id !== override.staleTrackId) {
-      playbackOverrideRef.current = null;
-      return nextTrack;
-    }
-
-    if (override.trackId && nextTrack.id && nextTrack.id !== override.trackId) {
-      playbackOverrideRef.current = null;
-      return nextTrack;
-    }
-
-    return {
-      ...nextTrack,
-      progressMs: override.progressMs ?? nextTrack.progressMs,
-      isPlaying: override.isPlaying ?? nextTrack.isPlaying,
-    };
+    const stopped = resolveStoppedPlayback(resolved, stoppedRef.current);
+    stoppedRef.current = stopped.stopped;
+    return stopped.track;
   }, []);
 
   const refreshStatus = useCallback(async () => {
@@ -181,6 +193,7 @@ export function useSpotify() {
       statusRef.current = next;
       setStatus(next);
       if (!next.connected) {
+        stoppedRef.current = false;
         setTrack(null);
         setPlaylists([]);
         setDevices([]);
@@ -446,6 +459,15 @@ export function useSpotify() {
       immediateRefresh: false,
       refreshDelays: [900, 1800, 3000],
     }),
+    stop: () => {
+      stoppedRef.current = true;
+      setTrack(null);
+      trackRef.current = null;
+      return runControl("spotify_pause", undefined, {
+        immediateRefresh: false,
+        refreshDelays: [900, 1800, 3000],
+      });
+    },
     next: () => runControl("spotify_next", undefined, {
       optimistic: () => {
         const current = trackRef.current;

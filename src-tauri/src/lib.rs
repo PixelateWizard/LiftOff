@@ -173,6 +173,8 @@ pub struct Settings {
     pub onyx_top_light: bool,
     #[serde(default = "default_true")]
     pub lofi_music_enabled: bool,
+    #[serde(default = "default_lofi_scene", alias = "lofi_background")]
+    pub lofi_scene: String,
     #[serde(default = "default_true")]
     pub sfx_enabled: bool,
     pub default_tab: String,
@@ -252,13 +254,21 @@ pub struct Settings {
     pub show_immersive_hero_art: bool,
     #[serde(default)]
     pub hide_bottom_bar: bool,
-    // Helper bar display mode: "full" | "minimal" | "hidden".
-    // Empty means the legacy hide_bottom_bar value has not been migrated yet.
+    // Helper bar display mode: "smart" | "full" | "hidden".
+    // "minimal" is a legacy value that the frontend normalizes to "smart".
+    // Empty means the frontend migration has not run yet.
     #[serde(default)]
     pub bottombar_mode: String,
-    // In hidden mode, briefly peek the pill when the Spotify track changes.
+    // In hidden mode, briefly peek the pill for bar events (track change,
+    // pins, installs, library refresh). Wire key kept for compatibility.
     #[serde(default = "default_true")]
     pub bottombar_peek_on_track: bool,
+    // Smart mode: fold the hint group away after a few idle seconds.
+    #[serde(default = "default_true")]
+    pub bottombar_idle_collapse: bool,
+    // One-time 2.0 marker: Full and Minimal were moved to Smart once.
+    #[serde(default)]
+    pub bottombar_smart_migrated: bool,
     #[serde(default = "default_true")]
     pub topbar_background: bool,
     #[serde(default = "default_true")]
@@ -282,7 +292,7 @@ pub struct Settings {
     pub nav_bumpers_pos: String,
     #[serde(default = "default_tabbar_show_buttons")]
     pub tabbar_show_buttons: String,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub tabbar_text_tabs: bool,
     #[serde(default)]
     pub tabbar_with_background: bool,
@@ -340,6 +350,9 @@ pub struct Settings {
     pub fse_hard_reload_recovery: bool,
 }
 
+fn default_lofi_scene() -> String {
+    "cozy".to_string()
+}
 fn default_language() -> String {
     "auto".to_string()
 }
@@ -353,7 +366,7 @@ fn default_app_list_cols() -> i32 {
     1
 }
 fn default_nav_bumpers_pos() -> String {
-    "bottom".to_string()
+    "header".to_string()
 }
 fn default_tabbar_show_buttons() -> String {
     "tabbar".to_string()
@@ -383,7 +396,7 @@ fn default_hero_content_pos() -> String {
     "bottom".to_string()
 }
 fn default_home_pinned_pos() -> String {
-    "top".to_string()
+    "none".to_string()
 }
 fn default_gamepad_platform() -> String {
     "xbox".to_string()
@@ -415,6 +428,7 @@ impl Default for Settings {
             stars_enabled: true,
             ui_motion: true,
             lofi_music_enabled: true,
+            lofi_scene: default_lofi_scene(),
             sfx_enabled: true,
             default_tab: "Home".to_string(),
             scan_steam: true,
@@ -456,6 +470,8 @@ impl Default for Settings {
             hide_bottom_bar: false,
             bottombar_mode: String::new(),
             bottombar_peek_on_track: true,
+            bottombar_idle_collapse: true,
+            bottombar_smart_migrated: false,
             topbar_background: true,
             bottombar_background: true,
             home_cover_scale: 1.0,
@@ -465,9 +481,9 @@ impl Default for Settings {
             games_sort: "recent".to_string(),
             app_list_view: false,
             app_list_cols: 1,
-            nav_bumpers_pos: "bottom".to_string(),
+            nav_bumpers_pos: "header".to_string(),
             tabbar_show_buttons: "tabbar".to_string(),
-            tabbar_text_tabs: false,
+            tabbar_text_tabs: true,
             tabbar_with_background: false,
             tabbar_background_compact: false,
             tabbar_font_weight: "medium".to_string(),
@@ -480,7 +496,7 @@ impl Default for Settings {
             show_home_collection_names: true,
             show_hero_cover: true,
             show_home_pinned: true,
-            home_pinned_pos: "top".to_string(),
+            home_pinned_pos: "none".to_string(),
             onyx_flat_settings: true,
             gamepad_platform: "xbox".to_string(),
             gamepad_icons_colored: false,
@@ -522,6 +538,20 @@ mod settings_compat_tests {
     }
 
     #[test]
+    fn smart_bar_fields_default_for_existing_files() {
+        let mut value = serde_json::to_value(Settings::default()).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.insert("bottombar_mode".to_string(), serde_json::json!("full"));
+        object.remove("bottombar_idle_collapse");
+        object.remove("bottombar_smart_migrated");
+
+        let loaded: Settings = serde_json::from_value(value).unwrap();
+        assert_eq!(loaded.bottombar_mode, "full");
+        assert!(loaded.bottombar_idle_collapse);
+        assert!(!loaded.bottombar_smart_migrated);
+    }
+
+    #[test]
     fn missing_onboarding_flag_reads_as_complete() {
         let raw = r#"{"accent":"ember","theme":"space"}"#;
         let mut settings: Settings = serde_json::from_str(raw).unwrap_or_default();
@@ -536,6 +566,25 @@ mod settings_compat_tests {
     #[test]
     fn fresh_default_is_not_complete() {
         assert!(!Settings::default().onboarding_complete);
+    }
+
+    #[test]
+    fn lofi_scene_defaults_to_cozy_and_reads_legacy_background_alias() {
+        let mut missing_value = serde_json::to_value(Settings::default()).unwrap();
+        missing_value.as_object_mut().unwrap().remove("lofi_scene");
+        let missing: Settings = serde_json::from_value(missing_value).unwrap();
+        assert_eq!(missing.lofi_scene, "cozy");
+
+        let mut aliased_value = serde_json::to_value(Settings::default()).unwrap();
+        let object = aliased_value.as_object_mut().unwrap();
+        object.remove("lofi_scene");
+        object.insert("lofi_background".to_string(), serde_json::json!("desk"));
+        let aliased: Settings = serde_json::from_value(aliased_value).unwrap();
+        assert_eq!(aliased.lofi_scene, "desk");
+
+        let saved = serde_json::to_value(aliased).unwrap();
+        assert_eq!(saved["lofi_scene"], "desk");
+        assert!(saved.get("lofi_background").is_none());
     }
 }
 
@@ -5203,6 +5252,181 @@ fn restart_app(app: tauri::AppHandle) {
     app.restart();
 }
 
+fn wipe_tree(path: &Path) {
+    if path.is_dir() {
+        if let Ok(entries) = std::fs::read_dir(path) {
+            for entry in entries.flatten() {
+                wipe_tree(&entry.path());
+            }
+        }
+        let _ = std::fs::remove_dir(path);
+    } else {
+        let _ = std::fs::remove_file(path);
+    }
+}
+
+/// Best-effort wipe. WebView2 can keep art files locked while the window is
+/// open, so success is "settings.json is gone" even if leftover cache files remain.
+fn wipe_liftoff_dir(dir: &Path) -> Result<(), String> {
+    if !dir.exists() {
+        return Ok(());
+    }
+    let settings = dir.join("settings.json");
+    let _ = std::fs::remove_file(&settings);
+    wipe_tree(dir);
+    if dir.exists() {
+        let _ = std::fs::remove_dir_all(dir);
+    }
+    if !dir.exists() || !settings.exists() {
+        Ok(())
+    } else {
+        Err("failed to wipe LiftOff data: settings.json is still present".into())
+    }
+}
+
+const FACTORY_RESET_PENDING: &str = "factory-reset.pending";
+
+fn factory_reset_pending_path_in(dir: &Path) -> PathBuf {
+    dir.join(FACTORY_RESET_PENDING)
+}
+
+fn mark_factory_reset_pending_in(dir: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(dir).map_err(|e| format!("failed to mark factory reset: {e}"))?;
+    std::fs::write(factory_reset_pending_path_in(dir), b"1")
+        .map_err(|e| format!("failed to mark factory reset: {e}"))
+}
+
+fn webview_storage_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Some(local) = dirs::data_local_dir() {
+        dirs.push(local.join("com.taylo.liftoff"));
+    }
+    if let Some(roaming) = dirs::data_dir() {
+        dirs.push(roaming.join("com.taylo.liftoff"));
+    }
+    dirs
+}
+
+fn apply_pending_factory_reset_in(dir: &Path, extra_dirs: &[PathBuf]) {
+    if !factory_reset_pending_path_in(dir).exists() {
+        return;
+    }
+    let _ = wipe_liftoff_dir(dir);
+    if dir.join("settings.json").exists() {
+        let _ = std::fs::remove_file(dir.join("settings.json"));
+    }
+    for extra in extra_dirs {
+        if extra != dir {
+            let _ = wipe_liftoff_dir(extra);
+        }
+    }
+}
+
+fn apply_pending_factory_reset() {
+    let dir = liftoff_dir();
+    if !factory_reset_pending_path_in(&dir).exists() {
+        return;
+    }
+    clear_factory_reset_credentials();
+    apply_pending_factory_reset_in(&dir, &webview_storage_dirs());
+}
+
+fn clear_factory_reset_credentials() {
+    if let Some(meta) = load_steam_account_meta() {
+        if !meta.account_name.is_empty() {
+            clear_steam_refresh_token(&meta.account_name);
+        }
+    }
+    clear_xbox_refresh_token();
+    clear_refresh_token();
+}
+
+/// Mark a pending wipe and restart. Deleting `%LOCALAPPDATA%/LiftOff` while
+/// WebView2 still has art files mapped fails on Windows and can leave settings
+/// in place with broken hero images. The next process start applies the wipe
+/// before the window opens.
+#[tauri::command]
+fn factory_reset_app(app: tauri::AppHandle) -> Result<(), String> {
+    let _ = app.autolaunch().disable();
+    mark_factory_reset_pending_in(&liftoff_dir())?;
+    app.restart();
+}
+
+#[cfg(test)]
+mod factory_reset_tests {
+    use super::{
+        apply_pending_factory_reset_in, factory_reset_pending_path_in, mark_factory_reset_pending_in,
+        wipe_liftoff_dir,
+    };
+    use std::fs::OpenOptions;
+    use std::io::Write;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(label: &str) -> std::path::PathBuf {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("liftoff-{label}-{stamp}"))
+    }
+
+    #[test]
+    fn removes_an_app_data_directory() {
+        let dir = temp_dir("factory-reset");
+        std::fs::create_dir_all(dir.join("art")).unwrap();
+        std::fs::write(dir.join("settings.json"), "{}").unwrap();
+        wipe_liftoff_dir(&dir).unwrap();
+        assert!(!dir.exists());
+        wipe_liftoff_dir(&dir).unwrap();
+    }
+
+    #[test]
+    fn still_removes_settings_when_a_file_is_open() {
+        let dir = temp_dir("factory-reset-locked");
+        std::fs::create_dir_all(dir.join("art")).unwrap();
+        std::fs::write(dir.join("settings.json"), "{}").unwrap();
+        std::fs::write(dir.join("pins.json"), "[]").unwrap();
+        let locked_path = dir.join("art").join("locked.bin");
+        let mut locked = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .read(true)
+            .open(&locked_path)
+            .unwrap();
+        locked.write_all(b"held").unwrap();
+        wipe_liftoff_dir(&dir).unwrap();
+        assert!(!dir.join("settings.json").exists());
+        drop(locked);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn apply_pending_is_noop_without_marker() {
+        let dir = temp_dir("factory-reset-noop");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("settings.json"), "{}").unwrap();
+        apply_pending_factory_reset_in(&dir, &[]);
+        assert!(dir.join("settings.json").exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn apply_pending_wipes_when_marker_present() {
+        let dir = temp_dir("factory-reset-pending");
+        let extra = temp_dir("factory-reset-webview");
+        std::fs::create_dir_all(extra.join("EBWebView")).unwrap();
+        std::fs::write(extra.join("EBWebView").join("cookie"), b"x").unwrap();
+        mark_factory_reset_pending_in(&dir).unwrap();
+        std::fs::write(dir.join("settings.json"), "{}").unwrap();
+        assert!(factory_reset_pending_path_in(&dir).exists());
+        apply_pending_factory_reset_in(&dir, std::slice::from_ref(&extra));
+        assert!(!dir.join("settings.json").exists());
+        assert!(!extra.exists());
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&extra);
+    }
+}
+
 // Device power control.
 //
 // Uses shutdown.exe rather than InitiateShutdownW because shutdown.exe acquires
@@ -9487,6 +9711,7 @@ async fn launch_app(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    apply_pending_factory_reset();
     tauri::Builder::default()
         .manage(fse_watcher::FseWatch::default())
         .plugin(tauri_plugin_opener::init())
@@ -9523,6 +9748,7 @@ pub fn run() {
             open_uri,
             exit_app,
             restart_app,
+            factory_reset_app,
             restart_device,
             shutdown_device,
             show_main_window,

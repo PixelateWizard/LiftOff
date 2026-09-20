@@ -1,6 +1,13 @@
 import type { CSSProperties } from "react";
 import type { ThemeValue } from "../../contexts/ThemeContext";
 
+/** First-run setup lives outside the scaled app root so it can cover the shell. */
+export const ONBOARDING_OVERLAY_Z = 9500;
+/** Drop the setup overlay while an account dialog is open so it cannot cover it. */
+export const ONBOARDING_BENEATH_ACCOUNT_Z = 1500;
+/** Steam, Microsoft, and Spotify connect dialogs must beat onboarding (9500). */
+export const ACCOUNT_DIALOG_Z = 10000;
+
 export function modalOverlayStyle(zIndex = 9000): CSSProperties {
   return {
     position: "fixed",

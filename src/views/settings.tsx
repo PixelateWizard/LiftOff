@@ -3,15 +3,15 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { IoAlbumsOutline, IoChevronForward, IoColorPaletteOutline, IoGridOutline, IoHomeOutline, IoPersonCircleOutline } from "react-icons/io5";
-import { CollapsibleGroup, ToggleKnob, GamepadIconPreview, FocusRing } from "../components/ui";
-import { ControllerTestWidget } from "../components/ControllerTestWidget";
+import { CollapsibleGroup, ToggleKnob, FocusRing } from "../components/ui";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
-import { ACCENTS, APP_VERSION, FSE_RETURN_SHORTCUT_OPTIONS, GITHUB_REPO, THEME_LOCKED_SETTINGS, normalizeThemeKey } from "../constants";
+import { ACCENTS, APP_VERSION, FSE_RETURN_SHORTCUT_OPTIONS, GITHUB_REPO, HOME_PINNED_SHELF_ENABLED, LANGUAGE_OPTIONS, THEME_LOCKED_SETTINGS, normalizeThemeKey } from "../constants";
 import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem, SettingsAppearanceCategoryItem, SettingsAppearanceBackItem, XboxStatus, DriveStorageInfo } from "../types";
 import type { SpotifyStatus } from "../hooks/useSpotify";
 import { SPOTIFY_REDIRECT_URI } from "../components/spotify/constants";
 import { formatBytes } from "../utils/formatBytes";
+import { allowsBottomBumperBadges, normalizeBottomBarMode, resolveNavBumpersPos } from "../utils/smartBar";
 
 export interface SteamStatus {
   connected: boolean;
@@ -99,7 +99,7 @@ function settingValueLabel(key: string, value: string, t: TFunction): string {
     return String(t(`settings.homeModeValues.${value}`, String(t(`settings.values.${value}`, value))));
   }
   if (key === "bottombar_mode") {
-    const suffix = value === "minimal" ? "Minimal" : value === "hidden" ? "Hidden" : "Full";
+    const suffix = value === "full" ? "Full" : value === "hidden" ? "Hidden" : "Smart";
     return String(t(`settings.bottombarMode${suffix}`, value));
   }
   return String(t(`settings.values.${value}`, value));
@@ -148,6 +148,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "stars_enabled", section: 0, group: 0, label: bgLabel, type: "toggle", indent: true, subItems: activeTheme === "lofi" ? [
       { key: "lofi_music_enabled", label: t("settings.lofiMusic"), type: "toggle" },
     ] : undefined },
+    ...(activeTheme === "lofi" ? [{ key: "lofi_scene" as const, section: 0, group: 0, label: t("settings.lofiScene"), type: "lofi_scene_picker" as const, indent: true }] : []),
     { key: "ui_motion",     section: 0, group: 0, label: t("settings.uiMotion"),      type: "toggle", indent: true },
     { key: "sfx_enabled",   section: 0, group: 0, label: t("settings.sfxEnabled"),    type: "toggle", indent: true },
     { key: "surface_style", section: 0, group: 0, label: t("settings.surfaceStyle"),  type: "surface_picker", indent: true },
@@ -157,7 +158,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "home_launch_games_directly", section: 0, group: 1, label: t("settings.homeLaunchGamesDirectly"), type: "toggle" },
     { key: "show_immersive_hero_art",section: 0, group: 1, label: t("settings.showGameHeroBanner"),type: "toggle" },
     { key: "show_hero_cover",        section: 0, group: 1, label: t("settings.showHeroCover"),        type: "toggle" },
-    { key: "home_pinned_pos",        section: 0, group: 1, label: t("settings.homePinnedPos"),         type: "cycle", options: ["none", "top", "bottom"] },
+    ...(HOME_PINNED_SHELF_ENABLED ? [{ key: "home_pinned_pos" as const, section: 0, group: 1, label: t("settings.homePinnedPos"), type: "cycle" as const, options: ["none", "top", "bottom"] }] : []),
     { key: "show_home_recents",      section: 0, group: 1, label: t("settings.showHomeRecents"),      type: "toggle" },
     { key: "show_recent_games_only", section: 0, group: 1, label: t("settings.showRecentGamesOnly"),  type: "toggle" },
     { key: "home_section_title_size",section: 0, group: 1, label: t("settings.homeSectionTitleSize"), type: "cycle", options: ["small", "medium", "large"] },
@@ -184,14 +185,14 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     ]},
 
     D("navbar", 0, 3),
-    { key: "bottombar_mode",      section: 0, group: 3, label: t("settings.bottombarMode"),       type: "cycle", options: ["full", "minimal", "hidden"] },
-    { key: "bottombar_peek_on_track", section: 0, group: 3, label: t("settings.bottombarPeekOnTrack"), type: "toggle", indent: true },
+    { key: "bottombar_mode",      section: 0, group: 3, label: t("settings.bottombarMode"),       type: "cycle", options: ["smart", "full", "hidden"] },
+    { key: "bottombar_idle_collapse", section: 0, group: 3, label: t("settings.bottombarIdleCollapse"), type: "toggle", indent: true },
+    { key: "bottombar_peek_on_track", section: 0, group: 3, label: t("settings.bottombarPeekOnActivity"), type: "toggle", indent: true },
     { key: "topbar_background",   section: 0, group: 3, label: t("settings.topbarBackground"),   type: "toggle" },
     { key: "tabbar_with_background", section: 0, group: 3, label: t("settings.tabbarBackground"), type: "toggle", subItems: [
       { key: "tabbar_background_compact", label: t("settings.tabbarBackgroundCompact"), type: "toggle" },
     ]},
     { key: "bottombar_background", section: 0, group: 3, label: t("settings.bottombarBackground"), type: "toggle", subItems: [
-      { key: "bottombar_compact",   label: t("settings.bottombarCompact"),   type: "cycle", options: ["off", "home", "always", "except_home"] },
       { key: "bottombar_alignment", label: t("settings.bottombarAlignment"), type: "cycle", options: ["left", "center", "right"] },
     ]},
     { key: "nav_bumpers_pos",     section: 0, group: 3, label: t("settings.navBumpersPos"),      type: "cycle",  options: ["header", "bottom", "hidden"] },
@@ -227,7 +228,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "launch_at_startup",section: 2, label: t("settings.launchAtStartup"), type: "toggle" },
 
     D("localization", 2),
-    { key: "language",    section: 2, label: t("settings.language"),   type: "cycle",  options: ["auto","en","fr"] },
+    { key: "language",    section: 2, label: t("settings.language"),   type: "cycle",  options: [...LANGUAGE_OPTIONS] },
     { key: "time_format", section: 2, label: t("settings.timeFormat"), type: "cycle",  options: ["auto","12h","24h"] },
     { key: "show_clock",  section: 2, label: t("settings.showClock"),  type: "toggle" },
     { key: "show_date",   section: 2, label: t("settings.showDate"),   type: "toggle" },
@@ -248,14 +249,15 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "gamepad_icons_filled",      section: 3, label: t("settings.gamepadIconsFilled"),     type: "toggle" },
     { key: "gamepad_icons_theme_color", section: 3, label: t("settings.gamepadIconsThemeColor"), type: "toggle" },
     { key: "gamepad_btn_size",          section: 3, label: t("settings.gamepadBtnSize"),          type: "cycle",  options: ["small", "medium", "large"] },
-    { key: "gamepad_icon_preview",      section: 3, label: "",                                   type: "icon_preview" },
-    { key: "controller_test",        section: 3, label: t("settings.controllerTest"),      type: "controller_test" },
+    { key: "gamepad_icon_preview",      section: 3, label: t("settings.gamepadIconPreview"),     type: "icon_preview" },
+    { key: "controller_test",           section: 3, label: t("settings.controllerTest"),         type: "controller_test" },
 
     // ── Data ─────────────────────────────────────────────────────
     { key: "device_storage", section: 4, label: t("settings.deviceStorage"), type: "storage_info" },
     { key: "clear_recents", section: 4, label: t("settings.clearRecents"), type: "action" },
     { key: "clear_cache",   section: 4, label: t("settings.clearCache"),   type: "action" },
     { key: "rerun_onboarding", section: 4, label: t("settings.rerunOnboarding"), type: "action" },
+    { key: "factory_reset", section: 4, label: t("settings.factoryReset"), type: "action" },
 
     // ── About ─────────────────────────────────────────────────────
     { key: "version",      section: 5, label: t("settings.version", { version: APP_VERSION }), type: "info" },
@@ -275,6 +277,8 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "credit3", section: 5, label: "fantasy world UI sound",           author: "114802300",     license: "Creative Commons 0", url: "https://freesound.org/s/841346/",  type: "attribution" },
     { key: "credit4", section: 5, label: "Simple or Cute UI / UX / Interface Pause sound", author: "Feraly_", license: "Creative Commons 0", url: "https://freesound.org/s/836452/", type: "attribution" },
     { key: "credit5", section: 5, label: "Universal UI Soundpack",           author: "Nathan Gibson", license: "CC BY 4.0",  url: "https://cyrex-studios.itch.io/universal-ui-soundpack", type: "attribution" },
+    { key: "credit6", section: 5, label: "Night Stock Videos by Vecteezy",   author: "Vecteezy",      license: "Vecteezy Free License", url: "https://www.vecteezy.com/free-videos/night", type: "attribution" },
+    { key: "credit7", section: 5, label: "Rainy street and pixel night videos", author: "Vecteezy", license: "Vecteezy Free License", url: "https://www.vecteezy.com/free-videos/rain", type: "attribution" },
   ];
 
   // Insert theme-specific items after stars_enabled (only visible for that theme)
@@ -307,6 +311,7 @@ export function getSectionNavigableItems(
   const visibleItems = allItems
     .filter((i) => i.section === sectionIndex)
     .filter((i) => i.key !== "bottombar_peek_on_track" || settings.bottombar_mode === "hidden")
+    .filter((i) => i.key !== "bottombar_idle_collapse" || normalizeBottomBarMode(settings.bottombar_mode) === "smart")
     .filter((i) => i.key !== "show_immersive_hero_art" || settings.home_mode !== "normal")
     .filter((i) => sectionIndex !== 0 || visibleInAppearance(i, appearanceGroup))
     .filter((i) => !(sectionIndex === 0 && appearanceGroup !== null && i.type === "divider" && i.group === appearanceGroup))
@@ -331,8 +336,6 @@ export function getSectionNavigableItems(
         i.type !== "divider" &&
         i.type !== "info" &&
         i.type !== "storage_info" &&
-        i.type !== "icon_preview" &&
-        i.type !== "controller_test" &&
         !('locked' in i && i.locked)
     );
   return sectionIndex === 0 && appearanceGroup !== null
@@ -368,6 +371,7 @@ export interface SettingsScreenProps {
   onToggleHomeCollection?: (colName: string) => void;
   onOpenThemePicker: () => void;
   onOpenSurfacePicker: () => void;
+  onOpenLofiScenePicker: () => void;
   spotifyStatus?: SpotifyStatus;
   onOpenSpotifyGuide?: () => void;
   onSpotifyDisconnect?: () => void;
@@ -380,6 +384,9 @@ export interface SettingsScreenProps {
   onXboxDisconnect?: () => void;
   onXboxRefresh?: () => void;
   onRerunOnboarding?: () => void;
+  onFactoryReset?: () => void;
+  onOpenGamepadIconPreview?: () => void;
+  onOpenControllerTest?: () => void;
 }
 
 export function getSettingCycleOptions(
@@ -387,6 +394,9 @@ export function getSettingCycleOptions(
   settings: Settings
 ): readonly string[] {
   if (item.key === "home_pinned_pos" && settings.home_mode === "semi") {
+    return item.options.filter(option => option !== "bottom");
+  }
+  if (item.key === "nav_bumpers_pos" && !allowsBottomBumperBadges(settings.bottombar_mode)) {
     return item.options.filter(option => option !== "bottom");
   }
   return item.options;
@@ -419,6 +429,7 @@ export function SettingsScreen({
   onToggleHomeCollection,
   onOpenThemePicker,
   onOpenSurfacePicker,
+  onOpenLofiScenePicker,
   spotifyStatus,
   onOpenSpotifyGuide,
   onSpotifyDisconnect,
@@ -431,6 +442,9 @@ export function SettingsScreen({
   onXboxDisconnect,
   onXboxRefresh,
   onRerunOnboarding,
+  onFactoryReset,
+  onOpenGamepadIconPreview,
+  onOpenControllerTest,
 }: SettingsScreenProps) {
   const { t } = useTranslation();
   const { settingsRowGlass, accent, theme, isDark, glassEnabled, surfaceStyle, surface, resolvedTheme } = useTheme();
@@ -459,7 +473,8 @@ export function SettingsScreen({
       : item
   );
   const sectionItems = getVisibleSectionItems(settingsSection, ALL_ITEMS, appearanceGroup)
-    .filter((item) => item.key !== "bottombar_peek_on_track" || settings.bottombar_mode === "hidden");
+    .filter((item) => item.key !== "bottombar_peek_on_track" || settings.bottombar_mode === "hidden")
+    .filter((item) => item.key !== "bottombar_idle_collapse" || normalizeBottomBarMode(settings.bottombar_mode) === "smart");
   const navigableItems = getSectionNavigableItems(settingsSection, ALL_ITEMS, settings, { gameCollections, appCollections }, appearanceGroup);
   const isMaterial = surfaceStyle === "material";
   const isPixel = surfaceStyle === "win9x";
@@ -926,12 +941,30 @@ export function SettingsScreen({
       );
     }
 
+    if (item.type === "lofi_scene_picker") {
+      const currentScene = String(settings.lofi_scene ?? "cozy");
+      return (
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={onOpenLofiScenePicker}>
+          <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 12, color: accent.primary, fontWeight: 700 }}>
+              {String(t(`settings.values.${currentScene}`, currentScene))}
+            </span>
+            <span style={{ fontSize: 12, color: theme.textDim }}>{"\u21b5"}</span>
+          </div>
+          {onyxRing}
+        </div>
+      );
+    }
+
     if (item.type === "cycle") {
       const opts = getSettingCycleOptions(item, settings);
       const curVal = item.key === "theme"
         ? normalizeThemeKey(String(settings[item.key]))
         : item.key === "home_pinned_pos" && settings.home_mode === "semi" && settings[item.key] === "bottom"
           ? "top"
+          : item.key === "nav_bumpers_pos"
+            ? resolveNavBumpersPos(String(settings[item.key]), settings.bottombar_mode)
           : settings[item.key] as string;
       const cur = opts.indexOf(curVal);
       return (
@@ -1046,6 +1079,7 @@ export function SettingsScreen({
           if (item.key === "clear_cache")   handleClearCache();
           if (item.key === "reset_scale")   updateSetting("ui_scale", autoScale);
           if (item.key === "rerun_onboarding") onRerunOnboarding?.();
+          if (item.key === "factory_reset") onFactoryReset?.();
         }}>
           <span style={{ fontSize: 14, fontWeight: 500, color: item.key === "reset_scale" || item.key === "rerun_onboarding" ? theme.text : "#e84a4a" }}>{item.label}</span>
           <span style={{ fontSize: 12, color: theme.textDim }}>
@@ -1306,17 +1340,15 @@ export function SettingsScreen({
         </div>
       );
 
-    if (item.type === "icon_preview")
+    if (item.type === "icon_preview" || item.type === "controller_test")
       return (
-        <div key={item.key} data-settings-row="" style={{ ...settingsRowGlass, borderRadius: isPixel || isCyber ? 0 : isMaterial ? 8 : 16, padding: "14px 20px", marginBottom: 8 }}>
-          <GamepadIconPreview />
-        </div>
-      );
-
-    if (item.type === "controller_test")
-      return (
-        <div key={item.key} data-settings-row="" style={{ ...settingsRowGlass, borderRadius: isPixel || isCyber ? 0 : isMaterial ? 8 : 16, padding: "12px 20px", marginBottom: 8 }}>
-          <ControllerTestWidget />
+        <div key={item.key} data-settings-row="" className={focused ? "focused" : ""} ref={rowRef} style={rowStyle} onClick={() => {
+          if (item.type === "icon_preview") onOpenGamepadIconPreview?.();
+          else onOpenControllerTest?.();
+        }}>
+          <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
+          <span style={{ fontSize: 12, color: theme.textDim }}>{t("settings.status.open")}</span>
+          {onyxRing}
         </div>
       );
 

@@ -26,6 +26,14 @@ const TICK_DELAY_MS = 400;
 const HEAD_START_MS = 1500;
 const EMPTY_RECHECK_MS = 3000;
 
+export function isArtBackfillPending(
+  app: Pick<App, "app_type" | "id">,
+  resolved: Record<string, string | undefined>,
+  inFlight: Set<string>,
+): boolean {
+  return app.app_type === "game" && resolved[app.id] === undefined && !inFlight.has(app.id);
+}
+
 export function useArtBackfill({
   appsRef,
   gameArtRef,
@@ -51,11 +59,7 @@ export function useArtBackfill({
     const pickChunk = (): App[] => {
       const resolved = gameArtRef.current;
       const inFlight = inFlightRef.current;
-      const isPending = (app: App) =>
-        app.app_type === "game" &&
-        app.installed === false &&
-        resolved[app.id] === undefined &&
-        !inFlight.has(app.id);
+      const isPending = (app: App) => isArtBackfillPending(app, resolved, inFlight);
 
       const byId = new Map(appsRef.current.map((app) => [app.id, app]));
       const out: App[] = [];

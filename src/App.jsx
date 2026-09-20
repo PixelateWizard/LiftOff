@@ -1,6 +1,6 @@
 //Copyright (C) 2025 Taylor Denby
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "./i18n";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
@@ -24,10 +24,12 @@ import CloudGamePickerModal from "./components/modals/CloudGamePickerModal";
 import EditNameModal from "./components/modals/EditNameModal";
 import PowerModal from "./components/modals/PowerModal";
 import ControlsModal from "./components/modals/ControlsModal";
+import ControllerToolsModal from "./components/modals/ControllerToolsModal";
 import UpdateAvailableModal from "./components/modals/UpdateAvailableModal";
 import { SettingsScreen, buildSettingsItems, getSectionNavigableItems, SETTINGS_SECTIONS } from "./views/settings";
 import { ThemePickerModal } from "./components/ThemePickerModal";
 import { SurfacePickerModal } from "./components/SurfacePickerModal";
+import { LofiScenePickerModal } from "./components/LofiScenePickerModal";
 import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
 import { HomeView } from "./views/HomeView";
 import { GamesView } from "./views/GamesView";
@@ -62,6 +64,8 @@ import { useSystemStatus } from "./hooks/useSystemStatus";
 import { useUpdateCheck } from "./hooks/useUpdateCheck";
 import { useAppFocusPause } from "./hooks/useAppFocusPause";
 import { useRunningApps } from "./hooks/useRunningApps";
+import { useBarActivity, useBarEvents } from "./hooks/useBarActivity";
+import { useIdleCollapse } from "./hooks/useIdleCollapse";
 import { useSpotify } from "./hooks/useSpotify";
 import { SpotifyConnectGuide } from "./components/spotify/SpotifyConnectGuide";
 import { SpotifyMiniBar } from "./components/spotify/SpotifyMiniBar";
@@ -70,6 +74,7 @@ import { SteamQrModal } from "./components/steam/SteamQrModal";
 import { XboxConnectGuide } from "./components/xbox/XboxConnectGuide";
 import { AUDIO_PROFILES, resolveAudioProfile } from "./audio/audioProfiles";
 import { detectPlatform } from "./utils/gamepad";
+import { getBottomBarClearance, normalizeBottomBarMode, resolveBarHints } from "./utils/smartBar";
 import { getLibraryEntryFocusSection } from "./utils/libraryFocus";
 import { refreshLibrarySources } from "./utils/libraryRefresh";
 import { resolveNativeBackgroundRgb } from "./utils/nativeBackground";
@@ -78,7 +83,7 @@ import {
   COLS, GAME_COLS, TABS, APP_VERSION, GITHUB_REPO, UPDATE_CHECK_INTERVAL_HOURS,
   ACCENTS, THEMES, CLOUD_SHAPES, CLOUD_CONFIGS, KB_ALPHA, KB_NUMS,
   normalizeThemeKey, isDarkThemeKey,
-  SURFACE_STYLE_OPTIONS, THEME_LOCKED_SETTINGS, THEME_BG_COLORS, THEME_OPTIONS,
+  SURFACE_STYLE_OPTIONS, THEME_LOCKED_SETTINGS, THEME_BG_COLORS, THEME_OPTIONS, LOFI_SCENE_OPTIONS,
   DEFAULT_FSE_RETURN_SHORTCUT, fseReturnShortcutLabel,
   getRunAsAdmin, setRunAsAdmin,
 } from "./constants";
@@ -103,6 +108,10 @@ export default function App() {
   const [cacheClearLoading, setCacheClearLoading]   = useState(false);
   const [cacheClearStatus, setCacheClearStatus]     = useState({ line1: "", line2: "" });
   const [closeRequest, setCloseRequest]             = useState(null);
+  const [factoryResetConfirm, setFactoryResetConfirm] = useState(false);
+  const [factoryResetError, setFactoryResetError] = useState(null);
+  const factoryResetConfirmRef = useRef(false);
+  const factoryResetBusyRef = useRef(false);
   const [sliderDraft, setSliderDraft] = useState({ key: null, value: null });
   const sliderDraftRef = useRef({ key: null, value: null });
   const [appearanceGroupState, setAppearanceGroupState] = useState(null);
@@ -178,6 +187,18 @@ export default function App() {
     showSurfacePickerRef.current = value;
     setShowSurfacePickerState(value);
   };
+  const [lofiScenePickerFocusIndex, setLofiScenePickerFocusIndexState] = useState(0);
+  const lofiScenePickerFocusIndexRef = useRef(0);
+  const setLofiScenePickerFocusIndex = (value) => {
+    lofiScenePickerFocusIndexRef.current = value;
+    setLofiScenePickerFocusIndexState(value);
+  };
+  const [showLofiScenePicker, setShowLofiScenePickerState] = useState(false);
+  const showLofiScenePickerRef = useRef(false);
+  const setShowLofiScenePicker = (value) => {
+    showLofiScenePickerRef.current = value;
+    setShowLofiScenePickerState(value);
+  };
   const [showSpotifyGuide, setShowSpotifyGuideState] = useState(false);
   const showSpotifyGuideRef = useRef(false);
   const setShowSpotifyGuide = (value) => {
@@ -201,6 +222,12 @@ export default function App() {
   const setShowControlsModal = (value) => {
     showControlsModalRef.current = value;
     setShowControlsModalState(value);
+  };
+  const [controllerToolsModal, setControllerToolsModalState] = useState(null);
+  const showControllerToolsModalRef = useRef(false);
+  const setControllerToolsModal = (value) => {
+    showControllerToolsModalRef.current = !!value;
+    setControllerToolsModalState(value);
   };
   const spotifyConnectedRef = useRef(false);
   const [showSteamQr, setShowSteamQrState] = useState(false);
@@ -274,6 +301,7 @@ export default function App() {
   const handleClearCacheRef   = useRef(null);
   const handleClearRecentsRef = useRef(null);
   const rerunOnboardingRef    = useRef(null);
+  const openFactoryResetConfirmRef = useRef(null);
   const toggleHomeCollectionRef = useRef(null);
   const runningIdsRef = useRef(new Set());
   const scrollFocusRef = useRef({ tab: null, focusSection: null, focusIndex: 0, gameSourceTab: null, appCollectionTab: null, cols: 0 });
@@ -380,6 +408,7 @@ export default function App() {
     onAppLoaded: playAppLoadedSound,
     hapticEnabledRef: startupHapticsEnabledRef,
   });
+  const { barEvent, pushBarEvent } = useBarEvents();
   const {
     apps, setApps, appsRef, allAppsRef,
     recent, setRecent, recentRef,
@@ -388,7 +417,7 @@ export default function App() {
     hidden, setHidden, hiddenRef,
     iconColors,
     libraryRefreshStatus,
-    togglePin,
+    togglePin: togglePinBase,
     toggleHidden,
     refreshLibrary,
   } = useLibraryData({
@@ -400,6 +429,17 @@ export default function App() {
   useEffect(() => {
     refreshLibraryRef.current = refreshLibrary;
   }, [refreshLibrary]);
+  // Every pin toggle (grid X, context menu, Details) reports through the Smart bar.
+  const togglePin = useCallback((app) => {
+    if (!app) return;
+    const wasPinned = pinsRef.current.includes(app.id);
+    togglePinBase(app);
+    pushBarEvent({
+      kind: wasPinned ? "unpin" : "pin",
+      titleKey: wasPinned ? "smartBar.event.unpinned" : "smartBar.event.pinned",
+      subtitle: app.name,
+    });
+  }, [togglePinBase, pinsRef, pushBarEvent]);
   const {
     settings,
     settingsRef,
@@ -421,7 +461,8 @@ export default function App() {
       showOnboardingRef.current = true;
     }
   }, [loading, settingsLoaded]);
-  const helperBarMode = settings.bottombar_mode || (settings.hide_bottom_bar ? "minimal" : "full");
+  const helperBarMode = normalizeBottomBarMode(settings.bottombar_mode);
+  const pokeBarIdleRef = useRef(() => {});
   useEffect(() => {
     sfxEnabledRef.current = settings.sfx_enabled !== false;
   }, [settings.sfx_enabled]);
@@ -440,6 +481,7 @@ export default function App() {
       || pendingFileRef.current
       || showFolderManagerRef.current
       || confirmDeleteRef.current
+      || factoryResetConfirmRef.current
       || showColModalRef.current
       || colPickerAppRef.current
       || editNameAppRef.current
@@ -448,10 +490,12 @@ export default function App() {
       || showOnboardingRef.current
       || showThemePickerRef.current
       || showSurfacePickerRef.current
+      || showLofiScenePickerRef.current
       || showSpotifyGuideRef.current
       || showSpotifyOverlayRef.current
       || showHelperTrayRef.current
       || showControlsModalRef.current
+      || showControllerToolsModalRef.current
       || showSteamQrRef.current
       || showXboxGuideRef.current
       || showCloudPickerRef.current
@@ -492,30 +536,20 @@ export default function App() {
   const viewbarSortIndex = showInstallToolbarFilters ? INSTALL_FILTERS.length : 0;
   const viewbarItemCount = viewbarSortIndex + 1;
   const spotify = useSpotify();
-  const [helperPeekActive, setHelperPeekActive] = useState(false);
-  const helperPeekTimerRef = useRef(null);
   const previousSpotifyTrackIdRef = useRef(null);
-  useEffect(() => () => {
-    if (helperPeekTimerRef.current) window.clearTimeout(helperPeekTimerRef.current);
-  }, []);
   useEffect(() => {
-    const trackId = spotify.track?.id ?? null;
-    const changed = trackId && trackId !== previousSpotifyTrackIdRef.current;
+    const track = spotify.track;
+    const trackId = track?.id ?? null;
+    const previous = previousSpotifyTrackIdRef.current;
     previousSpotifyTrackIdRef.current = trackId;
-    if (helperBarMode !== "hidden" || !settings.bottombar_peek_on_track) {
-      if (helperPeekTimerRef.current) window.clearTimeout(helperPeekTimerRef.current);
-      helperPeekTimerRef.current = null;
-      setHelperPeekActive(false);
-      return;
-    }
-    if (!changed) return;
-    setHelperPeekActive(true);
-    if (helperPeekTimerRef.current) window.clearTimeout(helperPeekTimerRef.current);
-    helperPeekTimerRef.current = window.setTimeout(() => {
-      helperPeekTimerRef.current = null;
-      setHelperPeekActive(false);
-    }, 2500);
-  }, [spotify.track?.id, helperBarMode, settings.bottombar_peek_on_track]);
+    // Skip the first track after connect/startup; announce real changes only.
+    if (!trackId || !previous || trackId === previous) return;
+    pushBarEvent({
+      kind: "track",
+      titleKey: "smartBar.event.nowPlaying",
+      subtitle: [track.title, track.artist].filter(Boolean).join(" · "),
+    });
+  }, [spotify.track?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     spotifyConnectedRef.current = !!spotify.status.connected;
   }, [spotify.status.connected]);
@@ -933,6 +967,7 @@ export default function App() {
     pendingFileRef,
     showFolderManagerRef,
     confirmDeleteRef,
+    factoryResetConfirmRef,
     showColModalRef,
     colPickerAppRef,
     editNameAppRef,
@@ -941,15 +976,18 @@ export default function App() {
     showOnboardingRef,
     showThemePickerRef,
     showSurfacePickerRef,
+    showLofiScenePickerRef,
     showSpotifyGuideRef,
     showSpotifyOverlayRef,
     showHelperTrayRef,
     showControlsModalRef,
+    showControllerToolsModalRef,
     showSteamQrRef,
     showXboxGuideRef,
     showCloudPickerRef,
     themePickerFocusIndexRef,
     surfacePickerFocusIndexRef,
+    lofiScenePickerFocusIndexRef,
     artPickerAppRef,
     artPickerModeRef,
     detailsAppRef,
@@ -959,9 +997,11 @@ export default function App() {
     setShowPowerModal,
     setShowThemePicker,
     setShowSurfacePicker,
+    setShowLofiScenePicker,
     onOpenSpotifyGuide: () => setShowSpotifyGuide(true),
     onOpenSpotifyOverlay: () => setShowSpotifyOverlay(true),
     onOpenHelperTray: () => setShowHelperTray(true),
+    onAnyInput: () => pokeBarIdleRef.current(),
     onSpotifyDisconnect: () => spotify.disconnect(),
     spotifyConnectedRef,
     onOpenSteamQr: openSteamQr,
@@ -972,6 +1012,7 @@ export default function App() {
     xboxConnectedRef,
     setThemePickerFocusIndex,
     setSurfacePickerFocusIndex,
+    setLofiScenePickerFocusIndex,
     setArtPickerApp,
     setDetailsApp: setResolvedDetailsApp,
     playSoundGameStart,
@@ -1005,6 +1046,9 @@ export default function App() {
     handleClearRecents: () => handleClearRecentsRef.current?.(),
     handleClearCache: () => handleClearCacheRef.current?.(),
     onRerunOnboarding: () => rerunOnboardingRef.current?.(),
+    onFactoryReset: () => openFactoryResetConfirmRef.current?.(),
+    onOpenGamepadIconPreview: () => setControllerToolsModal("icons"),
+    onOpenControllerTest: () => setControllerToolsModal("test"),
     toggleHomeCollection: (colName) => toggleHomeCollectionRef.current?.(colName),
     isRunning: (id) => !!id && runningIdsRef.current.has(id),
     requestClose,
@@ -1023,6 +1067,31 @@ export default function App() {
     showOnboardingRef.current = true;
   }, [switchTab]);
   rerunOnboardingRef.current = rerunOnboarding;
+
+  const closeFactoryResetConfirm = useCallback(() => {
+    factoryResetBusyRef.current = false;
+    setFactoryResetError(null);
+    setFactoryResetConfirm(false);
+    factoryResetConfirmRef.current = false;
+  }, []);
+  const openFactoryResetConfirm = useCallback(() => {
+    factoryResetBusyRef.current = false;
+    setFactoryResetError(null);
+    setFactoryResetConfirm(true);
+    factoryResetConfirmRef.current = true;
+  }, []);
+  openFactoryResetConfirmRef.current = openFactoryResetConfirm;
+  const performFactoryReset = useCallback(() => {
+    if (factoryResetBusyRef.current) return;
+    factoryResetBusyRef.current = true;
+    invoke("factory_reset_app").catch((err) => {
+      const text = typeof err === "string"
+        ? err
+        : err?.message || t("settings.factoryResetFailed");
+      setFactoryResetError(text);
+      factoryResetBusyRef.current = false;
+    });
+  }, [t]);
 
   useEffect(() => {
     if (tab !== "Games") {
@@ -1095,6 +1164,73 @@ export default function App() {
   const appPaused = !!launchingApp || !windowFocused || fseSessionActive;
   const { runningIds, isRunning, refreshRunning, gracefulClose, forceClose } = useRunningApps(appPaused);
   runningIdsRef.current = runningIds;
+  const lookupBarApp = useCallback(
+    (id) => allAppsRef.current.find((a) => a.id === id) ?? appsRef.current.find((a) => a.id === id),
+    [allAppsRef, appsRef]
+  );
+  const {
+    activity: barActivity,
+    downloads: barDownloads,
+    running: barRunning,
+    now: barNow,
+  } = useBarActivity({
+    apps,
+    lookupApp: lookupBarApp,
+    installProgress,
+    xboxInstallProgress,
+    runningIds,
+    updateAvailable: updateStatus === "available",
+    updateVersion: updateRelease?.version ?? null,
+    onRunningClosed: (app) => pushBarEvent({ kind: "closed", titleKey: "smartBar.event.closed", subtitle: app.name }),
+  });
+  const focusRunningApp = useCallback((app) => {
+    if (!app) return;
+    invoke("try_focus_launched_app", {
+      name: app.name,
+      launchPath: app.launch_path,
+      source: app.source ?? "",
+      appType: app.app_type,
+    }).catch(() => {});
+  }, []);
+  const [barFocusedAppId, setBarFocusedAppId] = useState(null);
+  useLayoutEffect(() => {
+    const id = tab === "Settings" ? null : (focusedCardRef.current?.dataset?.appId ?? null);
+    setBarFocusedAppId((prev) => (prev === id ? prev : id));
+  });
+  const settingsNavItems = useMemo(() => {
+    if (tab !== "Settings") return [];
+    const items = buildSettingsItems(t, normalizeThemeKey(settings.theme));
+    return getSectionNavigableItems(settingsSection, items, settings, { gameCollections, appCollections }, appearanceGroupState);
+  }, [tab, t, settings, settingsSection, gameCollections, appCollections, appearanceGroupState]);
+  const barHints = useMemo(() => {
+    if (searchOpen) return resolveBarHints({ kind: "search" }, null);
+    if (tab === "Settings") {
+      const item = settingsNavItems[settingsFocusIndex];
+      return resolveBarHints(item ? { kind: "setting", itemType: String(item.type ?? "toggle") } : { kind: "other" }, null);
+    }
+    if (!barFocusedAppId) return resolveBarHints({ kind: "other" }, null);
+    const app = lookupBarApp(barFocusedAppId);
+    if (!app) return resolveBarHints({ kind: "other" }, null);
+    const running = runningIds.has(app.id);
+    const heroCloseAction = tab === "Home" && focusSection === "hero" && heroActionIndex === 1;
+    return resolveBarHints(
+      { kind: "app", appId: app.id, heroCloseAction },
+      {
+        app,
+        running,
+        installing: !!installProgress[app.id] || !!xboxInstallProgress[app.id],
+        pinned: pins.includes(app.id),
+        launchesDirectly: tab === "Home" && !!settings.home_launch_games_directly,
+      }
+    );
+  }, [searchOpen, tab, settingsNavItems, settingsFocusIndex, barFocusedAppId, lookupBarApp, runningIds, focusSection, heroActionIndex, installProgress, xboxInstallProgress, pins, settings.home_launch_games_directly]);
+  const idleCollapseEnabled = helperBarMode === "smart" && settings.bottombar_idle_collapse !== false;
+  const barActivityKey = [
+    tab, focusSection, focusIndex, heroIndex, heroActionIndex, settingsSection, settingsFocusIndex,
+    gameSourceTab, appCollectionTab, showHelperTray ? 1 : 0, searchOpen ? 1 : 0,
+  ].join("|");
+  const { collapsed: barCollapsed, poke: pokeBarIdle } = useIdleCollapse({ enabled: idleCollapseEnabled, activityKey: barActivityKey });
+  pokeBarIdleRef.current = pokeBarIdle;
   const cinematicLight = settings.cinematic_home && !isDark;
   const isWash = resolvedTheme === "wash";
   const {
@@ -1177,7 +1313,7 @@ export default function App() {
     const sr = scroller.getBoundingClientRect();
     const rr = row.getBoundingClientRect();
     const headerHeight = !(settings.topbar_background ?? true) ? 0 : (tab === "Home" ? 72 : 124);
-    const bottomBarHeight = (!(settings.bottombar_background ?? true) || helperBarMode !== "full") ? 0 : 64;
+    const bottomBarHeight = getBottomBarClearance(helperBarMode, settings.bottombar_background ?? true);
     const topClearance = headerHeight + 20;
     const bottomClearance = bottomBarHeight + 20;
     let rowTop = (rr.top - sr.top) / scale;
@@ -1347,12 +1483,13 @@ export default function App() {
     const id = `steam://rungameid/${appid}`;
     clearInstallErrorForApp(id);
     setInstallProgressForApp(id, { appid, pct: 0, bytesDone: 0, bytesTotal: 0, state: "pending", phase: "preparing", live: true });
+    pushBarEvent({ kind: "installStarted", titleKey: "smartBar.event.installStarted", subtitle: app.name });
     invoke("steam_install", { appid }).catch((error) => {
       clearInstallProgressForApp(id);
       patchLibraryApp(id, { installing: false, installProgress: undefined });
       setInstallErrorForApp(id, String(error).includes("steam-client-missing") ? "noClient" : "generic");
     });
-  }, [clearInstallErrorForApp, clearInstallProgressForApp, patchLibraryApp, setInstallErrorForApp, setInstallProgressForApp]);
+  }, [clearInstallErrorForApp, clearInstallProgressForApp, patchLibraryApp, pushBarEvent, setInstallErrorForApp, setInstallProgressForApp]);
 
   const cancelSteamInstall = useCallback((app) => {
     const appid = steamAppIdFor(app);
@@ -1400,12 +1537,13 @@ export default function App() {
     }
     clearInstallErrorForApp(app.id);
     setXboxInstallProgressForApp(app.id, { productId, pct: 0, state: "pending", errorCode: 0 });
+    pushBarEvent({ kind: "installStarted", titleKey: "smartBar.event.installStarted", subtitle: app.name });
     invoke("xbox_install_product", { productId }).catch((error) => {
       clearXboxInstallProgressForApp(app.id);
       setInstallErrorForApp(app.id, "generic");
       console.warn("Xbox silent install failed", error);
     });
-  }, [clearInstallErrorForApp, clearXboxInstallProgressForApp, openXboxInstallFallback, setInstallErrorForApp, setXboxInstallProgressForApp]);
+  }, [clearInstallErrorForApp, clearXboxInstallProgressForApp, openXboxInstallFallback, pushBarEvent, setInstallErrorForApp, setXboxInstallProgressForApp]);
 
   const cancelXboxInstall = useCallback((app) => {
     const productId = xboxProductIdFor(app);
@@ -1462,12 +1600,14 @@ export default function App() {
     if (progress.state === "complete") {
       clearInstallProgressForApp(id);
       patchLibraryApp(id, { installed: true, installing: false, installProgress: undefined });
+      const doneApp = allAppsRef.current.find((a) => a.id === id) ?? appsRef.current.find((a) => a.id === id);
+      if (doneApp) pushBarEvent({ kind: "installDone", titleKey: "smartBar.event.installDone", subtitle: doneApp.name });
       refreshLibraryRef.current();
       return;
     }
     clearInstallErrorForApp(id);
     setInstallProgressForApp(id, progress);
-  }, [clearInstallErrorForApp, clearInstallProgressForApp, patchLibraryApp, setInstallProgressForApp]);
+  }, [clearInstallErrorForApp, clearInstallProgressForApp, patchLibraryApp, pushBarEvent, setInstallProgressForApp]);
 
   const applyXboxProgress = useCallback((payload) => {
     if (!payload) return;
@@ -1484,6 +1624,8 @@ export default function App() {
     if (progress.state === "complete") {
       clearXboxInstallProgressForApp(id);
       patchLibraryApp(id, { installed: true, installing: false, installProgress: undefined });
+      const doneApp = allAppsRef.current.find((a) => a.id === id) ?? appsRef.current.find((a) => a.id === id);
+      if (doneApp) pushBarEvent({ kind: "installDone", titleKey: "smartBar.event.installDone", subtitle: doneApp.name });
       refreshLibraryRef.current();
       return;
     }
@@ -1494,7 +1636,7 @@ export default function App() {
     }
     clearInstallErrorForApp(id);
     setXboxInstallProgressForApp(id, progress);
-  }, [clearInstallErrorForApp, clearXboxInstallProgressForApp, patchLibraryApp, setInstallErrorForApp, setXboxInstallProgressForApp, xboxAppIdForProductId]);
+  }, [clearInstallErrorForApp, clearXboxInstallProgressForApp, patchLibraryApp, pushBarEvent, setInstallErrorForApp, setXboxInstallProgressForApp, xboxAppIdForProductId]);
 
   const watchedSteamAppIds = useMemo(() => Object.values(installProgress)
     .filter((progress) => progress?.appid && progress.state !== "uninstalling" && progress.state !== "complete")
@@ -1708,6 +1850,7 @@ export default function App() {
       ".theme-wash-static", ".theme-wash-float",
       ".theme-aurora-b1", ".theme-aurora-b2", ".theme-aurora-b3", ".theme-aurora-b4", ".theme-aurora-shimmer",
       ".theme-synthwave-sun", ".theme-synthwave-horizon",
+      ".theme-synthwave-row", ".theme-synthwave-streak", ".theme-synthwave-bands",
       ".theme-cyberpunk-glow", ".theme-cyberpunk-glow-2", ".theme-cyberpunk-horizon",
       ".theme-cyberpunk-flicker-1", ".theme-cyberpunk-flicker-2", ".theme-cyberpunk-scan", ".theme-cyberpunk-rain",
       ".theme-forest-moonbeam", ".theme-forest-fog", ".theme-forest-fog-2", ".theme-forest-firefly", ".theme-forest-firefly-wrapper",
@@ -1764,6 +1907,14 @@ export default function App() {
       "@keyframes synthHorizonShim { 0%,100%{opacity:0.55} 50%{opacity:0.92} }",
       ".theme-synthwave-sun { animation:synthSunGlow 6s ease-in-out infinite; will-change:opacity; }",
       ".theme-synthwave-horizon { animation:synthHorizonShim 7s ease-in-out infinite; }",
+      // Synthwave Warp: perspective floor rows. y = 1 / (1 + u / 1.4) with depth u running 12 -> 0.
+      // Keep in sync with ROW_COUNT / ROW_DEPTH / rowOpacity in SynthwaveBg.tsx.
+      "@keyframes swRow { 0%{transform:translate3d(0,10.45%,0);opacity:0} 10%{transform:translate3d(0,11.48%,0);opacity:0.27} 20%{transform:translate3d(0,12.73%,0);opacity:0.54} 30%{transform:translate3d(0,14.29%,0);opacity:0.81} 40%{transform:translate3d(0,16.28%,0);opacity:0.9} 50%{transform:translate3d(0,18.92%,0);opacity:0.9} 60%{transform:translate3d(0,22.58%,0);opacity:0.9} 66%{transform:translate3d(0,25.55%,0);opacity:0.9} 72%{transform:translate3d(0,29.41%,0);opacity:0.9} 77%{transform:translate3d(0,33.65%,0);opacity:0.9} 82%{transform:translate3d(0,39.33%,0);opacity:0.9} 86%{transform:translate3d(0,45.45%,0);opacity:0.835} 90%{transform:translate3d(0,53.85%,0);opacity:0.738} 93%{transform:translate3d(0,62.50%,0);opacity:0.665} 96%{transform:translate3d(0,74.47%,0);opacity:0.592} 98%{transform:translate3d(0,85.37%,0);opacity:0.544} 100%{transform:translate3d(0,100%,0);opacity:0.495} }",
+      "@keyframes swStreak { 0%{transform:rotate(var(--sw-a)) translateX(90px) scaleX(0.05);opacity:0} 20%{opacity:var(--sw-o)} 100%{transform:rotate(var(--sw-a)) translateX(760px) scaleX(1);opacity:0} }",
+      "@keyframes swSunBands { from{transform:translateY(0)} to{transform:translateY(13px)} }",
+      ".theme-synthwave-row { animation:swRow 18s linear infinite; }",
+      ".theme-synthwave-streak { animation:swStreak 3s linear infinite; }",
+      ".theme-synthwave-bands { animation:swSunBands 1.95s linear infinite; }",
       "@keyframes cyberNeonPulse { 0%,100%{opacity:0.52} 50%{opacity:0.82} }",
       "@keyframes cyberNeonFlicker { 0%,84%,100%{opacity:1} 85%,87%{opacity:0.2} 91%,93%{opacity:0.65} }",
       "@keyframes cyberScanSweep { 0% { top: -2px; opacity:0.9; } 85% { opacity:0.7; } 100% { top: 100vh; opacity:0; } }",
@@ -1831,7 +1982,7 @@ export default function App() {
       // is not rendering background frames no one is looking at. Resumes on refocus.
       `${prefixedBgAnim('[data-focus="blurred"]')} { animation-play-state: paused !important; }`,
       ".app-launch-paused *:not(.launch-overlay):not(.launch-overlay *) { animation-play-state: paused !important; transition-property: none !important; }",
-      "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-static, .theme-wash-float, .theme-aurora-b1, .theme-aurora-b2, .theme-aurora-b3, .theme-aurora-b4, .theme-aurora-shimmer, .theme-synthwave-sun, .theme-synthwave-horizon, .theme-cyberpunk-glow, .theme-cyberpunk-glow-2, .theme-cyberpunk-horizon, .theme-cyberpunk-flicker-1, .theme-cyberpunk-flicker-2, .theme-cyberpunk-scan, .theme-cyberpunk-rain, .theme-forest-moonbeam, .theme-forest-fog, .theme-forest-fog-2, .theme-forest-firefly, .theme-webcore-ghost-0, .theme-webcore-ghost-1, .theme-webcore-ghost-2, .theme-webcore-ghost-3, .theme-webcore-cursor, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } }",
+      "@media (prefers-reduced-motion: reduce) { .theme-plasma-layer, .theme-plasma-spark, .theme-cinder-layer, .theme-cinder-particle, .theme-wash-static, .theme-wash-float, .theme-aurora-b1, .theme-aurora-b2, .theme-aurora-b3, .theme-aurora-b4, .theme-aurora-shimmer, .theme-synthwave-sun, .theme-synthwave-horizon, .theme-synthwave-row, .theme-synthwave-streak, .theme-synthwave-bands, .theme-cyberpunk-glow, .theme-cyberpunk-glow-2, .theme-cyberpunk-horizon, .theme-cyberpunk-flicker-1, .theme-cyberpunk-flicker-2, .theme-cyberpunk-scan, .theme-cyberpunk-rain, .theme-forest-moonbeam, .theme-forest-fog, .theme-forest-fog-2, .theme-forest-firefly, .theme-webcore-ghost-0, .theme-webcore-ghost-1, .theme-webcore-ghost-2, .theme-webcore-ghost-3, .theme-webcore-cursor, .bg-star, .bg-cloud { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } }",
       "html, body { overflow-x: hidden; }",
       "* { scrollbar-width: none !important; -ms-overflow-style: none !important; }",
       "*::-webkit-scrollbar { display: none !important; }",
@@ -1938,25 +2089,6 @@ export default function App() {
           star.style.top = Math.random() * 62 + "vh";
           star.style.background = `rgba(${200 + Math.floor(Math.random() * 55)},${220 + Math.floor(Math.random() * 35)},255,${(0.5 + Math.random() * 0.45).toFixed(2)})`;
           star.style.animationDuration = effectsEnabled ? (Math.random() * 4 + 3) + "s" : "0s";
-          star.style.animationDelay = effectsEnabled ? -(Math.random() * 5) + "s" : "0s";
-          container.appendChild(star);
-        }
-      }
-    } else if (activeTheme === "synthwave") {
-      const container = document.getElementById("synthwave-star-container");
-      if (container) {
-        for (let i = 0; i < 30; i++) {
-          const star = document.createElement("div");
-          star.className = "bg-star";
-          const pink = Math.random() > 0.5;
-          const size = (Math.random() * 1.6 + 0.4) + "px";
-          star.style.width = star.style.height = size;
-          star.style.left = Math.random() * 100 + "vw";
-          star.style.top = Math.random() * 48 + "vh";
-          star.style.background = pink
-            ? `rgba(255,${100 + Math.floor(Math.random() * 80)},${180 + Math.floor(Math.random() * 75)},${(0.55 + Math.random() * 0.38).toFixed(2)})`
-            : `rgba(${80 + Math.floor(Math.random() * 60)},${200 + Math.floor(Math.random() * 55)},255,${(0.50 + Math.random() * 0.40).toFixed(2)})`;
-          star.style.animationDuration = effectsEnabled ? (Math.random() * 3 + 2) + "s" : "0s";
           star.style.animationDelay = effectsEnabled ? -(Math.random() * 5) + "s" : "0s";
           container.appendChild(star);
         }
@@ -2100,8 +2232,22 @@ export default function App() {
   // The backfill fills these first so on-screen tiles resolve before off-screen ones.
   const priorityIdsRef = useRef([]);
   useEffect(() => {
-    priorityIdsRef.current = gamesFilteredApps.map((a) => a.id);
-  }, [gamesFilteredApps]);
+    const seen = new Set();
+    const ids = [];
+    for (const game of recentGames) {
+      if (game?.app_type === "game" && !seen.has(game.id)) {
+        seen.add(game.id);
+        ids.push(game.id);
+      }
+    }
+    for (const app of gamesFilteredApps) {
+      if (!seen.has(app.id)) {
+        seen.add(app.id);
+        ids.push(app.id);
+      }
+    }
+    priorityIdsRef.current = ids;
+  }, [gamesFilteredApps, recentGames]);
   useArtBackfill({
     appsRef,
     gameArtRef,
@@ -2167,7 +2313,7 @@ export default function App() {
       const sr = scroller.getBoundingClientRect();
       const cr = card.getBoundingClientRect();
       const headerHeight = !(settings.topbar_background ?? true) ? 0 : (tab === "Home" ? 72 : 124);
-      const bottomBarHeight = (!(settings.bottombar_background ?? true) || helperBarMode !== "full") ? 0 : 64;
+      const bottomBarHeight = getBottomBarClearance(helperBarMode, settings.bottombar_background ?? true);
       const topClearance = headerHeight + 24;
       const bottomClearance = bottomBarHeight + 20;
       let cardTop = (cr.top - sr.top) / scale;
@@ -2252,7 +2398,7 @@ export default function App() {
             const sr = scroller.getBoundingClientRect();
             const rr = focusedRowRef.current.getBoundingClientRect();
             const headerHeight = !(settings.topbar_background ?? true) ? 0 : 72;
-            const bottomBarHeight = (!(settings.bottombar_background ?? true) || helperBarMode !== "full") ? 0 : 64;
+            const bottomBarHeight = getBottomBarClearance(helperBarMode, settings.bottombar_background ?? true);
             const topClearance = headerHeight + 28;
             const bottomClearance = bottomBarHeight + 20;
             const rowTop = (rr.top - sr.top) / scale;
@@ -2495,7 +2641,7 @@ export default function App() {
     const isOnyx = resolvedTheme === "onyx";
     return (
       // Outer wrapper — no overflow:hidden so the ring can extend outside with a gap
-      <div ref={cardRef} data-card="" className={focused ? "focused" : ""} onClick={onClick} onDoubleClick={onDoubleClick}
+      <div ref={cardRef} data-card="" data-app-id={app.id} className={focused ? "focused" : ""} onClick={onClick} onDoubleClick={onDoubleClick}
         onContextMenu={onRightClick ? (e) => { e.preventDefault(); onRightClick(e, app); } : undefined}
         style={{
           position: "relative", borderRadius: cardRadius, aspectRatio: "2/3",
@@ -2702,6 +2848,11 @@ export default function App() {
     setSurfacePickerFocusIndex(idx);
     setShowSurfacePicker(true);
   };
+  const openLofiScenePicker = () => {
+    const idx = Math.max(0, LOFI_SCENE_OPTIONS.indexOf(String(settings.lofi_scene ?? "cozy")));
+    setLofiScenePickerFocusIndex(idx);
+    setShowLofiScenePicker(true);
+  };
   const enterAppearanceCategory = (group) => {
     setAppearanceGroup(group);
     setSettingsFocusIndex(1);
@@ -2749,6 +2900,7 @@ export default function App() {
       onToggleHomeCollection={toggleHomeCollection}
       onOpenThemePicker={openThemePicker}
       onOpenSurfacePicker={openSurfacePicker}
+      onOpenLofiScenePicker={openLofiScenePicker}
       spotifyStatus={spotify.status}
       onOpenSpotifyGuide={() => setShowSpotifyGuide(true)}
       onSpotifyDisconnect={spotify.disconnect}
@@ -2761,6 +2913,9 @@ export default function App() {
       onXboxDisconnect={disconnectXbox}
       onXboxRefresh={refreshXboxLibrary}
       onRerunOnboarding={rerunOnboarding}
+      onFactoryReset={openFactoryResetConfirm}
+      onOpenGamepadIconPreview={() => setControllerToolsModal("icons")}
+      onOpenControllerTest={() => setControllerToolsModal("test")}
     />
   );
 
@@ -2999,7 +3154,7 @@ export default function App() {
     : (
       <SpotifyMiniBar
         spotify={spotify}
-        variant={helperBarMode === "full" ? "bar" : "puck"}
+        variant={helperBarMode === "full" ? "bar" : "pill"}
         onOpenPanel={() => setShowSpotifyOverlay(true)}
       />
     );
@@ -3016,7 +3171,7 @@ export default function App() {
   const topbarBg = settings.topbar_background ?? true;
   const bottombarBg = settings.bottombar_background ?? true;
   const headerHeightVal = !topbarBg ? 0 : (tab === "Home" ? 72 : 124);
-  const bottomBarHeightVal = (!bottombarBg || helperBarMode !== "full") ? 0 : 64;
+  const bottomBarHeightVal = getBottomBarClearance(helperBarMode, bottombarBg);
   const helperTrayUnderlayFilter = showHelperTray ? getHelperTrayUnderlayFilter(surfaceStyle) : undefined;
   const fseHintText = t("fse.returnHint", {
     shortcut: fseReturnShortcutLabel(fseHintShortcut || fseReturnShortcut),
@@ -3050,7 +3205,7 @@ export default function App() {
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
     <div data-theme={resolvedTheme} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} data-effects={settings.stars_enabled === false ? "static" : "animated"} data-focus={windowFocused && !fseSessionActive ? "active" : "blurred"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, "--accent-pulse": `${accent.glow}0.22)`, "--header-height": `${headerHeightVal}px`, "--bottom-bar-height": `${bottomBarHeightVal}px`, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: (semiHomeShellActive || immersiveHomeShellActive) ? "hidden" : "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
 
-      <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} windowFocused={windowFocused} />
+      <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} windowFocused={windowFocused} spotifyPlaying={!!spotify.track?.isPlaying} />
       <AppOverlays>
       {fseHintVisible && (
         <div style={fseHintStyle}>
@@ -3320,38 +3475,11 @@ export default function App() {
           onSkipVersion={skipPendingRelease}
         />
       )}
-      <SpotifyConnectGuide
-        open={showSpotifyGuide}
-        spotify={spotify}
-        onClose={() => setShowSpotifyGuide(false)}
-      />
       <SpotifyOverlay
         open={showSpotifyOverlay}
         spotify={spotify}
         repeatSpeed={settings.repeat_speed}
         onClose={() => setShowSpotifyOverlay(false)}
-      />
-      <SteamQrModal
-        open={showSteamQr}
-        phase={steamQrPhase}
-        qrUrl={steamQrUrl}
-        error={steamQrError}
-        accent={accent}
-        theme={theme}
-        isDark={isDark}
-        surfaceStyle={settings.surface_style ?? "glass"}
-        glass={glass}
-        onBegin={openSteamQr}
-        onClose={() => setShowSteamQr(false)}
-        t={t}
-      />
-      <XboxConnectGuide
-        open={showXboxGuide}
-        phase={xboxAuthPhase}
-        error={xboxAuthError}
-        onBegin={beginXboxAuth}
-        onClose={() => setShowXboxGuide(false)}
-        t={t}
       />
       {showFileBrowser && (
         <FileBrowser
@@ -3531,6 +3659,15 @@ export default function App() {
             });
           }}
           onClose={() => { setShowFolderManager(false); showFolderManagerRef.current = false; }}
+        />
+      )}
+      {factoryResetConfirm && (
+        <ConfirmModal
+          key={factoryResetError ? "error" : "confirm"}
+          message={factoryResetError || t('settings.factoryResetConfirm')}
+          confirmLabel={factoryResetError ? t('common.close') : t('settings.factoryResetAction')}
+          onConfirm={factoryResetError ? closeFactoryResetConfirm : performFactoryReset}
+          onCancel={closeFactoryResetConfirm}
         />
       )}
       {/* ── Confirm delete app modal ── */}
@@ -3741,7 +3878,7 @@ export default function App() {
       )}
       </AppOverlays>
 
-      <div data-helper-underlay style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, filter: helperTrayUnderlayFilter ?? "none", transition: settings.ui_motion === false ? "none" : "filter 180ms var(--ease-standard)", pointerEvents: (showOnboarding || showHideModal || showLibraryActions || showPowerModal || updateRelease || showSpotifyGuide || showSpotifyOverlay || showHelperTray || showControlsModal || showSteamQr || showXboxGuide || showCloudPicker || detailsApp) ? "none" : "auto" }}>
+      <div data-helper-underlay style={{ color: theme.text, fontFamily: "'Segoe UI', sans-serif", display: "flex", flexDirection: "column", minHeight: "100%", userSelect: "none", position: "relative", zIndex: 1, filter: helperTrayUnderlayFilter ?? "none", transition: settings.ui_motion === false ? "none" : "filter 180ms var(--ease-standard)", pointerEvents: (showOnboarding || showHideModal || showLibraryActions || showPowerModal || updateRelease || showSpotifyGuide || showSpotifyOverlay || showHelperTray || showControlsModal || controllerToolsModal || showSteamQr || showXboxGuide || showCloudPicker || detailsApp) ? "none" : "auto" }}>
 
         {/* Topbar */}
         <AppHeader
@@ -3863,7 +4000,11 @@ export default function App() {
           spotifyHasTrack={spotifyHasTrack}
           trayOpen={showHelperTray}
           onToggleTray={() => setShowHelperTray(!showHelperTray)}
-          peekActive={helperPeekActive}
+          hints={barHints}
+          collapsed={barCollapsed}
+          activity={barActivity}
+          activityNow={barNow}
+          event={barEvent}
         />
       </div>
 
@@ -3879,7 +4020,18 @@ export default function App() {
         onConnectSpotify={() => { setShowHelperTray(false); setShowSpotifyGuide(true); }}
         onOpenSettings={() => { setShowHelperTray(false); switchTab("Settings"); }}
         onOpenPower={() => { setShowHelperTray(false); setShowPowerModal(true); showPowerModalRef.current = true; }}
-        onRefreshLibrary={() => { setShowHelperTray(false); refreshLibraryFromSources(); }}
+        onRefreshLibrary={() => {
+          setShowHelperTray(false);
+          Promise.resolve(refreshLibraryFromSources())
+            .then(() => pushBarEvent({ kind: "refresh", titleKey: "smartBar.event.refreshed" }))
+            .catch(() => {});
+        }}
+        runningEntries={barRunning}
+        downloadEntries={barDownloads}
+        now={barNow}
+        onResumeRunning={(app) => { setShowHelperTray(false); focusRunningApp(app); }}
+        onCloseRunning={(app) => { setShowHelperTray(false); requestClose(app); }}
+        onOpenDownload={(app) => { setShowHelperTray(false); openDetailsModal(app); }}
         onOpenPinned={(app) => {
           setShowHelperTray(false);
           if (app.app_type === "game") openDetailsModal(app);
@@ -3888,6 +4040,12 @@ export default function App() {
         onOpenControls={() => { setShowHelperTray(false); setShowControlsModal(true); }}
       />
       {showControlsModal && <ControlsModal initialTab={tab} onClose={() => setShowControlsModal(false)} />}
+      {controllerToolsModal && (
+        <ControllerToolsModal
+          mode={controllerToolsModal}
+          onClose={() => setControllerToolsModal(null)}
+        />
+      )}
 
       <AppOverlays>
       {contextMenu && (() => {
@@ -3954,6 +4112,13 @@ export default function App() {
         setFocusIndex={setSurfacePickerFocusIndex}
       />
     )}
+    {showLofiScenePicker && (
+      <LofiScenePickerModal
+        onClose={() => setShowLofiScenePicker(false)}
+        focusIndex={lofiScenePickerFocusIndex}
+        setFocusIndex={setLofiScenePickerFocusIndex}
+      />
+    )}
     {showOnboarding && (
       <OnboardingFlow
         settings={settings}
@@ -3968,9 +4133,38 @@ export default function App() {
           setShowOnboarding(false);
           showOnboardingRef.current = false;
           if (sourcesChanged && !accountTouched) refreshLibraryRef.current?.();
+          const games = appsRef.current.filter((a) => a.app_type === "game");
+          if (games.length) fetchGameArt(games);
         }}
       />
     )}
+    <SteamQrModal
+      open={showSteamQr}
+      phase={steamQrPhase}
+      qrUrl={steamQrUrl}
+      error={steamQrError}
+      accent={accent}
+      theme={theme}
+      isDark={isDark}
+      surfaceStyle={settings.surface_style ?? "glass"}
+      glass={glass}
+      onBegin={openSteamQr}
+      onClose={() => setShowSteamQr(false)}
+      t={t}
+    />
+    <XboxConnectGuide
+      open={showXboxGuide}
+      phase={xboxAuthPhase}
+      error={xboxAuthError}
+      onBegin={beginXboxAuth}
+      onClose={() => setShowXboxGuide(false)}
+      t={t}
+    />
+    <SpotifyConnectGuide
+      open={showSpotifyGuide}
+      spotify={spotify}
+      onClose={() => setShowSpotifyGuide(false)}
+    />
     </GamepadProvider>
     </SettingsProvider>
     </ThemeProvider>

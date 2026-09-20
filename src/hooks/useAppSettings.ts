@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import i18n from "../i18n";
 import type { Settings } from "../types";
+import { migrateBottomBarSettings, resolveNavBumpersPos } from "../utils/smartBar";
 import {
   DEFAULT_SETTINGS,
   SCAN_KEYS,
@@ -55,10 +56,12 @@ export function useAppSettings({
       // ui_scale is null when never saved; substitute the auto-detected value.
       const updated = { ...settingsRef.current, ...s, ui_scale: s.ui_scale ?? auto };
       let needsSave = false;
-      // One-time migration from the legacy boolean. Minimal preserves the
-      // floating now-playing affordance that hide-bar users already saw.
-      if (!s.bottombar_mode) {
-        updated.bottombar_mode = s.hide_bottom_bar ? "minimal" : "full";
+      // 2.0 moves Full and Minimal users to Smart exactly once; Hidden stays.
+      // Legacy hide_bottom_bar and empty modes resolve to Smart as well.
+      const barMigration = migrateBottomBarSettings(updated);
+      if (barMigration.changed) {
+        updated.bottombar_mode = barMigration.bottombar_mode;
+        updated.bottombar_smart_migrated = true;
         needsSave = true;
       }
       if (updated.surface_style === "pixel") updated.surface_style = "win9x";
@@ -71,6 +74,11 @@ export function useAppSettings({
       }
       const migratedHomePinnedPosition = updated.home_mode === "semi" && updated.home_pinned_pos === "bottom";
       if (migratedHomePinnedPosition) updated.home_pinned_pos = "top";
+      const resolvedBumpers = resolveNavBumpersPos(updated.nav_bumpers_pos, updated.bottombar_mode);
+      if (resolvedBumpers !== updated.nav_bumpers_pos) {
+        updated.nav_bumpers_pos = resolvedBumpers;
+        needsSave = true;
+      }
       setSettings(updated);
       setSettingsLoaded(true);
       if (s.surface_style === "pixel" || migratedHomePinnedPosition || needsSave) invoke("save_settings", { settings: updated }).catch(console.error);
@@ -80,13 +88,20 @@ export function useAppSettings({
       invoke<Partial<Settings>>("get_settings").then(s => {
         const merged = { ...settingsRef.current, ...s };
         let needsSave = false;
-        if (!s.bottombar_mode) {
-          merged.bottombar_mode = s.hide_bottom_bar ? "minimal" : "full";
+        const barMigration = migrateBottomBarSettings(merged);
+        if (barMigration.changed) {
+          merged.bottombar_mode = barMigration.bottombar_mode;
+          merged.bottombar_smart_migrated = true;
           needsSave = true;
         }
         if (merged.surface_style === "pixel") merged.surface_style = "win9x";
         const migratedHomePinnedPosition = merged.home_mode === "semi" && merged.home_pinned_pos === "bottom";
         if (migratedHomePinnedPosition) merged.home_pinned_pos = "top";
+        const resolvedBumpers = resolveNavBumpersPos(merged.nav_bumpers_pos, merged.bottombar_mode);
+        if (resolvedBumpers !== merged.nav_bumpers_pos) {
+          merged.nav_bumpers_pos = resolvedBumpers;
+          needsSave = true;
+        }
         setSettings(merged);
         setSettingsLoaded(true);
         if (s.surface_style === "pixel" || migratedHomePinnedPosition || needsSave) invoke("save_settings", { settings: merged }).catch(console.error);
@@ -111,6 +126,9 @@ export function useAppSettings({
       }
       if (key === "home_pinned_pos" && updated.home_mode === "semi" && value === "bottom") {
         updated.home_pinned_pos = "top";
+      }
+      if (key === "bottombar_mode" || key === "nav_bumpers_pos") {
+        updated.nav_bumpers_pos = resolveNavBumpersPos(updated.nav_bumpers_pos, updated.bottombar_mode);
       }
       if (key === "theme") {
         const nextTheme = normalizeThemeKey(value as string);

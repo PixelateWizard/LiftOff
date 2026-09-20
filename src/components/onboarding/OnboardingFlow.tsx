@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { IoChevronBack, IoChevronForward, IoLockClosedOutline } from "react-icons/io5";
 import i18n from "../../i18n";
@@ -6,7 +6,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { ToggleKnob } from "../ui";
 import {
   ACCENTS,
-  THEME_LOCKED_SETTINGS,
+  LOFI_SCENE_OPTIONS,
   THEME_SURFACE_DEFAULTS,
   normalizeThemeKey,
 } from "../../constants";
@@ -15,24 +15,56 @@ import type { GpState } from "../../utils/gamepad";
 import type { Settings } from "../../types";
 import { getMockRowStyle } from "../SurfacePickerModal";
 import { ThemePreview } from "../ThemePickerModal";
-import { modalOverlayStyle, modalPanelStyle, modalScrimStyle } from "../modals/modalStyles";
+import { modalOverlayStyle, modalPanelStyle, modalScrimStyle, ONBOARDING_BENEATH_ACCOUNT_Z, ONBOARDING_OVERLAY_Z } from "../modals/modalStyles";
+import homeNormalPreview from "../../assets/onboarding/home-normal.jpg";
+import homeImmersivePreview from "../../assets/onboarding/home-immersive.jpg";
+import homeLegacyPreview from "../../assets/onboarding/home-legacy.jpg";
+import tabsTextPreview from "../../assets/onboarding/tabs-text.png";
+import tabsIconsPreview from "../../assets/onboarding/tabs-icons.png";
+import tabsBothPreview from "../../assets/onboarding/tabs-both.png";
 import {
   ACCOUNT_ROWS,
   ACCENT_ITEMS,
   ESSENTIAL_ROWS,
+  HOME_BANNER_INDEX,
+  HOME_MODE_OPTIONS,
   HOME_ROWS,
   LANGUAGE_OPTIONS,
-  PROGRESS_STEPS,
   SOURCE_ROWS,
   STEP_ORDER,
   SURFACE_ITEMS,
+  TAB_ICON_OPTIONS,
   THEME_ITEMS,
+  VISUAL_ROWS,
+  VISUAL_ROWS_INDEX,
+  homeModeCardIndex,
   isSingleSelect,
+  shouldSkipOnboardingStep,
   stepCols,
   stepCount,
+  tabIconModeCardIndex,
+  visualTabbarTriggersOn,
+  visualTopBumpersOn,
+  visibleProgressSteps,
   type AccountKey,
+  type HomeModeOption,
   type StepKey,
+  type TabIconModeOption,
 } from "./steps";
+import { LofiSceneGrid } from "../LofiScenePickerModal";
+import { resolveLofiScene } from "../../theme/lofiScenes";
+
+const HOME_MODE_PREVIEWS: Record<HomeModeOption, string> = {
+  semi: homeNormalPreview,
+  immersive: homeImmersivePreview,
+  normal: homeLegacyPreview,
+};
+
+const TAB_ICON_PREVIEWS: Record<TabIconModeOption, string> = {
+  text: tabsTextPreview,
+  icons: tabsIconsPreview,
+  both: tabsBothPreview,
+};
 
 interface AccountSummary {
   connected: boolean;
@@ -96,13 +128,6 @@ export function OnboardingFlow({
   const stepRef = useRef<StepKey>(step);
   stepRef.current = step;
 
-  const surfaceLocked = useMemo(() => {
-    const key = normalizeThemeKey(String(settings.theme));
-    return Boolean(THEME_LOCKED_SETTINGS[key]?.surface_style);
-  }, [settings.theme]);
-  const surfaceLockedRef = useRef(surfaceLocked);
-  surfaceLockedRef.current = surfaceLocked;
-
   const setDraft = useCallback((updates: Partial<Settings>) => {
     draftRef.current = { ...draftRef.current, ...updates };
     previewSettings(updates);
@@ -142,6 +167,8 @@ export function OnboardingFlow({
       setDraft({ accent: ACCENT_ITEMS[index] } as Partial<Settings>);
     } else if (currentStep === "surface") {
       setDraft({ surface_style: SURFACE_ITEMS[index] } as Partial<Settings>);
+    } else if (currentStep === "lofi_scene") {
+      setDraft({ lofi_scene: LOFI_SCENE_OPTIONS[index] } as Partial<Settings>);
     } else if (currentStep === "welcome") {
       const language = LANGUAGE_OPTIONS[index];
       setDraft({ language } as Partial<Settings>);
@@ -149,13 +176,17 @@ export function OnboardingFlow({
         ? (navigator.language?.split("-")[0] || "en")
         : language;
       void i18n.changeLanguage(resolvedLanguage);
+    } else if (currentStep === "home" && index < HOME_MODE_OPTIONS.length) {
+      setHomeMode(HOME_MODE_OPTIONS[index]);
+    } else if (currentStep === "visual" && index < TAB_ICON_OPTIONS.length) {
+      setDraft({ tabbar_icon_mode: TAB_ICON_OPTIONS[index] } as Partial<Settings>);
     }
-  }, [setDraft]);
+  }, [setDraft, setHomeMode]);
 
   const goToStep = useCallback((next: number) => {
     let target = Math.max(0, Math.min(STEP_ORDER.length - 1, next));
     const direction = target > stepIndexRef.current ? 1 : -1;
-    while (STEP_ORDER[target] === "surface" && surfaceLockedRef.current) {
+    while (shouldSkipOnboardingStep(STEP_ORDER[target], settingsRef.current.theme)) {
       target += direction;
       if (target <= 0 || target >= STEP_ORDER.length - 1) break;
     }
@@ -175,9 +206,14 @@ export function OnboardingFlow({
     if (nextStep === "surface") {
       start = Math.max(0, SURFACE_ITEMS.indexOf(String(currentSettings.surface_style ?? "clear") as (typeof SURFACE_ITEMS)[number]));
     }
+    if (nextStep === "lofi_scene") {
+      start = Math.max(0, LOFI_SCENE_OPTIONS.indexOf(resolveLofiScene(currentSettings.lofi_scene)));
+    }
     if (nextStep === "welcome") {
       start = Math.max(0, LANGUAGE_OPTIONS.indexOf(String(currentSettings.language ?? "auto") as (typeof LANGUAGE_OPTIONS)[number]));
     }
+    if (nextStep === "home") start = homeModeCardIndex(String(currentSettings.home_mode));
+    if (nextStep === "visual") start = tabIconModeCardIndex(String(currentSettings.tabbar_icon_mode));
     cursorRef.current = start;
     setCursor(start);
     playSoundAlt();
@@ -200,9 +236,35 @@ export function OnboardingFlow({
     const current = cursorRef.current;
     const row = Math.floor(current / cols);
     const col = current % cols;
-    if (currentStep === "home" && settingsRef.current.home_mode === "normal" && current === 0 && direction === "down") {
+    if (currentStep === "home" && settingsRef.current.home_mode === "normal" && current < HOME_BANNER_INDEX && direction === "down") {
       focusFooter(1);
       playSound();
+      return;
+    }
+    if (currentStep === "visual") {
+      let next = current;
+      if (current < VISUAL_ROWS_INDEX) {
+        if (direction === "left" && current > 0) next = current - 1;
+        else if (direction === "right" && current < VISUAL_ROWS_INDEX - 1) next = current + 1;
+        else if (direction === "down") next = VISUAL_ROWS_INDEX;
+      } else {
+        if (direction === "up") next = current === VISUAL_ROWS_INDEX
+          ? tabIconModeCardIndex(String(settingsRef.current.tabbar_icon_mode))
+          : current - 1;
+        else if (direction === "down") {
+          if (current >= count - 1) {
+            focusFooter(1);
+            playSound();
+            return;
+          }
+          next = current + 1;
+        }
+      }
+      if (next === current) return;
+      cursorRef.current = next;
+      setCursor(next);
+      playSound();
+      if (next < VISUAL_ROWS_INDEX) applyFocusValue(next);
       return;
     }
     if (direction === "down" && (row + 1) * cols >= count) {
@@ -216,11 +278,14 @@ export function OnboardingFlow({
     if (direction === "up" && row > 0) next = current - cols;
     if (direction === "down" && current + cols < count) next = current + cols;
     else if (direction === "down" && (row + 1) * cols < count) next = count - 1;
+    if (currentStep === "home" && current === HOME_BANNER_INDEX && direction === "up") {
+      next = homeModeCardIndex(String(settingsRef.current.home_mode));
+    }
     if (next === current) return;
     cursorRef.current = next;
     setCursor(next);
     playSound();
-    if (isSingleSelect(currentStep)) applyFocusValue(next);
+    if (isSingleSelect(currentStep) || (currentStep === "home" && next < HOME_MODE_OPTIONS.length)) applyFocusValue(next);
   }, [applyFocusValue, focusFooter, playSound]);
 
   const activate = useCallback(() => {
@@ -245,18 +310,37 @@ export function OnboardingFlow({
       return;
     }
     if (currentStep === "home") {
-      const row = HOME_ROWS[cursorRef.current];
+      if (cursorRef.current < HOME_MODE_OPTIONS.length) {
+        rumble("confirm", settingsRef.current.haptic_feedback !== false);
+        applyFocusValue(cursorRef.current);
+        playSoundAlt();
+        return;
+      }
+      if (settingsRef.current.home_mode === "normal") return;
+      const current = Boolean(settingsRef.current.show_immersive_hero_art);
+      setDraft({ show_immersive_hero_art: !current } as Partial<Settings>);
+      playSoundAlt();
+      return;
+    }
+    if (currentStep === "visual") {
+      if (cursorRef.current < VISUAL_ROWS_INDEX) {
+        rumble("confirm", settingsRef.current.haptic_feedback !== false);
+        applyFocusValue(cursorRef.current);
+        playSoundAlt();
+        return;
+      }
+      const row = VISUAL_ROWS[cursorRef.current - VISUAL_ROWS_INDEX];
       if (row.kind === "toggle") {
-        if (settingsRef.current.home_mode === "normal") return;
         const current = Boolean(settingsRef.current[row.key]);
         setDraft({ [row.key]: !current } as Partial<Settings>);
-        playSoundAlt();
+      } else if (row.kind === "bumper_top") {
+        const next = visualTopBumpersOn(settingsRef.current.nav_bumpers_pos) ? "hidden" : "header";
+        setDraft({ nav_bumpers_pos: next } as Partial<Settings>);
       } else {
-        const current = row.options.indexOf(String(settingsRef.current[row.key]));
-        const next = row.options[(current + 1) % row.options.length];
-        setHomeMode(next);
-        playSoundAlt();
+        const next = visualTabbarTriggersOn(settingsRef.current.tabbar_show_buttons) ? "hidden" : "tabbar";
+        setDraft({ tabbar_show_buttons: next } as Partial<Settings>);
       }
+      playSoundAlt();
       return;
     }
     if (currentStep === "sources") {
@@ -288,23 +372,13 @@ export function OnboardingFlow({
         playSoundAlt();
       }
     }
-  }, [applyFocusValue, closeFlow, goToStep, onOpenAccount, persistDraft, playSoundAlt, setDraft, setHomeMode]);
+  }, [applyFocusValue, closeFlow, goToStep, onOpenAccount, persistDraft, playSoundAlt, setDraft]);
 
   const horizontal = useCallback((direction: 1 | -1) => {
     const currentStep = stepRef.current;
     if (footerFocusRef.current !== null) {
       moveCursor(direction === 1 ? "right" : "left");
       return;
-    }
-    if (currentStep === "home") {
-      const row = HOME_ROWS[cursorRef.current];
-      if (row.kind === "cycle") {
-        const current = row.options.indexOf(String(settingsRef.current[row.key]));
-        const next = row.options[(current + direction + row.options.length) % row.options.length];
-        setHomeMode(next);
-        playSound();
-        return;
-      }
     }
     if (currentStep === "essentials") {
       const row = ESSENTIAL_ROWS[cursorRef.current];
@@ -316,9 +390,24 @@ export function OnboardingFlow({
         return;
       }
     }
+    if (currentStep === "visual" && cursorRef.current >= VISUAL_ROWS_INDEX) {
+      const row = VISUAL_ROWS[cursorRef.current - VISUAL_ROWS_INDEX];
+      if (row.kind === "bumper_top") {
+        const next = visualTopBumpersOn(settingsRef.current.nav_bumpers_pos) ? "hidden" : "header";
+        setDraft({ nav_bumpers_pos: next } as Partial<Settings>);
+        playSound();
+        return;
+      }
+      if (row.kind === "trigger_tabbar") {
+        const next = visualTabbarTriggersOn(settingsRef.current.tabbar_show_buttons) ? "hidden" : "tabbar";
+        setDraft({ tabbar_show_buttons: next } as Partial<Settings>);
+        playSound();
+        return;
+      }
+    }
     if (stepCols(currentStep) === 1) return;
     moveCursor(direction === 1 ? "right" : "left");
-  }, [moveCursor, playSound, setDraft, setHomeMode]);
+  }, [moveCursor, playSound, setDraft]);
 
   const activateRef = useRef(activate);
   const closeFlowRef = useRef(closeFlow);
@@ -402,7 +491,7 @@ export function OnboardingFlow({
   const tileOutline = (focused: boolean, active: boolean) => focusOutline(footerFocus === null && focused, active);
 
   const focusCard = (index: number, preview = false) => {
-    if (stepRef.current === "home" && index === 1 && settingsRef.current.home_mode === "normal") return;
+    if (stepRef.current === "home" && index === HOME_BANNER_INDEX && settingsRef.current.home_mode === "normal") return;
     focusFooter(null);
     if (cursorRef.current === index) return;
     cursorRef.current = index;
@@ -435,7 +524,7 @@ export function OnboardingFlow({
             </svg>
             <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: "0.04em", color: theme.text }}>LiftOff</span>
           </div>
-          <div className="lo-onb-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12 }}>
+          <div className="lo-onb-grid" style={{ display: "grid", gridTemplateColumns: `repeat(${LANGUAGE_OPTIONS.length}, minmax(0,1fr))`, gap: 12 }}>
             {LANGUAGE_OPTIONS.map((key, index) => {
               const isActive = String(settings.language ?? "auto") === key;
               return (
@@ -467,6 +556,20 @@ export function OnboardingFlow({
             );
           })}
         </div>
+      );
+    }
+
+    if (step === "lofi_scene") {
+      return (
+        <LofiSceneGrid
+          selected={resolveLofiScene(settings.lofi_scene)}
+          focusedIndex={cursor}
+          onFocus={(index) => focusCard(index, true)}
+          onSelect={(key) => focusCard(LOFI_SCENE_OPTIONS.indexOf(key), true)}
+          onActivate={activate}
+          cardClassName="lo-onb-card"
+          showFocusRing={false}
+        />
       );
     }
 
@@ -531,26 +634,114 @@ export function OnboardingFlow({
       );
     }
 
-    if (step === "home" || step === "sources" || step === "essentials") {
-      const rows = step === "home" ? HOME_ROWS : step === "sources" ? SOURCE_ROWS : ESSENTIAL_ROWS;
+    if (step === "home") {
+      const bannerDisabled = settings.home_mode === "normal";
+      const bannerOn = bannerDisabled || Boolean(settings.show_immersive_hero_art);
+      return (
+        <div className="lo-onb-grid" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12 }}>
+            {HOME_MODE_OPTIONS.map((value, index) => {
+              const isActive = String(settings.home_mode) === value;
+              return (
+                <div key={value} className="lo-onb-card" data-home-mode={value}
+                  onClick={() => { focusCard(index, true); applyFocusValue(index); }} onDoubleClick={activate}
+                  onMouseMove={() => focusCard(index, true)}
+                  style={{ overflow: "hidden", cursor: "pointer", borderRadius: surfaceStyle === "win9x" ? 0 : 12, background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", ...tileOutline(cursor === index, isActive) }}>
+                  <img src={HOME_MODE_PREVIEWS[value]} alt="" style={{ width: "100%", aspectRatio: "16 / 9", objectFit: "cover", objectPosition: "center top", display: "block" }} />
+                  <div style={{ padding: "10px 12px", fontSize: 13, fontWeight: 700, color: theme.text, background: isDark ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.6)" }}>
+                    {t(`settings.homeModeValues.${value}`)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {HOME_ROWS.map((row) => (
+            <div key={row.key} className="lo-onb-card" aria-disabled={bannerDisabled} data-disabled={bannerDisabled || undefined}
+              onClick={() => { if (bannerDisabled) return; focusCard(HOME_BANNER_INDEX); activate(); }}
+              onMouseMove={() => { if (!bannerDisabled) focusCard(HOME_BANNER_INDEX); }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, padding: "14px 18px", cursor: bannerDisabled ? "not-allowed" : "pointer", borderRadius: surfaceStyle === "win9x" ? 0 : 12, background: bannerDisabled ? (isDark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)") : isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", ...tileOutline(cursor === HOME_BANNER_INDEX && !bannerDisabled, false) }}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: bannerDisabled ? theme.textDim : theme.text }}>{t(row.labelKey)}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                {bannerDisabled && (
+                  <span style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 7px", borderRadius: surfaceStyle === "win9x" ? 0 : 999, border: `1px solid ${theme.textFaint}`, fontSize: 10, fontWeight: 700, color: theme.textDim, whiteSpace: "nowrap" }}>
+                    <IoLockClosedOutline size={12} />
+                    {t("onboarding.home.legacyHeroLocked")}
+                  </span>
+                )}
+                <span style={{ fontSize: 11, fontWeight: 700, color: bannerDisabled ? theme.textDim : bannerOn ? accent.primary : theme.textFaint }}>{bannerOn ? t("onboarding.on") : t("onboarding.off")}</span>
+                <div style={{ opacity: bannerDisabled ? 0.55 : 1 }}>
+                  <ToggleKnob value={bannerOn} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (step === "visual") {
+      const topBumpersOn = visualTopBumpersOn(settings.nav_bumpers_pos);
+      const tabbarTriggersOn = visualTabbarTriggersOn(settings.tabbar_show_buttons);
+      return (
+        <div className="lo-onb-grid" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0,1fr))", gap: 12 }}>
+            {TAB_ICON_OPTIONS.map((value, index) => {
+              const isActive = String(settings.tabbar_icon_mode ?? "text") === value;
+              return (
+                <div key={value} className="lo-onb-card" data-tab-icon-mode={value}
+                  onClick={() => { focusCard(index, true); applyFocusValue(index); }} onDoubleClick={activate}
+                  onMouseMove={() => focusCard(index, true)}
+                  style={{ overflow: "hidden", cursor: "pointer", borderRadius: surfaceStyle === "win9x" ? 0 : 12, background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)", ...tileOutline(cursor === index, isActive) }}>
+                  <div style={{ width: "100%", aspectRatio: "16 / 5", background: isDark ? "rgba(0,0,0,0.45)" : "rgba(0,0,0,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <img src={TAB_ICON_PREVIEWS[value]} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "center", display: "block" }} />
+                  </div>
+                  <div style={{ padding: "10px 12px", fontSize: 13, fontWeight: 700, color: theme.text, background: isDark ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.6)" }}>
+                    {t(`settings.values.${value}`)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {VISUAL_ROWS.map((row, rowIndex) => {
+            const index = VISUAL_ROWS_INDEX + rowIndex;
+            const toggleOn = row.kind === "bumper_top"
+              ? topBumpersOn
+              : row.kind === "trigger_tabbar"
+                ? tabbarTriggersOn
+                : Boolean(settings[row.key]);
+            return (
+              <div key={row.key} className="lo-onb-card" onClick={() => { focusCard(index); activate(); }} onMouseMove={() => focusCard(index)}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, padding: "14px 18px", cursor: "pointer", borderRadius: surfaceStyle === "win9x" ? 0 : 12, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", ...tileOutline(cursor === index, false) }}>
+                <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{t(row.labelKey)}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: toggleOn ? accent.primary : theme.textFaint }}>{toggleOn ? t("onboarding.on") : t("onboarding.off")}</span>
+                  <ToggleKnob value={toggleOn} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (step === "sources" || step === "essentials") {
+      const rows = step === "sources" ? SOURCE_ROWS : ESSENTIAL_ROWS;
       return (
         <div className="lo-onb-grid" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {rows.map((row, index) => {
             const isCycle = "kind" in row && row.kind === "cycle";
             const value = settings[row.key];
-            const disabled = step === "home" && row.key === "show_immersive_hero_art" && settings.home_mode === "normal";
-            const shownValue = disabled ? true : Boolean(value);
             return (
-              <div key={row.key} className="lo-onb-card" aria-disabled={disabled} data-disabled={disabled || undefined} onClick={() => { if (disabled) return; focusCard(index); activate(); }} onMouseMove={() => { if (!disabled) focusCard(index); }}
-                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, padding: "14px 18px", cursor: disabled ? "not-allowed" : "pointer", borderRadius: surfaceStyle === "win9x" ? 0 : 12, background: disabled ? (isDark ? "rgba(255,255,255,0.025)" : "rgba(0,0,0,0.025)") : isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", ...tileOutline(cursor === index && !disabled, false) }}>
-                <span style={{ fontSize: 14, fontWeight: 500, color: disabled ? theme.textDim : theme.text }}>{t(row.labelKey)}</span>
+              <div key={row.key} className="lo-onb-card" onClick={() => { focusCard(index); activate(); }} onMouseMove={() => focusCard(index)}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, padding: "14px 18px", cursor: "pointer", borderRadius: surfaceStyle === "win9x" ? 0 : 12, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", ...tileOutline(cursor === index, false) }}>
+                <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{t(row.labelKey)}</span>
                 {isCycle ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <button type="button" aria-label={t("onboarding.previousOption")} onClick={(event) => { event.stopPropagation(); focusCard(index); horizontal(-1); }}
                         style={{ display: "grid", placeItems: "center", width: 28, height: 28, padding: 0, borderRadius: surfaceStyle === "win9x" ? 0 : 7, border: `1px solid ${theme.textFaint}`, background: "transparent", color: theme.text, cursor: "pointer" }}>
                         <IoChevronBack size={16} />
                       </button>
-                      <span style={{ minWidth: 72, textAlign: "center", fontSize: 12, fontWeight: 700, color: accent.primary }}>{t(row.key === "home_mode" ? `settings.homeModeValues.${String(value)}` : `settings.values.${String(value)}`, String(value))}</span>
+                      <span style={{ minWidth: 72, textAlign: "center", fontSize: 12, fontWeight: 700, color: accent.primary }}>{t(`settings.values.${String(value)}`, String(value))}</span>
                       <button type="button" aria-label={t("onboarding.nextOption")} onClick={(event) => { event.stopPropagation(); focusCard(index); horizontal(1); }}
                         style={{ display: "grid", placeItems: "center", width: 28, height: 28, padding: 0, borderRadius: surfaceStyle === "win9x" ? 0 : 7, border: `1px solid ${theme.textFaint}`, background: "transparent", color: theme.text, cursor: "pointer" }}>
                         <IoChevronForward size={16} />
@@ -558,16 +749,8 @@ export function OnboardingFlow({
                     </div>
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {disabled && (
-                      <span style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 7px", borderRadius: surfaceStyle === "win9x" ? 0 : 999, border: `1px solid ${theme.textFaint}`, fontSize: 10, fontWeight: 700, color: theme.textDim, whiteSpace: "nowrap" }}>
-                        <IoLockClosedOutline size={12} />
-                        {t("onboarding.home.legacyHeroLocked")}
-                      </span>
-                    )}
-                    <span style={{ fontSize: 11, fontWeight: 700, color: disabled ? theme.textDim : shownValue ? accent.primary : theme.textFaint }}>{shownValue ? t("onboarding.on") : t("onboarding.off")}</span>
-                    <div style={{ opacity: disabled ? 0.55 : 1 }}>
-                      <ToggleKnob value={shownValue} />
-                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: value ? accent.primary : theme.textFaint }}>{value ? t("onboarding.on") : t("onboarding.off")}</span>
+                    <ToggleKnob value={Boolean(value)} />
                   </div>
                 )}
               </div>
@@ -585,7 +768,8 @@ export function OnboardingFlow({
     );
   };
 
-  const progressIndex = PROGRESS_STEPS.indexOf(step);
+  const progressSteps = visibleProgressSteps(settings.theme);
+  const progressIndex = progressSteps.indexOf(step);
   const buttonStyle = {
     border: `1px solid ${accent.primary}`,
     borderRadius: surfaceStyle === "win9x" ? 0 : 9,
@@ -597,13 +781,14 @@ export function OnboardingFlow({
 
   return (
     <div data-theme={resolvedTheme} data-ui-motion={settings.ui_motion === false ? "off" : "on"} className="lo-onb-overlay"
-      style={{ ...modalOverlayStyle(childModalOpen ? 1500 : 9500), pointerEvents: childModalOpen ? "none" : "auto" }}>
+      data-onboarding-overlay=""
+      style={{ ...modalOverlayStyle(childModalOpen ? ONBOARDING_BENEATH_ACCOUNT_Z : ONBOARDING_OVERLAY_Z), pointerEvents: childModalOpen ? "none" : "auto" }}>
       <div style={modalScrimStyle} />
-      <div data-modal="" data-onboarding-step={step} className="lo-onb-panel" style={{ ...modalPanelStyle(themeValue, { width: "min(880px, 94vw)", maxHeight: "86vh", padding: "28px 28px 20px" }), display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div data-modal="" data-onboarding-step={step} className="lo-onb-panel" style={{ ...modalPanelStyle(themeValue, { width: step === "home" || step === "visual" ? "min(1040px, 96vw)" : "min(880px, 94vw)", maxHeight: "86vh", padding: "28px 28px 20px" }), display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
           <span style={{ fontSize: 18, fontWeight: 700, color: theme.text }}>{t(`onboarding.${step}.title`)}</span>
           <div style={{ display: "flex", gap: 6 }}>
-            {PROGRESS_STEPS.map((progressStep, index) => (
+            {progressSteps.map((progressStep, index) => (
               <div key={progressStep} style={{ width: index === progressIndex ? 18 : 6, height: 6, borderRadius: surfaceStyle === "win9x" ? 0 : 3, background: index <= progressIndex && progressIndex >= 0 ? accent.primary : theme.textFaint, transition: "width 0.2s ease, background 0.2s ease" }} />
             ))}
           </div>

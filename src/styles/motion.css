@@ -156,6 +156,17 @@
 .lo-anim-push-out { animation: lo-push-out var(--dur-base) var(--ease-decel) both; }
 .lo-anim-pop-in { animation: lo-pop-in var(--dur-base) var(--ease-decel) both; }
 .lo-anim-pop-out { animation: lo-pop-out var(--dur-base) var(--ease-decel) both; }
+@keyframes lo-smartbar-event-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.lo-smartbar-event { animation: lo-smartbar-event-in var(--dur-base) var(--ease-decel) both; }
+/* Transitions, not animations: suppressed separately below. No will-change,
+   per the backdrop-root note above; the pill sits on a backdrop-filter surface. */
+.lo-smartbar-hints { transition: max-width var(--dur-slow) var(--ease-decel), opacity var(--dur-base) var(--ease-standard); }
+.lo-smartbar-tint { transition: opacity var(--dur-base) var(--ease-standard); }
+[data-ui-motion="off"] .lo-smartbar-hints,
+[data-ui-motion="off"] .lo-smartbar-tint { transition: none; }
 @keyframes lo-loading-spin { to { transform: rotate(360deg); } }
 .lo-loading-spinner {
   display: inline-block;
@@ -196,6 +207,7 @@
 [data-ui-motion="off"] .lo-anim-push-out,
 [data-ui-motion="off"] .lo-anim-pop-in,
 [data-ui-motion="off"] .lo-anim-pop-out,
+[data-ui-motion="off"] .lo-smartbar-event,
 [data-ui-motion="off"] .lo-onb-panel,
 [data-ui-motion="off"] .lo-onb-step,
 [data-ui-motion="off"] .lo-onb-card,
@@ -216,6 +228,7 @@
 .app-launch-paused .lo-anim-push-out,
 .app-launch-paused .lo-anim-pop-in,
 .app-launch-paused .lo-anim-pop-out,
+.app-launch-paused .lo-smartbar-event,
 .app-launch-paused .lo-onb-panel,
 .app-launch-paused .lo-onb-step,
 .app-launch-paused .lo-onb-card {
@@ -244,9 +257,12 @@
   .lo-anim-push-out,
   .lo-anim-pop-in,
   .lo-anim-pop-out,
+  .lo-smartbar-event,
   .lo-onb-panel,
   .lo-onb-step,
   .lo-onb-card {
     animation-duration: 1ms !important;
   }
+  .lo-smartbar-hints,
+  .lo-smartbar-tint { transition: none; }
 }

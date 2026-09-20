@@ -3,6 +3,9 @@ import { useTheme } from "../contexts/ThemeContext";
 import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../theme/surfaces";
 import { AppListItem, CyberpunkCard, FocusRing } from "../components/ui";
 import { CornerCutButton } from "../components/neonblade-ui/corner-cut-button";
+import { HOME_PINNED_SHELF_ENABLED } from "../constants";
+import { isAnimatedImageUrl, isHeroVideoLayer } from "../utils/heroMedia";
+import { immersiveHeroCopyBottom, normalizeBottomBarMode, SMART_BAR_CLEARANCE } from "../utils/smartBar";
 
 interface HomeViewProps {
   active: boolean;
@@ -11,12 +14,6 @@ interface HomeViewProps {
   scrollRef: RefObject<HTMLDivElement>;
   [key: string]: any;
 }
-
-const mediaBase = (url?: string | null) => (url || "").split("?")[0].toLowerCase();
-const isHeroVideoUrl = (url?: string | null) => /\.(webm|mp4)$/i.test(mediaBase(url));
-const isAnimatedImageUrl = (url?: string | null) => /\.(gif|webp)$/i.test(mediaBase(url));
-const isAnimatedMediaUrl = (url?: string | null) => isHeroVideoUrl(url) || isAnimatedImageUrl(url);
-const formatMediaDimensions = (dimensions?: { width: number; height: number } | null) => dimensions ? `${dimensions.width}x${dimensions.height}` : null;
 
 const PNG_ACCENTS = ["ember", "ocean", "neon", "rose", "midnight", "nova", "steel", "lunar", "atomic", "aqua", "sage", "copper"];
 const getHeroPlaceholder = (accent: string) =>
@@ -103,19 +100,10 @@ export function HomeView(props: HomeViewProps) {
   const { surface, resolvedTheme } = useTheme();
   const [heroMediaPaused, setHeroMediaPaused] = useState(false);
   const [heroVideoPlaying, setHeroVideoPlaying] = useState<Record<string, boolean>>({});
-  const [heroMediaDimensions, setHeroMediaDimensions] = useState<Record<string, { width: number; height: number }>>({});
   const semiSlotRef = useRef<HTMLDivElement>(null);
-  const rememberHeroMediaDimensions = useCallback((url: string | null | undefined, width: number, height: number) => {
-    if (!url || width <= 0 || height <= 0) return;
-    setHeroMediaDimensions(prev => {
-      const current = prev[url];
-      if (current?.width === width && current?.height === height) return prev;
-      return { ...prev, [url]: { width, height } };
-    });
-  }, []);
   const HOME_BOTTOM_CLEARANCE = 20;
-  const helperBarMode = settings.bottombar_mode || (settings.hide_bottom_bar ? "minimal" : "full");
-  const BOTTOM_BAR_H = helperBarMode === "full" ? 48 : 0;
+  const helperBarMode = normalizeBottomBarMode(settings.bottombar_mode || (settings.hide_bottom_bar ? "smart" : "full"));
+  const BOTTOM_BAR_H = helperBarMode === "full" ? 48 : helperBarMode === "smart" ? SMART_BAR_CLEARANCE : 0;
   const semiHomeBase = Math.round(110 * (settings.home_cover_scale ?? 1.0));
   const CARD_H = Math.round(semiHomeBase * 1.5);
   const SLOT_FOCUS_BLEED = Math.max(18, Math.ceil(CARD_H * 0.04));
@@ -166,7 +154,7 @@ export function HomeView(props: HomeViewProps) {
     ? customHeroArt[activeHeroGame.id] || heroStatic[activeHeroGame.id] || null
     : null;
   const activeHeroIsAnimatedImage = activeHeroType === "animated" && isAnimatedImageUrl(heroAnimated[activeHeroGame?.id]);
-  const activeIsVideo = activeHeroType === "animated" && !activeHeroIsAnimatedImage;
+  const activeIsVideo = isHeroVideoLayer(activeHeroType, activeHeroAnimatedUrl);
   useEffect(() => {
     setHeroActionIndex?.(0);
     if (heroActionIndexRef) heroActionIndexRef.current = 0;
@@ -366,7 +354,8 @@ export function HomeView(props: HomeViewProps) {
     // Moved down below homeCollections definition to resolve activeApp correctly in semi-immersive mode
     const sectionTitleFontSize = settings.home_section_title_size === "large" ? 15 : settings.home_section_title_size === "medium" ? 12 : 10;
     const defaultHome = semiHome && !settings.cinematic_home;
-    const pinnedAtTop = defaultHome || settings.home_pinned_pos === "top";
+    const homePinnedPos = HOME_PINNED_SHELF_ENABLED ? (settings.home_pinned_pos ?? "bottom") : "none";
+    const pinnedAtTop = defaultHome || homePinnedPos === "top";
     const isOnyx = resolvedTheme === "onyx";
     const showHeroArtwork = settings.home_mode === "normal" || settings.show_immersive_hero_art !== false;
     const heroFocused = focusSec === "hero";
@@ -496,11 +485,15 @@ export function HomeView(props: HomeViewProps) {
       };
     };
     const cinematicBottomLaneFree = settings.cinematic_home && helperBarMode !== "full" && !settings.show_home_collections;
-    const cinematicPinnedVisible = (settings.home_pinned_pos ?? "bottom") !== "none" && homePinnedApps.length > 0;
+    const cinematicPinnedVisible = homePinnedPos !== "none" && homePinnedApps.length > 0;
     const cinematicPinnedAtBottom = cinematicBottomLaneFree && cinematicPinnedVisible && !pinnedAtTop;
     const cinematicHeroAtBottom = cinematicBottomLaneFree && !cinematicPinnedVisible;
     const cinematicHeroNearChevron = settings.cinematic_home && helperBarMode !== "full" && settings.show_home_collections && !cinematicPinnedVisible;
     const cinematicHeroBottom = cinematicHeroAtBottom ? 24 : cinematicPinnedAtBottom ? 88 : cinematicHeroNearChevron ? 72 : 122;
+    // Smart pill uses an 18px left/bottom inset; boxed Immersive copy matches that edge and sits above the 76px clearance.
+    const boxedHeroLeft = helperBarMode === "smart" ? 18 : null;
+    const boxedHeroBottom = helperBarMode === "smart" ? Math.max(cinematicHeroBottom, SMART_BAR_CLEARANCE + 12) : cinematicHeroBottom;
+    const freeHeroBottom = immersiveHeroCopyBottom(helperBarMode, cinematicHeroBottom);
     const showSpotifyHeroChip = !!spotifyHeroChip;
     const activeApp = (() => {
       if (!semiHome) return activeHeroGame;
@@ -535,8 +528,6 @@ export function HomeView(props: HomeViewProps) {
       : null;
 
     const visibleHeroBanner = showHeroArtwork ? heroBanner : null;
-    const visibleHeroResolution = formatMediaDimensions(visibleHeroBanner ? heroMediaDimensions[visibleHeroBanner] : null);
-    const visibleHeroIs4k = !!visibleHeroBanner && !!heroMediaDimensions[visibleHeroBanner] && heroMediaDimensions[visibleHeroBanner].width >= 3840 && heroMediaDimensions[visibleHeroBanner].height >= 2160;
     const heroRunning = !!heroGame && !!isRunning?.(heroGame.id);
     const heroResumeFocused = heroFocused && (!heroRunning || heroActionIndex === 0);
     const heroCloseFocused = heroFocused && heroRunning && heroActionIndex === 1;
@@ -563,7 +554,7 @@ export function HomeView(props: HomeViewProps) {
       : null;
 
     const activeGameIsAnimatedImage = activeGameHeroType === "animated" && isAnimatedImageUrl(heroAnimated[activeGame.id]);
-    const activeGameIsVideo = activeGameHeroType === "animated" && !activeGameIsAnimatedImage;
+    const activeGameIsVideo = isHeroVideoLayer(activeGameHeroType, activeGameAnimatedUrl);
 
     const heroSideOverlay = !showHeroArtwork
       ? "transparent"
@@ -584,7 +575,7 @@ export function HomeView(props: HomeViewProps) {
         : (isDark
             ? "linear-gradient(to right, rgba(8,4,2,0.88) 0%, rgba(8,4,2,0.5) 50%, rgba(8,4,2,0.2) 100%)"
             : `linear-gradient(to right, ${appBg}dd 0%, ${appBg}66 45%, transparent 100%)`);
-    const heroBottomOverlay = !showHeroArtwork
+    const heroBottomOverlay = !showHeroArtwork || defaultHome
       ? "transparent"
       : materialCinematicHero
       ? "transparent"
@@ -595,7 +586,7 @@ export function HomeView(props: HomeViewProps) {
       : isDark
         ? "linear-gradient(to bottom, transparent, rgba(6,3,1,0.95))"
         : `linear-gradient(to bottom, transparent, ${appBg}bb)`;
-    const heroTextAnchorOverlay = !showHeroArtwork
+    const heroTextAnchorOverlay = !showHeroArtwork || defaultHome
       ? "transparent"
       : materialCinematicHero
       ? "transparent"
@@ -624,7 +615,7 @@ export function HomeView(props: HomeViewProps) {
       };
 
       return (
-        <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
+        <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null} data-app-id={app.id}
           onClick={() => { select(); if (app.app_type === "game") activateHomeGame(app); }}
           onMouseMove={select}
           onDoubleClick={app.app_type === "game" ? undefined : () => activateSemiEntry(app)}
@@ -660,7 +651,7 @@ export function HomeView(props: HomeViewProps) {
 
       if (app.app_type === "game" || art) {
         return (
-          <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
+          <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null} data-app-id={app.id}
             onClick={() => { select(); if (app.app_type === "game") activateHomeGame(app); }}
             onMouseMove={select}
             onDoubleClick={app.app_type === "game" ? undefined : () => activateSemiEntry(app)}
@@ -687,7 +678,7 @@ export function HomeView(props: HomeViewProps) {
       }
 
       return (
-        <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
+        <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null} data-app-id={app.id}
           onClick={select}
           onMouseMove={select}
           onDoubleClick={() => triggerLaunch(app, recentRef.current)}
@@ -717,7 +708,7 @@ export function HomeView(props: HomeViewProps) {
 
       if (app.app_type === "game") {
         return (
-          <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
+          <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null} data-app-id={app.id}
             onClick={() => { select(); activateHomeGame(app); }}
             onMouseMove={select}
             style={{ flexShrink: 0, width: semiCardW, height: semiCardH, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative" }}>
@@ -742,7 +733,7 @@ export function HomeView(props: HomeViewProps) {
       }
 
       return (
-        <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
+        <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null} data-app-id={app.id}
           onClick={select}
           onMouseMove={select}
           onDoubleClick={() => activateSemiEntry(app)}
@@ -765,7 +756,10 @@ export function HomeView(props: HomeViewProps) {
       <div style={{ display: "flex", flexDirection: "column", padding: settings.cinematic_home ? "0" : semiHome ? "0" : "16px 24px 0", ...(settings.wide_layout || settings.cinematic_home || semiHome ? {} : { maxWidth: 1400, margin: "0 auto" }), width: "100%", boxSizing: "border-box",
         ...(settings.cinematic_home ? { position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none" } : { minHeight: "100%" }) }}>
         {/* ── HERO ── */}
-        <div style={{
+        <div
+          ref={heroFocused && heroGame ? focusedCardRef : null}
+          data-app-id={heroGame?.id}
+          style={{
           ...(settings.cinematic_home
             ? { position: "fixed", inset: 0, zIndex: 0, opacity: panelOpen ? 0 : 1, transform: panelOpen ? "translateY(-100%)" : "translateY(0)", pointerEvents: panelOpen ? "none" : "auto" as const }
             : semiHome
@@ -783,7 +777,7 @@ export function HomeView(props: HomeViewProps) {
           // which follows the diagonal cut because both layers are clipped).
           ...(cyberNormalHero ? { clipPath: HERO_CLIP, WebkitClipPath: HERO_CLIP, padding: heroFocused ? 3 : 2, background: heroFocused ? accent.primary : `${accent.glow}0.75)`, border: "none", boxShadow: heroFocused ? `0 0 24px ${accent.glow}0.3)` : "none" } : {}),
         }}>
-          <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: settings.cinematic_home ? 0 : surfaceCardRadius, overflow: "hidden", ...(cyberNormalHero ? { clipPath: HERO_CLIP, WebkitClipPath: HERO_CLIP } : {}) }}>
+          <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: (settings.cinematic_home || semiHome) ? 0 : surfaceCardRadius, overflow: "hidden", ...(cyberNormalHero ? { clipPath: HERO_CLIP, WebkitClipPath: HERO_CLIP } : {}) }}>
             {(() => {
               const coverStyle: any = { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" };
               if (semiHome) {
@@ -791,7 +785,7 @@ export function HomeView(props: HomeViewProps) {
                   <div key={activeGame.id} style={{ position: "absolute", inset: 0, opacity: 1, zIndex: 1 }}>
                     {showHeroArtwork && !activeGameIsVideo && (
                       activeGameStaticBanner ? (
-                        <img src={activeGameStaticBanner} alt="" decoding="async" loading="eager" onLoad={(event) => rememberHeroMediaDimensions(activeGameStaticBanner, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)} style={{ ...coverStyle, transform: "translateZ(0)" }} />
+                        <img src={activeGameStaticBanner} alt="" decoding="async" loading="eager" style={{ ...coverStyle, transform: "translateZ(0)" }} />
                       ) : activeGameFallback ? (
                         <img src={activeGameFallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(10px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
                       ) : (
@@ -799,7 +793,7 @@ export function HomeView(props: HomeViewProps) {
                       )
                     )}
                     {showHeroArtwork && activeGameIsAnimatedImage && activeGameAnimatedUrl && (
-                      <img src={activeGameAnimatedUrl} alt="" decoding="async" loading="eager" onLoad={(event) => rememberHeroMediaDimensions(activeGameAnimatedUrl, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)} style={{ ...coverStyle, position: "absolute", top: 0, left: 0, transform: "translateZ(0)", opacity: 1 }} />
+                      <img src={activeGameAnimatedUrl} alt="" decoding="async" loading="eager" style={{ ...coverStyle, position: "absolute", top: 0, left: 0, transform: "translateZ(0)", opacity: 1 }} />
                     )}
                     {showHeroArtwork && activeGameIsVideo && activeGameAnimatedUrl && (
                       <video
@@ -819,7 +813,6 @@ export function HomeView(props: HomeViewProps) {
                         src={activeGameAnimatedUrl}
                         autoPlay={!appPaused && !heroMediaPaused && active}
                         loop muted playsInline preload="auto"
-                        onLoadedMetadata={(event) => rememberHeroMediaDimensions(activeGameAnimatedUrl, event.currentTarget.videoWidth, event.currentTarget.videoHeight)}
                         style={{
                           position: "absolute",
                           top: 0, left: 0,
@@ -853,13 +846,13 @@ export function HomeView(props: HomeViewProps) {
                 const showVideo = !!animatedUrl && !showAnimatedImage;
                 const staticBanner = rawStaticBanner;
                 const mediaPaused = appPaused || heroMediaPaused || !active;
-                const intendedVideo = heroType === "animated" && !isAnimatedImageUrl(heroAnimated[game.id]);
+                const intendedVideo = isHeroVideoLayer(heroType, animatedUrl);
 
                 return (
                   <div key={game.id} style={{ position: "absolute", inset: 0, opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
                     {isNearby && showHeroArtwork && !intendedVideo
                       ? (staticBanner
-                          ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} onLoad={(event) => rememberHeroMediaDimensions(staticBanner, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)} style={{ ...coverStyle, transform: "translateZ(0)" }} />
+                          ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
                           : fallback
                             ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(10px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
                             : <img src={getHeroPlaceholder(settings.accent)} alt="" style={{ ...coverStyle }} />)
@@ -869,7 +862,6 @@ export function HomeView(props: HomeViewProps) {
                       <img
                         src={primaryHeroMedia}
                         alt=""
-                        onLoad={(event) => rememberHeroMediaDimensions(primaryHeroMedia, event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)}
                         decoding="async"
                         loading="eager"
                         style={{
@@ -900,7 +892,6 @@ export function HomeView(props: HomeViewProps) {
                         autoPlay={isActive && !mediaPaused}
                         onCanPlay={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
                         onLoadedData={(event) => playActiveHeroVideo(event.currentTarget, game.id)}
-                        onLoadedMetadata={(event) => rememberHeroMediaDimensions(primaryHeroMedia, event.currentTarget.videoWidth, event.currentTarget.videoHeight)}
                         onPlaying={() => setHeroVideoPlaying(prev => prev[game.id] ? prev : { ...prev, [game.id]: true })}
                         loop muted playsInline preload={isNearby ? "auto" : "none"}
                         style={{
@@ -922,13 +913,10 @@ export function HomeView(props: HomeViewProps) {
               });
             })()}
             <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroSideOverlay }} />
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: materialHero ? "42%" : "55%", zIndex: 2, background: heroBottomOverlay }} />
-            {materialHero && <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroTextAnchorOverlay }} />}
-            {settings.cinematic_home && visibleHeroResolution && showHeroArtwork && (
-              <div style={{ position: "absolute", top: 20, right: 24, zIndex: 4, padding: "6px 10px", borderRadius: surfaceStyle === "win9x" || resolvedTheme === "cyberpunk" ? 0 : 8, background: visibleHeroIs4k ? "rgba(74,156,74,0.82)" : "rgba(0,0,0,0.48)", color: "white", fontSize: 11, fontWeight: 800, letterSpacing: "0.02em", boxShadow: "0 4px 16px rgba(0,0,0,0.28)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)", pointerEvents: "none" }}>
-                {t("home.heroResolution", { resolution: visibleHeroResolution })}{visibleHeroIs4k ? " 4K" : ""}
-              </div>
+            {!defaultHome && (
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: materialHero ? "42%" : "55%", zIndex: 2, background: heroBottomOverlay }} />
             )}
+            {materialHero && !defaultHome && <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroTextAnchorOverlay }} />}
           </div>
           {!settings.cinematic_home && (
             <div
@@ -938,7 +926,7 @@ export function HomeView(props: HomeViewProps) {
                 inset: 0,
                 pointerEvents: "none",
                 zIndex: 1,
-                ...(homePinnedApps.length > 0 && (settings.home_pinned_pos ?? "bottom") !== "none"
+                ...(homePinnedApps.length > 0 && homePinnedPos !== "none"
                   ? {
                       WebkitMaskImage: "linear-gradient(to bottom, transparent 0px, transparent 86px, black 132px)",
                       maskImage: "linear-gradient(to bottom, transparent 0px, transparent 86px, black 132px)",
@@ -950,7 +938,7 @@ export function HomeView(props: HomeViewProps) {
           )}
 
           {/* Pinned bar — hidden in cinematic/semi+top modes, shown separately as fixed overlay */}
-          {!settings.cinematic_home && !(semiHome && pinnedAtTop) && (settings.home_pinned_pos ?? "bottom") !== "none" && <div style={pinnedAtTop
+          {!settings.cinematic_home && !(semiHome && pinnedAtTop) && homePinnedPos !== "none" && <div style={pinnedAtTop
             ? { position: "relative", zIndex: 2, padding: "16px 20px 0", flexShrink: 0, order: 0 }
             : { position: "relative", zIndex: 2, padding: semiHome ? "0 20px 80px" : "0 20px 20px", flexShrink: 0, order: 2 }}>
             {homePinnedApps.length > 0 ? (
@@ -963,6 +951,7 @@ export function HomeView(props: HomeViewProps) {
                     <AppListItem
                       key={app.id}
                       ref={focused ? focusedCardRef : null}
+                      appId={app.id}
                       variant="pill"
                       name={app.name}
                       icon={art
@@ -989,8 +978,8 @@ export function HomeView(props: HomeViewProps) {
           <div style={materialCinematicHero
             ? {
                 position: "absolute",
-                bottom: cinematicHeroBottom,
-                left: 24,
+                bottom: boxedHeroBottom,
+                left: boxedHeroLeft ?? 24,
                 zIndex: 4,
                 display: "flex",
                 flexDirection: "row",
@@ -1012,7 +1001,7 @@ export function HomeView(props: HomeViewProps) {
             ? {
                 // Outer = the neon border frame; the inner fill wrapper (below) sits
                 // inside the padding and both are clipped, so the edge wraps the cut.
-                position: "fixed", left: 32, bottom: cinematicHeroBottom, zIndex: 2, pointerEvents: "auto",
+                position: "fixed", left: boxedHeroLeft ?? 32, bottom: boxedHeroBottom, zIndex: 2, pointerEvents: "auto",
                 display: "inline-block", padding: 1,
                 maxWidth: "min(660px, calc(100% - 64px))",
                 background: `${accent.glow}0.62)`,
@@ -1020,8 +1009,8 @@ export function HomeView(props: HomeViewProps) {
                 WebkitClipPath: HERO_CLIP_BIG,
                 filter: `drop-shadow(0 10px 24px rgba(0,0,0,0.40))`,
               }
-            : settings.cinematic_home
-            ? { position: "fixed", left: 0, right: 0, bottom: cinematicHeroAtBottom ? 0 : cinematicPinnedAtBottom ? 84 : cinematicHeroNearChevron ? 68 : 120, zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
+            : cinematicHome
+            ? { position: "fixed", left: 0, right: 0, bottom: freeHeroBottom, zIndex: 2, pointerEvents: "auto", display: "flex", alignItems: "flex-end", padding: "0 32px 20px" }
             : semiHome
             ? { position: "absolute", left: 0, right: 0, top: 0, height: semiHeroHeight, zIndex: 2, display: "flex", alignItems: "flex-end", padding: "0 42px 24px", boxSizing: "border-box" as any }
             : { position: "relative", zIndex: 1, flex: 1, display: "flex",
@@ -1049,7 +1038,7 @@ export function HomeView(props: HomeViewProps) {
               </div>
             )}
             {heroGame ? (
-              <div style={materialCinematicHero ? { display: "flex", flexDirection: "column", gap: 6, minWidth: 0 } : { flex: settings.cinematic_home ? 1 : "0 1 auto", minWidth: 0, maxWidth: settings.cinematic_home ? undefined : "min(780px, 100%)", alignSelf: settings.cinematic_home ? undefined : "flex-end", ...(!settings.cinematic_home ? heroCopySurfaceStyle : {}), ...(!settings.cinematic_home && settings.show_hero_cover !== false && !semiHome ? { minHeight: "clamp(120px, 15vw, 225px)", boxSizing: "border-box", justifyContent: "center", display: "flex", flexDirection: "column" } : {}) }}>
+              <div style={materialCinematicHero ? { display: "flex", flexDirection: "column", gap: 6, minWidth: 0 } : { flex: settings.cinematic_home ? 1 : "0 1 auto", minWidth: 0, maxWidth: settings.cinematic_home ? undefined : "min(780px, 100%)", alignSelf: settings.cinematic_home ? undefined : "flex-end", ...(!settings.cinematic_home && !semiHome ? heroCopySurfaceStyle : {}), ...(!settings.cinematic_home && settings.show_hero_cover !== false && !semiHome ? { minHeight: "clamp(120px, 15vw, 225px)", boxSizing: "border-box", justifyContent: "center", display: "flex", flexDirection: "column" } : {}) }}>
                 {/* Title label and name */}
                 {<>
                   <div style={{ fontSize: materialCinematicHero ? 11 : 10, letterSpacing: materialCinematicHero ? "0.10em" : "0.2em", textTransform: "uppercase", color: materialCinematicHero ? accent.primary : settings.cinematic_home ? accent.primary : heroLabelColor, marginBottom: materialCinematicHero ? 0 : 6, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, textShadow: materialCinematicHero || settings.cinematic_home ? undefined : heroTextShadow }}>
@@ -1182,7 +1171,7 @@ export function HomeView(props: HomeViewProps) {
                 const focused = focusSec === "pinned" && focusIdx === i;
                 const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : null;
                 return (
-                  <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
+                  <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null} data-app-id={app.id}
                     onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; if (app.app_type === "game") activateHomeGame(app); }}
                     onDoubleClick={app.app_type === "game" ? undefined : () => triggerLaunch(app, recentRef.current)}
                     style={{
@@ -1387,7 +1376,7 @@ export function HomeView(props: HomeViewProps) {
                 if (app.app_type === "game") {
                   return (
                     // Outer wrapper — no overflow:hidden so ring can extend with gap
-                    <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
+                    <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null} data-app-id={app.id}
                       onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; activateHomeGame(app); }}
                       onDoubleClick={undefined}
                       style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative", transition: "transform 0.15s ease",
@@ -1418,7 +1407,7 @@ export function HomeView(props: HomeViewProps) {
                 const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : "rgba(255,255,255,0.08)";
                 if (art) {
                   return (
-                    <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
+                    <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null} data-app-id={app.id}
                       onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recentRef.current)}
                       style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative", transition: "transform 0.15s ease",
@@ -1440,7 +1429,7 @@ export function HomeView(props: HomeViewProps) {
                   );
                 }
                 return (
-                  <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
+                  <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null} data-app-id={app.id}
                     onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; }}
                     onDoubleClick={() => triggerLaunch(app, recentRef.current)}
                     style={{ borderRadius: surfaceCardRadius, cursor: "pointer", transition: "all 0.15s ease",
@@ -1493,7 +1482,7 @@ export function HomeView(props: HomeViewProps) {
                       <div key={app.id}
                         data-card=""
                         className={focused ? "focused" : ""}
-                        ref={focused ? focusedCardRef : null}
+                        ref={focused ? focusedCardRef : null} data-app-id={app.id}
                         onClick={() => { setFocusSection("home_collections"); focusSectionRef.current = "home_collections"; setHomeColFocusRow(rowIdx); homeColFocusRowRef.current = rowIdx; setHomeColFocusCol(colIdx); homeColFocusColRef.current = colIdx; activateHomeGame(app); }}
                         onDoubleClick={undefined}
                         style={{ flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative",
@@ -1521,7 +1510,7 @@ export function HomeView(props: HomeViewProps) {
                     <div key={app.id}
                       data-card=""
                       className={focused ? "focused" : ""}
-                      ref={focused ? focusedCardRef : null}
+                      ref={focused ? focusedCardRef : null} data-app-id={app.id}
                       onClick={() => { setFocusSection("home_collections"); focusSectionRef.current = "home_collections"; setHomeColFocusRow(rowIdx); homeColFocusRowRef.current = rowIdx; setHomeColFocusCol(colIdx); homeColFocusColRef.current = colIdx; }}
                       onDoubleClick={() => triggerLaunch(app, recentRef.current)}
                       style={{ ...glass, flexShrink: 0, width: CARD_W, height: CARD_H, borderRadius: surfaceCardRadius, cursor: "pointer", position: "relative",
@@ -1579,7 +1568,7 @@ export function HomeView(props: HomeViewProps) {
                           const art = app.app_type === "game" ? (customArt[app.id] || gameArt[app.id]) : (customArt[app.id] || null);
                           return (
                             <div key={app.id}
-                              ref={recFocused ? focusedCardRef : null}
+                              ref={recFocused ? focusedCardRef : null} data-app-id={app.id}
                               onClick={() => { setFocusSection("recent"); focusSectionRef.current = "recent"; setFocusIndex(i); focusIndexRef.current = i; if (app.app_type === "game") activateHomeGame(app); }}
                               onDoubleClick={app.app_type === "game" ? undefined : () => triggerLaunch(app, recentRef.current)}
                               style={{ position: "relative", flexShrink: 0, width: CARD_W, height: CARD_H }}>

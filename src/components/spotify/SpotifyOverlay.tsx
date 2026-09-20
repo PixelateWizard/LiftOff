@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { IoClose, IoPause, IoPlay, IoPlayBack, IoPlayForward, IoRepeat, IoShuffle, IoVolumeHighOutline } from "react-icons/io5";
+import { IoClose, IoPause, IoPlay, IoPlayBack, IoPlayForward, IoRepeat, IoShuffle, IoStop, IoVolumeHighOutline } from "react-icons/io5";
 import ModalShell from "../modals/ModalShell";
 import { useTheme } from "../../contexts/ThemeContext";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
@@ -36,11 +36,14 @@ export function SpotifyOverlay({ open, spotify, webPlayer, repeatSpeed = "normal
   const actionBusyRef = useRef(false);
   const [seekDraft, setSeekDraft] = useState<number | null>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
-  const track = webPlayer?.track
+  const sdkTrack = webPlayer?.track;
+  const track = !spotify.track && !sdkTrack?.isPlaying
+    ? null
+    : sdkTrack
     ? {
-        ...webPlayer.track,
-        shuffle: spotify.track?.shuffle ?? webPlayer.track.shuffle,
-        repeat: spotify.track?.repeat ?? webPlayer.track.repeat,
+        ...sdkTrack,
+        shuffle: spotify.track?.shuffle ?? sdkTrack.shuffle,
+        repeat: spotify.track?.repeat ?? sdkTrack.repeat,
       }
     : spotify.track;
   const deviceCards = useMemo(() => spotify.devices.slice(0, 6), [spotify.devices]);
@@ -52,11 +55,12 @@ export function SpotifyOverlay({ open, spotify, webPlayer, repeatSpeed = "normal
   }, [activeDevice?.id, spotify.devices]);
 
   // Focus order mirrors the visual layout top-to-bottom: transport row
-  // (shuffle, prev, play, next, repeat, close), then the scrubber, then
+  // (shuffle, prev, play, next, repeat, stop, close), then the scrubber, then
   // devices, then playlists. Close lives in the top row, not at the end.
-  const closeIndex = 5;
-  const seekIndex = 6;
-  const deviceStart = 7;
+  const stopIndex = 5;
+  const closeIndex = 6;
+  const seekIndex = 7;
+  const deviceStart = 8;
   const playlistStart = deviceStart + deviceCards.length;
   const actionsCount = playlistStart + playlistCards.length;
   const setFocus = (idx: number) => {
@@ -178,6 +182,10 @@ export function SpotifyOverlay({ open, spotify, webPlayer, repeatSpeed = "normal
     if (idx === 4) {
       const next = track?.repeat === "off" ? "context" : track?.repeat === "context" ? "track" : "off";
       premiumAction(() => spotify.setRepeat(next));
+    }
+    if (idx === stopIndex) {
+      premiumAction(spotify.stop);
+      return;
     }
     if (idx === closeIndex) {
       onClose();
@@ -348,7 +356,7 @@ export function SpotifyOverlay({ open, spotify, webPlayer, repeatSpeed = "normal
           alignItems: "center",
           justifyContent: "center",
           cursor: "pointer",
-          opacity: !spotify.requiresPremium || idx === 5 ? 1 : 0.62,
+          opacity: !spotify.requiresPremium || idx === closeIndex ? 1 : 0.62,
           boxShadow: focused ? `0 0 22px ${accent.glow}0.22)` : undefined,
         }}
       >
@@ -403,6 +411,7 @@ export function SpotifyOverlay({ open, spotify, webPlayer, repeatSpeed = "normal
                 const next = track?.repeat === "off" ? "context" : track?.repeat === "context" ? "track" : "off";
                 premiumAction(() => spotify.setRepeat(next));
               }, track?.repeat !== "off")}
+              {controlButton(stopIndex, t("spotify.stop"), <IoStop size={16} />, () => premiumAction(spotify.stop))}
               <button type="button" ref={registerFocus(closeIndex)} onClick={onClose} onMouseMove={() => setFocus(closeIndex)} style={{
                 marginLeft: "auto",
                 width: 42,

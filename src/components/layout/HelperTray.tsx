@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   IoChevronBack, IoChevronForward, IoGameControllerOutline, IoMusicalNotesOutline,
   IoPause, IoPlay, IoPlayBack, IoPlayForward, IoPowerOutline, IoRefresh,
-  IoSettingsOutline, IoSunnyOutline, IoVolumeHighOutline,
+  IoSettingsOutline, IoStop, IoSunnyOutline, IoVolumeHighOutline,
 } from "react-icons/io5";
 import type { SpotifyController } from "../../hooks/useSpotify";
 import type { App } from "../../types";
@@ -13,8 +13,9 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { useSettings } from "../../contexts/SettingsContext";
 import { GamepadBtn } from "../GamepadBtn";
 import { modalPanelStyle } from "../modals/modalStyles";
+import { installPhaseLabelKey, runningMinutes, type BarDownload, type BarRunning } from "../../utils/smartBar";
 
-type HelperBarMode = "full" | "minimal" | "hidden";
+type HelperBarMode = "full" | "smart" | "hidden";
 
 interface HelperTrayProps {
   open: boolean;
@@ -31,12 +32,22 @@ interface HelperTrayProps {
   onRefreshLibrary: () => void;
   onOpenControls: () => void;
   onOpenPinned: (app: App) => void;
+  runningEntries?: BarRunning[];
+  downloadEntries?: BarDownload[];
+  now?: number;
+  onResumeRunning?: (app: App) => void;
+  onCloseRunning?: (app: App) => void;
+  onOpenDownload?: (app: App) => void;
 }
 
 type FocusItem = { key: string; row: number; column: number; app?: App };
 
 const TRAY_EXIT_MS = 160;
 const FOCUS_REVEAL_DELAY_MS = 300;
+const TRAY_ACTIVITY_LIMIT = 2;
+const EMPTY_RUNNING: BarRunning[] = [];
+const EMPTY_DOWNLOADS: BarDownload[] = [];
+const noop = () => {};
 
 const HELPER_TRAY_UNDERLAY_FILTERS: Record<string, string> = {
   glass: "blur(18px) saturate(120%)",
@@ -44,9 +55,15 @@ const HELPER_TRAY_UNDERLAY_FILTERS: Record<string, string> = {
   clear: "blur(12px) saturate(105%)",
   obsidian: "blur(18px) saturate(110%)",
 };
+const DENSE_TRANSLUCENT_TRAY_SURFACES = new Set(Object.keys(HELPER_TRAY_UNDERLAY_FILTERS));
+const DEFAULT_HELPER_TRAY_UNDERLAY_FILTER = "blur(16px) saturate(115%)";
 
-export function getHelperTrayUnderlayFilter(surfaceStyle: string): string | undefined {
-  return HELPER_TRAY_UNDERLAY_FILTERS[surfaceStyle];
+export function getHelperTrayUnderlayFilter(surfaceStyle: string): string {
+  return HELPER_TRAY_UNDERLAY_FILTERS[surfaceStyle] ?? DEFAULT_HELPER_TRAY_UNDERLAY_FILTER;
+}
+
+export function usesDenseTranslucentHelperTray(surfaceStyle: string): boolean {
+  return DENSE_TRANSLUCENT_TRAY_SURFACES.has(surfaceStyle);
 }
 
 const formatTime = (ms: number) => {
@@ -69,11 +86,17 @@ export function HelperTray({
   onRefreshLibrary,
   onOpenControls,
   onOpenPinned,
+  runningEntries = EMPTY_RUNNING,
+  downloadEntries = EMPTY_DOWNLOADS,
+  now = Date.now(),
+  onResumeRunning = noop,
+  onCloseRunning = noop,
+  onOpenDownload = noop,
 }: HelperTrayProps) {
   const { t } = useTranslation();
   const themeValue = useTheme();
   const { accent, theme, isDark, surfaceStyle, resolvedTheme } = themeValue;
-  const { settings } = useSettings();
+  const { settings, updateSetting } = useSettings();
   const motionProfile =
     surfaceStyle === "win9x" || resolvedTheme === "webcore" ? "instant" :
     surfaceStyle === "material" ? "crisp" :
@@ -94,21 +117,49 @@ export function HelperTray({
   const pinnedRowRef = useRef<HTMLDivElement | null>(null);
   const pinnedButtonRefs = useRef(new Map<string, HTMLButtonElement>());
 
+  const visibleRunning = useMemo(() => runningEntries.slice(0, TRAY_ACTIVITY_LIMIT), [runningEntries]);
+  const visibleDownloads = useMemo(() => downloadEntries.slice(0, TRAY_ACTIVITY_LIMIT), [downloadEntries]);
+  const activityRows = Math.max(visibleRunning.length, visibleDownloads.length);
+  const isLofi = resolvedTheme === "lofi";
+  const lofiMusicOn = settings.lofi_music_enabled !== false;
+  // Opening focus goes to the most time-sensitive thing: a running session,
+  // then a download, then Settings.
+  const initialFocusKey = visibleRunning[0]
+    ? `run:${visibleRunning[0].app.id}`
+    : visibleDownloads[0]
+      ? `dl:${visibleDownloads[0].app.id}`
+      : "settings";
+  const initialFocusKeyRef = useRef(initialFocusKey);
+  initialFocusKeyRef.current = initialFocusKey;
+
   const focusItems = useMemo<FocusItem[]>(() => {
-    const pinnedRow = pinnedApps.length > 0 ? 2 : null;
-    const musicRow = pinnedRow == null ? 2 : 3;
+    const base = activityRows;
+    const pinnedRow = pinnedApps.length > 0 ? base + 2 : null;
+    const musicRow = pinnedRow == null ? base + 2 : base + 3;
+    const downloadColumn = visibleRunning.length > 0 ? 2 : 0;
+    const activity: FocusItem[] = [];
+    for (let row = 0; row < activityRows; row += 1) {
+      const run = visibleRunning[row];
+      const dl = visibleDownloads[row];
+      if (run) {
+        activity.push({ key: `run:${run.app.id}`, row, column: 0, app: run.app });
+        activity.push({ key: `runclose:${run.app.id}`, row, column: 1, app: run.app });
+      }
+      if (dl) activity.push({ key: `dl:${dl.app.id}`, row, column: downloadColumn, app: dl.app });
+    }
     const music = track
       ? [
           { key: "previous", row: musicRow, column: 0 },
           { key: "play", row: musicRow, column: 1 },
           { key: "next", row: musicRow, column: 2 },
-          { key: "seek", row: musicRow, column: 3 },
-          { key: "playlists", row: musicRow, column: 4 },
+          { key: "stop", row: musicRow, column: 3 },
+          { key: "seek", row: musicRow, column: 4 },
+          { key: "playlists", row: musicRow, column: 5 },
         ]
       : [{ key: "playlists", row: musicRow, column: 0 }];
     const sliders = [
-      { key: "volume", row: 1, column: 0 },
-      ...(brightness != null && brightness >= 0 ? [{ key: "brightness", row: 1, column: 1 }] : []),
+      { key: "volume", row: base + 1, column: 0 },
+      ...(brightness != null && brightness >= 0 ? [{ key: "brightness", row: base + 1, column: 1 }] : []),
     ];
     const pinned = pinnedRow == null ? [] : pinnedApps.map((app, column) => ({
       key: `pinned:${app.id}`,
@@ -117,15 +168,17 @@ export function HelperTray({
       app,
     }));
     return [
-      { key: "settings", row: 0, column: 0 },
-      { key: "power", row: 0, column: 1 },
-      { key: "refresh", row: 0, column: 2 },
-      { key: "controls", row: 0, column: 3 },
+      ...activity,
+      { key: "settings", row: base, column: 0 },
+      { key: "power", row: base, column: 1 },
+      { key: "refresh", row: base, column: 2 },
+      { key: "controls", row: base, column: 3 },
+      ...(isLofi ? [{ key: "lofiMusic", row: base, column: 4 }] : []),
       ...sliders,
       ...pinned,
       ...music,
     ];
-  }, [track, brightness, pinnedApps]);
+  }, [track, brightness, pinnedApps, activityRows, visibleRunning, visibleDownloads, isLofi]);
   const focusItemsRef = useRef(focusItems);
   useEffect(() => { focusItemsRef.current = focusItems; }, [focusItems]);
 
@@ -169,7 +222,7 @@ export function HelperTray({
 
   useEffect(() => {
     if (!open) return;
-    setFocus("settings");
+    setFocus(initialFocusKeyRef.current);
     setAdjustment(null);
     setSeekDraft(null);
     seekDraftRef.current = null;
@@ -178,13 +231,18 @@ export function HelperTray({
   useEffect(() => {
     if (!open) return;
     if (motionProfile === "instant" || settings.ui_motion === false) {
-      setFocus("settings");
+      setFocus(initialFocusKeyRef.current);
       return;
     }
     setFocus("");
-    const timer = window.setTimeout(() => setFocus("settings"), FOCUS_REVEAL_DELAY_MS);
+    const timer = window.setTimeout(() => setFocus(initialFocusKeyRef.current), FOCUS_REVEAL_DELAY_MS);
     return () => window.clearTimeout(timer);
   }, [open, motionProfile, settings.ui_motion]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!open || focusKeyRef.current === "") return;
+    if (!focusItems.some((item) => item.key === focusKeyRef.current)) setFocus(initialFocusKeyRef.current);
+  }, [open, focusItems]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const activate = (key: string) => {
     if (key === "seek" || key === "volume" || key === "brightness") {
@@ -200,6 +258,8 @@ export function HelperTray({
     if (key === "previous") spotify.previous();
     if (key === "play") track?.isPlaying ? spotify.pause() : spotify.play();
     if (key === "next") spotify.next();
+    if (key === "stop") spotify.stop();
+    if (key === "lofiMusic") updateSetting("lofi_music_enabled", !lofiMusicOn);
     if (key === "playlists") {
       if (spotify.status.connected) onOpenPlaylists();
       else onConnectSpotify();
@@ -208,8 +268,11 @@ export function HelperTray({
     if (key === "power") onOpenPower();
     if (key === "refresh") onRefreshLibrary();
     if (key === "controls") onOpenControls();
-    const pinned = focusItemsRef.current.find((item) => item.key === key)?.app;
-    if (pinned) onOpenPinned(pinned);
+    const item = focusItemsRef.current.find((entry) => entry.key === key);
+    if (item?.app && key.startsWith("run:")) onResumeRunning(item.app);
+    else if (item?.app && key.startsWith("runclose:")) onCloseRunning(item.app);
+    else if (item?.app && key.startsWith("dl:")) onOpenDownload(item.app);
+    else if (item?.app && key.startsWith("pinned:")) onOpenPinned(item.app);
   };
   const activateRef = useRef(activate);
   useEffect(() => { activateRef.current = activate; });
@@ -321,7 +384,7 @@ export function HelperTray({
 
   const squareCorners = resolvedTheme === "cyberpunk" || surfaceStyle === "win9x";
   const helperTrayUnderlayFilter = getHelperTrayUnderlayFilter(surfaceStyle);
-  const needsDenseTranslucentTray = helperTrayUnderlayFilter !== undefined;
+  const needsDenseTranslucentTray = usesDenseTranslucentHelperTray(surfaceStyle);
   const translucentTrayFilter = helperTrayUnderlayFilter;
   const trayWidth = "min(980px, calc(100vw - 32px))";
   const trayMaxHeight = mode === "full" ? "calc(100vh - 94px)" : "calc(100vh - 34px)";
@@ -362,9 +425,26 @@ export function HelperTray({
     <button type="button" aria-label={label} onClick={action} onMouseMove={() => setFocus(key)} style={{ ...buttonStyle(key), width: 42, padding: 0 }}>{icon}</button>
   );
   const progress = seekDraft ?? track?.progressMs ?? 0;
-  const shortcut = (key: string, label: string, icon: ReactNode, action: () => void) => (
-    <button type="button" onClick={action} onMouseMove={() => setFocus(key)} style={{ ...buttonStyle(key), flex: 1, minWidth: 140, padding: "12px 15px", display: "flex", alignItems: "center", gap: 10, justifyContent: "center", fontWeight: 700 }}>{icon}{label}</button>
+  const shortcut = (key: string, label: string, icon: ReactNode, action: () => void, active = false) => (
+    <button type="button" data-helper-shortcut={key} onClick={action} onMouseMove={() => setFocus(key)} aria-pressed={key === "lofiMusic" ? active : undefined} style={{ ...buttonStyle(key), flex: 1, minWidth: 140, padding: "12px 15px", display: "flex", alignItems: "center", gap: 10, justifyContent: "center", fontWeight: 700, background: active ? `${accent.glow}0.22)` : buttonStyle(key).background }}>{icon}{label}</button>
   );
+  const appThumb = (app: App, size: number) => {
+    const artwork = pinnedArtwork[app.id];
+    return (
+      <span style={{ width: size, height: size, borderRadius: squareCorners ? 0 : 8, overflow: "hidden", flexShrink: 0, display: "grid", placeItems: "center", background: `${accent.glow}0.18)`, color: accent.primary, fontWeight: 800 }}>
+        {artwork ? <img src={artwork} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          : app.icon_base64 ? <img src={`data:image/png;base64,${app.icon_base64}`} alt="" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+          : app.name.charAt(0).toUpperCase()}
+      </span>
+    );
+  };
+  const sectionLabel: CSSProperties = { color: theme.textDim, fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 9, display: "flex", alignItems: "center", gap: 7 };
+  const activityRowStyle: CSSProperties = {
+    display: "flex", alignItems: "center", gap: 11, minHeight: 62, boxSizing: "border-box", padding: 8,
+    borderRadius: squareCorners ? 0 : 12,
+    background: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.025)",
+    border: `1px solid ${isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)"}`,
+  };
 
   return (
     <div data-theme={resolvedTheme} data-tray-state={closing ? "closing" : "open"} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} className="lo-anim-tray-scrim" style={{ position: "fixed", inset: 0, zIndex: 9200, background: "rgba(0,0,0,0.56)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: mode === "full" ? 78 : 18, boxSizing: "border-box" }} onClick={() => { if (!closing) onClose(); }}>
@@ -392,11 +472,67 @@ export function HelperTray({
           {mode !== "full" && <GamepadBtn btn="B" label={t("helper.closeTray")} />}
         </div>
 
+        {activityRows > 0 && (
+          <div className="lo-tray-row" data-helper-activity="" style={{ display: "grid", gridTemplateColumns: visibleRunning.length > 0 && visibleDownloads.length > 0 ? "repeat(2, minmax(0, 1fr))" : "minmax(0, 1fr)", gap: 16, paddingBottom: 16, marginBottom: 16, borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}`, animationDelay: "85ms" }}>
+            {visibleRunning.length > 0 && (
+              <div style={{ minWidth: 0 }}>
+                <div style={sectionLabel}><span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: isDark ? "#4ae88a" : "#1f8a4c" }} />{t("helper.running")}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {visibleRunning.map(({ app, startedAt }) => {
+                    const minutes = runningMinutes(startedAt, now);
+                    return (
+                      <div key={app.id} data-helper-running={app.id} style={activityRowStyle}>
+                        {appThumb(app, 44)}
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ color: theme.text, fontSize: 13, fontWeight: 750, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{app.name}</div>
+                          <div style={{ color: theme.textDim, fontSize: 11, marginTop: 2 }}>{minutes < 1 ? t("helper.runningJustNow") : t("helper.runningFor", { count: minutes })}</div>
+                        </div>
+                        <button type="button" onClick={() => onResumeRunning(app)} onMouseMove={() => setFocus(`run:${app.id}`)} style={{ ...buttonStyle(`run:${app.id}`), padding: "0 14px", fontWeight: 700, fontSize: 12 }}>{t("helper.resume")}</button>
+                        <button type="button" onClick={() => onCloseRunning(app)} onMouseMove={() => setFocus(`runclose:${app.id}`)} style={{ ...buttonStyle(`runclose:${app.id}`), padding: "0 14px", fontWeight: 700, fontSize: 12 }}>{t("helper.closeApp")}</button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {runningEntries.length > TRAY_ACTIVITY_LIMIT && <div style={{ color: theme.textFaint, fontSize: 11, marginTop: 6 }}>{t("helper.moreCount", { count: runningEntries.length - TRAY_ACTIVITY_LIMIT })}</div>}
+              </div>
+            )}
+            {visibleDownloads.length > 0 && (
+              <div style={{ minWidth: 0 }}>
+                <div style={sectionLabel}>{t("helper.downloads")}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {visibleDownloads.map((d) => {
+                    const pct = Math.round(d.pct);
+                    const phase = t(installPhaseLabelKey(d.phase));
+                    return (
+                      <div key={d.app.id} data-helper-download={d.app.id} style={activityRowStyle}>
+                        {appThumb(d.app, 44)}
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 8, color: theme.text, fontSize: 13, fontWeight: 750 }}>
+                            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{d.app.name}</span>
+                            {!d.indeterminate && <span style={{ color: accent.primary, fontSize: 12 }}>{pct}%</span>}
+                          </div>
+                          <div style={{ marginTop: 6, height: 5, borderRadius: 999, background: isDark ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.11)", overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: d.indeterminate ? "100%" : `${pct}%`, opacity: d.indeterminate ? 0.35 : 1, background: accent.primary, borderRadius: 999 }} />
+                          </div>
+                          <div style={{ color: theme.textDim, fontSize: 11, marginTop: 5 }}>{phase}</div>
+                        </div>
+                        <button type="button" onClick={() => onOpenDownload(d.app)} onMouseMove={() => setFocus(`dl:${d.app.id}`)} style={{ ...buttonStyle(`dl:${d.app.id}`), padding: "0 14px", fontWeight: 700, fontSize: 12 }}>{t("helper.details")}</button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {downloadEntries.length > TRAY_ACTIVITY_LIMIT && <div style={{ color: theme.textFaint, fontSize: 11, marginTop: 6 }}>{t("helper.moreCount", { count: downloadEntries.length - TRAY_ACTIVITY_LIMIT })}</div>}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="lo-tray-row" style={{ display: "flex", gap: 10, paddingBottom: 16, flexWrap: "wrap", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}`, animationDelay: "110ms" }}>
           {shortcut("settings", t("helper.settings"), <IoSettingsOutline />, onOpenSettings)}
           {shortcut("power", t("helper.power"), <IoPowerOutline />, onOpenPower)}
           {shortcut("refresh", t("helper.refreshLibrary"), <IoRefresh />, onRefreshLibrary)}
           {shortcut("controls", t("helper.controls"), <IoGameControllerOutline />, onOpenControls)}
+          {isLofi && shortcut("lofiMusic", t(lofiMusicOn ? "helper.lofiMusicOn" : "helper.lofiMusicOff"), <IoMusicalNotesOutline />, () => updateSetting("lofi_music_enabled", !lofiMusicOn), lofiMusicOn)}
         </div>
 
         <div className="lo-tray-row" style={{ display: "grid", gridTemplateColumns: brightness != null && brightness >= 0 ? "1fr 1fr" : "1fr", gap: 16, padding: "16px 0", borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.09)" : "rgba(0,0,0,0.08)"}`, animationDelay: "165ms" }}>
@@ -459,6 +595,7 @@ export function HelperTray({
                 {transportButton("previous", t("spotify.previous"), <IoPlayBack size={18} />, spotify.previous)}
                 {transportButton("play", track.isPlaying ? t("spotify.pause") : t("spotify.play"), track.isPlaying ? <IoPause size={18} /> : <IoPlay size={18} />, () => track.isPlaying ? spotify.pause() : spotify.play())}
                 {transportButton("next", t("spotify.next"), <IoPlayForward size={18} />, spotify.next)}
+                {transportButton("stop", t("spotify.stop"), <IoStop size={16} />, spotify.stop)}
               </div>
               <div style={{ flex: 1, minWidth: 150, ...focusStyle("seek"), borderRadius: squareCorners ? 0 : 10, padding: "6px 8px", background: adjustmentKey === "seek" ? `color-mix(in srgb, ${accent.primary} 14%, transparent)` : undefined }} onMouseMove={() => setFocus("seek")}>
                 <input type="range" min={0} max={track.durationMs || 1} value={progress} onChange={(event) => { const value = Number(event.target.value); seekDraftRef.current = value; setSeekDraft(value); }} onPointerUp={() => { spotify.seek(seekDraftRef.current ?? track.progressMs); seekDraftRef.current = null; setSeekDraft(null); }} style={{ width: "100%", accentColor: accent.primary }} />
