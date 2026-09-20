@@ -4,6 +4,9 @@
 ### Added
 - **Home preferences** - Settings and onboarding now offer the Home style and game-hero-banner controls. Every onboarding boolean preference now has a visual switch, and every cycle selector has clickable left/right arrows; Legacy retains its explicit “Always on in Legacy” lock state. Selecting a game from any Home mode can open Game Details or launch immediately; the Games tab and explicit Hero Launch/Resume button are unchanged. Normal and Immersive can hide hero banners, including placeholder art while apps are focused, so the active theme remains visible; Legacy always keeps hero art.
 
+### Changed
+- **Promo site screenshots** - The liftofflauncher.app hero now uses a current Home capture, and See it running includes current Library, Details, Installs, helper tray, Spotify, art browser, cloud catalog, Apps tab, and first-run theme/Home/Lo-fi picker shots.
+- **2.0 promo site** - Rebuilt liftofflauncher.app for the 2.0 launch. The page now leads with real 2.0 screenshots (Home, Games, Details, and an in-launcher Game Pass install) in a click-to-enlarge gallery, and covers what shipped since the last site update: Steam QR sign-in with the full owned library, Game Pass installs, cloud games, Spotify, Game Details, and controller-first setup. A looks section lists all 12 themes and 12 accents, and swaps in a Games tab screenshot for each one that has a capture, alongside a short guide to the 7 surface styles. Screenshots are served as WebP (about 540 KB total instead of about 7 MB), with the full PNGs kept for the enlarged view, and the page now has social-share preview tags.
 
 ### Fixed
 - **Global power-menu shortcut** - The controller B shortcut now opens the power menu from Home, Games, Apps, and the Settings root. In a nested Appearance category, B returns to the Appearance root first; active dialogs and the search overlay retain their own B behavior.
