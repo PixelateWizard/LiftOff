@@ -11,6 +11,7 @@ Read for scanner/source changes, library refresh, install state, launch routing,
 ## Durable Constraints
 
 - Startup performs one authoritative all-apps scan; frontend hidden filtering must not trigger a second equivalent scan. Desktop/Start Menu icon extraction must not pin splash: `SHGetFileInfoW` on a `.lnk` can hang on a disconnected network target, so each extract has a short timeout and the desktop phase has an 8-second fresh-icon budget after a cache wipe. Walk the folder with `DirEntry::file_type` rather than `Path::exists`/`is_dir`.
+- Finishing onboarding after a source change or account interaction performs a final local library scan after the settings write completes. This scan must include account-owned caches written during sign-in even when an earlier scan raced the onboarding source save.
 - A user-requested library refresh waits for the connected Steam owned-library cache write before starting its authoritative local rescan, so newly acquired uninstalled games are part of the same result. If the remote refresh fails, still complete the local rescan.
 - Supported source families currently include Steam, Microsoft Store/Xbox/UWP, Desktop shortcuts, Battle.net, GOG, Epic, Cloud bookmarks, custom sources, and collections. Search current scanners before extending source logic.
 - Categorization overrides may change `app_type` and `source`, but must not mutate identity or launch paths.

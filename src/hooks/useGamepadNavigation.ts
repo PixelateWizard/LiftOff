@@ -9,7 +9,7 @@ import { launchApp } from "./useLaunchApp";
 import { getBestGamepad, getActiveGamepad, readGpState, detectPlatform, rumble, type HapticPattern } from "../utils/gamepad";
 import { getLibraryEntryFocusSection } from "../utils/libraryFocus";
 import { moveGridFocus, type GridDirection } from "../utils/gridNavigation";
-import { buildSettingsItems, getSectionNavigableItems, getSettingCycleOptions, SETTINGS_SECTIONS } from "../views/settings";
+import { buildSettingsItems, getSectionNavigableItems, getSettingCycleOptions, moveSettingsAccountActionFocus, SETTINGS_SECTIONS } from "../views/settings";
 import {
   ACCENTS as DEFAULT_ACCENTS,
   COLS as DEFAULT_COLS,
@@ -136,6 +136,7 @@ export interface UseGamepadNavigationOptions {
   onSteamDisconnect?: () => void;
   steamConnectedRef?: AnyRef<boolean>;
   onOpenXboxGuide?: () => void;
+  onXboxRefresh?: () => void;
   onXboxDisconnect?: () => void;
   xboxConnectedRef?: AnyRef<boolean>;
   setThemePickerFocusIndex?: (value: number) => void;
@@ -217,6 +218,7 @@ export interface GamepadNavigationResult {
   heroIndexRef: AnyRef<number>;
   settingsFocusIndex: number;
   settingsFocusIndexRef: AnyRef<number>;
+  settingsActionIndex: number | null;
   settingsSection: number;
   settingsSectionRef: AnyRef<number>;
   gameSourceTab: string;
@@ -272,6 +274,7 @@ export function useGamepadNavigation(
   const [focusIndex, setFocusIndex] = useState(0);
   const [heroIndex, setHeroIndex] = useState(0);
   const [settingsFocusIndex, setSettingsFocusIndex] = useState(0);
+  const [settingsActionIndex, setSettingsActionIndex] = useState<number | null>(null);
   const [settingsSection, setSettingsSection] = useState(0);
   const [gameSourceTab, setGameSourceTab] = useState("All");
   const [subtabFocusIndex, setSubtabFocusIndex] = useState(0);
@@ -285,6 +288,7 @@ export function useGamepadNavigation(
   const focusIndexRef = useRef(0);
   const heroIndexRef = useRef(0);
   const settingsFocusIndexRef = useRef(0);
+  const settingsActionIndexRef = useRef<number | null>(null);
   const settingsSectionRef = useRef(0);
   const gameSourceTabRef = useRef("All");
   const subtabFocusIndexRef = useRef(0);
@@ -395,6 +399,7 @@ export function useGamepadNavigation(
     onSteamDisconnect = noop,
     steamConnectedRef = { current: false } as AnyRef<boolean>,
     onOpenXboxGuide = noop,
+    onXboxRefresh = noop,
     onXboxDisconnect = noop,
     xboxConnectedRef = { current: false } as AnyRef<boolean>,
     setThemePickerFocusIndex = noop as (value: number) => void,
@@ -461,6 +466,11 @@ export function useGamepadNavigation(
 
   const haptic = (pattern: HapticPattern) =>
     rumble(pattern, settingsRef?.current?.haptic_feedback ?? true);
+
+  const setSettingsActionFocus = (value: number | null) => {
+    setSettingsActionIndex(value);
+    settingsActionIndexRef.current = value;
+  };
 
   const _triggerLaunchImpl = (app, rec) => {
     if (app?.app_type === "game" && isRunning(app.id)) {
@@ -657,6 +667,7 @@ export function useGamepadNavigation(
     setFocusIndex(0); focusIndexRef.current = 0;
     setHeroIndex(0); heroIndexRef.current = 0;
     setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
+    setSettingsActionFocus(null);
     setSettingsSection(0); settingsSectionRef.current = 0;
     if (newTab !== "Settings") {
       setAppearanceGroup(null, { animate: false });
@@ -1225,6 +1236,7 @@ export function useGamepadNavigation(
             appearanceGroupRef.current = null;
           }
           setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
+          setSettingsActionFocus(null);
           if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
 
           playSound();
@@ -1242,6 +1254,7 @@ export function useGamepadNavigation(
             appearanceGroupRef.current = null;
           }
           setSettingsFocusIndex(0); settingsFocusIndexRef.current = 0;
+          setSettingsActionFocus(null);
           if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "smooth" });
 
           playSound();
@@ -1250,12 +1263,20 @@ export function useGamepadNavigation(
       }
       const sfIndex = settingsFocusIndexRef.current;
       const item    = navigableSettings[sfIndex];
+      const isAccountItem = item?.type === "spotify" || item?.type === "steam" || item?.type === "xbox";
+      const accountConnected =
+        item?.type === "spotify" ? spotifyConnectedRef.current
+        : item?.type === "steam" ? steamConnectedRef.current
+        : item?.type === "xbox" ? xboxConnectedRef.current
+        : false;
+      const accountActionCount = item?.type === "xbox" && accountConnected ? 2 : 1;
       if (key === "Escape" && settingsSectionRef.current === 0 && appearanceGroupRef.current !== null) {
         const cameFrom = appearanceGroupRef.current;
         setAppearanceGroup(null);
         appearanceGroupRef.current = null;
         setSettingsFocusIndex(cameFrom);
         settingsFocusIndexRef.current = cameFrom;
+        setSettingsActionFocus(null);
         if (tabScrollRef.current) tabScrollRef.current.scrollTo({ top: 0, behavior: "auto" });
         haptic("cancel");
         playSoundAlt();
@@ -1265,15 +1286,43 @@ export function useGamepadNavigation(
         const ni = Math.min(sfIndex + 1, navigableSettings.length - 1);
         if (ni !== sfIndex) {
           setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni;
-
+          setSettingsActionFocus(null);
         }
       }
       if (key === "ArrowUp") {
         const ni = Math.max(sfIndex - 1, 0);
         if (ni !== sfIndex) {
           setSettingsFocusIndex(ni); settingsFocusIndexRef.current = ni;
-
+          setSettingsActionFocus(null);
         }
+      }
+      if ((key === "ArrowRight" || key === "ArrowLeft") && isAccountItem) {
+        setSettingsActionFocus(moveSettingsAccountActionFocus({
+          current: settingsActionIndexRef.current,
+          actionCount: accountActionCount,
+          direction: key === "ArrowRight" ? 1 : -1,
+        }));
+        return;
+      }
+      if (key === "Enter" && isAccountItem) {
+        if (!accountConnected) {
+          if (item.type === "spotify") onOpenSpotifyGuide();
+          else if (item.type === "steam") onOpenSteamQr();
+          else onOpenXboxGuide();
+          haptic("confirm");
+          return;
+        }
+        const actionIndex = settingsActionIndexRef.current;
+        if (actionIndex === null) {
+          setSettingsActionFocus(0);
+          return;
+        }
+        if (item.type === "spotify") onSpotifyDisconnect();
+        else if (item.type === "steam") onSteamDisconnect();
+        else if (actionIndex === 0) onXboxRefresh();
+        else onXboxDisconnect();
+        haptic("confirm");
+        return;
       }
       if (key === "ArrowRight" || key === "Enter") {
         if (!item) return;
@@ -1340,21 +1389,6 @@ export function useGamepadNavigation(
           if (item.key === "reset_scale")   updateSetting("ui_scale", autoScaleRef.current);
           if (item.key === "rerun_onboarding") onRerunOnboarding();
           if (item.key === "factory_reset") onFactoryReset();
-          haptic("confirm");
-        }
-        else if (item.type === "spotify") {
-          if (spotifyConnectedRef.current) onSpotifyDisconnect();
-          else onOpenSpotifyGuide();
-          haptic("confirm");
-        }
-        else if (item.type === "steam") {
-          if (steamConnectedRef.current) onSteamDisconnect();
-          else onOpenSteamQr();
-          haptic("confirm");
-        }
-        else if (item.type === "xbox") {
-          if (xboxConnectedRef.current) onXboxDisconnect();
-          else onOpenXboxGuide();
           haptic("confirm");
         }
         else if (item.type === "refresh") { refreshLibrary(); haptic("confirm"); }
@@ -1988,6 +2022,7 @@ export function useGamepadNavigation(
     heroIndexRef,
     settingsFocusIndex,
     settingsFocusIndexRef,
+    settingsActionIndex,
     settingsSection,
     settingsSectionRef,
     gameSourceTab,

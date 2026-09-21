@@ -99,6 +99,12 @@ test.beforeEach(async ({ page }) => {
           if (params.has("holdRefresh") && counts[command] > 1) await new Promise((resolve) => { (window as any).__releaseScan = resolve; });
           return params.has("catalog") ? [{ id: "steam://rungameid/620", name: "Portal 2", app_type: "game", installed: true }] : [];
         }
+        if (params.has("connectedAccounts") && command === "steam_account_status") {
+          return { connected: true, account_name: "Steam Tester", owned_count: 12 };
+        }
+        if (params.has("connectedAccounts") && command === "xbox_account_status") {
+          return { connected: true, gamertag: "Microsoft Tester", owned_count: 8 };
+        }
         if (emptyArrays.has(command)) return [];
         if (Object.prototype.hasOwnProperty.call(responses, command)) return responses[command];
         return null;
@@ -169,6 +175,34 @@ test("boots the Home shell with mocked Tauri commands", async ({ page }) => {
   await page.keyboard.press("ArrowRight");
   await expect(systemSliders.nth(0)).toHaveValue("40");
   expect(pageErrors).toEqual([]);
+});
+
+test("account rows require action focus before controller activation", async ({ page }) => {
+  await page.goto("/?connectedAccounts=true");
+  await page.getByText("Settings", { exact: true }).first().click();
+
+  await pad(page, 7);
+  const focusedRow = page.locator("[data-settings-row].focused");
+
+  await pad(page, 13);
+  await expect(focusedRow).toContainText("Steam");
+  await pad(page, 15);
+  expect(await page.evaluate(() => (window as any).__invokeCounts.steam_logout || 0)).toBe(0);
+
+  for (let index = 0; index < 3; index++) await pad(page, 13);
+  await expect(focusedRow).toContainText("Microsoft");
+  await pad(page, 15);
+  expect(await page.evaluate(() => (window as any).__invokeCounts.xbox_disconnect || 0)).toBe(0);
+  await pad(page, 0);
+  expect(await page.evaluate(() => (window as any).__invokeCounts.xbox_refresh_library || 0)).toBe(1);
+  await pad(page, 15);
+  expect(await page.evaluate(() => (window as any).__invokeCounts.xbox_disconnect || 0)).toBe(0);
+
+  await pad(page, 7);
+  for (let index = 0; index < 9; index++) await pad(page, 13);
+  await expect(focusedRow).toContainText("Spotify");
+  await pad(page, 15);
+  expect(await page.evaluate(() => (window as any).__invokeCounts.spotify_disconnect || 0)).toBe(0);
 });
 
 async function frames(page: Page, count: number) {

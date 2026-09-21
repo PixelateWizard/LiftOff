@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, HOME_PINNED_SHELF_ENABLED } from "../constants";
 import type { SettingsCycleItem } from "../types";
-import { buildSettingsItems, getSectionNavigableItems, getSettingCycleOptions } from "./settings";
+import { buildSettingsItems, getSectionNavigableItems, getSettingCycleOptions, moveSettingsAccountActionFocus } from "./settings";
 
 const pinnedPositionItem: SettingsCycleItem = {
   key: "home_pinned_pos",
@@ -137,5 +137,21 @@ describe("Controller settings navigation", () => {
     const navigable = getSectionNavigableItems(3, items, DEFAULT_SETTINGS);
     expect(navigable.some((item) => item.key === "gamepad_icon_preview")).toBe(true);
     expect(navigable.some((item) => item.key === "controller_test")).toBe(true);
+  });
+});
+
+describe("Account row action navigation", () => {
+  it("moves into Microsoft refresh before disconnect", () => {
+    const refresh = moveSettingsAccountActionFocus({ current: null, actionCount: 2, direction: 1 });
+    const disconnect = moveSettingsAccountActionFocus({ current: refresh, actionCount: 2, direction: 1 });
+
+    expect(refresh).toBe(0);
+    expect(disconnect).toBe(1);
+    expect(moveSettingsAccountActionFocus({ current: null, actionCount: 2, direction: -1 })).toBe(0);
+  });
+
+  it("focuses a single Steam or Spotify action without activating it", () => {
+    expect(moveSettingsAccountActionFocus({ current: null, actionCount: 1, direction: 1 })).toBe(0);
+    expect(moveSettingsAccountActionFocus({ current: 0, actionCount: 1, direction: 1 })).toBe(0);
   });
 });

@@ -346,6 +346,7 @@ export function getSectionNavigableItems(
 // ── SettingsScreen props ───────────────────────────────────────
 export interface SettingsScreenProps {
   settingsFocusIndex: number;
+  settingsActionIndex: number | null;
   settingsSection: number;
   appearanceGroup: number | null;
   onEnterAppearanceCategory: (group: number) => void;
@@ -402,8 +403,25 @@ export function getSettingCycleOptions(
   return item.options;
 }
 
+interface MoveSettingsAccountActionFocusOptions {
+  current: number | null;
+  actionCount: number;
+  direction: -1 | 1;
+}
+
+export function moveSettingsAccountActionFocus({
+  current,
+  actionCount,
+  direction,
+}: MoveSettingsAccountActionFocusOptions): number | null {
+  if (actionCount <= 0) return null;
+  if (current === null) return 0;
+  return Math.max(0, Math.min(actionCount - 1, current + direction));
+}
+
 export function SettingsScreen({
   settingsFocusIndex,
+  settingsActionIndex,
   settingsSection,
   appearanceGroup,
   onEnterAppearanceCategory,
@@ -628,6 +646,13 @@ export function SettingsScreen({
     const rowRef = focused ? settingsFocusedRef : null;
     const rowStyle = makeRowStyle(focused, false, !!item.indent);
     const onyxRing = <FocusRing focused={focused} variant="spin" wide elementRadius={flatSettings ? onyxSettingsFocusRadius : isPixel || isCyber ? 0 : isMaterial ? 8 : 16} />;
+    const accountActionFocusStyle = (actionIndex: number) => focused && settingsActionIndex === actionIndex
+      ? {
+          outline: `2px solid ${accent.primary}`,
+          outlineOffset: 2,
+          boxShadow: `0 0 12px ${accent.glow}0.45)`,
+        }
+      : {};
 
     if (item.type === "appearance_category") {
       const summary = getCategorySummary(item.categoryIndex, settings, t);
@@ -1131,6 +1156,7 @@ export function SettingsScreen({
                 fontSize: 12,
                 fontWeight: 800,
                 cursor: "pointer",
+                ...accountActionFocusStyle(0),
               }}
             >
               {connected ? t("spotify.disconnect") : t("spotify.connect")}
@@ -1181,6 +1207,7 @@ export function SettingsScreen({
                 fontSize: 12,
                 fontWeight: 800,
                 cursor: "pointer",
+                ...accountActionFocusStyle(0),
               }}
             >
               {connected ? t("steam.disconnect") : t("steam.connect")}
@@ -1258,6 +1285,7 @@ export function SettingsScreen({
                   fontWeight: 800,
                   cursor: xboxRefreshStatus === "refreshing" ? "default" : "pointer",
                   opacity: xboxRefreshStatus === "refreshing" ? 0.72 : 1,
+                  ...accountActionFocusStyle(0),
                 }}
               >
                 {t("xbox.refresh")}
@@ -1278,6 +1306,7 @@ export function SettingsScreen({
                 fontSize: 12,
                 fontWeight: 800,
                 cursor: "pointer",
+                ...accountActionFocusStyle(connected ? 1 : 0),
               }}
             >
               {connected ? t("xbox.disconnect") : t("xbox.connect")}

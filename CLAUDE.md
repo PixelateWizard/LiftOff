@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented:** Wired existing Lo-fi Games tab captures into the GitHub Pages theme picker so Lo-fi is selectable with all 12 accents. Remaining gate: live liftofflauncher.app after the `docs/` deploy.
+- **Implemented:** Finishing onboarding after account/source interaction now rescans Microsoft-owned games, and controller navigation focuses Microsoft/Steam/Spotify row actions without activating sign-out. Remaining gate: verify one real Microsoft onboarding sign-in and the three account rows with a physical controller before publishing 2.0.0.
 
 ## Start-of-Task Workflow
 

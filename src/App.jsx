@@ -908,6 +908,7 @@ export default function App() {
     heroIndexRef,
     settingsFocusIndex,
     settingsFocusIndexRef,
+    settingsActionIndex,
     settingsSection,
     settingsSectionRef,
     gameSourceTab,
@@ -1031,6 +1032,7 @@ export default function App() {
     onSteamDisconnect: disconnectSteam,
     steamConnectedRef,
     onOpenXboxGuide: openXboxGuide,
+    onXboxRefresh: refreshXboxLibrary,
     onXboxDisconnect: disconnectXbox,
     xboxConnectedRef,
     setThemePickerFocusIndex,
@@ -2923,6 +2925,7 @@ export default function App() {
   } = {}) => (
     <SettingsScreen
       settingsFocusIndex={focusIndexOverride}
+      settingsActionIndex={settingsActionIndex}
       settingsSection={section}
       appearanceGroup={appearanceGroup}
       onEnterAppearanceCategory={enterAppearanceCategory}
@@ -4231,7 +4234,7 @@ export default function App() {
         onFinish={({ sourcesChanged, accountTouched }) => {
           setShowOnboarding(false);
           showOnboardingRef.current = false;
-          if (sourcesChanged && !accountTouched) refreshLibraryRef.current?.();
+          if (sourcesChanged || accountTouched) refreshLibraryRef.current?.();
           const games = appsRef.current.filter((a) => a.app_type === "game");
           if (games.length) fetchGameArt(games);
         }}
