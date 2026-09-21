@@ -1,4 +1,4 @@
-# LiftOff 2.0.0
+# LiftOff 2.0.0 Release Notes
 
 LiftOff 2.0 is the first official release since **v1.2.2** in April. If you have been on the stable channel, almost everything below is new. If you have been on the alphas, skip to the Discord post for testers — this document is written for people coming from 1.2.2.
 
@@ -141,5 +141,3 @@ Startup scans run in the background with splash text for each phase, and artwork
 - Steam installs, Game Pass installs, Spotify playback, cloud kiosk windows, and PC restart/shutdown depend on those apps and services being available on the device.
 
 Thanks to everyone who tested the alphas, and to [moi952](https://github.com/moi952) for localization, layout, settings, the SteamGridDB browser, custom entries, and a large share of the controller-facing UI.
-
-Download: the NSIS installer on the [Releases](https://github.com/PixelateWizard/LiftOff/releases) page. Site: [liftofflauncher.app](https://liftofflauncher.app).

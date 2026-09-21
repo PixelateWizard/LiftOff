@@ -1,44 +1,68 @@
 # LiftOff
 
-A Windows game and app launcher built for gamepad-first navigation. Designed for HTPC / couch setups — pick up a controller and go.
+A free, open-source, gamepad-first game and app launcher for Windows handhelds. Steam, Game Pass, GOG, Epic, Battle.net, and cloud games in one library you drive from the couch.
 
 [![Discord](https://img.shields.io/badge/Discord-join%20the%20community-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/F5ncP75WtD)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support%20development-orange?style=flat&logo=buy-me-a-coffee)](https://buymeacoffee.com/liftoff_handheld_launcher)
+
+<p align="center">
+  <img src="docs/homescreen-screenshot-2.0-1.webp" width="920" alt="LiftOff Home tab showing a recently played game's hero art above a row of recent game covers" />
+</p>
+
+**[Download 2.0](https://github.com/PixelateWizard/LiftOff/releases/latest)** · **[liftofflauncher.app](https://liftofflauncher.app)** · **[Release notes](RELEASE-NOTES-2.0.0.md)**
+
+---
+
+## Screenshots
+
+<p align="center">
+  <img src="docs/games-tab-screenshot-2.0-1.webp" width="450" alt="Games tab with store tabs, filters, and cover art" />
+  <img src="docs/game-info-modal-2.0-1.webp" width="450" alt="Game Details with Play, description, and media" />
+</p>
+<p align="center">
+  <img src="docs/helper-tray-screenshot-2.0-1.webp" width="450" alt="Helper tray with Settings, power, volume, brightness, and pins" />
+  <img src="docs/spotify-player-screenshot-2.0-1.webp" width="450" alt="Spotify overlay with playlists and transport controls" />
+</p>
+<p align="center">
+  <img src="docs/game-installing-screenshot-2.0-1.webp" width="450" alt="A game installing from inside LiftOff with a progress bar" />
+  <img src="docs/cloud-add-screenshot-2.0-1.webp" width="450" alt="Cloud game catalog with cover art" />
+</p>
+<p align="center">
+  <img src="docs/art-browser-screenshot-2.0-1.webp" width="450" alt="SteamGridDB art browser" />
+  <img src="docs/onboarding-theme-screenshot-2.0-1.webp" width="450" alt="First-run setup theme picker" />
+</p>
+<p align="center">
+  <img src="docs/apps-tab-screenshot-2.0-1.webp" width="450" alt="Apps tab" />
+  <img src="docs/onboarding-lofi-screenshot-2.0-1.webp" width="450" alt="Lo-fi scene picker during first-run setup" />
+</p>
+
+More looks (12 themes × 12 accents) on [the site](https://liftofflauncher.app/#themes).
 
 ---
 
 ## Features
 
-- **Gamepad-native** — full navigation with hold-repeat, no mouse required
-- **Automatic library scanning** — Steam games, Xbox/Game Pass titles, UWP Store apps, Desktop shortcuts, and Battle.net games
-- **Live library refresh** — rescan without restarting; auto-refreshes when scan settings change
-- **Game art** — cover art and hero banners fetched automatically from SteamGridDB; cached locally to minimize API calls
-- **Animated hero banners** — animated WebM/WebP/GIF hero art supported where available, with static fallback; per-game or global control via Hero Art Mode setting
-- **Hero spotlight** — full-width landscape banner art in the Home tab hero section, with an immersive fullscreen layout option and surface-aware readability treatments
-- **App cards** — non-game app cards use dark frosted glass with a subtle icon-color border accent
-- **Custom cover art** — right-click or press Menu on any game or app to open the context menu, then choose **Change Art** (or **Change Hero Art** for games); games use a 2:3 portrait crop, apps use a square crop; reset to default anytime
-- **Context menu** — right-click or press Menu on any card to Open, Pin/Unpin, Change Art, or (for games) Change Hero Art
-- **Pinned apps** — pin your most-used games and apps to the top of any tab; Home pinned shelves support controller-friendly horizontal scrolling
-- **Launch focus feedback** — after a launch succeeds, LiftOff checks whether Windows focused the app, pauses launcher animations and animated hero/Lofi media during the handoff, and uses a short return cooldown to prevent accidental relaunches from stale input
-- **Manage visibility** — hide apps from view and restore them anytime from the same menu
-- **Search** — on-screen virtual keyboard for controller-only searching
-- **Animated themes** — Space, Sky, Plasma, Cinder, Wash, Aurora, Synthwave, Lofi, Forest, and Webcore are animated environments; Webcore pairs with the Win9X surface for a retro desktop-shell look
-- **Surface Style** — visual materials include Glass, Aero, Material, Clear, Obsidian, Neon, and Win9X, with theme-specific defaults that can still be overridden manually
-- **Recent apps** — quick access to what you launched last; Home recents support large card sizes with horizontal gamepad scrolling
-- **Battery indicator** — shows charge level and charging status with light/dark contrast-safe charging colors
-- **Controller test** — live button and axis display in Settings to verify your gamepad mapping
-- **Check for updates** — one-button update check from Settings
-- **Splash screen** with launch sounds and controller-ready handoff after startup
+- **Gamepad-native** — D-pad and stick navigation, bumper tab switching, hold-to-repeat, on-screen button hints. Built and tested on a ROG Ally X.
+- **Your full Steam library** — sign in with a QR code; owned-but-not-installed games show up with playtime. Install, verify, or uninstall from Game Details (the Steam client still does the download).
+- **Game Pass installs** — connect a Microsoft account, start installs from Details, see free space first, and watch progress without opening the Store.
+- **GOG, Epic, Battle.net, and cloud** — installed GOG/Epic/Battle.net titles get their own source tabs. Add cloud games from a catalog and launch them full screen.
+- **Game Details** — art, description, screenshots, trailers, last played, size, Steam Deck rating, Play / Install / Manage. Apps get a Details screen too.
+- **Spotify** — playlists, transport, Connect device picker, and a now-playing bar. MENU opens the helper tray; Spotify lives there and on Home.
+- **Helper tray** — one MENU press for Settings, power (including Restart/Shut Down PC), library refresh, volume, brightness, pins, and music. Bottom bar modes: Smart, Full, or Hidden.
+- **Artwork** — covers and hero banners from SteamGridDB, including animated heroes. Search for the right game match, or upload your own.
+- **Looks** — 12 animated themes, 12 accents, 7 surface styles (Glass, Aero, Material, Clear, Obsidian, Neon, Win9X). Lo-fi has six looping scenes. Home layouts: Normal (default), Immersive, Legacy.
+- **First-run setup** — language, look, stores, and optional accounts, all on a controller. English, French, and Spanish.
+- **Handheld-friendly launching** — quieter Steam, honest launch progress, GPU/memory relief while a game is in front, and a faster return to LiftOff.
 
 ---
 
 ## Installation
 
-Download the latest installer from the [Releases](../../releases) page and run it.
+Download the NSIS installer from the [Releases](../../releases) page and run it.
 
-> **Windows SmartScreen may show a warning** since the app is not code-signed. Click **More info → Run anyway** to proceed.
-
-> **Steam** installs in non-default locations are supported via registry detection.
+> **Windows SmartScreen may show a warning** since the app is not code-signed. Click **More info → Run anyway**. That is expected for unsigned indie software.
+>
+> LiftOff is open source ([GPL v3](LICENSE)). No telemetry. Steam, Microsoft, and Spotify sign-in are optional; refresh tokens are stored in Windows Credential Manager, not in the repo or logs.
 
 ---
 
@@ -46,151 +70,91 @@ Download the latest installer from the [Releases](../../releases) page and run i
 
 | Button | Action |
 |--------|--------|
-| **A** | Launch / confirm |
-| **B** | Back / cancel |
+| **A** | Confirm / open Details |
+| **B** | Back / cancel. From Home, Games, Apps, or the Settings root, opens the power menu |
 | **X** | Pin / unpin |
-| **Y** | Search |
-| **Menu (Start)** | Open context menu for focused card (Games / Apps tab) |
-| **Select / Back** | Open Manage modal (Games / Apps tab) |
+| **Y** | Search (on-screen keyboard) |
+| **Menu (Start)** | Helper tray |
+| **Select / Back** | Library actions on Games / Apps (add cloud game, manage hidden titles, …) |
 | **LB / RB** | Switch tabs |
-| **LT / RT** | Switch game source filter (All / Steam / Xbox / Bnet / Other) |
+| **LT / RT** | Switch game source |
+| **Right stick** | Games filter / sort toolbar |
 | **D-pad / Left stick** | Navigate |
-| **Right-click** | Context menu — Open, Pin/Unpin, Change Art, Change Hero Art |
+| **Right-click** | Context menu (mouse) |
 
-### Context Menu (controller)
+Selecting a game opens **Game Details**; Play is the button inside that screen. Apps open **App Details**, then Open. On Home you can turn on “Launch games directly” if you want one-press launch. Pins live on Games/Apps and in the helper tray, not on Home.
 
-When a card is focused on the Games or Apps tab, press **Menu** to open the context menu. Navigate with **D-pad up/down**, confirm with **A**, and close with **B**. Games also have a **Change Hero Art** option to pick custom hero banner art from SteamGridDB.
-
-### Launch Overlay (controller)
-
-After launching an app or game, LiftOff keeps the launch overlay visible long enough to check whether Windows moved focus to the launched window. If the app is running but still behind LiftOff, use **D-pad / left stick** to choose between **Try to focus again** and **Got it**, press **A** to activate the focused button, or press **B** / **Escape** to dismiss. During launch and focus handoff, LiftOff pauses background animations, animated hero media, and Lofi media. When returning from a launched app or game, LiftOff waits briefly before accepting another launch input so stale controller or keyboard presses cannot immediately open something else. LiftOff only shows **Failed to launch** when the launch command itself fails.
+Volume, brightness, and Spotify seek in the helper tray need **A** before Left/Right change the value.
 
 ---
 
 ## Tabs
 
-**Home** — hero spotlight, recent apps, pinned apps
+**Home** — hero spotlight, recents, collections. Layouts: Normal, Immersive, Legacy.
 
-**Games** — all detected games with cover art, filterable by source (Steam / Xbox / Bnet / Other)
+**Games** — installed and owned games, filterable by source (Steam, Game Pass, Battle.net, GOG, Epic, Cloud, …) and by All / Installed / Not installed.
 
-**Apps** — all detected non-game apps and shortcuts
+**Apps** — non-game apps and shortcuts.
 
-**Settings** — accent color, theme, library scan toggles, startup behavior, repeat speed, controller test, update check, Discord, and more
+**Settings** — Appearance (Style, Home Screen, Layout, Navigation), Library, Controller, Data, language, accounts, and updates.
 
 ---
 
-## Settings
+## Settings (short tour)
 
-| Setting | Description |
-|---------|-------------|
-| Accent Color | Ember, Ocean, Neon, Rose, Midnight |
-| Theme | Space / Sky / Plasma / Cinder / Wash / Aurora / Synthwave / Lofi / Forest / Webcore. Cyberpunk remains in code as a prototype but is temporarily hidden from the selector |
-| Theme Surface Defaults | Space -> Clear, Sky -> Aero, Plasma -> Neon, Cinder -> Glass, Wash -> Material, Aurora -> Glass, Synthwave -> Aero, Lofi -> Obsidian, Forest -> Glass, Webcore -> Win9X; Surface Style can still be changed manually afterward |
-| Surface Style | Glass - frosted blur panels; Aero - polished acrylic with specular highlights; Material - opaque paper-textured cards with shadow-based elevation; Clear - flat matte; Obsidian - dark restrained surfaces; Neon - high-glow arcade surfaces; Win9X - square retro desktop-shell surfaces with bevels, title bars, and no rounded corners |
-| Immersive Home | Fullscreen cinematic hero with floating pinned shelf; when the bottom bar and collections drawer are hidden, pinned items and hero content settle into the freed bottom lane. The slide-up drawer supports horizontal recents and collection rows with unclipped focus shadows. Webcore/Win9X can hide the large hero artwork so the theme background remains visible |
-| Show Cover on Home | Show the 2:3 cover art card in the hero section |
-| Show Immersive Hero Art | When Immersive Home is enabled, show or hide the large background hero artwork while keeping hero selection and cover artwork visible |
-| Show Pinned on Home | Show or hide the pinned items shelf on the home screen |
-| Show Collections on Home | Display game/app collections as card rows on the home screen |
-| Scan Steam | Include Steam games (supports custom install paths) |
-| Scan Xbox | Include Xbox / Game Pass titles |
-| Scan Store Apps | Include UWP / Microsoft Store apps |
-| Scan Desktop Shortcuts | Include `.lnk` shortcuts from Desktop and Start Menu |
-| Scan Battle.net | Include installed Blizzard / Battle.net games |
-| Refresh Library | Rescan all sources immediately |
-| Default Tab | Which tab opens on launch |
-| Stick Repeat Speed | How fast held directions repeat (Slow / Normal / Fast) |
-| Launch at Startup | Start LiftOff with Windows |
-| Theme Effects | Toggle the active theme's background effects, including stars, clouds, plasma, cinder, wash, aurora, synthwave, lofi, forest, and Webcore effects |
-| Lo-fi Music | When the Lofi theme is active, toggle the theme's looping background music; it pauses while a launched app/game is active or LiftOff is out of focus |
-| Hero Art Mode | Static / Animated / Custom — Static forces static banners everywhere; Animated uses animated art everywhere; Custom lets you choose per game via Change Hero Art |
-| UI Scale | Override the automatic UI scale (useful for non-standard display sizes) |
-| Controller Test | Live display of button states and axes for your active gamepad |
-| Check for Updates | Check GitHub for a newer release |
+Appearance covers theme, accent, surface, Home mode, hero banners, cover scale, wide layout, tab icons, bar backgrounds, UI motion, sound effects, Lo-fi music/scene, and UI scale. Library covers scan sources (Steam, Game Pass, Store apps, Desktop, Battle.net, GOG, Epic), not-installed games, store badges, and account rows. Controller covers glyphs, vibration, repeat speed, the return shortcut, and the live tester. Data lists drive space, factory reset, and storage.
+
+Automatic update checks can watch **Stable** or **Alpha / Beta**. Factory reset wipes local data and signed-in accounts, then restarts into first-run setup.
 
 ---
 
 ## Building from Source
 
-**Prerequisites:**
-- [Node.js](https://nodejs.org/) (v18+)
-- [Rust](https://rustup.rs/)
-- [Tauri CLI](https://tauri.app/start/): `cargo install tauri-cli`
-
-**Setup:**
+**Prerequisites:** [Node.js](https://nodejs.org/) 18+, [Rust](https://rustup.rs/). The Tauri CLI is already in this repo’s npm dependencies.
 
 ```bash
-# Install frontend dependencies
 npm install
 
-# Create src-tauri/.env with your SteamGridDB API key
+# SteamGridDB API key (required to fetch art). Get one at:
+# https://www.steamgriddb.com/profile/preferences/api
 echo SGDB_API_KEY=your_key_here > src-tauri/.env
 ```
 
-Get a free SteamGridDB API key at [steamgriddb.com](https://www.steamgriddb.com/profile/preferences/api).
-
 **Dev:**
+
 ```bash
-cargo tauri dev
+npm run dev
+npm run tauri -- dev
 ```
 
-**Build installer:**
+**Tests:** `npm run test` (Vitest), `npm run test:e2e` (mocked-Tauri Playwright), `npm run test:all` (both). Those do not prove real WebView2, controller feel, or store accounts.
+
+**Installer:**
+
 ```bash
-cargo tauri build
-# Installer output: src-tauri/target/release/bundle/nsis/
+npm run tauri -- build
+# Output: src-tauri/target/release/bundle/nsis/
 ```
+
+Use the NSIS bundle for release testing, not the raw executable.
 
 ---
 
 ## Data Storage
 
-All persistent data is stored in `%LOCALAPPDATA%\LiftOff\`:
-
-| File | Contents |
-|------|----------|
-| `settings.json` | User preferences |
-| `pins.json` | Pinned app IDs |
-| `hidden.json` | Hidden app IDs |
-| `recents.json` | Recently launched apps |
-| `art_cache.json` | Cached SteamGridDB cover art URLs (600×900) |
-| `hero_cache.json` | Cached SteamGridDB static hero banner URLs (landscape) |
-| `hero_animated_cache.json` | Cached SteamGridDB animated hero banner URLs (WebM) |
-| `custom_art.json` | Per-app custom art (data URLs) — games store 600×900, apps store 500×500 |
-
----
-
-## Planned Features
-
-- Game videos in the hero spotlight
-- Ability to rearrange pinned items
-- In-app browser
-- More customization options
-- System settings controls (brightness, volume, Wi-Fi, Bluetooth)
-- Additional game library support (GOG, Epic Games, etc.)
-
----
-
-## SmartScreen Warning <a name="smartscreen"></a>
-
-When you first launch LiftOff, Windows SmartScreen may show a warning saying the app is "unrecognized." This is normal for indie software that hasn't yet accumulated enough downloads to build a reputation with Microsoft's systems.
-
-To proceed:
-1. Click **"More info"**
-2. Click **"Run anyway"**
-
-LiftOff is open source — you can inspect every line of code in this repository. No telemetry, no accounts, nothing hidden.
+App data lives in `%LOCALAPPDATA%\LiftOff\` (settings, library caches, artwork, store metadata, Lo-fi media). Steam, Microsoft, and Spotify refresh tokens are stored in **Windows Credential Manager**, not in those JSON files.
 
 ---
 
 ## Contributors
 
-- **[moi952](https://github.com/moi952)** — major contributor: French translation & full i18n system, SteamGridDB art browser, custom game sources, controller auto-detection/glyphs, rename support for all entries, component architecture refactor (ThemeContext/SettingsContext), Onyx/theme polish, Home/layout customization, and extensive UI settings additions
+- **[moi952](https://github.com/moi952)** — localization (French) and i18n, SteamGridDB art browser, custom sources and rename, controller glyphs/auto-detect, layout and Home customization, and a large share of the settings/UI work
 
 ---
 
 ## Support
 
-LiftOff is free and open source. Join the community on [Discord](https://discord.gg/F5ncP75WtD) or consider buying me a coffee!
+LiftOff is free and always will be. Report bugs or try builds on [Discord](https://discord.gg/F5ncP75WtD). If it earns a spot on your handheld, a coffee keeps the updates coming.
 
 [![Discord](https://img.shields.io/badge/Discord-join%20the%20community-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/F5ncP75WtD)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support%20development-orange?style=flat&logo=buy-me-a-coffee)](https://buymeacoffee.com/liftoff_handheld_launcher)
@@ -199,6 +163,6 @@ LiftOff is free and open source. Join the community on [Discord](https://discord
 
 ## Stack
 
-- [Tauri 2](https://tauri.app/) — Rust backend, WebView frontend
+- [Tauri 2](https://tauri.app/) — Rust backend, WebView2 frontend
 - [React](https://react.dev/) — UI
-- [SteamGridDB](https://www.steamgriddb.com/) — game cover art
+- [SteamGridDB](https://www.steamgriddb.com/) — cover and hero art

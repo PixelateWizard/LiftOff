@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented:** Finishing onboarding after account/source interaction now rescans Microsoft-owned games, and controller navigation focuses Microsoft/Steam/Spotify row actions without activating sign-out. Remaining gate: verify one real Microsoft onboarding sign-in and the three account rows with a physical controller before publishing 2.0.0.
+- **Implemented:** Rewrote the GitHub README for 2.0 with Pages-site screenshots, current controls, and shipped features. Remaining gate: confirm images render on github.com after this is pushed.
 
 ## Start-of-Task Workflow
 

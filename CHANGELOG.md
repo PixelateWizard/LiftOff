@@ -17,6 +17,7 @@
 
 
 ### Changed
+- **GitHub README** - Rewrote the repository README for 2.0 with Pages-site screenshots, current controls, and shipped library/Spotify/setup features in place of the 1.2-era settings dump and planned-features list.
 - **Cursor editor files** - `.cursor/` is gitignored so local IDE/agent settings stay off the remote.
 - **Tab bar background default** - First-run setup now starts with Tab Bar Background on.
 - **Onboarding artwork note** - The last first-run screen tells you game art keeps loading in the background and may take a few minutes.
