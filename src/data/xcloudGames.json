@@ -3114,6 +3114,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.45521.14453210688244237.2da23406-8c5f-405c-8876-174d3a439bdd.3089fbd0-325b-4026-84e6-03588021022a"
   },
   {
+    "name": "FEROCIOUS",
+    "slug": "ferocious",
+    "productId": "9NZG1T895SR4",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.58725.14481128193459929.796cfd42-d440-4922-a1b6-e36be9a00a88.8d5ddc80-fa1b-4006-a7f1-971500828009"
+  },
+  {
     "name": "Figment 2: Creed Valley",
     "slug": "figment-2-creed-valley",
     "productId": "9NZWW8K1KX6S",
@@ -6006,6 +6012,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.13997.13899283375416525.2f5d86cb-959e-4946-8eec-749829266b44.8c2c3a1f-4fce-4e15-9f49-18802a75966f"
   },
   {
+    "name": "NBA 2K27",
+    "slug": "nba-2k27",
+    "productId": "9N3D82TFF6C4",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.31609.13934234425416393.c16fba18-9d46-4e2f-9891-5efae739df3f.356d4164-080b-449e-ae1e-3c7b8c5e8277"
+  },
+  {
     "name": "NBA BOUNCE",
     "slug": "nba-bounce",
     "productId": "9MVZTH17V753",
@@ -7380,6 +7392,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.45879.14052270231581935.462e3310-2a39-4373-a6d3-2031508dcfc4.ec7843fe-c837-4dde-a8ab-afaa7bf9cd81"
   },
   {
+    "name": "ROMEO IS A DEAD MAN",
+    "slug": "romeo-is-a-dead-man",
+    "productId": "9MXHH4JL4G76",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.22332.13890029813382903.a2125919-8b4d-49b7-b37e-30bf86b87525.df6039e6-1003-4e6b-b9e6-576e7a0707f1"
+  },
+  {
     "name": "Roofcats Band – Suika Style",
     "slug": "roofcats-band-suika-style",
     "productId": "9MVR55LMFCJL",
@@ -7468,6 +7486,12 @@
     "slug": "rune-factory-guardians-of-azuma",
     "productId": "9P9NKXJ79V0C",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.5263.14342700271419169.2cb6190f-4939-41a2-83e2-3f9143233c2b.ec3d93de-8a33-43ce-a05f-500292574ae1"
+  },
+  {
+    "name": "RuneScape: Dragonwilds",
+    "slug": "runescape-dragonwilds",
+    "productId": "9P402RWR63H4",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.19279.14598963835318421.d3340a04-fc78-4b06-9abb-2849494504b3.db648883-647c-4b89-9427-69507858a55f"
   },
   {
     "name": "Rush Rally Origins",
@@ -8700,6 +8724,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.49721.14333301147104326.7a92a390-4121-444a-83d0-9570564d637a.5786ce21-18ac-45b2-88cd-dcb71a2f9c2b"
   },
   {
+    "name": "TCG Card Shop Simulator",
+    "slug": "tcg-card-shop-simulator",
+    "productId": "9P9GX5D8H9DW",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.64640.14143053245725704.14ebe58d-2f1e-46da-9224-f0da06983250.531a6e82-4e61-4f27-9dbb-46c1d6f94f7c"
+  },
+  {
     "name": "Tchia",
     "slug": "tchia",
     "productId": "9NK4WRQX5ZC5",
@@ -8716,6 +8746,12 @@
     "slug": "teenage-mutant-ninja-turtles-arcade-wrath-of-the-mutants",
     "productId": "9NC36LVTFNJW",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.4253.13575999063887188.dd9dfa1b-7519-4891-9e35-91182f665370.81d6b13e-4a75-4c49-91f3-911b3c1b0958"
+  },
+  {
+    "name": "Teenage Mutant Ninja Turtles: Mutants Unleashed",
+    "slug": "teenage-mutant-ninja-turtles-mutants-unleashed",
+    "productId": "9P27ZX0DH2JN",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.11042.14562706045768227.d2247107-35cd-40b8-84cc-fe1ac03a1696.c5c92d91-35bc-4d17-8bd6-a9e25c388f63"
   },
   {
     "name": "Teenage Mutant Ninja Turtles: Shredder’s Revenge",
