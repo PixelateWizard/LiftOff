@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented:** Games/Apps vertical taps use one short monotonic tween that retargets across multiple taps without rebound; held controller repeat still cancels motion and snaps. Vitest, build, diff check, and docs check pass. Mocked Playwright is blocked by its missing Chromium executable; real-controller feel remains the runtime gate.
+- **Implemented:** Local tree landed on `main` (promo site, Latin rain glyphs, Spanish locale, launcher UX, first-run Lo-fi/splash/scroll). `.cursor/` is gitignored. Open PRs 33-37 closed as superseded.
 
 ## Start-of-Task Workflow
 

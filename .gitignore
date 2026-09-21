@@ -21,6 +21,7 @@ dist-ssr
 /liftoff-fse-bridge/target/
 
 # Editor directories and files
+.cursor/
 .vscode/*
 !.vscode/extensions.json
 .idea

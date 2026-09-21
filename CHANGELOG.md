@@ -17,6 +17,7 @@
 
 
 ### Changed
+- **Cursor editor files** - `.cursor/` is gitignored so local IDE/agent settings stay off the remote.
 - **Tab bar background default** - First-run setup now starts with Tab Bar Background on.
 - **Onboarding artwork note** - The last first-run screen tells you game art keeps loading in the background and may take a few minutes.
 - **Smart-bar running activity** - Active games still occupy the Smart bar; active apps stay in the helper tray only.
