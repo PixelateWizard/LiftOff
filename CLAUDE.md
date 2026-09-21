@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented:** Patched all 13 open npm and Rust Dependabot alerts through lockfile-only dependency updates; npm audit, frontend tests/build, and Rust compilation pass.
+- **Implemented:** Wired existing Lo-fi Games tab captures into the GitHub Pages theme picker so Lo-fi is selectable with all 12 accents. Remaining gate: live liftofflauncher.app after the `docs/` deploy.
 
 ## Start-of-Task Workflow
 
