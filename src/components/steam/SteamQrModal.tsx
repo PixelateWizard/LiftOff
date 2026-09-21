@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
-import { modalSurfaceStyle } from "../modals/modalStyles";
+import { ACCOUNT_DIALOG_Z, modalSurfaceStyle } from "../modals/modalStyles";
+import { getBestGamepad, readGpState, type GpState } from "../../utils/gamepad";
 import { QRCodeSVG } from "qrcode.react";
 import { IoClose, IoRefresh } from "react-icons/io5";
 import type { CSSProperties } from "react";
@@ -44,7 +45,32 @@ export function SteamQrModal({
       if (event.key === "Enter" && (phase === "expired" || phase === "error")) onBegin();
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    let rafId = 0;
+    let enterReleased = false;
+    let escapeReleased = false;
+    const last: Partial<GpState> = {};
+    const poll = () => {
+      const gp = getBestGamepad();
+      if (gp) {
+        const base = readGpState(gp);
+        if (!base.Enter) enterReleased = true;
+        if (!base.Escape) escapeReleased = true;
+        const state = {
+          ...base,
+          Enter: enterReleased && base.Enter,
+          Escape: escapeReleased && base.Escape,
+        };
+        if (state.Escape && !last.Escape) onClose();
+        if (state.Enter && !last.Enter && (phase === "expired" || phase === "error")) onBegin();
+        Object.assign(last, state);
+      }
+      rafId = requestAnimationFrame(poll);
+    };
+    rafId = requestAnimationFrame(poll);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      cancelAnimationFrame(rafId);
+    };
   }, [open, phase, onBegin, onClose]);
 
   if (!open) return null;
@@ -63,10 +89,11 @@ export function SteamQrModal({
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 10000,
+        zIndex: ACCOUNT_DIALOG_Z,
         display: "grid",
         placeItems: "center",
         padding: 24,
+        fontFamily: "'Segoe UI', sans-serif",
       }}
       role="dialog"
       aria-modal="true"

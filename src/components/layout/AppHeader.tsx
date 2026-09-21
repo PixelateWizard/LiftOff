@@ -89,7 +89,7 @@ export function AppHeader({
     : (accent.lightDarkText ? activePillText : "white");
 
   const transparentNav    = !(settings.topbar_background ?? true);
-  const tabbarBg          = settings.tabbar_with_background ?? false;
+  const tabbarBg          = settings.tabbar_with_background ?? true;
   const tabbarBgCompact   = tabbarBg && (settings.tabbar_background_compact ?? false);
   const wideLayout        = (settings.wide_layout ?? false) && (settings.wide_topbar ?? false);
   const isHome         = tab === "Home";
@@ -98,13 +98,6 @@ export function AppHeader({
   const isPixel        = surfaceStyle === "win9x";
   const navRadius      = resolvedTheme === "cyberpunk" ? 0 : isPixel ? 0 : surfaceStyle === "material" ? 8 : 16;
   const isCyberpunk = resolvedTheme === "cyberpunk";
-  const constrainHomeNav = isHome && !isPixel;
-  const homeNavBoundaryStyle: CSSProperties = constrainHomeNav
-    ? widthConstraints(wideLayout, transparentNav, true, uiScale)
-    : {};
-  const homeTopBarFillStyle: CSSProperties = constrainHomeNav
-    ? { width: "100%", maxWidth: "none", margin: 0 }
-    : {};
   const pixelFullBleedNav: CSSProperties = isPixel ? {
     width: "100%",
     maxWidth: "none",
@@ -290,13 +283,12 @@ export function AppHeader({
 
   // ── Cases: independent nav / subtab backgrounds ────────────────
   return (
-    <div data-liftoff-nav-boundary style={{ position: transparentNav ? "sticky" : "absolute", top: 0, left: 0, right: 0, zIndex: 100, ...homeNavBoundaryStyle }}>
+    <div data-liftoff-nav-boundary style={{ position: transparentNav ? "sticky" : "absolute", top: 0, left: 0, right: 0, zIndex: 100 }}>
 
       {/* Nav row */}
       <div data-top-bar="" style={{
         display: "flex", flexDirection: isPixel ? "column" : "row", alignItems: isPixel ? "stretch" : "center", gap: isPixel ? 0 : 16, padding: isPixel ? 0 : "10px 20px",
         ...widthConstraints(wideLayout, transparentNav, true, uiScale),
-        ...homeTopBarFillStyle,
         ...pixelFullBleedNav,
         ...(transparentNav ? {} : { ...glassBar, borderRadius: navRadius }),
         position: "relative",

@@ -1,17 +1,30 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { RefObject } from "react";
+import { resolveLofiMediaUrl } from "../../theme/mediaSource";
 
 interface LofiBgProps {
   lofiVideoRef: RefObject<HTMLVideoElement | null>;
   lofiBg: string;
+  lofiPoster?: string;
   lofiEffectsEnabled: boolean;
   appPaused: boolean;
 }
 
-export function LofiBg({ lofiVideoRef, lofiBg, lofiEffectsEnabled, appPaused }: LofiBgProps) {
+export function LofiBg({ lofiVideoRef, lofiBg, lofiPoster, lofiEffectsEnabled, appPaused }: LofiBgProps) {
+  const [playableSrc, setPlayableSrc] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setPlayableSrc("");
+    void resolveLofiMediaUrl(lofiBg, controller.signal).then((src) => {
+      if (!controller.signal.aborted && src) setPlayableSrc(src);
+    }).catch(console.error);
+    return () => controller.abort();
+  }, [lofiBg]);
+
   useEffect(() => {
     const video = lofiVideoRef.current;
-    if (!video) return;
+    if (!video || !playableSrc) return;
     if (appPaused || !lofiEffectsEnabled) {
       video.pause();
       return;
@@ -36,18 +49,20 @@ export function LofiBg({ lofiVideoRef, lofiBg, lofiEffectsEnabled, appPaused }: 
       window.removeEventListener("focus", play);
       document.removeEventListener("visibilitychange", playOnVisible);
     };
-  }, [appPaused, lofiEffectsEnabled, lofiVideoRef]);
+  }, [appPaused, lofiEffectsEnabled, lofiVideoRef, playableSrc]);
 
   return (
     <>
       <video
         ref={lofiVideoRef}
-        src={lofiBg}
-        autoPlay={lofiEffectsEnabled}
+        src={playableSrc || undefined}
+        poster={lofiPoster}
+        autoPlay={Boolean(playableSrc) && lofiEffectsEnabled}
         muted
         loop
         playsInline
         preload="auto"
+        onError={() => setPlayableSrc("")}
         style={{ position: "fixed", inset: 0, zIndex: -2, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center center", pointerEvents: "none" }}
       />
       <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none",

@@ -5,7 +5,7 @@ import type { App } from "../types";
 type FetchGameArt = (
   games: App[],
   onProgress?: (done: number, total: number, lastName?: string) => void,
-  options?: { includeUninstalled?: boolean; forceRefresh?: boolean }
+  options?: { includeUninstalled?: boolean; forceRefresh?: boolean; barProgress?: boolean }
 ) => Promise<void> | void;
 
 interface UseArtBackfillArgs {
@@ -25,6 +25,14 @@ const CHUNK = 6;
 const TICK_DELAY_MS = 400;
 const HEAD_START_MS = 1500;
 const EMPTY_RECHECK_MS = 3000;
+
+export function isArtBackfillPending(
+  app: Pick<App, "app_type" | "id">,
+  resolved: Record<string, string | undefined>,
+  inFlight: Set<string>,
+): boolean {
+  return app.app_type === "game" && resolved[app.id] === undefined && !inFlight.has(app.id);
+}
 
 export function useArtBackfill({
   appsRef,
@@ -51,11 +59,7 @@ export function useArtBackfill({
     const pickChunk = (): App[] => {
       const resolved = gameArtRef.current;
       const inFlight = inFlightRef.current;
-      const isPending = (app: App) =>
-        app.app_type === "game" &&
-        app.installed === false &&
-        resolved[app.id] === undefined &&
-        !inFlight.has(app.id);
+      const isPending = (app: App) => isArtBackfillPending(app, resolved, inFlight);
 
       const byId = new Map(appsRef.current.map((app) => [app.id, app]));
       const out: App[] = [];
@@ -92,7 +96,7 @@ export function useArtBackfill({
           idle(async () => {
             if (cancelled) return resolve();
             try {
-              await fetchGameArt(chunk, undefined, { includeUninstalled: true, forceRefresh: true });
+              await fetchGameArt(chunk, undefined, { includeUninstalled: true, forceRefresh: true, barProgress: false });
             } finally {
               chunk.forEach((app) => inFlightRef.current.delete(app.id));
             }

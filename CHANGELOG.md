@@ -2,10 +2,53 @@
 
 ## Unreleased
 ### Added
+- **Onboarding Lo-fi music toggle** - The first-run Lo-fi scene step now includes a switch for the looping track, writing the same `lofi_music_enabled` preference as Settings and the helper tray. A selects a scene without leaving the step; Next in the footer continues.
+- **Smart-bar setup progress** - After splash and first-run setup, the Smart bar reports library scan phases and artwork-fetch progress so leftover background work is visible without a blocking overlay.
+- **App Details modal** - Opening an app from Home, Apps, search, or a helper-tray pin now shows a controller-friendly modal with the name, size, location, and the same manage actions as the mouse context menu, then launches only from Open/Resume.
+- **Factory reset** - Settings Data now includes Reset LiftOff. After an are-you-sure confirm, it wipes local app data and signed-in accounts, then restarts into first-run setup.
+- **Onboarding bar and tab visuals** - First-run setup now has a visual step after Home: screenshot cards for text, icon, and combined top tabs, plus switches for top-nav and tab-bar backgrounds, top bumper badges, and tab-bar trigger badges.
+- **Controller Settings tools** - The Controller tab now has focusable Controller Buttons and Controller Test rows. A or click opens the glyph preview or live tester in an isolated modal so gamepad users can reach both views. The tester keeps face buttons free for checking and closes with BACK; the glyph preview closes with B.
+- **Lo-fi helper music toggle** - While the Lo-fi theme is active, the helper tray shortcuts include an on/off control for the looping Lo-fi track, writing the same `lofi_music_enabled` preference as Settings.
+- **Spotify Stop** - The Spotify overlay and helper-tray transport now include Stop, which pauses playback and clears the leftover now-playing mini-bar until Spotify starts playing again.
+- **Spanish localization** - Settings and first-run setup now offer Español (`es`) alongside English and French, with a complete Spanish locale file and Auto using the OS language when it is Spanish.
+- **Lo-fi scene picker** - Lo-fi theme now offers 6 selectable background scenes (Cozy Study, Sleepy Pup, Late-Night Desk, Stargazing Cat, Rainy Street, Pixel Shop). Settings opens a picture picker, and first-run setup shows the same pictures after Lo-fi is selected.
 - **Home preferences** - Settings and onboarding now offer the Home style and game-hero-banner controls. Every onboarding boolean preference now has a visual switch, and every cycle selector has clickable left/right arrows; Legacy retains its explicit “Always on in Legacy” lock state. Selecting a game from any Home mode can open Game Details or launch immediately; the Games tab and explicit Hero Launch/Resume button are unchanged. Normal and Immersive can hide hero banners, including placeholder art while apps are focused, so the active theme remains visible; Legacy always keeps hero art.
+- **Synthwave Warp motion** - The Synthwave background now flies toward the sun: the grid floor scrolls toward the viewer with true perspective spacing, star streaks burst outward from behind the sun, and the sun's bands slide downward. All motion is compositor-only and freezes with effects off, reduced motion, window blur, and app launch. The theme's twinkling stars are replaced by the streaks.
 
+
+### Changed
+- **Tab bar background default** - First-run setup now starts with Tab Bar Background on.
+- **Onboarding artwork note** - The last first-run screen tells you game art keeps loading in the background and may take a few minutes.
+- **Smart-bar running activity** - Active games still occupy the Smart bar; active apps stay in the helper tray only.
+- **Home pinned row** - Home no longer shows the pinned games/apps pill row. Pins remain in the helper tray and on Games/Apps, so Home stays a hero and recents/collections surface.
+- **Text-only section tabs** - Fresh defaults now turn Text-Only Tabs on with the existing medium label weight.
+- **Top bumper default** - New installs keep bumper badges in the top nav (`header`) instead of the bottom bar, matching Smart as the default helper bar.
+- **Promo site screenshots** - The liftofflauncher.app hero now uses a current Home capture, and See it running includes current Library, Details, Installs, helper tray, Spotify, art browser, cloud catalog, Apps tab, and first-run theme/Home/Lo-fi picker shots.
+- **Lo-fi and Spotify audio** - Starting Spotify playback pauses Lo-fi music without changing the Lo-fi music setting, so the looping track can resume after Spotify stops or pauses.
+- **French localization** - Remaining `TODO(fr)` UI strings are now French, including onboarding, the helper tray, Smart-bar hints, and related settings labels.
+- **Agent localization workflow** - Missing locale copy may be auto-translated from English instead of leaving `TODO(xx)` placeholders, as long as key trees and interpolation placeholders stay aligned.
+- **Immersive boxed hero** - Material, Win9X, and Cyberpunk Immersive copy panels sit above the Smart pill with a gap and share its left inset.
+- **Normal Home hero corners** - The full-bleed Normal Home hero no longer keeps Legacy card corner radius.
+- **Light-theme gamepad icons** - Uncolored controller glyphs now use a dark fill on Sky, Wash, and Webcore so Smart-bar hints stay readable on light pills.
+- **2.0 promo site** - Rebuilt liftofflauncher.app for the 2.0 launch. The page now leads with real 2.0 screenshots (Home, Games, Details, and an in-launcher Game Pass install) in a click-to-enlarge gallery, and covers what shipped since the last site update: Steam QR sign-in with the full owned library, Game Pass installs, cloud games, Spotify, Game Details, and controller-first setup. A looks section lists all 12 themes and 12 accents, and swaps in a Games tab screenshot for each one that has a capture, alongside a short guide to the 7 surface styles. Screenshots are served as WebP (about 540 KB total instead of about 7 MB), with the full PNGs kept for the enlarged view, and the page now has social-share preview tags.
 
 ### Fixed
+- **First-run splash hang** - After a factory reset, Start Menu/Desktop icon extraction no longer waits forever on a stuck `SHGetFileInfoW` call. Fresh icons have a short per-file timeout and an 8-second desktop budget, and splash leaves the frozen phase copy if that scan stays quiet.
+- **Onboarding settings persistence** - Step saves are serialized and setup waits for the final completion write before closing, so the selected theme, scene, music choice, and `onboarding_complete` state cannot be overwritten by an older full-settings save.
+- **First-run Lo-fi media** - Scene posters are inlined data URLs. Native startup prepares scene video and the looping mp3 in `%LOCALAPPDATA%/LiftOff/media/lofi/`, then the frontend loads them through the asset protocol, so factory-reset setup is not stuck on a still image with silent music.
+- **Smart-bar leftover artwork** - Loading artwork stays in the Smart bar while Home heroes and Games-tab covers are still unfetched, not only during the first batch.
+- **Onboarding screenshot cards** - Home style and top-tab preview cards now paint inlined screenshot data URLs, so first-run after a factory reset does not depend on the WebView asset HTTP cache.
+- **Steam QR font** - The Steam login dialog uses Segoe UI like the rest of the app. It sits outside the scaled app shell, which previously left it on the document serif fallback.
+- **Splash start sound** - The opening whoosh waits until the main window is shown, then plays. WebView2 autoplay is allowed without a prior click so the boot cue is not silently blocked.
+- **Games/Apps gamepad scrolling** - Vertical D-pad/stick taps now share one short, monotonic scroll animation that retargets during quick successive taps, preserving motion without Chromium's stacked-scroll rebound. Held repeat still cancels the animation and snaps immediately, and tiny no-op moves remain skipped.
+- **First-launch hero art** - Animated hero mode now keeps cached static banners visible when a game has no video URL. Art backfill also retries installed games that were never fetched, and finishing first-run setup kicks a library art load so choosing one custom hero is not required to reveal the rest.
+- **Factory reset** - Reset no longer deletes app data while Home art files are still open in WebView2. That failed silently, left settings in place, and broke hero images. Confirming now marks a pending wipe and restarts; the next launch clears data before the window opens.
+- **Onboarding account dialogs** - Steam and Microsoft (and Spotify) connect dialogs now open above first-run setup instead of behind it, and closing them returns to the same Connect your accounts step.
+- **Home top-nav alignment** - Home no longer applies a second width constraint to the nav boundary, so the top tabs line up with Games, Apps, and Settings.
+- **Immersive hero resolution chip** - Home no longer overlays “Hero art 3840x2160” (or similar) on cover art. Those dimensions stay in the art browser.
+- **Bottom bumper setting** - Bumper Badges no longer offer Bottom while Smart or Hidden is selected; a leftover Bottom value is treated as Hidden until the Full bar is on.
+- **Cyberpunk ASCII rain** - Falling glyphs are Latin letters, digits, and punctuation so they render as readable English characters instead of substituted CJK.
+- **Sky Home title panel** - Normal Home no longer draws a frosted copy card behind the hero title on light themes.
 - **Global power-menu shortcut** - The controller B shortcut now opens the power menu from Home, Games, Apps, and the Settings root. In a nested Appearance category, B returns to the Appearance root first; active dialogs and the search overlay retain their own B behavior.
 - **Transparent helper tray depth** - Opening the Glass, Aero, Clear, or Obsidian helper tray now explicitly blurs the underlying app layer, bypassing WebView2's unreliable backdrop sampling inside the scaled app root so large Home hero text cannot remain sharply readable through the controls. Opaque surface behavior and the tray's existing dense fills are preserved.
 - **Accent placeholder artwork** - Atomic, Aqua, Sage, and Copper now include portrait cover placeholders matching their existing wide hero artwork, so missing game and app art no longer resolves to broken images for those accent colors.

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { App } from "../types";
 
+export const LIBRARY_SCAN_TIMEOUT_MS = 60_000;
+
 type LibraryRefreshStatus = "scanning" | "done" | null;
 
 interface IconColor {
@@ -168,7 +170,16 @@ export function useLibraryData({ fetchGameArt, onLoaded, onLoadError }: UseLibra
       setPins(loadedPins);
       pinsRef.current = loadedPins;
     });
+    let cancelled = false;
+    let finished = false;
+    const timer = window.setTimeout(() => {
+      if (cancelled || finished) return;
+      finished = true;
+      onLoadError?.();
+    }, LIBRARY_SCAN_TIMEOUT_MS);
     Promise.all([invoke<App[]>("get_all_apps"), invoke<string[]>("get_hidden")]).then(([all, loadedHidden]) => {
+      if (cancelled) return;
+      const alreadyEscaped = finished;
       allAppsRef.current = all;
       setHidden(loadedHidden);
       hiddenRef.current = loadedHidden;
@@ -189,11 +200,18 @@ export function useLibraryData({ fetchGameArt, onLoaded, onLoadError }: UseLibra
         recentGamesRef.current = gamesFallback;
       }
       fetchGameArt(visible.filter(a => a.app_type === "game"));
-      onLoaded?.(visible);
+      finished = true;
+      if (!alreadyEscaped) onLoaded?.(visible);
     }).catch((e) => {
+      if (cancelled || finished) return;
+      finished = true;
       console.error("Failed to load apps:", e);
       onLoadError?.();
     });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, []);
 
   return {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { IoPersonCircleOutline, IoWifiOutline } from "react-icons/io5";
 import ModalShell from "../modals/ModalShell";
+import { ACCOUNT_DIALOG_Z } from "../modals/modalStyles";
 import { useTheme } from "../../contexts/ThemeContext";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
 
@@ -135,7 +136,7 @@ export function XboxConnectGuide({
         { btn: "B", label: t("common.cancel") },
       ]}
       width={560}
-      zIndex={8700}
+      zIndex={ACCOUNT_DIALOG_Z}
       onOverlayClick={onClose}
     >
       <div style={{ padding: "20px 24px 24px", display: "flex", flexDirection: "column", gap: 16 }}>

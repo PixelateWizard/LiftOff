@@ -124,10 +124,12 @@ export type TabbarButtons    = "tabbar" | "bottom" | "hidden";
 export type TabbarFontWeight = "thin" | "medium" | "bold";
 export type TabbarLabelCase  = "default" | "ucfirst" | "uppercase";
 export type BottombarAlign   = "left" | "center" | "right";
+export type BottombarMode    = "smart" | "full" | "hidden";
 export type GamepadPlatform  = "xbox" | "ps" | "switch";
 export type GamepadBtnSize   = "small" | "medium" | "large";
 export type GamesSort        = "recent" | "az" | "store";
 export type FseReturnShortcut = "l3_r3" | "view_menu" | "lb_rb";
+export type LofiScene = "cozy" | "dog" | "desk" | "cat" | "rainy_street" | "pixel_shop";
 
 /** Full persisted settings object */
 export interface Settings {
@@ -137,6 +139,7 @@ export interface Settings {
   ui_motion: boolean;
   onyx_top_light: boolean;
   lofi_music_enabled: boolean;
+  lofi_scene: LofiScene;
   sfx_enabled: boolean;
   wide_layout: boolean;
   wide_topbar: boolean;
@@ -147,8 +150,10 @@ export interface Settings {
   topbar_background: boolean;
   bottombar_background: boolean;
   hide_bottom_bar: boolean;
-  bottombar_mode: "full" | "minimal" | "hidden" | "";
+  bottombar_mode: BottombarMode | "minimal" | "";
   bottombar_peek_on_track: boolean;
+  bottombar_idle_collapse: boolean;
+  bottombar_smart_migrated: boolean;
   default_tab: DefaultTab;
   scan_steam: boolean;
   scan_xbox: boolean;
@@ -292,6 +297,11 @@ export interface SettingsSurfacePickerItem extends SettingsItemBase {
   type: "surface_picker";
 }
 
+export interface SettingsLofiScenePickerItem extends SettingsItemBase {
+  key: "lofi_scene";
+  type: "lofi_scene_picker";
+}
+
 export interface SettingsAppearanceCategoryItem extends SettingsItemBase {
   type: "appearance_category";
   categoryIndex: number;
@@ -388,6 +398,7 @@ export type SettingsItem =
   | SettingsCycleItem
   | SettingsThemePickerItem
   | SettingsSurfacePickerItem
+  | SettingsLofiScenePickerItem
   | SettingsAppearanceBackItem
   | SettingsSliderItem
   | SettingsAccentItem

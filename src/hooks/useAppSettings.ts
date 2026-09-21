@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import i18n from "../i18n";
 import type { Settings } from "../types";
+import { migrateBottomBarSettings, resolveNavBumpersPos } from "../utils/smartBar";
 import {
   DEFAULT_SETTINGS,
   SCAN_KEYS,
@@ -22,6 +23,18 @@ interface UseAppSettingsOptions {
 
 type SettingsAction = React.SetStateAction<Settings>;
 
+function mergeSettingsUpdates(current: Settings, updates: Partial<Settings>): Settings {
+  const updated = { ...current, ...updates };
+  if (Object.prototype.hasOwnProperty.call(updates, "theme")) {
+    const nextTheme = normalizeThemeKey(updates.theme);
+    updated.theme = nextTheme;
+    if (!Object.prototype.hasOwnProperty.call(updates, "surface_style")) {
+      updated.surface_style = THEME_SURFACE_DEFAULTS[nextTheme] || updated.surface_style;
+    }
+  }
+  return updated;
+}
+
 export function useAppSettings({
   onScanKeyChange,
   autoScaleRef,
@@ -31,15 +44,22 @@ export function useAppSettings({
   const [defaultTab, setDefaultTab] = useState<string | null>(null);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const settingsRef = useRef<Settings>({ ...DEFAULT_SETTINGS });
+  const settingsSaveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const setSettings = (action: SettingsAction) => {
-    setSettingsState(prev => {
-      const next = typeof action === "function"
-        ? (action as (prev: Settings) => Settings)(prev)
-        : action;
-      settingsRef.current = next;
-      return next;
-    });
+    const next = typeof action === "function"
+      ? (action as (prev: Settings) => Settings)(settingsRef.current)
+      : action;
+    settingsRef.current = next;
+    setSettingsState(next);
+  };
+
+  const queueSettingsSave = (next: Settings): Promise<void> => {
+    const save = settingsSaveQueueRef.current.then(
+      () => invoke("save_settings", { settings: next }),
+    ).then(() => undefined);
+    settingsSaveQueueRef.current = save.catch(console.error);
+    return settingsSaveQueueRef.current;
   };
 
   useEffect(() => {
@@ -55,10 +75,12 @@ export function useAppSettings({
       // ui_scale is null when never saved; substitute the auto-detected value.
       const updated = { ...settingsRef.current, ...s, ui_scale: s.ui_scale ?? auto };
       let needsSave = false;
-      // One-time migration from the legacy boolean. Minimal preserves the
-      // floating now-playing affordance that hide-bar users already saw.
-      if (!s.bottombar_mode) {
-        updated.bottombar_mode = s.hide_bottom_bar ? "minimal" : "full";
+      // 2.0 moves Full and Minimal users to Smart exactly once; Hidden stays.
+      // Legacy hide_bottom_bar and empty modes resolve to Smart as well.
+      const barMigration = migrateBottomBarSettings(updated);
+      if (barMigration.changed) {
+        updated.bottombar_mode = barMigration.bottombar_mode;
+        updated.bottombar_smart_migrated = true;
         needsSave = true;
       }
       if (updated.surface_style === "pixel") updated.surface_style = "win9x";
@@ -71,25 +93,37 @@ export function useAppSettings({
       }
       const migratedHomePinnedPosition = updated.home_mode === "semi" && updated.home_pinned_pos === "bottom";
       if (migratedHomePinnedPosition) updated.home_pinned_pos = "top";
+      const resolvedBumpers = resolveNavBumpersPos(updated.nav_bumpers_pos, updated.bottombar_mode);
+      if (resolvedBumpers !== updated.nav_bumpers_pos) {
+        updated.nav_bumpers_pos = resolvedBumpers;
+        needsSave = true;
+      }
       setSettings(updated);
       setSettingsLoaded(true);
-      if (s.surface_style === "pixel" || migratedHomePinnedPosition || needsSave) invoke("save_settings", { settings: updated }).catch(console.error);
+      if (s.surface_style === "pixel" || migratedHomePinnedPosition || needsSave) void queueSettingsSave(updated);
       applyDefaultTab(s.default_tab);
       if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
     }).catch(() => {
       invoke<Partial<Settings>>("get_settings").then(s => {
         const merged = { ...settingsRef.current, ...s };
         let needsSave = false;
-        if (!s.bottombar_mode) {
-          merged.bottombar_mode = s.hide_bottom_bar ? "minimal" : "full";
+        const barMigration = migrateBottomBarSettings(merged);
+        if (barMigration.changed) {
+          merged.bottombar_mode = barMigration.bottombar_mode;
+          merged.bottombar_smart_migrated = true;
           needsSave = true;
         }
         if (merged.surface_style === "pixel") merged.surface_style = "win9x";
         const migratedHomePinnedPosition = merged.home_mode === "semi" && merged.home_pinned_pos === "bottom";
         if (migratedHomePinnedPosition) merged.home_pinned_pos = "top";
+        const resolvedBumpers = resolveNavBumpersPos(merged.nav_bumpers_pos, merged.bottombar_mode);
+        if (resolvedBumpers !== merged.nav_bumpers_pos) {
+          merged.nav_bumpers_pos = resolvedBumpers;
+          needsSave = true;
+        }
         setSettings(merged);
         setSettingsLoaded(true);
-        if (s.surface_style === "pixel" || migratedHomePinnedPosition || needsSave) invoke("save_settings", { settings: merged }).catch(console.error);
+        if (s.surface_style === "pixel" || migratedHomePinnedPosition || needsSave) void queueSettingsSave(merged);
         applyDefaultTab(s.default_tab);
         if (s.language && s.language !== "auto") i18n.changeLanguage(s.language);
       });
@@ -112,14 +146,17 @@ export function useAppSettings({
       if (key === "home_pinned_pos" && updated.home_mode === "semi" && value === "bottom") {
         updated.home_pinned_pos = "top";
       }
+      if (key === "bottombar_mode" || key === "nav_bumpers_pos") {
+        updated.nav_bumpers_pos = resolveNavBumpersPos(updated.nav_bumpers_pos, updated.bottombar_mode);
+      }
       if (key === "theme") {
         const nextTheme = normalizeThemeKey(value as string);
         updated.theme = nextTheme;
         updated.surface_style = THEME_SURFACE_DEFAULTS[nextTheme] || updated.surface_style;
       }
-      invoke("save_settings", { settings: updated }).catch(console.error);
       return updated;
     });
+    void queueSettingsSave(settingsRef.current);
     if (SCAN_KEYS.includes(key as (typeof SCAN_KEYS)[number])) setTimeout(onScanKeyChange, 50);
     if (key === "language") {
       if (value === "auto") {
@@ -133,32 +170,13 @@ export function useAppSettings({
 
   /** Apply settings to live React state without writing to disk. */
   const previewSettings = (updates: Partial<Settings>) => {
-    setSettings(prev => {
-      const updated = { ...prev, ...updates };
-      if (Object.prototype.hasOwnProperty.call(updates, "theme")) {
-        const nextTheme = normalizeThemeKey(updates.theme);
-        updated.theme = nextTheme;
-        if (!Object.prototype.hasOwnProperty.call(updates, "surface_style")) {
-          updated.surface_style = THEME_SURFACE_DEFAULTS[nextTheme] || updated.surface_style;
-        }
-      }
-      return updated;
-    });
+    setSettings(mergeSettingsUpdates(settingsRef.current, updates));
   };
 
-  const updateSettingsBatch = (updates: Partial<Settings>) => {
-    setSettings(prev => {
-      const updated = { ...prev, ...updates };
-      if (Object.prototype.hasOwnProperty.call(updates, "theme")) {
-        const nextTheme = normalizeThemeKey(updates.theme);
-        updated.theme = nextTheme;
-        if (!Object.prototype.hasOwnProperty.call(updates, "surface_style")) {
-          updated.surface_style = THEME_SURFACE_DEFAULTS[nextTheme] || updated.surface_style;
-        }
-      }
-      invoke("save_settings", { settings: updated }).catch(console.error);
-      return updated;
-    });
+  const updateSettingsBatch = (updates: Partial<Settings>): Promise<void> => {
+    const updated = mergeSettingsUpdates(settingsRef.current, updates);
+    setSettings(updated);
+    return queueSettingsSave(updated);
   };
 
   return {

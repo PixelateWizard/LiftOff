@@ -49,6 +49,7 @@ test.beforeEach(async ({ page }) => {
       spotify_devices: { devices: [] },
       get_system_volume: { percent: 45, muted: false },
       get_brightness: 40,
+      ensure_lofi_media: "C:\\Users\\test\\AppData\\Local\\LiftOff\\media\\lofi\\lofi_dog.mp4",
       get_storage_info: Array.from({ length: 8 }, (_, index) => ({ mountPoint: `${String.fromCharCode(67 + index)}:/`, label: index === 0 ? "System" : "Games", totalBytes: 1000000000000, freeBytes: 400000000000, isDefaultInstallDrive: index === 0 })),
       "plugin:window|is_focused": true,
     };
@@ -89,7 +90,7 @@ test.beforeEach(async ({ page }) => {
         }
         if (command === "plugin:event|unlisten" || command === "plugin:event|emit") return null;
         if (command === "get_settings") {
-          const bottombarMode = new URLSearchParams(window.location.search).get("barMode") || "minimal";
+          const bottombarMode = new URLSearchParams(window.location.search).get("barMode") || "smart";
           return { ...(responses.get_settings as Record<string, unknown>), bottombar_mode: bottombarMode,
             onboarding_complete: params.get("fresh") !== "true", theme: params.get("theme") || "space",
             surface_style: params.get("surface") || "clear", ui_motion: false, ui_scale: 1, language: "en" };
@@ -110,7 +111,7 @@ test("boots the Home shell with mocked Tauri commands", async ({ page }) => {
   const pageErrors: Error[] = [];
   page.on("pageerror", (error) => pageErrors.push(error));
 
-  await page.goto("/?barMode=minimal");
+  await page.goto("/?barMode=smart");
 
   await expect(page.getByText("Home", { exact: true }).first()).toBeVisible({ timeout: 10_000 });
   await expect(page.locator("#root")).not.toBeEmpty();
@@ -189,10 +190,16 @@ test("onboarding exposes every footer to a pad and keeps it visible at 1280x800"
   const panel = page.locator("[data-onboarding-step]");
   await expect(panel).toHaveAttribute("data-onboarding-step", "welcome");
   await frames(page, 16);
-  for (const step of ["theme", "accent", "surface", "sources"]) {
+  for (const step of ["theme", "accent", "surface"]) {
     await pad(page, 0);
     await expect(panel).toHaveAttribute("data-onboarding-step", step);
   }
+  await pad(page, 0);
+  await expect(panel).toHaveAttribute("data-onboarding-step", "home");
+  await pad(page, 5);
+  await expect(panel).toHaveAttribute("data-onboarding-step", "visual");
+  await pad(page, 5);
+  await expect(panel).toHaveAttribute("data-onboarding-step", "sources");
   await expect(panel.getByText("Scan Store Apps", { exact: true })).toBeVisible();
   for (const [step, rows, next] of [["sources", 7, "accounts"], ["accounts", 3, "essentials"], ["essentials", 4, "done"]] as const) {
     await expect(panel).toHaveAttribute("data-onboarding-step", step);
@@ -218,6 +225,56 @@ test("onboarding exposes every footer to a pad and keeps it visible at 1280x800"
   await panel.getByRole("button", { name: "Next", exact: true }).click();
   await pad(page, 0);
   await expect(panel).toHaveCount(0);
+});
+
+async function reachOnboardingAccounts(page: Page) {
+  const panel = page.locator("[data-onboarding-step]");
+  await expect(panel).toHaveAttribute("data-onboarding-step", "welcome");
+  await frames(page, 16);
+  for (const step of ["theme", "accent", "surface", "home"]) {
+    await pad(page, 0);
+    await expect(panel).toHaveAttribute("data-onboarding-step", step);
+  }
+  await pad(page, 5);
+  await expect(panel).toHaveAttribute("data-onboarding-step", "visual");
+  await pad(page, 5);
+  await expect(panel).toHaveAttribute("data-onboarding-step", "sources");
+  await pad(page, 5);
+  await expect(panel).toHaveAttribute("data-onboarding-step", "accounts");
+  return panel;
+}
+
+test("onboarding Steam and Microsoft dialogs stack above setup and return to accounts", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/?fresh=true&surface=glass");
+  const panel = await reachOnboardingAccounts(page);
+  const overlay = page.locator("[data-onboarding-overlay]");
+
+  await pad(page, 0);
+  const steam = page.locator('[data-modal="steam-qr"]');
+  await expect(steam).toBeVisible();
+  const steamZ = await steam.evaluate((el) => Number(getComputedStyle(el).zIndex));
+  const overlayZ = await overlay.evaluate((el) => Number(getComputedStyle(el).zIndex));
+  expect(steamZ).toBeGreaterThan(overlayZ);
+  await pad(page, 1);
+  await frames(page, 20);
+  await expect(steam).toHaveCount(0);
+  await expect(panel).toHaveAttribute("data-onboarding-step", "accounts");
+
+  await pad(page, 13);
+  await pad(page, 0);
+  const microsoftTitle = page.getByText("Microsoft account", { exact: true });
+  await expect(microsoftTitle).toBeVisible();
+  const microsoftZ = await microsoftTitle.evaluate((el) => {
+    let node: HTMLElement | null = el as HTMLElement;
+    while (node && getComputedStyle(node).position !== "fixed") node = node.parentElement;
+    return node ? Number(getComputedStyle(node).zIndex) : 0;
+  });
+  expect(microsoftZ).toBeGreaterThan(await overlay.evaluate((el) => Number(getComputedStyle(el).zIndex)));
+  await pad(page, 1);
+  await frames(page, 20);
+  await expect(microsoftTitle).toHaveCount(0);
+  await expect(panel).toHaveAttribute("data-onboarding-step", "accounts");
 });
 
 for (const catalog of [false, true]) {

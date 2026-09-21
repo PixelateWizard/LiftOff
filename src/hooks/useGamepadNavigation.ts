@@ -20,6 +20,9 @@ import {
   SURFACE_STYLE_OPTIONS,
   TABS as DEFAULT_TABS,
   THEME_OPTIONS,
+  LOFI_SCENE_OPTIONS,
+  LOFI_SCENE_PICKER_COLS,
+  HOME_PINNED_SHELF_ENABLED,
   normalizeThemeKey,
 } from "../constants";
 
@@ -91,6 +94,7 @@ export interface UseGamepadNavigationOptions {
   pendingFileRef?: AnyRef<unknown>;
   showFolderManagerRef?: AnyRef<boolean>;
   confirmDeleteRef?: AnyRef<unknown>;
+  factoryResetConfirmRef?: AnyRef<boolean>;
   showColModalRef?: AnyRef<boolean>;
   colPickerAppRef?: AnyRef<App | null>;
   editNameAppRef?: AnyRef<App | null>;
@@ -103,24 +107,29 @@ export interface UseGamepadNavigationOptions {
   showOnboardingRef?: AnyRef<boolean>;
   showThemePickerRef?: AnyRef<boolean>;
   showSurfacePickerRef?: AnyRef<boolean>;
+  showLofiScenePickerRef?: AnyRef<boolean>;
   showSpotifyGuideRef?: AnyRef<boolean>;
   showSpotifyOverlayRef?: AnyRef<boolean>;
   showHelperTrayRef?: AnyRef<boolean>;
   showControlsModalRef?: AnyRef<boolean>;
+  showControllerToolsModalRef?: AnyRef<boolean>;
   showSteamQrRef?: AnyRef<boolean>;
   showXboxGuideRef?: AnyRef<boolean>;
   showCloudPickerRef?: AnyRef<boolean>;
   themePickerFocusIndexRef?: AnyRef<number>;
   surfacePickerFocusIndexRef?: AnyRef<number>;
+  lofiScenePickerFocusIndexRef?: AnyRef<number>;
 
   setShowHideModal?: (value: boolean) => void;
   setShowLibraryActions?: (value: boolean) => void;
   setShowPowerModal?: (value: boolean) => void;
   setShowThemePicker?: (value: boolean) => void;
   setShowSurfacePicker?: (value: boolean) => void;
+  setShowLofiScenePicker?: (value: boolean) => void;
   onOpenSpotifyGuide?: () => void;
   onOpenSpotifyOverlay?: () => void;
   onOpenHelperTray?: () => void;
+  onAnyInput?: () => void;
   onSpotifyDisconnect?: () => void;
   spotifyConnectedRef?: AnyRef<boolean>;
   onOpenSteamQr?: () => void;
@@ -131,6 +140,7 @@ export interface UseGamepadNavigationOptions {
   xboxConnectedRef?: AnyRef<boolean>;
   setThemePickerFocusIndex?: (value: number) => void;
   setSurfacePickerFocusIndex?: (value: number) => void;
+  setLofiScenePickerFocusIndex?: (value: number) => void;
   setArtPickerApp?: (app: App | null) => void;
   setDetailsApp?: (app: App | null) => App | null | void;
 
@@ -186,6 +196,9 @@ export interface UseGamepadNavigationOptions {
   handleClearRecents?: () => void;
   handleClearCache?: () => void;
   onRerunOnboarding?: () => void;
+  onFactoryReset?: () => void;
+  onOpenGamepadIconPreview?: () => void;
+  onOpenControllerTest?: () => void;
   autoScaleRef?: AnyRef<number>;
   handleNavRef?: AnyRef<((key: string) => void) | null>;
   isRunning?: (id?: string | null) => boolean;
@@ -341,6 +354,7 @@ export function useGamepadNavigation(
     pendingFileRef,
     showFolderManagerRef,
     confirmDeleteRef,
+    factoryResetConfirmRef,
     showColModalRef,
     colPickerAppRef,
     editNameAppRef,
@@ -353,23 +367,28 @@ export function useGamepadNavigation(
     showOnboardingRef = { current: false } as AnyRef<boolean>,
     showThemePickerRef = { current: false } as AnyRef<boolean>,
     showSurfacePickerRef = { current: false } as AnyRef<boolean>,
+    showLofiScenePickerRef = { current: false } as AnyRef<boolean>,
     showSpotifyGuideRef = { current: false } as AnyRef<boolean>,
     showSpotifyOverlayRef = { current: false } as AnyRef<boolean>,
     showHelperTrayRef = { current: false } as AnyRef<boolean>,
     showControlsModalRef = { current: false } as AnyRef<boolean>,
+    showControllerToolsModalRef = { current: false } as AnyRef<boolean>,
     showSteamQrRef = { current: false } as AnyRef<boolean>,
     showXboxGuideRef = { current: false } as AnyRef<boolean>,
     showCloudPickerRef = { current: false } as AnyRef<boolean>,
     themePickerFocusIndexRef = { current: 0 } as AnyRef<number>,
     surfacePickerFocusIndexRef = { current: 0 } as AnyRef<number>,
+    lofiScenePickerFocusIndexRef = { current: 0 } as AnyRef<number>,
     setShowHideModal = noop as (value: boolean) => void,
     setShowLibraryActions = noop as (value: boolean) => void,
     setShowPowerModal = noop as (value: boolean) => void,
     setShowThemePicker = noop as (value: boolean) => void,
     setShowSurfacePicker = noop as (value: boolean) => void,
+    setShowLofiScenePicker = noop as (value: boolean) => void,
     onOpenSpotifyGuide = noop,
     onOpenSpotifyOverlay = noop,
     onOpenHelperTray = noop,
+    onAnyInput = noop,
     onSpotifyDisconnect = noop,
     spotifyConnectedRef = { current: false } as AnyRef<boolean>,
     onOpenSteamQr = noop,
@@ -380,6 +399,7 @@ export function useGamepadNavigation(
     xboxConnectedRef = { current: false } as AnyRef<boolean>,
     setThemePickerFocusIndex = noop as (value: number) => void,
     setSurfacePickerFocusIndex = noop as (value: number) => void,
+    setLofiScenePickerFocusIndex = noop as (value: number) => void,
     setArtPickerApp = noop as (app: App | null) => void,
     setDetailsApp = noop as (app: App | null) => void,
     playSoundGameStart = noop,
@@ -413,6 +433,9 @@ export function useGamepadNavigation(
     handleClearRecents = noop,
     handleClearCache = noop,
     onRerunOnboarding = noop,
+    onFactoryReset = noop,
+    onOpenGamepadIconPreview = noop,
+    onOpenControllerTest = noop,
     toggleHomeCollection = noop as (colName: string) => void,
     autoScaleRef,
     handleNavRef,
@@ -425,6 +448,9 @@ export function useGamepadNavigation(
     ACCENTS = DEFAULT_ACCENTS,
     GITHUB_REPO = DEFAULT_GITHUB_REPO,
   } = options;
+
+  const onAnyInputRef = useRef(onAnyInput);
+  onAnyInputRef.current = onAnyInput;
 
   useEffect(() => {
     if (initialTabAppliedRef.current || !initialTab) return;
@@ -690,6 +716,13 @@ export function useGamepadNavigation(
     showSurfacePickerRef.current = false;
   };
 
+  const closeLofiScenePicker = (pattern: HapticPattern = "cancel") => {
+    haptic(pattern);
+    suppressHeldButtons();
+    setShowLofiScenePicker(false);
+    showLofiScenePickerRef.current = false;
+  };
+
   const modalOwnsInput = () =>
     !!showOnboardingRef.current
     || !!launchingAppRef.current
@@ -699,6 +732,7 @@ export function useGamepadNavigation(
     || !!pendingFileRef?.current
     || !!showFolderManagerRef?.current
     || !!confirmDeleteRef?.current
+    || !!factoryResetConfirmRef?.current
     || !!showColModalRef?.current
     || !!colPickerAppRef?.current
     || !!editNameAppRef?.current
@@ -706,10 +740,12 @@ export function useGamepadNavigation(
     || !!updateReleaseRef?.current
     || !!showThemePickerRef?.current
     || !!showSurfacePickerRef?.current
+    || !!showLofiScenePickerRef?.current
     || !!showSpotifyGuideRef.current
     || !!showSpotifyOverlayRef.current
     || !!showHelperTrayRef.current
     || !!showControlsModalRef.current
+    || !!showControllerToolsModalRef.current
     || !!showSteamQrRef.current
     || !!showXboxGuideRef.current
     || !!showCloudPickerRef.current
@@ -790,15 +826,41 @@ export function useGamepadNavigation(
       else if (key === "Escape") {
         closeSurfacePicker();
         playSoundAlt();
-      } else if (key === "Enter") {
+      }       else if (key === "Enter") {
         updateSetting("surface_style", SURFACE_STYLE_OPTIONS[cur]);
         closeSurfacePicker("confirm");
         playSoundAlt();
       }
       return;
     }
+
+    if (showLofiScenePickerRef.current) {
+      const cur = lofiScenePickerFocusIndexRef.current;
+      const cols = LOFI_SCENE_PICKER_COLS;
+      const moveTo = (direction: GridDirection) => {
+        const ni = moveGridFocus(cur, LOFI_SCENE_OPTIONS.length, cols, direction);
+        if (ni === lofiScenePickerFocusIndexRef.current) return;
+        setLofiScenePickerFocusIndex(ni);
+        lofiScenePickerFocusIndexRef.current = ni;
+
+        playSound();
+      };
+      if (key === "ArrowRight") moveTo("right");
+      else if (key === "ArrowLeft") moveTo("left");
+      else if (key === "ArrowDown") moveTo("down");
+      else if (key === "ArrowUp") moveTo("up");
+      else if (key === "Escape") {
+        closeLofiScenePicker();
+        playSoundAlt();
+      } else if (key === "Enter") {
+        updateSetting("lofi_scene", LOFI_SCENE_OPTIONS[cur]);
+        closeLofiScenePicker("confirm");
+        playSoundAlt();
+      }
+      return;
+    }
     // Modal intercepts all input via its own poll — main nav must not run
-    if (showOnboardingRef.current || launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current || updateReleaseRef?.current || showSpotifyGuideRef.current || showSpotifyOverlayRef.current || showHelperTrayRef.current || showControlsModalRef.current || showSteamQrRef.current || showXboxGuideRef.current || showCloudPickerRef.current || detailsAppRef.current) return;
+    if (showOnboardingRef.current || launchingAppRef.current || showHideModalRef.current || showLibraryActionsRef.current || showFileBrowserRef.current || pendingFileRef.current || showFolderManagerRef.current || confirmDeleteRef.current || factoryResetConfirmRef?.current || showColModalRef.current || colPickerAppRef.current || editNameAppRef.current || showPowerModalRef?.current || updateReleaseRef?.current || showSpotifyGuideRef.current || showSpotifyOverlayRef.current || showHelperTrayRef.current || showControlsModalRef.current || showControllerToolsModalRef.current || showSteamQrRef.current || showXboxGuideRef.current || showCloudPickerRef.current || detailsAppRef.current) return;
 
     // Art picker open — only Escape closes it (user interacts via touch/mouse)
     if (artPickerAppRef.current) {
@@ -915,7 +977,7 @@ export function useGamepadNavigation(
     if (currentTab === "Games") {
       fPinned = sortGamesForView(filterByInstallState(fPinned));
     }
-    const homePinnedVisible = currentTab === "Home" && (currentSettings.home_pinned_pos ?? "bottom") !== "none" && fPinned.length > 0;
+    const homePinnedVisible = HOME_PINNED_SHELF_ENABLED && currentTab === "Home" && (currentSettings.home_pinned_pos ?? "bottom") !== "none" && fPinned.length > 0;
     const currentLibraryEntrySection = getLibraryEntryFocusSection({
       tab: currentTab,
       apps: allApps,
@@ -1015,12 +1077,8 @@ export function useGamepadNavigation(
           const app = results[searchFocusIndexRef.current];
           if (app) {
             closeSearch();
-            if (app.app_type === "game") {
-              haptic("confirm");
-              openDetailsModal(app);
-            } else {
-              triggerLaunch(app, recentRef.current);
-            }
+            haptic("confirm");
+            openDetailsModal(app);
           }
         }
         else if (key === "Escape")  { playSound(); closeSearch(); }
@@ -1237,7 +1295,7 @@ export function useGamepadNavigation(
           haptic("confirm");
         }
         else if (item.type === "toggle")  { updateSetting(item.key, !currentSettings[item.key]); haptic("confirm"); }
-        else if (item.type === "cycle")  { const opts = getSettingCycleOptions(item, currentSettings); const rawVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const curVal = opts.includes(rawVal) ? rawVal : item.key === "home_pinned_pos" ? "top" : rawVal; const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur + 1) % opts.length]); haptic("confirm"); }
+        else if (item.type === "cycle")  { const opts = getSettingCycleOptions(item, currentSettings); const rawVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const curVal = opts.includes(rawVal) ? rawVal : item.key === "home_pinned_pos" ? "top" : item.key === "nav_bumpers_pos" ? "hidden" : rawVal; const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur + 1) % opts.length]); haptic("confirm"); }
         else if (item.type === "theme_picker") {
           const idx = Math.max(0, THEME_OPTIONS.indexOf(normalizeThemeKey(String(currentSettings.theme))));
           setThemePickerFocusIndex(idx);
@@ -1254,6 +1312,22 @@ export function useGamepadNavigation(
           showSurfacePickerRef.current = true;
           haptic("confirm");
         }
+        else if (item.type === "lofi_scene_picker") {
+          const idx = Math.max(0, LOFI_SCENE_OPTIONS.indexOf(String(currentSettings.lofi_scene ?? "cozy") as any));
+          setLofiScenePickerFocusIndex(idx);
+          lofiScenePickerFocusIndexRef.current = idx;
+          setShowLofiScenePicker(true);
+          showLofiScenePickerRef.current = true;
+          haptic("confirm");
+        }
+        else if (item.type === "icon_preview") {
+          onOpenGamepadIconPreview();
+          haptic("confirm");
+        }
+        else if (item.type === "controller_test") {
+          onOpenControllerTest();
+          haptic("confirm");
+        }
         else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur + 1) % keys.length]); haptic("confirm"); }
         else if (item.type === "slider") {
           const cur = (currentSettings[item.key] as number | undefined) ?? 1.0;
@@ -1265,6 +1339,7 @@ export function useGamepadNavigation(
           if (item.key === "clear_cache")   handleClearCache();
           if (item.key === "reset_scale")   updateSetting("ui_scale", autoScaleRef.current);
           if (item.key === "rerun_onboarding") onRerunOnboarding();
+          if (item.key === "factory_reset") onFactoryReset();
           haptic("confirm");
         }
         else if (item.type === "spotify") {
@@ -1315,7 +1390,7 @@ export function useGamepadNavigation(
       if (key === "ArrowLeft") {
         if (!item) return;
         if (item.type === "toggle")  { updateSetting(item.key, !currentSettings[item.key]); haptic("confirm"); }
-        else if (item.type === "cycle")  { const opts = getSettingCycleOptions(item, currentSettings); const rawVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const curVal = opts.includes(rawVal) ? rawVal : item.key === "home_pinned_pos" ? "top" : rawVal; const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length]); haptic("confirm"); }
+        else if (item.type === "cycle")  { const opts = getSettingCycleOptions(item, currentSettings); const rawVal = item.key === "theme" ? normalizeThemeKey(String(currentSettings[item.key])) : String(currentSettings[item.key]); const curVal = opts.includes(rawVal) ? rawVal : item.key === "home_pinned_pos" ? "top" : item.key === "nav_bumpers_pos" ? "hidden" : rawVal; const cur = opts.indexOf(curVal); updateSetting(item.key, opts[(cur - 1 + opts.length) % opts.length]); haptic("confirm"); }
         else if (item.type === "accent") { const keys = Object.keys(ACCENTS); const cur = keys.indexOf(currentSettings.accent); updateSetting("accent", keys[(cur - 1 + keys.length) % keys.length]); haptic("confirm"); }
         else if (item.type === "slider") {
           const cur = (currentSettings[item.key] as number | undefined) ?? 1.0;
@@ -1364,11 +1439,11 @@ export function useGamepadNavigation(
       const chainPrev = chain[chainIdx - 1] as string | undefined;
       const chainNext = chain[chainIdx + 1] as string | undefined;
       const activateHomeEntry = (app: App) => {
-        if (app.app_type === "game" && !currentSettings.home_launch_games_directly) {
+        if (app.app_type === "game" && currentSettings.home_launch_games_directly) {
+          triggerLaunch(app, rec);
+        } else {
           haptic("confirm");
           openDetailsModal(app);
-        } else {
-          triggerLaunch(app, rec);
         }
       };
 
@@ -1560,8 +1635,8 @@ export function useGamepadNavigation(
         else { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(0); focusIndexRef.current = 0;  }
       }
       if (key === "Enter" && fPinned[index]) {
-        if (currentTab === "Games") { haptic("confirm"); openDetailsModal(fPinned[index]); }
-        else triggerLaunch(fPinned[index], rec);
+        haptic("confirm");
+        openDetailsModal(fPinned[index]);
       }
       return;
     }
@@ -1587,8 +1662,8 @@ export function useGamepadNavigation(
         } else { const ni = index - cols; setFocusIndex(ni); focusIndexRef.current = ni;  }
       }
       if (key === "Enter" && fApps[index]) {
-        if (currentTab === "Games") { haptic("confirm"); openDetailsModal(fApps[index]); }
-        else triggerLaunch(fApps[index], rec);
+        haptic("confirm");
+        openDetailsModal(fApps[index]);
       }
       return;
     }
@@ -1652,6 +1727,34 @@ export function useGamepadNavigation(
           rsLatchRef.current = { up: false, down: false, left: false, right: false };
         }
 
+        const canNavigate = !showOnboardingRef.current
+          && !launchingAppRef.current
+          && !showHideModalRef?.current
+          && !showLibraryActionsRef?.current
+          && !showFileBrowserRef?.current
+          && !pendingFileRef?.current
+          && !showFolderManagerRef?.current
+          && !confirmDeleteRef?.current
+          && !factoryResetConfirmRef?.current
+          && !showColModalRef?.current
+          && !colPickerAppRef?.current
+          && !editNameAppRef?.current
+          && !showPowerModalRef?.current
+          && !updateReleaseRef?.current
+          && !showSpotifyGuideRef.current
+          && !showSpotifyOverlayRef.current
+          && !showHelperTrayRef.current
+          && !showControlsModalRef.current
+          && !showControllerToolsModalRef.current
+          && !showSteamQrRef.current
+          && !showXboxGuideRef.current
+          && !showCloudPickerRef.current
+          && !detailsAppRef.current
+          // SteamGridArtPickerModal owns its controller loop, including nested
+          // GamepadKeyboard input. Letting the app-level poll dispatch the same
+          // B edge closes the picker while the keyboard is consuming it.
+          && !artPickerAppRef?.current;
+
         Object.keys(state).forEach(key => {
           const pressed = state[key];
           const wasPressed = lastBtn.current[key];
@@ -1662,34 +1765,9 @@ export function useGamepadNavigation(
             return;
           }
 
-          const canNavigate = !showOnboardingRef.current
-            && !launchingAppRef.current
-            && !showHideModalRef?.current
-            && !showLibraryActionsRef?.current
-            && !showFileBrowserRef?.current
-            && !pendingFileRef?.current
-            && !showFolderManagerRef?.current
-            && !confirmDeleteRef?.current
-            && !showColModalRef?.current
-            && !colPickerAppRef?.current
-            && !editNameAppRef?.current
-            && !showPowerModalRef?.current
-            && !updateReleaseRef?.current
-            && !showSpotifyGuideRef.current
-            && !showSpotifyOverlayRef.current
-            && !showHelperTrayRef.current
-            && !showControlsModalRef.current
-            && !showSteamQrRef.current
-            && !showXboxGuideRef.current
-            && !showCloudPickerRef.current
-            && !detailsAppRef.current
-            // SteamGridArtPickerModal owns its controller loop, including nested
-            // GamepadKeyboard input. Letting the app-level poll dispatch the same
-            // B edge closes the picker while the keyboard is consuming it.
-            && !artPickerAppRef?.current;
-
           // MENU opens the helper tray on its initial edge in every bar mode.
           if (key === "Start") {
+            if (pressed && !wasPressed) onAnyInputRef.current();
             if (pressed && !wasPressed && canNavigate) {
               suppressUntilRelease.current[key] = true;
               playSoundAlt();
@@ -1700,6 +1778,7 @@ export function useGamepadNavigation(
           }
 
           if (pressed && !wasPressed) {
+            onAnyInputRef.current();
             if (canNavigate) handleNavRef?.current?.(key);
             btnPressTime.current[key] = now;
             btnRepeating.current[key] = false;
@@ -1709,11 +1788,17 @@ export function useGamepadNavigation(
               btnRepeating.current[key] = true;
               btnPressTime.current[key] = now;
               navRepeatingRef.current = true;
-              if (canNavigate) handleNavRef?.current?.(key);
+              if (canNavigate) {
+                onAnyInputRef.current();
+                handleNavRef?.current?.(key);
+              }
             } else if (btnRepeating.current[key] && heldMs >= repeatDelay) {
               btnPressTime.current[key] = now;
               navRepeatingRef.current = true;
-              if (canNavigate) handleNavRef?.current?.(key);
+              if (canNavigate) {
+                onAnyInputRef.current();
+                handleNavRef?.current?.(key);
+              }
             }
           } else if (!pressed && wasPressed) {
             btnPressTime.current[key] = 0;

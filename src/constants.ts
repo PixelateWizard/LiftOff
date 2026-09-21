@@ -158,16 +158,23 @@ export function fseReturnShortcutLabel(shortcut?: string | null): string {
     ?? FSE_RETURN_SHORTCUT_LABELS[DEFAULT_FSE_RETURN_SHORTCUT];
 }
 
+export const LANGUAGE_OPTIONS = ["auto", "en", "fr", "es"] as const;
+export const LOFI_SCENE_OPTIONS = ["cozy", "dog", "desk", "cat", "rainy_street", "pixel_shop"] as const;
+export const LOFI_SCENE_PICKER_COLS = 3;
+
+/** Home pinned pills now live in the helper tray; keep this off to avoid a second row. */
+export const HOME_PINNED_SHELF_ENABLED = false;
+
 export const DEFAULT_SETTINGS = {
-  accent: "ember", theme: "space", stars_enabled: true, ui_motion: true, lofi_music_enabled: true, sfx_enabled: true, wide_layout: false, wide_topbar: false, wide_bottombar: false, wide_games: false, wide_apps: false, wide_settings: false, topbar_background: true, bottombar_background: true, hide_bottom_bar: false, bottombar_mode: "full", bottombar_peek_on_track: true,
+  accent: "ember", theme: "space", stars_enabled: true, ui_motion: true, lofi_music_enabled: true, lofi_scene: "cozy", sfx_enabled: true, wide_layout: false, wide_topbar: false, wide_bottombar: false, wide_games: false, wide_apps: false, wide_settings: false, topbar_background: true, bottombar_background: true, hide_bottom_bar: false, bottombar_mode: "smart", bottombar_peek_on_track: true, bottombar_idle_collapse: true, bottombar_smart_migrated: false,
   default_tab: "Home", scan_steam: true, scan_xbox: true,
   scan_uwp: true, scan_desktop: true, scan_battlenet: true, scan_gog: true, scan_epic: true, fetch_store_metadata: true, show_uninstalled_games: false, steam_owned_library_seen: false, onboarding_complete: true, repeat_speed: "normal",
   launch_at_startup: false, animated_heroes: "animated", update_channel: "stable", auto_update_check: true, ui_scale: 1.0,
   language: "auto", home_cover_scale: 1.0, game_cover_scale: 1.0, app_cover_scale: 1.0, show_store_badges: true, games_sort: "recent", app_list_view: false, app_list_cols: 1, time_format: "auto", show_date: true, show_battery: true, show_clock: true, cinematic_home: false, home_mode: "semi", home_launch_games_directly: false, home_section_title_size: "small", show_home_recents: true, hero_content_pos: "bottom", show_immersive_hero_art: true,
-  nav_bumpers_pos: "bottom",
-  tabbar_show_buttons: "tabbar", tabbar_text_tabs: false, tabbar_with_background: false, tabbar_background_compact: false, tabbar_font_weight: "medium", tabbar_icon_mode: "text",
+  nav_bumpers_pos: "header",
+  tabbar_show_buttons: "tabbar", tabbar_text_tabs: true, tabbar_with_background: true, tabbar_background_compact: false, tabbar_font_weight: "medium", tabbar_icon_mode: "text",
   bottombar_alignment: "left", bottombar_compact: "off", tabbar_label_case: "default",
-  show_recent_games_only: false, show_home_collections: false, show_home_collection_names: true, show_hero_cover: true, show_home_pinned: true, home_pinned_pos: "top", onyx_flat_settings: true,
+  show_recent_games_only: false, show_home_collections: false, show_home_collection_names: true, show_hero_cover: true, show_home_pinned: true, home_pinned_pos: "none", onyx_flat_settings: true,
   gamepad_platform: "xbox", gamepad_icons_colored: false, gamepad_icons_filled: true, gamepad_icons_theme_color: false,
   gamepad_btn_size: "small", gamepad_auto_detect: true, haptic_feedback: true, fse_return_shortcut: DEFAULT_FSE_RETURN_SHORTCUT,
   surface_style: "clear",

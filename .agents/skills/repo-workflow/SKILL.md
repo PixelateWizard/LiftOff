@@ -14,6 +14,7 @@ Use this skill for every task in the LiftOff repository.
 3. Read `.agents/docs/README.md` and select only the relevant domain playbooks.
 4. Inspect the current source anchors named by those playbooks. Source code and configuration win if documentation has drifted.
 5. If the user supplied only a Markdown file, treat it as a project proposal.
+6. Missing localization copy may be auto-translated from English. Keep locale key trees, interpolation placeholders, and product names aligned; do not leave `TODO(xx)` locale placeholders unless the user asks for a native-speaker pass.
 
 ## Finish
 

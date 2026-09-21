@@ -100,3 +100,56 @@ describe("Steam launch confirmation", () => {
     expect(onSuccess).not.toHaveBeenCalled();
   });
 });
+
+describe("app launch confirmation", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+  const onSuccess = vi.fn();
+  const onDone = vi.fn();
+  const path = "C:\\Windows\\System32\\calc.exe";
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    callbacks.clear();
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () => root.render(<LaunchOverlay
+      app={{ id: "calculator", name: "Calculator", app_type: "app", launch_path: path } as App}
+      gameArt={{}} customArt={{}} accent={{ primary: "#fff", glow: "rgba(0,0,0," } as AccentColors}
+      onSuccess={onSuccess} onDone={onDone}
+    />));
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  async function emit(name: string, payload: unknown = path) {
+    await act(async () => { await callbacks.get(name)?.({ payload }); });
+  }
+
+  it("keeps an unconfirmed app overlay until dismissed", async () => {
+    invoke.mockResolvedValueOnce({ focused: false, running: false });
+    await emit("launch-success");
+    act(() => vi.advanceTimersByTime(5000));
+    expect(container.textContent).toContain("launch.unconfirmedApp");
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(onDone).not.toHaveBeenCalled();
+  });
+
+  it("celebrates a confirmed app and dismisses", async () => {
+    invoke.mockResolvedValueOnce({ focused: true, running: true });
+    await emit("launch-success");
+    expect(onSuccess).toHaveBeenCalledOnce();
+    act(() => vi.advanceTimersByTime(700));
+    expect(onDone).toHaveBeenCalledOnce();
+  });
+});

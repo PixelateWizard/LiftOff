@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { IoClipboardOutline, IoOpenOutline, IoWifiOutline } from "react-icons/io5";
 import ModalShell from "../modals/ModalShell";
+import { ACCOUNT_DIALOG_Z } from "../modals/modalStyles";
 import { useTheme } from "../../contexts/ThemeContext";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
 import type { SpotifyController } from "../../hooks/useSpotify";
@@ -179,7 +180,7 @@ export function SpotifyConnectGuide({ open, spotify, onClose }: SpotifyConnectGu
         { btn: "B", label: t("common.cancel") },
       ]}
       width={620}
-      zIndex={8700}
+      zIndex={ACCOUNT_DIALOG_Z}
       onOverlayClick={onClose}
     >
       <div style={{ padding: "18px 24px 22px", display: "flex", flexDirection: "column", gap: 16 }}>

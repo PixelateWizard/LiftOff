@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AccentColors, App } from "../../types";
+import { isHttpLaunchPath } from "../../utils/appDetails";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, rumble, type GpState } from "../../utils/gamepad";
 
 type LaunchStatus = "launching" | "verifying" | "focused" | "running_unfocused" | "unconfirmed" | "failed";
@@ -87,8 +88,9 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSucce
     }).then(fn => { unlistenPhase = fn; });
     listen<string>("launch-success", async (event) => {
       if (!mounted.current || event.payload !== launchTarget.launch_path) return;
-      const requiresConfirmation = launchTarget.launch_path.startsWith("steam://")
-        && launchTarget.app_type === "game";
+      const requiresConfirmation = (launchTarget.launch_path.startsWith("steam://")
+        && launchTarget.app_type === "game")
+        || (launchTarget.app_type !== "game" && !isHttpLaunchPath(launchTarget.launch_path));
       setStatus("verifying");
 
       try {
@@ -256,7 +258,7 @@ export function LaunchOverlay({ app, gameArt, customArt, accent, onDone, onSucce
         : status === "running_unfocused"
           ? t("launch.runningUnfocused")
           : status === "unconfirmed"
-            ? t("launch.unconfirmed")
+            ? (app?.app_type === "game" ? t("launch.unconfirmed") : t("launch.unconfirmedApp"))
             : t("launch.failed");
   const buttonStyle = (action: FocusedAction) => ({
     padding: "8px 22px", borderRadius: 10, cursor: "pointer",

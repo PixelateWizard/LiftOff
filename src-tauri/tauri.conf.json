@@ -21,14 +21,17 @@
         "width": 800,
         "height": 600,
         "backgroundColor": "#100a06",
-        "additionalBrowserArgs": "--disable-gpu-memory-buffer-video-frames --enable-zero-copy --num-raster-threads=2"
+        "additionalBrowserArgs": "--disable-gpu-memory-buffer-video-frames --enable-zero-copy --num-raster-threads=2 --autoplay-policy=no-user-gesture-required"
       }
     ],
     "security": {
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["C:\\Users\\*\\AppData\\Local\\LiftOff\\art\\**"]
+        "scope": [
+          "C:\\Users\\*\\AppData\\Local\\LiftOff\\art\\**",
+          "C:\\Users\\*\\AppData\\Local\\LiftOff\\media\\**"
+        ]
       }
     }
   },
@@ -49,6 +52,9 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": {
+      "../src/assets/themes/lofi": "lofi"
+    }
   }
 }

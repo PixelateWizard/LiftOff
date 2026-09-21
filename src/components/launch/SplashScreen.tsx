@@ -3,6 +3,8 @@ import type { CSSProperties } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
+import { preloadOnboardingPreviews } from "../onboarding/previews";
+import { resolveSplashStatusKey, SPLASH_STATUS_KEYS } from "./splashStatus";
 
 const startingSound = new URL("../../assets/appLaunchSound.wav", import.meta.url).href;
 
@@ -29,22 +31,9 @@ export function SplashScreen({ exiting }: SplashScreenProps) {
   const [statusIdx, setStatusIdx] = useState(0);
   const [longWait, setLongWait] = useState(false);
   const [scanPhase, setScanPhase] = useState<string | null>(null);
+  const [phaseStale, setPhaseStale] = useState(false);
 
-  // Rotating, honest "we're working" phrases. Indeterminate by design - we do not
-  // have real per-source progress here, so these reassure rather than measure.
-  const STATUS_KEYS = [
-    "splash.status.starting",
-    "splash.status.scanning",
-    "splash.status.findingGames",
-    "splash.status.loadingArt",
-    "splash.status.almostReady",
-  ];
-  const SCAN_PHASE_STATUS_KEYS: Record<string, string> = {
-    desktop: "splash.status.scanDesktop",
-    steam: "splash.status.scanSteam",
-    xbox: "splash.status.scanXbox",
-    other_launchers: "splash.status.scanOther",
-  };
+  const STATUS_KEYS = SPLASH_STATUS_KEYS;
 
   // English fallbacks so the splash reads correctly even before locale files load.
   const STATUS_FALLBACKS: Record<string, string> = {
@@ -84,24 +73,49 @@ export function SplashScreen({ exiting }: SplashScreenProps) {
   useEffect(() => {
     const unlisten = listen<string>("library-scan-phase", (event) => {
       setScanPhase(event.payload);
+      setPhaseStale(false);
     });
     return () => {
       unlisten.then((fn) => fn()).catch(() => {});
     };
   }, []);
 
-  const phaseStatusKey = scanPhase ? SCAN_PHASE_STATUS_KEYS[scanPhase] : null;
-  const statusKey = phaseStatusKey ?? (longWait ? "splash.status.stillWorking" : STATUS_KEYS[statusIdx]);
+  useEffect(() => {
+    if (exiting || !scanPhase) {
+      setPhaseStale(false);
+      return;
+    }
+    const id = window.setTimeout(() => setPhaseStale(true), 8000);
+    return () => window.clearTimeout(id);
+  }, [scanPhase, exiting]);
+
+  const statusKey = resolveSplashStatusKey(scanPhase, phaseStale, longWait, statusIdx);
   const statusText = t(statusKey, STATUS_FALLBACKS[statusKey]);
 
   useEffect(() => {
-    audioRefStart.current.currentTime = 0;
-    audioRefStart.current.play().catch(() => {});
+    preloadOnboardingPreviews();
   }, []);
 
   useEffect(() => {
-    if (exiting) { audioRefStart.current.pause(); audioRefStart.current.currentTime = 0; }
-  }, [exiting]);
+    let cancelled = false;
+    const audio = audioRefStart.current;
+    const playStart = () => {
+      if (cancelled) return;
+      audio.currentTime = 0;
+      void audio.play().catch(() => {});
+    };
+    invoke("show_main_window")
+      .catch(() => {})
+      .finally(() => {
+        if (cancelled) return;
+        if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) playStart();
+        else audio.addEventListener("canplaythrough", playStart, { once: true });
+      });
+    return () => {
+      cancelled = true;
+      audio.removeEventListener("canplaythrough", playStart);
+    };
+  }, []);
 
   useEffect(() => {
     const style = document.createElement("style");
@@ -178,8 +192,8 @@ export function SplashScreen({ exiting }: SplashScreenProps) {
   }, []);
 
   useEffect(() => {
-    invoke("show_main_window").catch(() => {});
-  }, []);
+    if (exiting) { audioRefStart.current.pause(); audioRefStart.current.currentTime = 0; }
+  }, [exiting]);
 
   return (
     <div style={ss.outer} className={exiting ? "splash-exiting" : ""}>

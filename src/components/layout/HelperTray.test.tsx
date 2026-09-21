@@ -7,8 +7,9 @@ import { HelperTray, getHelperTrayUnderlayFilter } from "./HelperTray";
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-vi.mock("../../contexts/ThemeContext", () => ({
-  useTheme: () => ({
+
+const { themeMock, settingsMock } = vi.hoisted(() => ({
+  themeMock: {
     glassBar: {},
     accent: { primary: "#5af", glow: "rgba(80,160,255," },
     theme: { text: "#fff", textDim: "#aaa", textFaint: "#777" },
@@ -16,10 +17,18 @@ vi.mock("../../contexts/ThemeContext", () => ({
     surfaceStyle: "glass",
     surface: { panelBg: "#111" },
     resolvedTheme: "space",
-  }),
+  },
+  settingsMock: {
+    settings: { ui_motion: true, lofi_music_enabled: true },
+    updateSetting: vi.fn(),
+  },
+}));
+
+vi.mock("../../contexts/ThemeContext", () => ({
+  useTheme: () => themeMock,
 }));
 vi.mock("../../contexts/SettingsContext", () => ({
-  useSettings: () => ({ settings: { ui_motion: true } }),
+  useSettings: () => settingsMock,
 }));
 vi.mock("../../hooks/useSystemControls", () => ({
   useSystemControls: () => ({
@@ -33,7 +42,7 @@ vi.mock("../GamepadBtn", () => ({ GamepadBtn: () => null }));
 
 const baseProps = (): ComponentProps<typeof HelperTray> => ({
   open: true,
-  mode: "minimal",
+  mode: "smart",
   spotify: {
     track: null,
     status: { connected: false },
@@ -41,6 +50,7 @@ const baseProps = (): ComponentProps<typeof HelperTray> => ({
     previous: vi.fn(),
     play: vi.fn(),
     pause: vi.fn(),
+    stop: vi.fn(),
     next: vi.fn(),
     seek: vi.fn(),
   } as ComponentProps<typeof HelperTray>["spotify"],
@@ -67,6 +77,9 @@ describe("HelperTray pinned shortcuts", () => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    themeMock.resolvedTheme = "space";
+    settingsMock.settings = { ui_motion: true, lofi_music_enabled: true };
+    settingsMock.updateSetting.mockReset();
     Object.defineProperty(HTMLElement.prototype, "scrollTo", {
       configurable: true,
       value: vi.fn(),
@@ -102,7 +115,9 @@ describe("HelperTray pinned shortcuts", () => {
     expect(getHelperTrayUnderlayFilter("aero")).toBe("blur(16px) saturate(125%)");
     expect(getHelperTrayUnderlayFilter("clear")).toBe("blur(12px) saturate(105%)");
     expect(getHelperTrayUnderlayFilter("obsidian")).toBe("blur(18px) saturate(110%)");
-    expect(getHelperTrayUnderlayFilter("material")).toBeUndefined();
+    expect(getHelperTrayUnderlayFilter("material")).toBe("blur(16px) saturate(115%)");
+    expect(getHelperTrayUnderlayFilter("win9x")).toBe("blur(16px) saturate(115%)");
+    expect(getHelperTrayUnderlayFilter("neon")).toBe("blur(16px) saturate(115%)");
   });
 
   it("moves from system controls into pins and activates the focused pin", () => {
@@ -115,6 +130,50 @@ describe("HelperTray pinned shortcuts", () => {
 
     expect(props.onOpenPinned).toHaveBeenCalledWith(props.pinnedApps[0]);
   });
+
+  it("keeps running apps in the tray even when they are not games", () => {
+    const runningApp = { id: "calculator", name: "Calculator", app_type: "app" } as never;
+    const props = {
+      ...baseProps(),
+      runningEntries: [{ app: runningApp, startedAt: Date.now() }],
+    };
+    act(() => root.render(<HelperTray {...props} />));
+    act(() => vi.advanceTimersByTime(300));
+    expect(container.querySelector('[data-helper-running="calculator"]')).not.toBeNull();
+  });
+
+  it("opens on the first running entry and routes Resume/Close/Details", () => {
+    const game = { id: "steam://rungameid/620", name: "Portal 2", app_type: "game" } as never;
+    const dl = { id: "steam://rungameid/400", name: "Portal", app_type: "game" } as never;
+    const props = {
+      ...baseProps(),
+      runningEntries: [{ app: game, startedAt: Date.now() - 5 * 60000 }],
+      downloadEntries: [{ app: dl, pct: 42, indeterminate: false, phase: "downloading", bytesDone: 0, bytesTotal: 0 }],
+      onResumeRunning: vi.fn(),
+      onCloseRunning: vi.fn(),
+      onOpenDownload: vi.fn(),
+    };
+    act(() => root.render(<HelperTray {...props} />));
+    act(() => vi.advanceTimersByTime(300));
+
+    expect(container.querySelector('[data-helper-running="steam://rungameid/620"]')).not.toBeNull();
+    expect(container.querySelector('[data-helper-download="steam://rungameid/400"]')).not.toBeNull();
+
+    act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+    expect(props.onResumeRunning).toHaveBeenCalledWith(game);
+    expect(props.onOpenPinned).not.toHaveBeenCalled();
+
+    for (const key of ["ArrowRight", "Enter"]) act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })));
+    expect(props.onCloseRunning).toHaveBeenCalledWith(game);
+
+    for (const key of ["ArrowRight", "Enter"]) act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })));
+    expect(props.onOpenDownload).toHaveBeenCalledWith(dl);
+  });
+
+  it("omits the activity section when nothing is running or downloading", () => {
+    act(() => root.render(<HelperTray {...baseProps()} />));
+    expect(container.querySelector("[data-helper-activity]")).toBeNull();
+  });
   it("keeps the tray mounted for its exit animation", () => {
     const props = baseProps();
     act(() => root.render(<HelperTray {...props} />));
@@ -125,5 +184,42 @@ describe("HelperTray pinned shortcuts", () => {
 
     act(() => vi.advanceTimersByTime(160));
     expect(container.querySelector('[data-modal="helper"]')).toBeNull();
+  });
+
+  it("omits the Lo-fi music toggle outside the Lo-fi theme", () => {
+    act(() => root.render(<HelperTray {...baseProps()} />));
+    expect(container.querySelector('[data-helper-shortcut="lofiMusic"]')).toBeNull();
+  });
+
+  it("toggles persisted Lo-fi music from the helper tray", () => {
+    themeMock.resolvedTheme = "lofi";
+    act(() => root.render(<HelperTray {...baseProps()} />));
+
+    const toggle = container.querySelector<HTMLButtonElement>('[data-helper-shortcut="lofiMusic"]');
+    expect(toggle).not.toBeNull();
+    expect(toggle?.getAttribute("aria-pressed")).toBe("true");
+
+    act(() => toggle?.click());
+    expect(settingsMock.updateSetting).toHaveBeenCalledWith("lofi_music_enabled", false);
+  });
+
+  it("stops Spotify playback from the transport row", () => {
+    const props = baseProps();
+    props.spotify.track = {
+      id: "track-1",
+      title: "Night Drive",
+      artist: "LiftOff",
+      durationMs: 180000,
+      progressMs: 12000,
+      isPlaying: true,
+      shuffle: false,
+      repeat: "off",
+    } as ComponentProps<typeof HelperTray>["spotify"]["track"];
+    act(() => root.render(<HelperTray {...props} />));
+
+    const stop = container.querySelector<HTMLButtonElement>('button[aria-label="spotify.stop"]');
+    expect(stop).not.toBeNull();
+    act(() => stop?.click());
+    expect(props.spotify.stop).toHaveBeenCalled();
   });
 });

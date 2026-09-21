@@ -2,6 +2,7 @@
 
 use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
+use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::net::TcpListener;
@@ -10,6 +11,7 @@ use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU64, Ordering};
+use std::sync::mpsc;
 use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::Emitter;
@@ -27,8 +29,7 @@ use windows::{
     Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS},
     Win32::System::Threading::{
         AttachThreadInput, GetCurrentThreadId, OpenProcess, QueryFullProcessImageNameW,
-        TerminateProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
-        PROCESS_TERMINATE,
+        TerminateProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE,
     },
     Win32::UI::Input::KeyboardAndMouse::{
         keybd_event, SetActiveWindow, SetFocus, KEYBD_EVENT_FLAGS, KEYEVENTF_KEYUP, VK_MENU,
@@ -39,14 +40,15 @@ use windows::{
     },
     Win32::UI::WindowsAndMessaging::{
         BringWindowToTop, DestroyIcon, DrawIconEx, EnumWindows, GetForegroundWindow,
-        GetSystemMetrics, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId,
-        IsIconic, IsWindowVisible, PostMessageW, SetForegroundWindow, SetWindowPos, ShowWindow,
-        DI_NORMAL, HWND_NOTOPMOST, HWND_TOPMOST, SM_CXSCREEN, SM_CYSCREEN, SWP_NOMOVE,
-        SWP_NOSIZE, SWP_SHOWWINDOW, SW_RESTORE, SW_SHOW, SW_SHOWNORMAL, WM_CLOSE,
+        GetSystemMetrics, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, IsIconic,
+        IsWindowVisible, PostMessageW, SetForegroundWindow, SetWindowPos, ShowWindow, DI_NORMAL,
+        HWND_NOTOPMOST, HWND_TOPMOST, SM_CXSCREEN, SM_CYSCREEN, SWP_NOMOVE, SWP_NOSIZE,
+        SWP_SHOWWINDOW, SW_RESTORE, SW_SHOW, SW_SHOWNORMAL, WM_CLOSE,
     },
 };
 
 mod fse_watcher;
+mod lofi_media;
 mod steam_appinfo;
 mod storage_info;
 mod store_metadata;
@@ -69,6 +71,11 @@ const XBOX_SCOPES: &str = "XboxLive.signin offline_access";
 const ICON_EXPORT_PX: i32 = 128;
 /// `SHGFI_JUMBOICON` — request up to 256×256 source icon when available (Vista+).
 const SHGFI_JUMBOICON: SHGFI_FLAGS = SHGFI_FLAGS(0x40000);
+/// `SHGetFileInfoW` on a `.lnk` can block indefinitely when the target is a disconnected
+/// network path. Give each extract a short budget, then move on.
+const ICON_EXTRACT_TIMEOUT: Duration = Duration::from_millis(400);
+/// Cold Start Menu scans after a factory-reset icon-cache wipe must not pin splash forever.
+const DESKTOP_ICON_BUDGET: Duration = Duration::from_secs(8);
 
 static GAMEPAD_READY: AtomicBool = AtomicBool::new(false);
 static LAUNCH_WATCH_GENERATION: AtomicU64 = AtomicU64::new(0);
@@ -173,6 +180,8 @@ pub struct Settings {
     pub onyx_top_light: bool,
     #[serde(default = "default_true")]
     pub lofi_music_enabled: bool,
+    #[serde(default = "default_lofi_scene", alias = "lofi_background")]
+    pub lofi_scene: String,
     #[serde(default = "default_true")]
     pub sfx_enabled: bool,
     pub default_tab: String,
@@ -252,13 +261,21 @@ pub struct Settings {
     pub show_immersive_hero_art: bool,
     #[serde(default)]
     pub hide_bottom_bar: bool,
-    // Helper bar display mode: "full" | "minimal" | "hidden".
-    // Empty means the legacy hide_bottom_bar value has not been migrated yet.
+    // Helper bar display mode: "smart" | "full" | "hidden".
+    // "minimal" is a legacy value that the frontend normalizes to "smart".
+    // Empty means the frontend migration has not run yet.
     #[serde(default)]
     pub bottombar_mode: String,
-    // In hidden mode, briefly peek the pill when the Spotify track changes.
+    // In hidden mode, briefly peek the pill for bar events (track change,
+    // pins, installs, library refresh). Wire key kept for compatibility.
     #[serde(default = "default_true")]
     pub bottombar_peek_on_track: bool,
+    // Smart mode: fold the hint group away after a few idle seconds.
+    #[serde(default = "default_true")]
+    pub bottombar_idle_collapse: bool,
+    // One-time 2.0 marker: Full and Minimal were moved to Smart once.
+    #[serde(default)]
+    pub bottombar_smart_migrated: bool,
     #[serde(default = "default_true")]
     pub topbar_background: bool,
     #[serde(default = "default_true")]
@@ -282,7 +299,7 @@ pub struct Settings {
     pub nav_bumpers_pos: String,
     #[serde(default = "default_tabbar_show_buttons")]
     pub tabbar_show_buttons: String,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub tabbar_text_tabs: bool,
     #[serde(default)]
     pub tabbar_with_background: bool,
@@ -340,6 +357,9 @@ pub struct Settings {
     pub fse_hard_reload_recovery: bool,
 }
 
+fn default_lofi_scene() -> String {
+    "cozy".to_string()
+}
 fn default_language() -> String {
     "auto".to_string()
 }
@@ -353,7 +373,7 @@ fn default_app_list_cols() -> i32 {
     1
 }
 fn default_nav_bumpers_pos() -> String {
-    "bottom".to_string()
+    "header".to_string()
 }
 fn default_tabbar_show_buttons() -> String {
     "tabbar".to_string()
@@ -383,7 +403,7 @@ fn default_hero_content_pos() -> String {
     "bottom".to_string()
 }
 fn default_home_pinned_pos() -> String {
-    "top".to_string()
+    "none".to_string()
 }
 fn default_gamepad_platform() -> String {
     "xbox".to_string()
@@ -415,6 +435,7 @@ impl Default for Settings {
             stars_enabled: true,
             ui_motion: true,
             lofi_music_enabled: true,
+            lofi_scene: default_lofi_scene(),
             sfx_enabled: true,
             default_tab: "Home".to_string(),
             scan_steam: true,
@@ -456,6 +477,8 @@ impl Default for Settings {
             hide_bottom_bar: false,
             bottombar_mode: String::new(),
             bottombar_peek_on_track: true,
+            bottombar_idle_collapse: true,
+            bottombar_smart_migrated: false,
             topbar_background: true,
             bottombar_background: true,
             home_cover_scale: 1.0,
@@ -465,10 +488,10 @@ impl Default for Settings {
             games_sort: "recent".to_string(),
             app_list_view: false,
             app_list_cols: 1,
-            nav_bumpers_pos: "bottom".to_string(),
+            nav_bumpers_pos: "header".to_string(),
             tabbar_show_buttons: "tabbar".to_string(),
-            tabbar_text_tabs: false,
-            tabbar_with_background: false,
+            tabbar_text_tabs: true,
+            tabbar_with_background: true,
             tabbar_background_compact: false,
             tabbar_font_weight: "medium".to_string(),
             tabbar_icon_mode: "text".to_string(),
@@ -480,7 +503,7 @@ impl Default for Settings {
             show_home_collection_names: true,
             show_hero_cover: true,
             show_home_pinned: true,
-            home_pinned_pos: "top".to_string(),
+            home_pinned_pos: "none".to_string(),
             onyx_flat_settings: true,
             gamepad_platform: "xbox".to_string(),
             gamepad_icons_colored: false,
@@ -522,6 +545,20 @@ mod settings_compat_tests {
     }
 
     #[test]
+    fn smart_bar_fields_default_for_existing_files() {
+        let mut value = serde_json::to_value(Settings::default()).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.insert("bottombar_mode".to_string(), serde_json::json!("full"));
+        object.remove("bottombar_idle_collapse");
+        object.remove("bottombar_smart_migrated");
+
+        let loaded: Settings = serde_json::from_value(value).unwrap();
+        assert_eq!(loaded.bottombar_mode, "full");
+        assert!(loaded.bottombar_idle_collapse);
+        assert!(!loaded.bottombar_smart_migrated);
+    }
+
+    #[test]
     fn missing_onboarding_flag_reads_as_complete() {
         let raw = r#"{"accent":"ember","theme":"space"}"#;
         let mut settings: Settings = serde_json::from_str(raw).unwrap_or_default();
@@ -536,6 +573,25 @@ mod settings_compat_tests {
     #[test]
     fn fresh_default_is_not_complete() {
         assert!(!Settings::default().onboarding_complete);
+    }
+
+    #[test]
+    fn lofi_scene_defaults_to_cozy_and_reads_legacy_background_alias() {
+        let mut missing_value = serde_json::to_value(Settings::default()).unwrap();
+        missing_value.as_object_mut().unwrap().remove("lofi_scene");
+        let missing: Settings = serde_json::from_value(missing_value).unwrap();
+        assert_eq!(missing.lofi_scene, "cozy");
+
+        let mut aliased_value = serde_json::to_value(Settings::default()).unwrap();
+        let object = aliased_value.as_object_mut().unwrap();
+        object.remove("lofi_scene");
+        object.insert("lofi_background".to_string(), serde_json::json!("desk"));
+        let aliased: Settings = serde_json::from_value(aliased_value).unwrap();
+        assert_eq!(aliased.lofi_scene, "desk");
+
+        let saved = serde_json::to_value(aliased).unwrap();
+        assert_eq!(saved["lofi_scene"], "desk");
+        assert!(saved.get("lofi_background").is_none());
     }
 }
 
@@ -622,6 +678,35 @@ fn recents_path() -> std::path::PathBuf {
 }
 fn art_cache_path() -> std::path::PathBuf {
     liftoff_dir().join("art_cache.json")
+}
+
+fn bundled_lofi_source_dirs(app: &tauri::AppHandle) -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Ok(dir) = app
+        .path()
+        .resolve("lofi", tauri::path::BaseDirectory::Resource)
+    {
+        dirs.push(dir);
+    }
+    if let Ok(root) = app.path().resource_dir() {
+        dirs.push(root);
+    }
+    dirs.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("src")
+            .join("assets")
+            .join("themes")
+            .join("lofi"),
+    );
+    dirs
+}
+
+#[tauri::command]
+fn ensure_lofi_media(app: tauri::AppHandle, name: String) -> Result<String, String> {
+    let path =
+        lofi_media::ensure_lofi_media_file(&liftoff_dir(), &bundled_lofi_source_dirs(&app), &name)?;
+    Ok(path.to_string_lossy().into_owned())
 }
 fn hero_cache_path() -> std::path::PathBuf {
     liftoff_dir().join("hero_cache.json")
@@ -1099,14 +1184,15 @@ fn load_settings_inner() -> Settings {
     settings
 }
 
-fn save_settings_inner(settings: &Settings) {
+fn save_settings_inner(settings: &Settings) -> Result<(), String> {
     let path = settings_path();
     if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("failed to create settings directory: {e}"))?;
     }
-    if let Ok(json) = serde_json::to_string(settings) {
-        let _ = std::fs::write(path, json);
-    }
+    let json = serde_json::to_string(settings)
+        .map_err(|e| format!("failed to serialize settings: {e}"))?;
+    std::fs::write(path, json).map_err(|e| format!("failed to save settings: {e}"))
 }
 
 // Steam QR sign-in ----------------------------------------------------------
@@ -1934,7 +2020,10 @@ fn microsoft_game_config_product_id(install_location: &str) -> Option<String> {
     if install_location.trim().is_empty() {
         return None;
     }
-    for base in [Path::new(install_location).to_path_buf(), Path::new(install_location).join("Content")] {
+    for base in [
+        Path::new(install_location).to_path_buf(),
+        Path::new(install_location).join("Content"),
+    ] {
         for file_name in ["MicrosoftGame.config", "MicrosoftGame.Config"] {
             let path = base.join(file_name);
             let Ok(content) = std::fs::read_to_string(path) else {
@@ -3480,8 +3569,7 @@ mod xbox_uninstall {
     // package family name. Blocking; must be called from spawn_blocking.
     // Removal is current-user only so no elevation prompt is triggered.
     pub fn remove_family(package_family_name: &str) -> Result<(), String> {
-        let manager =
-            PackageManager::new().map_err(|error| format!("package manager: {error}"))?;
+        let manager = PackageManager::new().map_err(|error| format!("package manager: {error}"))?;
         // Empty security ID string means "current user".
         let packages = manager
             .FindPackagesByUserSecurityIdPackageFamilyName(
@@ -3493,7 +3581,9 @@ mod xbox_uninstall {
         let mut full_names: Vec<HSTRING> = Vec::new();
         for package in packages {
             let Ok(id) = package.Id() else { continue };
-            let Ok(full_name) = id.FullName() else { continue };
+            let Ok(full_name) = id.FullName() else {
+                continue;
+            };
             if !full_name.is_empty() {
                 full_names.push(full_name);
             }
@@ -3515,9 +3605,7 @@ mod xbox_uninstall {
                     .0
                 {
                     1 => break,
-                    2 => {
-                        return Err("Package removal was canceled".to_string())
-                    }
+                    2 => return Err("Package removal was canceled".to_string()),
                     3 => {
                         let detail = operation
                             .GetResults()
@@ -3525,10 +3613,7 @@ mod xbox_uninstall {
                             .and_then(|result| result.ErrorText().ok())
                             .map(|text| text.to_string_lossy())
                             .unwrap_or_default();
-                        let code = operation
-                            .ErrorCode()
-                            .map(|code| code.0 as u32)
-                            .unwrap_or(0);
+                        let code = operation.ErrorCode().map(|code| code.0 as u32).unwrap_or(0);
                         return Err(format!(
                             "Package removal failed: HRESULT 0x{code:08X} {detail}"
                         ));
@@ -5189,8 +5274,7 @@ fn save_settings(settings: Settings, app_handle: tauri::AppHandle) -> Result<(),
     } else {
         let _ = autostart.disable();
     }
-    save_settings_inner(&settings);
-    Ok(())
+    save_settings_inner(&settings)
 }
 
 #[tauri::command]
@@ -5201,6 +5285,218 @@ fn exit_app(app: tauri::AppHandle) {
 #[tauri::command]
 fn restart_app(app: tauri::AppHandle) {
     app.restart();
+}
+
+fn wipe_tree(path: &Path) {
+    if path.is_dir() {
+        if let Ok(entries) = std::fs::read_dir(path) {
+            for entry in entries.flatten() {
+                wipe_tree(&entry.path());
+            }
+        }
+        let _ = std::fs::remove_dir(path);
+    } else {
+        let _ = std::fs::remove_file(path);
+    }
+}
+
+/// Best-effort wipe. WebView2 can keep art files locked while the window is
+/// open, so success is "settings.json is gone" even if leftover cache files remain.
+fn wipe_liftoff_dir(dir: &Path) -> Result<(), String> {
+    if !dir.exists() {
+        return Ok(());
+    }
+    let settings = dir.join("settings.json");
+    let _ = std::fs::remove_file(&settings);
+    wipe_tree(dir);
+    if dir.exists() {
+        let _ = std::fs::remove_dir_all(dir);
+    }
+    if !dir.exists() || !settings.exists() {
+        Ok(())
+    } else {
+        Err("failed to wipe LiftOff data: settings.json is still present".into())
+    }
+}
+
+const FACTORY_RESET_PENDING: &str = "factory-reset.pending";
+
+fn factory_reset_pending_path_in(dir: &Path) -> PathBuf {
+    dir.join(FACTORY_RESET_PENDING)
+}
+
+fn mark_factory_reset_pending_in(dir: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(dir).map_err(|e| format!("failed to mark factory reset: {e}"))?;
+    std::fs::write(factory_reset_pending_path_in(dir), b"1")
+        .map_err(|e| format!("failed to mark factory reset: {e}"))
+}
+
+fn webview_storage_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Some(local) = dirs::data_local_dir() {
+        dirs.push(local.join("com.taylo.liftoff"));
+    }
+    if let Some(roaming) = dirs::data_dir() {
+        dirs.push(roaming.join("com.taylo.liftoff"));
+    }
+    dirs
+}
+
+fn apply_pending_factory_reset_in(dir: &Path, extra_dirs: &[PathBuf]) {
+    if !factory_reset_pending_path_in(dir).exists() {
+        return;
+    }
+    let _ = wipe_liftoff_dir(dir);
+    if dir.join("settings.json").exists() {
+        let _ = std::fs::remove_file(dir.join("settings.json"));
+    }
+    for extra in extra_dirs {
+        if extra != dir {
+            let _ = wipe_liftoff_dir(extra);
+        }
+    }
+}
+
+fn apply_pending_factory_reset() {
+    let dir = liftoff_dir();
+    if !factory_reset_pending_path_in(&dir).exists() {
+        return;
+    }
+    clear_factory_reset_credentials();
+    apply_pending_factory_reset_in(&dir, &webview_storage_dirs());
+}
+
+fn clear_factory_reset_credentials() {
+    if let Some(meta) = load_steam_account_meta() {
+        if !meta.account_name.is_empty() {
+            clear_steam_refresh_token(&meta.account_name);
+        }
+    }
+    clear_xbox_refresh_token();
+    clear_refresh_token();
+}
+
+/// Mark a pending wipe and restart. Deleting `%LOCALAPPDATA%/LiftOff` while
+/// WebView2 still has art files mapped fails on Windows and can leave settings
+/// in place with broken hero images. The next process start applies the wipe
+/// before the window opens.
+#[tauri::command]
+fn factory_reset_app(app: tauri::AppHandle) -> Result<(), String> {
+    let _ = app.autolaunch().disable();
+    mark_factory_reset_pending_in(&liftoff_dir())?;
+    app.restart();
+}
+
+#[cfg(test)]
+mod factory_reset_tests {
+    use super::{
+        apply_pending_factory_reset_in, factory_reset_pending_path_in,
+        mark_factory_reset_pending_in, wipe_liftoff_dir,
+    };
+    use std::fs::OpenOptions;
+    use std::io::Write;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(label: &str) -> std::path::PathBuf {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("liftoff-{label}-{stamp}"))
+    }
+
+    #[test]
+    fn removes_an_app_data_directory() {
+        let dir = temp_dir("factory-reset");
+        std::fs::create_dir_all(dir.join("art")).unwrap();
+        std::fs::write(dir.join("settings.json"), "{}").unwrap();
+        wipe_liftoff_dir(&dir).unwrap();
+        assert!(!dir.exists());
+        wipe_liftoff_dir(&dir).unwrap();
+    }
+
+    #[test]
+    fn still_removes_settings_when_a_file_is_open() {
+        let dir = temp_dir("factory-reset-locked");
+        std::fs::create_dir_all(dir.join("art")).unwrap();
+        std::fs::write(dir.join("settings.json"), "{}").unwrap();
+        std::fs::write(dir.join("pins.json"), "[]").unwrap();
+        let locked_path = dir.join("art").join("locked.bin");
+        let mut locked = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .read(true)
+            .open(&locked_path)
+            .unwrap();
+        locked.write_all(b"held").unwrap();
+        wipe_liftoff_dir(&dir).unwrap();
+        assert!(!dir.join("settings.json").exists());
+        drop(locked);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn apply_pending_is_noop_without_marker() {
+        let dir = temp_dir("factory-reset-noop");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("settings.json"), "{}").unwrap();
+        apply_pending_factory_reset_in(&dir, &[]);
+        assert!(dir.join("settings.json").exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn apply_pending_wipes_when_marker_present() {
+        let dir = temp_dir("factory-reset-pending");
+        let extra = temp_dir("factory-reset-webview");
+        std::fs::create_dir_all(extra.join("EBWebView")).unwrap();
+        std::fs::write(extra.join("EBWebView").join("cookie"), b"x").unwrap();
+        mark_factory_reset_pending_in(&dir).unwrap();
+        std::fs::write(dir.join("settings.json"), "{}").unwrap();
+        assert!(factory_reset_pending_path_in(&dir).exists());
+        apply_pending_factory_reset_in(&dir, std::slice::from_ref(&extra));
+        assert!(!dir.join("settings.json").exists());
+        assert!(!extra.exists());
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_dir_all(&extra);
+    }
+}
+
+#[cfg(test)]
+mod icon_scan_tests {
+    use super::{extract_icon_base64_cached, with_icon_deadline, CachedIcon, IconCacheStats};
+    use std::collections::HashMap;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn past_icon_deadline_returns_cached_icon_without_extraction() {
+        let mut cache = HashMap::new();
+        cache.insert(
+            r"C:\does-not-exist.exe".into(),
+            CachedIcon {
+                mtime_secs: 1,
+                size_bytes: 1,
+                icon_base64: Some("cached".into()),
+            },
+        );
+        let mut stats = IconCacheStats::default();
+        let icon = with_icon_deadline(Some(Instant::now() - Duration::from_secs(1)), || {
+            extract_icon_base64_cached(r"C:\does-not-exist.exe", &mut cache, &mut stats)
+        });
+        assert_eq!(icon.as_deref(), Some("cached"));
+        assert_eq!(stats.fresh_extractions, 0);
+    }
+
+    #[test]
+    fn past_icon_deadline_skips_missing_uncached_paths() {
+        let mut cache = HashMap::new();
+        let mut stats = IconCacheStats::default();
+        let icon = with_icon_deadline(Some(Instant::now() - Duration::from_secs(1)), || {
+            extract_icon_base64_cached(r"C:\does-not-exist.exe", &mut cache, &mut stats)
+        });
+        assert!(icon.is_none());
+        assert_eq!(stats.fresh_extractions, 0);
+    }
 }
 
 // Device power control.
@@ -5325,7 +5621,9 @@ fn with_endpoint_volume<T>(
     ) -> windows::core::Result<T>,
 ) -> Result<T, String> {
     use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
-    use windows::Win32::Media::Audio::{eConsole, eRender, IMMDeviceEnumerator, MMDeviceEnumerator};
+    use windows::Win32::Media::Audio::{
+        eConsole, eRender, IMMDeviceEnumerator, MMDeviceEnumerator,
+    };
     use windows::Win32::System::Com::{
         CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_ALL, COINIT_APARTMENTTHREADED,
     };
@@ -5870,6 +6168,75 @@ fn extract_icon_base64(path: &str) -> Option<String> {
     }
 }
 
+struct IconJob {
+    path: String,
+    reply: mpsc::SyncSender<Option<String>>,
+}
+
+static ICON_WORKER: Mutex<Option<mpsc::Sender<IconJob>>> = Mutex::new(None);
+
+thread_local! {
+    static ICON_DEADLINE: Cell<Option<Instant>> = const { Cell::new(None) };
+}
+
+fn with_icon_deadline<T>(deadline: Option<Instant>, f: impl FnOnce() -> T) -> T {
+    ICON_DEADLINE.with(|slot| {
+        let previous = slot.replace(deadline);
+        let result = f();
+        slot.set(previous);
+        result
+    })
+}
+
+fn icon_deadline_reached() -> bool {
+    ICON_DEADLINE.with(|slot| {
+        slot.get()
+            .is_some_and(|deadline| Instant::now() >= deadline)
+    })
+}
+
+fn icon_worker_sender() -> mpsc::Sender<IconJob> {
+    let mut slot = ICON_WORKER.lock().expect("icon worker mutex");
+    if let Some(tx) = slot.as_ref() {
+        return tx.clone();
+    }
+    let (tx, rx) = mpsc::channel::<IconJob>();
+    let _ = std::thread::Builder::new()
+        .name("liftoff-icon-extract".into())
+        .spawn(move || {
+            while let Ok(job) = rx.recv() {
+                let _ = job.reply.send(extract_icon_base64(&job.path));
+            }
+        });
+    *slot = Some(tx.clone());
+    tx
+}
+
+fn abandon_icon_worker() {
+    *ICON_WORKER.lock().expect("icon worker mutex") = None;
+}
+
+fn extract_icon_base64_timed(path: &str) -> Option<String> {
+    let (reply, rx) = mpsc::sync_channel(1);
+    if icon_worker_sender()
+        .send(IconJob {
+            path: path.to_string(),
+            reply,
+        })
+        .is_err()
+    {
+        abandon_icon_worker();
+        return None;
+    }
+    match rx.recv_timeout(ICON_EXTRACT_TIMEOUT) {
+        Ok(icon) => icon,
+        Err(_) => {
+            abandon_icon_worker();
+            None
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Default)]
 struct CachedIcon {
     #[serde(default)]
@@ -5908,6 +6275,11 @@ fn extract_icon_base64_cached(
     cache: &mut HashMap<String, CachedIcon>,
     stats: &mut IconCacheStats,
 ) -> Option<String> {
+    if icon_deadline_reached() {
+        return cache
+            .get(path)
+            .and_then(|cached| cached.icon_base64.clone());
+    }
     let meta = std::fs::metadata(path).ok()?;
     let mtime_secs = meta
         .modified()
@@ -5924,7 +6296,7 @@ fn extract_icon_base64_cached(
     }
 
     let started = Instant::now();
-    let icon = extract_icon_base64(path);
+    let icon = extract_icon_base64_timed(path);
     stats.fresh_extractions += 1;
     stats.extract_ms += started.elapsed().as_millis();
     cache.insert(
@@ -6057,9 +6429,6 @@ fn scan_folder_recursive(
     if depth > 4 {
         return;
     }
-    if !path.exists() {
-        return;
-    }
     let Ok(dir) = std::fs::read_dir(path) else {
         return;
     };
@@ -6069,33 +6438,41 @@ fn scan_folder_recursive(
         if path_str.contains("target\\release") || path_str.contains("target/release") {
             continue;
         }
-        if p.is_dir() {
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        // DirEntry attributes avoid Path::exists/is_dir, which can stall on
+        // disconnected network junctions while walking Desktop/Start Menu.
+        if file_type.is_symlink() {
+            continue;
+        }
+        if file_type.is_dir() {
             scan_folder_recursive(&p, app_type, source, depth + 1, entries, cache, stats);
-        } else {
-            let ext = p
-                .extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or("")
-                .to_lowercase();
-            if ext == "lnk" || ext == "exe" {
-                let name = p
-                    .file_stem()
-                    .and_then(|n| n.to_str())
-                    .unwrap_or("Unknown")
-                    .to_string();
-                let icon = extract_icon_base64_cached(&path_str, cache, stats);
-                entries.push(AppEntry {
-                    id: path_str.clone(),
-                    name,
-                    icon_base64: icon,
-                    launch_path: path_str,
-                    app_type: app_type.to_string(),
-                    source: source.to_string(),
-                    install_dir: None,
-                    installed: true,
-                    ..Default::default()
-                });
-            }
+            continue;
+        }
+        let ext = p
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("")
+            .to_lowercase();
+        if ext == "lnk" || ext == "exe" {
+            let name = p
+                .file_stem()
+                .and_then(|n| n.to_str())
+                .unwrap_or("Unknown")
+                .to_string();
+            let icon = extract_icon_base64_cached(&path_str, cache, stats);
+            entries.push(AppEntry {
+                id: path_str.clone(),
+                name,
+                icon_base64: icon,
+                launch_path: path_str,
+                app_type: app_type.to_string(),
+                source: source.to_string(),
+                install_dir: None,
+                installed: true,
+                ..Default::default()
+            });
         }
     }
 }
@@ -7309,8 +7686,11 @@ fn scan_steam_games(
                         continue;
                     }
                     let launch_path = format!("steam://rungameid/{}", app_id);
-                    let icon =
-                        find_game_icon(&format!("{}\\common\\{}", library, install_dir), cache, stats);
+                    let icon = find_game_icon(
+                        &format!("{}\\common\\{}", library, install_dir),
+                        cache,
+                        stats,
+                    );
                     games.push(AppEntry {
                         id: launch_path.clone(),
                         name,
@@ -7651,9 +8031,11 @@ fn get_apps_inner(app: tauri::AppHandle) -> Vec<AppEntry> {
             .unwrap_or_default();
         let start_menu_common =
             "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs".to_string();
-        for folder in [&user_desktop, &start_menu_user, &start_menu_common] {
-            apps.extend(scan_folder(folder, "app", &mut icon_cache, &mut icon_stats));
-        }
+        with_icon_deadline(Some(Instant::now() + DESKTOP_ICON_BUDGET), || {
+            for folder in [&user_desktop, &start_menu_user, &start_menu_common] {
+                apps.extend(scan_folder(folder, "app", &mut icon_cache, &mut icon_stats));
+            }
+        });
         push_scan_timing(&mut scan_timing, "desktop", phase_started);
     }
 
@@ -7807,9 +8189,11 @@ fn get_all_apps_inner(app: tauri::AppHandle) -> Vec<AppEntry> {
             .unwrap_or_default();
         let start_menu_common =
             "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs".to_string();
-        for folder in [&user_desktop, &start_menu_user, &start_menu_common] {
-            apps.extend(scan_folder(folder, "app", &mut icon_cache, &mut icon_stats));
-        }
+        with_icon_deadline(Some(Instant::now() + DESKTOP_ICON_BUDGET), || {
+            for folder in [&user_desktop, &start_menu_user, &start_menu_common] {
+                apps.extend(scan_folder(folder, "app", &mut icon_cache, &mut icon_stats));
+            }
+        });
         push_scan_timing(&mut scan_timing, "desktop", phase_started);
     }
 
@@ -9005,7 +9389,9 @@ fn get_running_launched() -> Vec<RunningEntry> {
 
 #[tauri::command]
 fn focus_self(window: tauri::WebviewWindow) -> bool {
-    let Ok(hwnd) = window.hwnd() else { return false; };
+    let Ok(hwnd) = window.hwnd() else {
+        return false;
+    };
     unsafe {
         let _ = ShowWindow(hwnd, SW_SHOW);
         SetForegroundWindow(hwnd).as_bool()
@@ -9297,7 +9683,7 @@ async fn launch_app(
                     SW_SHOWNORMAL,
                 );
             }
-            // PID not recoverable from ShellExecute; fast-dismiss after delay.
+            // PID not recoverable from ShellExecute; window matching still watches by name.
             launch_mode = "elevated".to_string();
             child_pid = 0;
         } else {
@@ -9347,16 +9733,15 @@ async fn launch_app(
 
     // Watch for the launched window in a background thread, then notify the frontend.
     //
-    // For .lnk shortcuts and shell:/URI launches (child_pid == 0 and no reliable
-    // window to detect), we fast-dismiss after a short delay — the window watcher
-    // can't find these reliably (already-running tray apps, indirect spawns, etc.).
+    // Browser Cloud / http(s) launches cannot expose a distinct child window, so they
+    // keep a bounded fast-success. Shortcut and shell apps now use the same window
+    // watcher as games instead of dismissing after a fixed delay.
     //
     let handle = app_handle.clone();
     let is_http_uri_launch =
         child_pid == 0 && (path.starts_with("http://") || path.starts_with("https://"));
-    let is_lnk_or_indirect = (child_pid == 0 && app_type == "app") || is_http_uri_launch;
     std::thread::spawn(move || {
-        if is_lnk_or_indirect {
+        if is_http_uri_launch {
             std::thread::sleep(std::time::Duration::from_millis(1500));
             if LAUNCH_WATCH_GENERATION.load(Ordering::SeqCst) == watch_generation {
                 let _ = handle.emit("launch-success", &watch_path);
@@ -9469,8 +9854,8 @@ async fn launch_app(
         }
 
         // Dispatch acceptance is not evidence that Steam started the game.
-        // An unconfirmed launch may still be syncing or awaiting a Steam prompt.
-        if is_steam_launch && found == 0 {
+        // App shortcuts also wait for a matching window; timeout stays unconfirmed.
+        if found == 0 && (is_steam_launch || !watch_is_game) {
             let _ = handle.emit("launch-unconfirmed", &watch_path);
         } else {
             let _ = handle.emit("launch-success", &watch_path);
@@ -9487,6 +9872,7 @@ async fn launch_app(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    apply_pending_factory_reset();
     tauri::Builder::default()
         .manage(fse_watcher::FseWatch::default())
         .plugin(tauri_plugin_opener::init())
@@ -9523,6 +9909,8 @@ pub fn run() {
             open_uri,
             exit_app,
             restart_app,
+            factory_reset_app,
+            ensure_lofi_media,
             restart_device,
             shutdown_device,
             show_main_window,
@@ -9609,6 +9997,14 @@ pub fn run() {
             get_xcloud_games
         ])
         .setup(|app| {
+            let lofi_sources = bundled_lofi_source_dirs(app.handle());
+            for name in lofi_media::LOFI_MEDIA_FILES {
+                if let Err(error) =
+                    lofi_media::ensure_lofi_media_file(&liftoff_dir(), &lofi_sources, name)
+                {
+                    eprintln!("Could not prepare Lo-fi media {name}: {error}");
+                }
+            }
             let window = app.get_webview_window("main").unwrap();
             let hwnd = window.hwnd().unwrap();
             OUR_HWND.store(hwnd.0 as isize, Ordering::Relaxed);

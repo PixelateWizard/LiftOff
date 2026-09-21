@@ -361,6 +361,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                         <AppListItem
                           key={app.id}
                           ref={focused ? focusedCardRef : null}
+                          appId={app.id}
                           variant="row"
                           name={app.name}
                           icon={art
@@ -396,7 +397,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                       const appCardRadius = resolvedTheme === "cyberpunk" ? 0 : isPixel ? 0 : 16;
                       return (
                         // Outer wrapper — no overflow:hidden so ring can extend outside
-                        <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
+                        <div key={app.id} data-card="" data-app-id={app.id} className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
                           onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
                           onDoubleClick={() => triggerLaunch(app, recent)}
                           onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
@@ -481,6 +482,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                     <AppListItem
                       key={app.id}
                       ref={focused ? focusedCardRef : null}
+                      appId={app.id}
                       variant="row"
                       name={app.name}
                       icon={art
@@ -517,7 +519,7 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                   const appGridCardRadius = resolvedTheme === "cyberpunk" ? 0 : isPixel ? 0 : 16;
                   return (
                     // Outer wrapper — no overflow:hidden so ring can extend outside
-                    <div key={app.id} data-card="" className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
+                    <div key={app.id} data-card="" data-app-id={app.id} className={focused ? "focused" : ""} ref={focused ? focusedCardRef : null}
                       onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
                       onDoubleClick={() => triggerLaunch(app, recent)}
                       onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}

@@ -24,6 +24,7 @@
     "focused": "Lancé",
     "runningUnfocused": "Lancé, mais il est peut-être derrière LiftOff. Ouvrez le sélecteur d'applications pour le trouver.",
     "unconfirmed": "Impossible de confirmer le démarrage du jeu. Vérifiez si Steam affiche une invite, ou réessayez.",
+    "unconfirmedApp": "Impossible de confirmer le démarrage de l’application. Réessayez, ou fermez.",
     "gotIt": "Compris / B",
     "tryFocusAgain": "Essayer de focaliser",
     "failed": "Échec du lancement",
@@ -49,8 +50,8 @@
     "noArt": "Pas d'image",
     "browseImage": "Parcourir",
     "saving": "Sauvegarde…",
-    "sourceResolution": "TODO:fr Source: {{resolution}}",
-    "savedResolution": "TODO:fr Enregistré: {{resolution}}",
+    "sourceResolution": "Source : {{resolution}}",
+    "savedResolution": "Enregistré : {{resolution}}",
     "resetToDefault": "Réinitialiser"
   },
   "sgdb": {
@@ -127,6 +128,7 @@
     "noTrackHint": "Lancez la lecture dans Spotify, puis revenez ici.",
     "play": "Lecture",
     "pause": "Pause",
+    "stop": "Arrêter",
     "previous": "Précédent",
     "next": "Suivant",
     "shuffle": "Aléatoire",
@@ -168,9 +170,19 @@
     "power": "Alimentation",
     "refreshLibrary": "Actualiser la bibliothèque",
     "controls": "Commandes",
+    "lofiMusicOn": "Musique lo-fi activée",
+    "lofiMusicOff": "Musique lo-fi désactivée",
     "pinned": "Épinglés",
     "closeTray": "Fermer le menu rapide",
-    "openTray": "Ouvrir le menu rapide"
+    "openTray": "Ouvrir le menu rapide",
+    "running": "En cours",
+    "downloads": "Téléchargements",
+    "runningFor": "En cours · {{count}} min",
+    "runningJustNow": "En cours · à l'instant",
+    "resume": "Reprendre",
+    "closeApp": "Fermer",
+    "details": "Détails",
+    "moreCount": "+{{count}} de plus"
   },
   "controls": {
     "title": "Commandes — {{tab}}",
@@ -254,19 +266,20 @@
     "immersiveHome": "Accueil immersif",
     "hideBottomBar": "Masquer la barre inférieure",
     "bottombarMode": "Barre inférieure",
+    "bottombarModeSmart": "Intelligente",
     "bottombarModeFull": "Complète",
-    "bottombarModeMinimal": "Minimale",
     "bottombarModeHidden": "Masquée",
-    "bottombarPeekOnTrack": "Aperçu au changement de morceau",
+    "bottombarIdleCollapse": "Réduire en inactivité",
+    "bottombarPeekOnActivity": "Aperçu sur activité",
     "navBumpersPos": "Badges palettes (LB/RB)",
     "tabbarBadges": "Badges gâchettes (LT/RT)",
+    "tabbarShowTriggers": "Afficher les badges gâchettes dans la barre d'onglets",
     "tabbarTextTabs": "Onglets en texte seul",
     "tabbarIconMode": "Icônes des onglets",
     "topbarBackground": "Fond barre de navigation",
     "tabbarBackground": "Fond barre d'onglets",
     "tabbarBackgroundCompact": "Fond compact",
     "bottombarBackground": "Fond barre inférieure",
-    "bottombarCompact": "Mode compact",
     "bottombarAlignment": "Alignement des boutons",
     "tabbarLabelCase": "Format des noms des onglets",
     "tabbarFontWeight": "Épaisseur des labels",
@@ -292,6 +305,7 @@
     "backgroundCyberpunk": "Effets cyberpunk",
     "backgroundLofi": "Effets lo-fi",
     "lofiMusic": "Musique lo-fi",
+    "lofiScene": "Scène",
     "backgroundForest": "Effets foret",
     "backgroundWebcore": "Effets webcore",
     "uiMotion": "Motion UI",
@@ -310,6 +324,7 @@
       "nav": "Top bar, tab bar, bottom bar"
     },
     "themePickerTitle": "Choisir le theme",
+    "lofiScenePickerTitle": "Choisir une scène",
     "surfacePickerTitle": "Style de surface",
     "surfacePickerHint": "Contrôle le rendu des panneaux et cartes UI. Certains thèmes verrouillent leur style de surface.",
     "surfacePickerSample": "Grille jeux",
@@ -378,15 +393,20 @@
     "defaultTab": "Onglet par défaut",
     "repeatSpeed": "Vitesse de répétition",
     "launchAtStartup": "Lancer au démarrage",
-    "hideOnLaunch": "TODO(fr): Hide LiftOff when a game launches",
+    "hideOnLaunch": "Masquer LiftOff au lancement d'un jeu",
     "heroArtMode": "Mode art héros",
     "updateChannel": "Canal de mise a jour",
     "showGameHeroBanner": "Afficher la bannière héros du jeu",
     "controllerTest": "Test manette",
+    "gamepadIconPreview": "Boutons de la manette",
     "noController": "Aucune manette détectée — connectez un contrôleur et appuyez sur un bouton.",
     "clearRecents": "Effacer l'historique",
     "clearCache": "Vider le cache art",
-    "rerunOnboarding": "TODO(fr) Run Setup Again",
+    "rerunOnboarding": "Relancer la configuration",
+    "factoryReset": "Réinitialiser LiftOff",
+    "factoryResetConfirm": "Effacer tous les réglages, les épingles, l'historique, les illustrations et les comptes connectés ? LiftOff redémarrera sur la configuration initiale.",
+    "factoryResetAction": "Réinitialiser et redémarrer",
+    "factoryResetFailed": "LiftOff n'a pas pu redémarrer pour terminer la réinitialisation. Fermez l'application et rouvrez-la.",
     "deviceStorage": "Stockage de l'appareil",
     "deviceStorageDefault": "installe ici",
     "deviceStorageFree": "{{free}} libre sur {{total}}",
@@ -455,6 +475,12 @@
       "synthwave": "Synthwave",
       "cyberpunk": "Cyberpunk",
       "lofi": "Lo-fi",
+      "cozy": "Étude cosy",
+      "dog": "Chiot endormi",
+      "desk": "Bureau nocturne",
+      "cat": "Chat rêveur",
+      "rainy_street": "Rue pluvieuse",
+      "pixel_shop": "Boutique pixel",
       "forest": "Foret",
       "webcore": "Webcore",
       "onyx": "Onyx",
@@ -472,6 +498,7 @@
       "auto": "Auto",
       "en": "English",
       "fr": "Français",
+      "es": "Español",
       "silver": "Argent",
       "white": "Blanc",
       "atomic": "Atomique",
@@ -522,53 +549,62 @@
     }
   },
   "onboarding": {
-    "on": "TODO(fr) On",
-    "off": "TODO(fr) Off",
-    "previousOption": "TODO(fr) Previous option",
-    "nextOption": "TODO(fr) Next option",
-    "skip": "TODO(fr) Y — Skip setup",
-    "controls": "TODO(fr) D-pad move · A select · B back · LB/RB step",
+    "on": "Activé",
+    "off": "Désactivé",
+    "previousOption": "Option précédente",
+    "nextOption": "Option suivante",
+    "skip": "Y — Ignorer la configuration",
+    "controls": "Croix directionnelle · A sélectionner · B retour · LB/RB étape",
     "welcome": {
-      "title": "TODO(fr) Welcome to LiftOff",
-      "hint": "TODO(fr) A few quick choices and you're playing. Pick a language to start."
+      "title": "Bienvenue dans LiftOff",
+      "hint": "Quelques choix rapides et vous jouez. Choisissez une langue pour commencer."
     },
     "theme": {
-      "title": "TODO(fr) Pick a theme",
-      "hint": "TODO(fr) Themes are environments. The background changes as you browse."
+      "title": "Choisissez un thème",
+      "hint": "Les thèmes sont des univers. L'arrière-plan change pendant que vous parcourez."
+    },
+    "lofi_scene": {
+      "title": "Choisissez une scène Lo-fi",
+      "hint": "Chaque scène est un fond en boucle. Coupez la musique si vous préférez le silence. Vous pourrez changer cela plus tard dans Paramètres."
     },
     "accent": {
-      "title": "TODO(fr) Pick an accent",
-      "hint": "TODO(fr) Used for focus, highlights, and buttons throughout LiftOff."
+      "title": "Choisissez une couleur d'accent",
+      "hint": "Utilisée pour le focus, les surbrillances et les boutons dans tout LiftOff."
     },
     "surface": {
-      "title": "TODO(fr) Pick a surface style",
-      "hint": "TODO(fr) Controls how panels and cards are rendered over the background."
+      "title": "Choisissez un style de surface",
+      "hint": "Définit le rendu des panneaux et des cartes sur l'arrière-plan."
     },
     "home": {
-      "title": "TODO(fr) Choose your Home style",
-      "hint": "TODO(fr) Pick a layout and whether Normal or Immersive Home shows game hero banners.",
-      "legacyHeroLocked": "TODO(fr) Always on in Legacy"
+      "title": "Choisissez le style de l'accueil",
+      "hint": "Choisissez une disposition d'après les aperçus. Vous pouvez toujours désactiver les bannières héros en Normal ou Immersif.",
+      "legacyHeroLocked": "Toujours activé en Legacy"
+    },
+    "visual": {
+      "title": "Réglez les barres",
+      "hint": "Choisissez l'apparence des onglets du haut, puis les fonds de barre et les badges manette. Vous pourrez changer ça plus tard."
     },
     "sources": {
-      "title": "TODO(fr) Where are your games?",
-      "hint": "TODO(fr) Turn off anything you don't use. You can change this later in Settings."
+      "title": "Où sont vos jeux ?",
+      "hint": "Désactivez ce que vous n'utilisez pas. Vous pourrez changer ça plus tard dans Paramètres."
     },
     "accounts": {
-      "title": "TODO(fr) Connect your accounts",
-      "hint": "TODO(fr) All optional. Skip any of these and connect later from Settings.",
-      "connect": "TODO(fr) Connect",
-      "connected": "TODO(fr) Connected",
-      "spotifyHint": "TODO(fr) Control playback from Home. Needs your own Spotify developer app."
+      "title": "Connectez vos comptes",
+      "hint": "Tout est facultatif. Ignorez ce que vous voulez et connectez-vous plus tard dans Paramètres.",
+      "connect": "Connecter",
+      "connected": "Connecté",
+      "spotifyHint": "Contrôlez la lecture depuis l'accueil. Nécessite votre propre application développeur Spotify."
     },
     "essentials": {
-      "title": "TODO(fr) A few essentials",
-      "hint": "TODO(fr) Left and right change the highlighted value."
+      "title": "Quelques essentiels",
+      "hint": "Gauche et droite changent la valeur surlignée."
     },
     "done": {
-      "title": "TODO(fr) You're set",
-      "hint": "TODO(fr) Everything here can be changed later.",
-      "body": "TODO(fr) LiftOff is scanning your library now. Press Guide or Start any time to open the helper tray.",
-      "accounts": "TODO(fr) Anything you skipped is waiting for you in Settings."
+      "title": "Vous êtes prêt",
+      "hint": "Tout peut être modifié plus tard.",
+      "body": "LiftOff analyse votre bibliothèque. Appuyez sur Guide ou Start à tout moment pour ouvrir le menu rapide.",
+      "art": "Les jaquettes continuent de se charger en arrière-plan et peuvent prendre quelques minutes.",
+      "accounts": "Ce que vous avez ignoré vous attend dans Paramètres."
     }
   },
   "fse": {
@@ -587,7 +623,7 @@
     "noGames": "Lancez un jeu pour le voir ici",
     "noRecents": "Rien ici pour l'instant — lancez quelque chose !",
     "pinHint": "Épinglez des apps avec X pour les afficher ici",
-    "heroResolution": "TODO:fr Art héros {{resolution}}"
+    "heroResolution": "Art héros {{resolution}}"
   },
   "grid": {
     "pinned": "Épinglés",
@@ -619,6 +655,8 @@
     "lastPlayed": "Dernière session",
     "playtime": "Temps de jeu",
     "sizeOnDisk": "Taille sur le disque",
+    "location": "Emplacement",
+    "locationUnknown": "Emplacement indisponible",
     "downloadSize": "Taille du téléchargement",
     "deckCompat": {
       "verified": "Vérifié Deck",
@@ -735,7 +773,7 @@
     "add": "Ajouter",
     "saving": "Sauvegarde…",
     "back": "Retour",
-    "next": "TODO(fr) Next",
+    "next": "Suivant",
     "done": "Terminé",
     "delete": "Supprimer"
   },
@@ -811,5 +849,41 @@
     "collection": "Collection",
     "newCollection": "Nouvelle collection",
     "newCollectionPlaceholder": "Nom de la collection…"
+  },
+  "smartBar": {
+    "hint": {
+      "play": "Jouer",
+      "resume": "Reprendre",
+      "details": "Détails",
+      "open": "Ouvrir",
+      "closeGame": "Fermer",
+      "pin": "Épingler",
+      "unpin": "Désépingler",
+      "toggle": "Basculer",
+      "change": "Changer",
+      "adjust": "Ajuster",
+      "select": "Sélectionner",
+      "back": "Retour",
+      "search": "Rechercher"
+    },
+    "activity": {
+      "downloading": "Téléchargement · {{pct}} %",
+      "more": "+{{count}} de plus",
+      "updateTitle": "LiftOff {{version}}",
+      "updateTitleNoVersion": "Mise à jour LiftOff",
+      "updateReady": "Mise à jour prête",
+      "setupLibrary": "Finalisation de la bibliothèque…",
+      "setupArt": "Chargement des jaquettes…",
+      "setupArtProgress": "{{done}} / {{total}}"
+    },
+    "event": {
+      "pinned": "Épinglé",
+      "unpinned": "Désépinglé",
+      "installStarted": "Installation lancée",
+      "installDone": "Prêt à jouer",
+      "refreshed": "Bibliothèque actualisée",
+      "nowPlaying": "En lecture",
+      "closed": "Fermé"
+    }
   }
 }

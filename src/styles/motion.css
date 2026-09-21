@@ -104,19 +104,23 @@
 }
 
 @keyframes onboardingPanelIn {
-  from { opacity: 0; transform: translateY(18px) scale(0.985); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes onboardingStepIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes onboardingCardIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
+
+/* Only the onboarding scrim may fade. Opacity animation on the glass panel,
+   step body, or cards left screenshot <img> descendants unpainted in WebView2
+   when those stills were a cold fetch after factory reset. */
 
 /* No persistent compositing hint here on purpose. will-change: transform and
    will-change: opacity both make an element a backdrop root, and these classes
@@ -156,6 +160,17 @@
 .lo-anim-push-out { animation: lo-push-out var(--dur-base) var(--ease-decel) both; }
 .lo-anim-pop-in { animation: lo-pop-in var(--dur-base) var(--ease-decel) both; }
 .lo-anim-pop-out { animation: lo-pop-out var(--dur-base) var(--ease-decel) both; }
+@keyframes lo-smartbar-event-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.lo-smartbar-event { animation: lo-smartbar-event-in var(--dur-base) var(--ease-decel) both; }
+/* Transitions, not animations: suppressed separately below. No will-change,
+   per the backdrop-root note above; the pill sits on a backdrop-filter surface. */
+.lo-smartbar-hints { transition: max-width var(--dur-slow) var(--ease-decel), opacity var(--dur-base) var(--ease-standard); }
+.lo-smartbar-tint { transition: opacity var(--dur-base) var(--ease-standard); }
+[data-ui-motion="off"] .lo-smartbar-hints,
+[data-ui-motion="off"] .lo-smartbar-tint { transition: none; }
 @keyframes lo-loading-spin { to { transform: rotate(360deg); } }
 .lo-loading-spinner {
   display: inline-block;
@@ -172,16 +187,7 @@
   .lo-loading-spinner { animation: none; }
 }
 
-.lo-onb-panel { animation: onboardingPanelIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }
-.lo-onb-step { animation: onboardingStepIn 0.24s ease both; }
-.lo-onb-grid > .lo-onb-card { animation: onboardingCardIn 0.26s ease both; }
-.lo-onb-grid > .lo-onb-card:nth-child(1) { animation-delay: 0.02s; }
-.lo-onb-grid > .lo-onb-card:nth-child(2) { animation-delay: 0.04s; }
-.lo-onb-grid > .lo-onb-card:nth-child(3) { animation-delay: 0.06s; }
-.lo-onb-grid > .lo-onb-card:nth-child(4) { animation-delay: 0.08s; }
-.lo-onb-grid > .lo-onb-card:nth-child(5) { animation-delay: 0.10s; }
-.lo-onb-grid > .lo-onb-card:nth-child(6) { animation-delay: 0.12s; }
-.lo-onb-grid > .lo-onb-card:nth-child(n+7) { animation-delay: 0.14s; }
+.lo-onb-scrim { animation: onboardingPanelIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 [data-ui-motion="off"] .lo-anim-tab,
 [data-ui-motion="off"] .lo-anim-tab-rev,
@@ -196,9 +202,8 @@
 [data-ui-motion="off"] .lo-anim-push-out,
 [data-ui-motion="off"] .lo-anim-pop-in,
 [data-ui-motion="off"] .lo-anim-pop-out,
-[data-ui-motion="off"] .lo-onb-panel,
-[data-ui-motion="off"] .lo-onb-step,
-[data-ui-motion="off"] .lo-onb-card,
+[data-ui-motion="off"] .lo-smartbar-event,
+[data-ui-motion="off"] .lo-onb-scrim,
 [data-effects="static"] .lo-anim-pulse::after {
   animation-duration: 0ms !important;
 }
@@ -216,9 +221,8 @@
 .app-launch-paused .lo-anim-push-out,
 .app-launch-paused .lo-anim-pop-in,
 .app-launch-paused .lo-anim-pop-out,
-.app-launch-paused .lo-onb-panel,
-.app-launch-paused .lo-onb-step,
-.app-launch-paused .lo-onb-card {
+.app-launch-paused .lo-smartbar-event,
+.app-launch-paused .lo-onb-scrim {
   animation-play-state: paused;
 }
 
@@ -244,9 +248,10 @@
   .lo-anim-push-out,
   .lo-anim-pop-in,
   .lo-anim-pop-out,
-  .lo-onb-panel,
-  .lo-onb-step,
-  .lo-onb-card {
+  .lo-smartbar-event,
+  .lo-onb-scrim {
     animation-duration: 1ms !important;
   }
+  .lo-smartbar-hints,
+  .lo-smartbar-tint { transition: none; }
 }

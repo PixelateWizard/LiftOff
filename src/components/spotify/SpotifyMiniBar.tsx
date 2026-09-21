@@ -10,7 +10,7 @@ interface SpotifyMiniBarProps {
   onOpenPanel: () => void;
 }
 
-type SpotifyMiniBarVariant = "bar" | "puck" | "heroChip";
+type SpotifyMiniBarVariant = "bar" | "puck" | "heroChip" | "pill";
 
 const formatTime = (ms: number) => {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -92,6 +92,36 @@ export function SpotifyMiniBar({ spotify, webPlayer, variant = "bar", onOpenPane
               }}
             />
           )}
+        </div>
+      </button>
+    );
+  }
+
+  if (variant === "pill") {
+    // Compact now-playing chip for the Smart bar: fixed width so the pill
+    // does not resize as track titles change.
+    return (
+      <button
+        type="button"
+        data-spotify-minibar=""
+        data-spotify-variant="pill"
+        onClick={onOpenPanel}
+        title={t("spotify.openOverlay")}
+        style={{
+          width: 206, display: "grid", gridTemplateColumns: "36px minmax(0, 1fr)", alignItems: "center", gap: 10,
+          padding: "0 6px 0 4px", border: 0, background: "transparent", textAlign: "left",
+          font: "inherit", color: "inherit", cursor: "pointer",
+        }}
+      >
+        {track.image
+          ? <img src={track.image} alt="" style={{ width: 36, height: 36, objectFit: "cover", borderRadius: squared ? 0 : 8, display: "block" }} />
+          : <div style={{ width: 36, height: 36, borderRadius: squared ? 0 : 8, background: `${accent.glow}0.18)` }} />}
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: theme.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.title}</div>
+          <div style={{ fontSize: 11, color: theme.textDim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.artist}</div>
+          <div style={{ marginTop: 5, height: 2, borderRadius: 999, background: isDark ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.11)", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${pct}%`, background: accent.primary }} />
+          </div>
         </div>
       </button>
     );

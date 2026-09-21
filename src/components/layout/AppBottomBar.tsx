@@ -4,6 +4,9 @@ import { IoChevronDown, IoChevronUp, IoVolumeHighOutline } from "react-icons/io5
 import { GamepadBtn } from "../GamepadBtn";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useSettings } from "../../contexts/SettingsContext";
+import { SmartPill } from "./SmartPill";
+import type { BarEvent } from "../../hooks/useBarActivity";
+import { allowsBottomBumperBadges, normalizeBottomBarMode, type BarActivity, type BarHint } from "../../utils/smartBar";
 
 interface Props {
   tab: string;
@@ -13,8 +16,11 @@ interface Props {
   spotifyHasTrack?: boolean;
   trayOpen: boolean;
   onToggleTray: () => void;
-  /** Forces the minimal pill visible briefly in hidden mode. */
-  peekActive?: boolean;
+  hints: BarHint[];
+  collapsed: boolean;
+  activity: BarActivity | null;
+  activityNow: number;
+  event: BarEvent | null;
 }
 
 export function AppBottomBar({
@@ -23,7 +29,11 @@ export function AppBottomBar({
   spotifyHasTrack = false,
   trayOpen,
   onToggleTray,
-  peekActive = false,
+  hints,
+  collapsed,
+  activity,
+  activityNow,
+  event,
 }: Props) {
   const { t } = useTranslation();
   const { glassBar, theme, isDark, surfaceStyle, resolvedTheme } = useTheme();
@@ -35,12 +45,12 @@ export function AppBottomBar({
     if (hoverLeavingRef.current) clearTimeout(hoverLeavingRef.current);
   }, []);
 
-  const mode = settings.bottombar_mode || (settings.hide_bottom_bar ? "minimal" : "full");
+  const mode = normalizeBottomBarMode(settings.bottombar_mode);
   const hasBackground = settings.bottombar_background ?? true;
   const isTransparent = !hasBackground || (settings.cinematic_home && tab === "Home");
   const isPixel = surfaceStyle === "win9x";
   const squareCorners = resolvedTheme === "cyberpunk" || isPixel;
-  const showBumpers = settings.nav_bumpers_pos === "bottom";
+  const showBumpers = allowsBottomBumperBadges(mode) && settings.nav_bumpers_pos === "bottom";
   const showTriggers = settings.tabbar_show_buttons === "bottom";
   const wideBar = (settings.wide_layout ?? false) && (settings.wide_bottombar ?? false);
 
@@ -58,59 +68,38 @@ export function AppBottomBar({
     } : {}),
   };
 
-  const chevron = (compact = false) => (
-    <button
-      type="button"
-      aria-label={t(trayOpen ? "helper.closeTray" : "helper.openTray")}
-      onClick={onToggleTray}
-      style={{
-        width: compact ? 34 : 38,
-        height: compact ? 34 : 38,
-        borderRadius: squareCorners ? 0 : 999,
-        border: `1px solid ${isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.14)"}`,
-        background: "transparent",
-        color: theme.text,
-        display: "grid",
-        placeItems: "center",
-        padding: 0,
-        cursor: "pointer",
-      }}
-    >
-      {trayOpen ? <IoChevronDown size={19} /> : <IoChevronUp size={19} />}
-    </button>
-  );
-
   const pillMargin =
     settings.bottombar_alignment === "right" ? "0 18px 18px auto" :
     settings.bottombar_alignment === "center" ? "0 auto 18px" :
     "0 auto 18px 18px";
-  const minimalPill = (showMenuButton = false) => (
-    <div style={{
-      ...solidBarGlass,
-      width: "fit-content",
-      minHeight: 42,
-      display: "flex",
-      alignItems: "center",
-      gap: 9,
-      padding: spotifyHasTrack ? "4px 6px 4px 8px" : "4px 6px 4px 12px",
-      pointerEvents: "auto",
-    }}>
-      {spotifyHasTrack && spotifyMiniBar}
-      {spotifyHasTrack && <span aria-hidden style={{ width: 1, alignSelf: "stretch", background: isDark ? "rgba(255,255,255,0.13)" : "rgba(0,0,0,0.12)" }} />}
-      {showMenuButton
-        ? <span role="img" aria-label={t("helper.menuButtonHint")}><GamepadBtn btn="MENU" label="" /></span>
-        : <IoVolumeHighOutline size={19} color={theme.textDim} aria-hidden />}
-      {chevron(true)}
-    </div>
+
+  const smartPill = (forceCollapsed: boolean) => (
+    <SmartPill
+      hints={hints}
+      collapsed={forceCollapsed || collapsed}
+      activity={activity}
+      now={activityNow}
+      event={event}
+      musicChip={spotifyHasTrack ? spotifyMiniBar : null}
+      trayOpen={trayOpen}
+      onToggleTray={onToggleTray}
+      glass={solidBarGlass}
+      squareCorners={squareCorners}
+    />
   );
 
-  if (mode === "minimal") {
+  if (mode === "smart") {
     if (trayOpen) return null;
-    return <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, pointerEvents: "none" }}><div style={{ width: "fit-content", margin: pillMargin }}>{minimalPill(true)}</div></div>;
+    return (
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 100, pointerEvents: "none" }}>
+        <div style={{ width: "fit-content", margin: pillMargin }}>{smartPill(false)}</div>
+      </div>
+    );
   }
 
   if (mode === "hidden") {
-    const visible = !trayOpen && (peekActive || hoverPeek);
+    const peekOnEvents = settings.bottombar_peek_on_track !== false;
+    const visible = !trayOpen && ((peekOnEvents && !!event) || hoverPeek);
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 100, pointerEvents: "none" }}>
         <div
@@ -129,10 +118,29 @@ export function AppBottomBar({
           }}
           style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 10, pointerEvents: "auto" }}
         />
-        {visible && <div className="lo-anim-modal" style={{ position: "absolute", bottom: 0, left: 0, right: 0, width: "fit-content", margin: pillMargin }}>{minimalPill()}</div>}
+        {visible && (
+          <div className="lo-anim-modal" style={{ position: "absolute", bottom: 0, left: 0, right: 0, width: "fit-content", margin: pillMargin }}>
+            {smartPill(true)}
+          </div>
+        )}
       </div>
     );
   }
+
+  const chevron = (
+    <button
+      type="button"
+      aria-label={t(trayOpen ? "helper.closeTray" : "helper.openTray")}
+      onClick={onToggleTray}
+      style={{
+        width: 38, height: 38, borderRadius: squareCorners ? 0 : 999,
+        border: `1px solid ${isDark ? "rgba(255,255,255,0.16)" : "rgba(0,0,0,0.14)"}`,
+        background: "transparent", color: theme.text, display: "grid", placeItems: "center", padding: 0, cursor: "pointer",
+      }}
+    >
+      {trayOpen ? <IoChevronDown size={19} /> : <IoChevronUp size={19} />}
+    </button>
+  );
 
   const bumpersHint = showBumpers && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><GamepadBtn btn="LB" label="" /><GamepadBtn btn="RB" label={t("gamepad.tabs")} /></span>;
   const triggersHint = showTriggers && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><GamepadBtn btn="LT" label="" /><GamepadBtn btn="RT" label={t(tab === "Settings" ? "gamepad.sections" : "gamepad.source")} /></span>;
@@ -161,7 +169,7 @@ export function AppBottomBar({
         <div style={{ display: "flex", justifyContent: "center", minWidth: 0 }}>{spotifyMiniBar}</div>
         <div style={{ justifySelf: "end", display: "flex", alignItems: "center", gap: 7 }}>
           <IoVolumeHighOutline size={20} color={theme.textDim} aria-hidden />
-          {chevron()}
+          {chevron}
         </div>
       </div>
     </div>

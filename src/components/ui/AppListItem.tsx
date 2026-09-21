@@ -27,6 +27,7 @@ interface AppListItemProps {
   onClick?: () => void;
   onDoubleClick?: () => void;
   onContextMenu?: (e: MouseEvent<HTMLDivElement>) => void;
+  appId?: string;
 
   style?: CSSProperties;
   /** Extra elements rendered after the name (e.g. PinBadge). */
@@ -38,7 +39,7 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
     {
       name, icon, focused = false, variant = "row",
       idleBackground, idleBorder, idleBoxShadow, idleColor, activeTextColor,
-      onClick, onDoubleClick, onContextMenu,
+      onClick, onDoubleClick, onContextMenu, appId,
       style, children,
     },
     ref,
@@ -55,6 +56,7 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
         // Outer wrapper — no overflow:hidden, holds ring + inner content as siblings
         <div
           data-card=""
+          data-app-id={appId}
           className={focused ? "focused" : ""}
           ref={ref}
           onClick={onClick}
@@ -128,6 +130,7 @@ export const AppListItem = forwardRef<HTMLDivElement, AppListItemProps>(
       // Outer wrapper — no overflow:hidden, holds ring + inner content as siblings
       <div
         data-card=""
+        data-app-id={appId}
         className={focused ? "focused" : ""}
         ref={ref}
         onClick={onClick}

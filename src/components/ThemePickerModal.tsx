@@ -7,7 +7,7 @@ import { FocusRing } from "./ui";
 import { modalOverlayStyle, modalPanelStyle, modalScrimStyle } from "./modals/modalStyles";
 import { normalizeThemeKey, THEME_OPTIONS } from "../constants";
 import type { AccentColors } from "../types";
-import lofiBg from "../assets/themes/lofi/cozy_moonlit_study_night_scene.mp4";
+import { LOFI_SCENE_FILES, LOFI_SCENE_POSTERS } from "../theme/lofiScenes";
 import {
   SpaceBg,
   SkyBg,
@@ -55,7 +55,7 @@ export const THEME_METADATA: Record<string, {
 
 function LofiPreview({ isLive }: { isLive: boolean }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  return <LofiBg lofiVideoRef={videoRef} lofiBg={lofiBg} lofiEffectsEnabled={isLive} appPaused={!isLive} />;
+  return <LofiBg lofiVideoRef={videoRef} lofiBg={LOFI_SCENE_FILES.cozy} lofiPoster={LOFI_SCENE_POSTERS.cozy} lofiEffectsEnabled={isLive} appPaused={!isLive} />;
 }
 
 interface ThemePreviewProps {

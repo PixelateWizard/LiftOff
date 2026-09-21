@@ -2,8 +2,8 @@ import { useEffect, useRef } from "react";
 import type { AccentColors, Settings } from "../../types";
 import { AuroraBg, SynthwaveBg, CyberpunkBg, ForestBg, WebcoreBg, SpaceBg, SkyBg, WashBg, CinderBg, PlasmaBg, LofiBg } from "../backgrounds";
 import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../../theme/surfaces";
-import lofiBg from "../../assets/themes/lofi/cozy_moonlit_study_night_scene.mp4";
-import lofiMusic from "../../assets/themes/lofi/mondamusic-lofi-lofi-girl-lofi-music-529555.mp3";
+import { lofiSceneFile, lofiScenePoster, LOFI_MUSIC_FILE } from "../../theme/lofiScenes";
+import { resolveLofiMediaUrl } from "../../theme/mediaSource";
 
 interface AppBackgroundProps {
   settings: Settings;
@@ -17,9 +17,10 @@ interface AppBackgroundProps {
   surfaceStyle: string;
   appPaused?: boolean;
   windowFocused?: boolean;
+  spotifyPlaying?: boolean;
 }
 
-export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1, bgGlow2, isDark, isMaterial, surfaceStyle, appPaused = false, windowFocused = true }: AppBackgroundProps) {
+export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1, bgGlow2, isDark, isMaterial, surfaceStyle, appPaused = false, windowFocused = true, spotifyPlaying = false }: AppBackgroundProps) {
   const lofiMusicRef = useRef<HTMLAudioElement | null>(null);
   const lofiVideoRef = useRef<HTMLVideoElement | null>(null);
   const washPink = accent.glow;
@@ -31,54 +32,67 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
   const effectsActive = effectsEnabled && windowFocused && !appPaused;
 
   useEffect(() => {
-    if (!lofiMusicRef.current) {
-      lofiMusicRef.current = new Audio(lofiMusic);
-      lofiMusicRef.current.loop = true;
-      lofiMusicRef.current.volume = 0.28;
-      lofiMusicRef.current.preload = "auto";
-    }
-
-    const audio = lofiMusicRef.current;
-    if (appPaused) {
-      audio.pause();
-      return;
-    }
-
-    if (!lofiEffectsEnabled || settings.lofi_music_enabled === false) {
-      audio.pause();
-      audio.currentTime = 0;
-      return;
-    }
-
+    const controller = new AbortController();
     const play = () => {
-      if (appPaused || !lofiEffectsEnabled || settings.lofi_music_enabled === false || document.hidden) return;
+      const audio = lofiMusicRef.current;
+      if (!audio) return;
+      if (appPaused || !lofiEffectsEnabled || settings.lofi_music_enabled === false || spotifyPlaying || document.hidden) return;
       audio.play().catch(() => {});
     };
     const playOnVisible = () => {
       if (!document.hidden) play();
     };
 
-    audio.play().catch(() => {
-      window.addEventListener("pointerdown", play, { once: true });
-      window.addEventListener("keydown", play, { once: true });
-      window.addEventListener("touchstart", play, { once: true });
-    });
-    window.addEventListener("focus", play);
-    document.addEventListener("visibilitychange", playOnVisible);
+    const stop = (reset = false) => {
+      const audio = lofiMusicRef.current;
+      if (!audio) return;
+      audio.pause();
+      if (reset) audio.currentTime = 0;
+    };
+
+    if (appPaused) {
+      stop();
+    } else if (!lofiEffectsEnabled || settings.lofi_music_enabled === false) {
+      stop(true);
+    } else if (spotifyPlaying) {
+      stop();
+    } else {
+      void resolveLofiMediaUrl(LOFI_MUSIC_FILE, controller.signal).then((src) => {
+        if (controller.signal.aborted) return;
+        if (!lofiMusicRef.current) {
+          const audio = new Audio();
+          audio.loop = true;
+          audio.volume = 0.28;
+          audio.preload = "auto";
+          lofiMusicRef.current = audio;
+        }
+        const audio = lofiMusicRef.current;
+        if (audio.src !== src) audio.src = src;
+        audio.play().catch(() => {
+          window.addEventListener("pointerdown", play, { once: true });
+          window.addEventListener("keydown", play, { once: true });
+          window.addEventListener("touchstart", play, { once: true });
+        });
+      }).catch(console.error);
+      window.addEventListener("focus", play);
+      document.addEventListener("visibilitychange", playOnVisible);
+    }
+
     return () => {
+      controller.abort();
       window.removeEventListener("pointerdown", play);
       window.removeEventListener("keydown", play);
       window.removeEventListener("touchstart", play);
       window.removeEventListener("focus", play);
       document.removeEventListener("visibilitychange", playOnVisible);
-      audio.pause();
+      lofiMusicRef.current?.pause();
     };
-  }, [appPaused, lofiEffectsEnabled, settings.lofi_music_enabled]);
+  }, [appPaused, lofiEffectsEnabled, settings.lofi_music_enabled, spotifyPlaying]);
 
   return (
     <>
       {isLofi ? (
-        <LofiBg lofiVideoRef={lofiVideoRef} lofiBg={lofiBg} lofiEffectsEnabled={lofiEffectsEnabled} appPaused={appPaused} />
+        <LofiBg lofiVideoRef={lofiVideoRef} lofiBg={lofiSceneFile(settings.lofi_scene)} lofiPoster={lofiScenePoster(settings.lofi_scene)} lofiEffectsEnabled={lofiEffectsEnabled} appPaused={appPaused} />
       ) : (
         <div style={{ position: "fixed", inset: 0, zIndex: -2, background: isMaterial ? `url("${isDark ? PAPER_GRAIN_DARK : PAPER_GRAIN_LIGHT}") repeat, ${appBg}` : appBg }} />
       )}

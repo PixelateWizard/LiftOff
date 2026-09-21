@@ -15,30 +15,20 @@ export function useAudioFeedback(
 ) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const audioBuffers = useRef<Partial<Record<AudioKey, AudioBuffer>>>({});
+  const pendingKeys = useRef<Set<AudioKey>>(new Set());
 
   const getAudioCtx = useCallback(() => {
     if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
     return audioCtxRef.current;
   }, []);
 
-  const preloadAudio = useCallback(async (key: AudioKey, url: string) => {
-    try {
-      const ctx = getAudioCtx();
-      const res = await fetch(url);
-      const arr = await res.arrayBuffer();
-      audioBuffers.current[key] = await ctx.decodeAudioData(arr);
-    } catch {}
-  }, [getAudioCtx]);
-
-  const playBuffer = useCallback((key: AudioKey) => {
-    // Sound effects are muted at the playback boundary rather than at each call
-    // site, so every existing playSound* caller is covered automatically.
+  const startSource = useCallback((key: AudioKey) => {
     if (enabledRef && enabledRef.current === false) return;
+    const ctx = audioCtxRef.current;
+    const buf = audioBuffers.current[key];
+    if (!ctx || ctx.state !== "running" || !buf) return;
+    pendingKeys.current.delete(key);
     try {
-      const ctx = getAudioCtx();
-      if (ctx.state === "suspended") ctx.resume();
-      const buf = audioBuffers.current[key];
-      if (!buf) return;
       const profile = profileRef?.current ?? AUDIO_PROFILES.standard;
       const src = ctx.createBufferSource();
       src.buffer = buf;
@@ -59,7 +49,36 @@ export function useAudioFeedback(
       gainNode.connect(ctx.destination);
       src.start(0);
     } catch {}
-  }, [enabledRef, getAudioCtx, profileRef]);
+  }, [enabledRef, profileRef]);
+
+  const flushPending = useCallback(() => {
+    for (const key of [...pendingKeys.current]) startSource(key);
+  }, [startSource]);
+
+  const ensureRunning = useCallback(async () => {
+    const ctx = getAudioCtx();
+    if (ctx.state === "suspended") {
+      try { await ctx.resume(); } catch {}
+    }
+    if (ctx.state === "running") flushPending();
+    return ctx.state === "running";
+  }, [flushPending, getAudioCtx]);
+
+  const preloadAudio = useCallback(async (key: AudioKey, url: string) => {
+    try {
+      const ctx = getAudioCtx();
+      const res = await fetch(url);
+      const arr = await res.arrayBuffer();
+      audioBuffers.current[key] = await ctx.decodeAudioData(arr);
+      if (pendingKeys.current.has(key)) void ensureRunning();
+    } catch {}
+  }, [ensureRunning, getAudioCtx]);
+
+  const playBuffer = useCallback((key: AudioKey) => {
+    if (enabledRef && enabledRef.current === false) return;
+    pendingKeys.current.add(key);
+    void ensureRunning();
+  }, [enabledRef, ensureRunning]);
 
   useEffect(() => {
     preloadAudio("ui", uiSound);
@@ -68,6 +87,20 @@ export function useAudioFeedback(
     preloadAudio("appLoaded", appLoadedSound);
     preloadAudio("launchSuccess", launchSuccessSound);
   }, [preloadAudio]);
+
+  useEffect(() => {
+    const unlock = () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      void ensureRunning();
+    };
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, [ensureRunning]);
 
   return {
     playSound: () => playBuffer("ui"),

@@ -17,7 +17,21 @@ const XBOX = { A: "#4CAF50", B: "#E53935", X: "#1E88E5", Y: "#F9A825", guide: "#
 const PS   = { cross: "#4F86C4", circle: "#C94D4D", square: "#9B66CC", triangle: "#5AAA78", home: "#003087" };
 const SW   = { A: "#E4000F",  B: "#F5A800",  X: "#0AB9E6",  Y: "#00A652" };
 
-const NEUTRAL_TEXT = "#1e1e2e"; // dark label on white-filled buttons
+const NEUTRAL_TEXT = "#1e1e2e"; // dark label on light-filled buttons
+
+function useMonoIconColors() {
+  const { isDark } = useTheme();
+  const { themeColor, darkText } = useGamepadIcons();
+  const mono = isDark ? "white" : NEUTRAL_TEXT;
+  return {
+    isDark,
+    mono,
+    themeColor,
+    fillColor: themeColor ?? mono,
+    textColor: themeColor ? (darkText ? "#1a1a1a" : "white") : (isDark ? NEUTRAL_TEXT : "white"),
+    outlineColor: themeColor ?? mono,
+  };
+}
 
 type SymbolFn = (iconColor: string) => ReactNode;
 
@@ -25,8 +39,9 @@ type SymbolFn = (iconColor: string) => ReactNode;
 
 function makeFaceBtn(brandColor: string, symbol: SymbolFn) {
   return function FaceBtn({ size = 24, colored = false, filled = true, style }: GamepadIconProps) {
-    const fg = colored ? brandColor : "white";
-    const ic = filled ? (colored ? "white" : NEUTRAL_TEXT) : fg;
+    const { isDark, mono } = useMonoIconColors();
+    const fg = colored ? brandColor : mono;
+    const ic = filled ? (colored ? "white" : (isDark ? NEUTRAL_TEXT : "white")) : fg;
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
         style={{ display: "inline-block", flexShrink: 0, verticalAlign: "middle", ...style }}>
@@ -46,10 +61,7 @@ const BUMPER_PATH = "M3 15 L25 15 Q27 15 27 13 L27 6 Q27 1 22 1 L6 1 Q1 1 1 6 L1
 
 function makeBumperBtn(label: string) {
   return function BumperBtn({ size = 16, colored: _c = false, filled = true, style }: GamepadIconProps) {
-    const { themeColor, darkText } = useGamepadIcons();
-    const fillColor    = themeColor ?? "white";
-    const textColor    = themeColor ? (darkText ? "#1a1a1a" : "white") : NEUTRAL_TEXT;
-    const outlineColor = themeColor ?? "white";
+    const { fillColor, textColor, outlineColor } = useMonoIconColors();
     const h = size;
     const w = Math.round(h * 28 / 16);
     return (
@@ -70,10 +82,7 @@ function makeBumperBtn(label: string) {
 
 function makeTriggerBtn(label: string) {
   return function TriggerBtn({ size = 28, colored: _c = false, filled = true, style }: GamepadIconProps) {
-    const { themeColor, darkText } = useGamepadIcons();
-    const fillColor    = themeColor ?? "white";
-    const textColor    = themeColor ? (darkText ? "#1a1a1a" : "white") : NEUTRAL_TEXT;
-    const outlineColor = themeColor ?? "white";
+    const { fillColor, textColor, outlineColor } = useMonoIconColors();
     const h = size;
     const w = Math.round(h * 22 / 28);
     return (
@@ -94,10 +103,7 @@ function makeTriggerBtn(label: string) {
 
 function makeSquareBtn(symbol: SymbolFn) {
   return function SquareBtn({ size = 20, colored: _c = false, filled = true, style }: GamepadIconProps) {
-    const { themeColor, darkText } = useGamepadIcons();
-    const fillColor    = themeColor ?? "white";
-    const textColor    = themeColor ? (darkText ? "#1a1a1a" : "white") : NEUTRAL_TEXT;
-    const outlineColor = themeColor ?? "white";
+    const { fillColor, textColor, outlineColor } = useMonoIconColors();
     const ic = filled ? textColor : outlineColor;
     return (
       <svg width={size} height={size} viewBox="0 0 20 20" fill="none"
@@ -115,10 +121,7 @@ function makeSquareBtn(symbol: SymbolFn) {
 
 function makeCircleBtn(symbol: SymbolFn) {
   return function CircleBtn({ size = 24, colored: _c = false, filled = true, style }: GamepadIconProps) {
-    const { themeColor, darkText } = useGamepadIcons();
-    const fillColor    = themeColor ?? "white";
-    const textColor    = themeColor ? (darkText ? "#1a1a1a" : "white") : NEUTRAL_TEXT;
-    const outlineColor = themeColor ?? "white";
+    const { fillColor, textColor, outlineColor } = useMonoIconColors();
     const ic = filled ? textColor : outlineColor;
     return (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
@@ -187,8 +190,8 @@ export const XboxMenu = makeSquareBtn(symMenu);
 export const XboxView = makeSquareBtn(symView);
 
 export function XboxGuide({ size = 24, colored = false, filled: _f = true, style }: GamepadIconProps) {
-  const { themeColor } = useGamepadIcons();
-  const color = colored ? XBOX.guide : (themeColor ?? "white");
+  const { themeColor, mono } = useMonoIconColors();
+  const color = colored ? XBOX.guide : (themeColor ?? mono);
   return <FaXbox size={size} color={color} style={{ display: "inline-block", flexShrink: 0, verticalAlign: "middle", ...style }} />;
 }
 
@@ -206,8 +209,8 @@ export const PsOptions = makeSquareBtn(symMenu);
 export const PsCreate  = makeSquareBtn(symShare);
 
 export function PsHome({ size = 24, colored = false, filled: _f = true, style }: GamepadIconProps) {
-  const { themeColor } = useGamepadIcons();
-  const color = colored ? PS.home : (themeColor ?? "white");
+  const { themeColor, mono } = useMonoIconColors();
+  const color = colored ? PS.home : (themeColor ?? mono);
   return <SiPlaystation size={size} color={color} style={{ display: "inline-block", flexShrink: 0, verticalAlign: "middle", ...style }} />;
 }
 
