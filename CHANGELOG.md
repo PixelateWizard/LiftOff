@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- **Factory reset and upgrades** - Reset still clears LiftOff data, and it leaves `liftoff.exe` and `uninstall.exe` in place. Those files share the data folder, and removing the uninstaller makes the next installer report that it cannot uninstall the previous version.
+
 ## [2.0.1] - 2.0.1
 ### Added
 - **Onboarding Lo-fi music toggle** - The first-run Lo-fi scene step now includes a switch for the looping track, writing the same `lofi_music_enabled` preference as Settings and the helper tray. A selects a scene without leaving the step; Next in the footer continues.

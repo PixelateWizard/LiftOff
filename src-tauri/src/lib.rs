@@ -5287,7 +5287,19 @@ fn restart_app(app: tauri::AppHandle) {
     app.restart();
 }
 
+fn is_installed_program_file(path: &Path) -> bool {
+    matches!(
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .map(|name| name.eq_ignore_ascii_case("liftoff.exe") || name.eq_ignore_ascii_case("uninstall.exe")),
+        Some(true)
+    )
+}
+
 fn wipe_tree(path: &Path) {
+    if is_installed_program_file(path) {
+        return;
+    }
     if path.is_dir() {
         if let Ok(entries) = std::fs::read_dir(path) {
             for entry in entries.flatten() {
@@ -5309,7 +5321,11 @@ fn wipe_liftoff_dir(dir: &Path) -> Result<(), String> {
     let settings = dir.join("settings.json");
     let _ = std::fs::remove_file(&settings);
     wipe_tree(dir);
-    if dir.exists() {
+    // The NSIS install and app data share this folder. remove_dir_all would
+    // delete liftoff.exe and uninstall.exe, and the next upgrade cannot run
+    // the missing uninstaller.
+    let preserve_program = dir.join("liftoff.exe").exists() || dir.join("uninstall.exe").exists();
+    if dir.exists() && !preserve_program {
         let _ = std::fs::remove_dir_all(dir);
     }
     if !dir.exists() || !settings.exists() {
@@ -5413,6 +5429,20 @@ mod factory_reset_tests {
         wipe_liftoff_dir(&dir).unwrap();
         assert!(!dir.exists());
         wipe_liftoff_dir(&dir).unwrap();
+    }
+
+    #[test]
+    fn keeps_the_installed_program_when_wiping_app_data() {
+        let dir = temp_dir("factory-reset-program");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("settings.json"), "{}").unwrap();
+        std::fs::write(dir.join("liftoff.exe"), b"app").unwrap();
+        std::fs::write(dir.join("uninstall.exe"), b"un").unwrap();
+        wipe_liftoff_dir(&dir).unwrap();
+        assert!(!dir.join("settings.json").exists());
+        assert_eq!(std::fs::read(dir.join("liftoff.exe")).unwrap(), b"app");
+        assert_eq!(std::fs::read(dir.join("uninstall.exe")).unwrap(), b"un");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

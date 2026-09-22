@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented:** `RELEASE-NOTES-2.0.1.md` covers the stuck Smart-bar artwork notice and the Game Details static-hero fix. Remaining gate: none for this note.
+- **Implemented:** Users who already factory-reset on 2.0 are missing `uninstall.exe`. The 2.0.1 installer still works if they choose Do not uninstall. `RELEASE-NOTES-2.0.1.md` says so. Future resets keep the program and uninstaller.
 
 ## Start-of-Task Workflow
 
