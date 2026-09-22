@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented:** Rewrote the GitHub README for 2.0 with Pages-site screenshots, current controls, and shipped features. Remaining gate: confirm images render on github.com after this is pushed.
+- **Implemented:** `RELEASE-NOTES-2.0.1.md` covers the stuck Smart-bar artwork notice and the Game Details static-hero fix. Remaining gate: none for this note.
 
 ## Start-of-Task Workflow
 
@@ -32,7 +32,7 @@ If the user sends only a `.md` file, treat it as a project proposal and carry it
 - **Product:** LiftOff, a Windows controller-first game/app launcher.
 - **Stack:** Tauri 2, Rust backend, React frontend, incremental TypeScript adoption.
 - **Identifier:** `com.taylo.liftoff`.
-- **Current version:** `2.0.0`; app-owned version markers must move together for releases.
+- **Current version:** `2.0.1`; app-owned version markers must move together for releases.
 - **Frontend root:** `src/App.jsx`, with domain hooks, views, components, contexts, and theme helpers under `src/`.
 - **First-run setup:** `OnboardingFlow` owns a modal-local gamepad poll outside the scaled app root and is gated by `settings.onboarding_complete`; existing settings files without the key migrate to complete on load.
 - **Backend root:** `src-tauri/src/lib.rs`, with specialized modules in `src-tauri/src/`.

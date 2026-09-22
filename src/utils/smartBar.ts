@@ -190,6 +190,13 @@ export function countLibraryArtSetup(
   return { done, total };
 }
 
+// Live Smart-bar art progress has one owner. Silent fetches (backfill, a single
+// Details refresh, cache clear) must not take the next job id, or the reporting
+// fetch can no longer clear the pill and the last game name stays up.
+export function claimArtBarJob(current: number, report: boolean): number | null {
+  return report ? current + 1 : null;
+}
+
 export function resolveBarSetup(
   splashVisible: boolean,
   scanning: boolean,

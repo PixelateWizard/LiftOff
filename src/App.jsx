@@ -76,7 +76,7 @@ import { SteamQrModal } from "./components/steam/SteamQrModal";
 import { XboxConnectGuide } from "./components/xbox/XboxConnectGuide";
 import { AUDIO_PROFILES, resolveAudioProfile } from "./audio/audioProfiles";
 import { detectPlatform } from "./utils/gamepad";
-import { getBottomBarClearance, normalizeBottomBarMode, countLibraryArtSetup, resolveBarHints, resolveBarSetup } from "./utils/smartBar";
+import { getBottomBarClearance, normalizeBottomBarMode, claimArtBarJob, countLibraryArtSetup, resolveBarHints, resolveBarSetup } from "./utils/smartBar";
 import { scrollElementTo, scrollElementToRetargeted } from "./utils/scrollElement";
 import { getLibraryEntryFocusSection } from "./utils/libraryFocus";
 import { refreshLibrarySources } from "./utils/libraryRefresh";
@@ -408,19 +408,20 @@ export default function App() {
   const fetchGameArt = useCallback(async (games, onProgress, options = {}) => {
     const targets = options.includeUninstalled ? games : games.filter((game) => game.installed !== false);
     const report = options.barProgress !== false && targets.length >= 4;
-    const job = ++artSetupJobRef.current;
-    if (report) {
+    const job = claimArtBarJob(artSetupJobRef.current, report);
+    if (job != null) {
+      artSetupJobRef.current = job;
       setArtSetupProgress({ done: 0, total: targets.length });
     }
     try {
       await fetchGameArtRaw(games, (done, total, lastName) => {
-        if (report && artSetupJobRef.current === job) {
+        if (job != null && artSetupJobRef.current === job) {
           setArtSetupProgress({ done, total, lastName });
         }
         onProgress?.(done, total, lastName);
       }, options);
     } finally {
-      if (report && artSetupJobRef.current === job) setArtSetupProgress(null);
+      if (job != null && artSetupJobRef.current === job) setArtSetupProgress(null);
     }
   }, [fetchGameArtRaw]);
   // Mirror gameArt into a ref so the background art backfill can read the latest
@@ -3307,6 +3308,7 @@ export default function App() {
           heroStatic={customHeroArt[detailsApp.id] || heroStatic[detailsApp.id]}
           coverArt={customArt[detailsApp.id] || gameArt[detailsApp.id]}
           animatedHeroes={settings.animated_heroes}
+          heroCustomType={heroCustomType[detailsApp.id]}
           effectsEnabled={settings.ui_motion !== false && !appPaused}
           lastPlayedAt={Math.max(Number(recentAt(detailsApp.id) ?? 0), Number(detailsApp.last_played ?? 0)) || undefined}
           playtimeMinutes={detailsApp.playtime_minutes ?? undefined}

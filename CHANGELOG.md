@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+
+## [2.0.1] - 2.0.1
 ### Added
 - **Onboarding Lo-fi music toggle** - The first-run Lo-fi scene step now includes a switch for the looping track, writing the same `lofi_music_enabled` preference as Settings and the helper tray. A selects a scene without leaving the step; Next in the footer continues.
 - **Smart-bar setup progress** - After splash and first-run setup, the Smart bar reports library scan phases and artwork-fetch progress so leftover background work is visible without a blocking overlay.
@@ -35,6 +37,8 @@
 - **2.0 promo site** - Rebuilt liftofflauncher.app for the 2.0 launch. The page now leads with real 2.0 screenshots (Home, Games, Details, and an in-launcher Game Pass install) in a click-to-enlarge gallery, and covers what shipped since the last site update: Steam QR sign-in with the full owned library, Game Pass installs, cloud games, Spotify, Game Details, and controller-first setup. A looks section lists all 12 themes and 12 accents, and swaps in a Games tab screenshot for each one that has a capture, alongside a short guide to the 7 surface styles. Screenshots are served as WebP (about 540 KB total instead of about 7 MB), with the full PNGs kept for the enlarged view, and the page now has social-share preview tags.
 
 ### Fixed
+- **Game Details static hero** - Choosing a static hero for one game now replaces the animated banner in that game's info modal. A cached animation no longer keeps playing over the static pick.
+- **Smart-bar artwork notice** - Background art fetches no longer retire the live progress job, so the bottom-bar artwork notice can finish and clear instead of sticking on the last game name. This includes a library refresh after adding a cloud game while backfill is already running.
 - **Onboarding Microsoft library refresh** - Finishing setup after opening an account connection now rescans the library, so Microsoft-owned games cached during sign-in appear immediately even when the source setting was still being saved.
 - **Account-row controller safety** - Left/Right on connected Microsoft, Steam, and Spotify settings rows now moves focus between their buttons instead of activating sign-out. Microsoft focuses Refresh Library before Disconnect, and connected account actions require an explicit A press after focus enters the button.
 - **Promo site Lo-fi looks** - The liftofflauncher.app theme picker now includes Lo-fi as a selectable theme with Games tab captures for all 12 accents.

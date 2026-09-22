@@ -4,7 +4,7 @@ import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../theme/surfaces";
 import { AppListItem, CyberpunkCard, FocusRing } from "../components/ui";
 import { CornerCutButton } from "../components/neonblade-ui/corner-cut-button";
 import { HOME_PINNED_SHELF_ENABLED } from "../constants";
-import { isAnimatedImageUrl, isHeroVideoLayer } from "../utils/heroMedia";
+import { isAnimatedImageUrl, isHeroVideoLayer, resolveHeroType } from "../utils/heroMedia";
 import { immersiveHeroCopyBottom, normalizeBottomBarMode, SMART_BAR_CLEARANCE } from "../utils/smartBar";
 
 interface HomeViewProps {
@@ -141,11 +141,7 @@ export function HomeView(props: HomeViewProps) {
   const heroIdx = Math.min(heroIndex, Math.max(0, heroGames.length - 1));
   const activeHeroGame = heroGames[heroIdx];
   const activeHeroType = activeHeroGame
-    ? settings.animated_heroes === "static"
-      ? "static"
-      : settings.animated_heroes === "animated"
-        ? "animated"
-        : heroCustomType[activeHeroGame.id] || "static"
+    ? resolveHeroType(settings.animated_heroes, heroCustomType[activeHeroGame.id])
     : "none";
   const activeHeroAnimatedUrl = activeHeroGame && activeHeroType === "animated"
     ? heroAnimated[activeHeroGame.id] || null
@@ -516,13 +512,9 @@ export function HomeView(props: HomeViewProps) {
     const semiHeroApp = focusSec === "pinned" ? activeHeroGame : activeApp;
     const heroGame = semiHome ? semiHeroApp : activeHeroGame;
     const heroArt = heroGame ? (customArt[heroGame.id] || gameArt[heroGame.id]) : null;
-    const resolveHeroType = (id) => {
-      if (settings.animated_heroes === "static")   return "static";
-      if (settings.animated_heroes === "animated") return "animated";
-      return heroCustomType[id] || "static";
-    };
+    const heroTypeFor = (id) => resolveHeroType(settings.animated_heroes, heroCustomType[id]);
     const heroBanner = heroGame
-      ? (resolveHeroType(heroGame.id) === "animated"
+      ? (heroTypeFor(heroGame.id) === "animated"
           ? (heroAnimated[heroGame.id] || heroStatic[heroGame.id])
           : heroStatic[heroGame.id])
       : null;
@@ -534,11 +526,7 @@ export function HomeView(props: HomeViewProps) {
 
     const activeGame = heroGame && heroGame.app_type === "game" ? heroGame : null;
     const activeGameHeroType = activeGame
-      ? settings.animated_heroes === "static"
-        ? "static"
-        : settings.animated_heroes === "animated"
-          ? "animated"
-          : heroCustomType[activeGame.id] || "static"
+      ? resolveHeroType(settings.animated_heroes, heroCustomType[activeGame.id])
       : "none";
 
     const activeGameStaticBanner = activeGame
@@ -834,7 +822,7 @@ export function HomeView(props: HomeViewProps) {
 
                 const rawStaticBanner = customHeroArt[game.id] || heroStatic[game.id];
                 const fallback = customArt[game.id] || gameArt[game.id];
-                const heroType = resolveHeroType(game.id);
+                const heroType = heroTypeFor(game.id);
                 const animatedUrl = heroType === "animated"
                   ? heroAnimated[game.id] : null;
                 const primaryHeroMedia = animatedUrl || rawStaticBanner;

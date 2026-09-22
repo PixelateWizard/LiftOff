@@ -16,3 +16,10 @@ export function isAnimatedMediaUrl(url?: string | null): boolean {
 export function isHeroVideoLayer(heroType: string, animatedUrl?: string | null): boolean {
   return heroType === "animated" && !!animatedUrl && !isAnimatedImageUrl(animatedUrl);
 }
+
+/** Custom mode is per game. Anything other than an explicit animated choice stays static. */
+export function resolveHeroType(mode?: string | null, customType?: string | null): "static" | "animated" {
+  if (mode === "static") return "static";
+  if (mode === "animated") return "animated";
+  return customType === "animated" ? "animated" : "static";
+}

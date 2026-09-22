@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAnimatedImageUrl, isHeroVideoLayer, isHeroVideoUrl } from "./heroMedia";
+import { isAnimatedImageUrl, isHeroVideoLayer, isHeroVideoUrl, resolveHeroType } from "./heroMedia";
 
 describe("isHeroVideoLayer", () => {
   it("hides static art only when Animated mode has a video URL", () => {
@@ -13,6 +13,19 @@ describe("isHeroVideoLayer", () => {
     expect(isHeroVideoLayer("animated", "https://cdn.example/hero.webp")).toBe(false);
     expect(isHeroVideoLayer("static", "https://cdn.example/hero.webm")).toBe(false);
     expect(isHeroVideoLayer("custom", "https://cdn.example/hero.mp4")).toBe(false);
+  });
+});
+
+describe("resolveHeroType", () => {
+  it("keeps a per-game static pick ahead of a leftover animation", () => {
+    expect(resolveHeroType("custom", "static")).toBe("static");
+    expect(resolveHeroType("custom", undefined)).toBe("static");
+    expect(resolveHeroType("custom", "animated")).toBe("animated");
+  });
+
+  it("lets the global mode override a per-game choice", () => {
+    expect(resolveHeroType("static", "animated")).toBe("static");
+    expect(resolveHeroType("animated", "static")).toBe("animated");
   });
 });
 

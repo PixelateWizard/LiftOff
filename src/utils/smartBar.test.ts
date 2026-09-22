@@ -3,7 +3,7 @@ import type { App } from "../types";
 import {
   allowsBottomBumperBadges, collectDownloads, getBottomBarClearance, immersiveHeroCopyBottom,
   migrateBottomBarSettings, normalizeBottomBarMode, pickBarActivity, resolveBarHints,
-  resolveBarSetup, resolveNavBumpersPos, setupScanLabelKey,
+  claimArtBarJob, resolveBarSetup, resolveNavBumpersPos, setupScanLabelKey,
   countLibraryArtSetup,
 } from "./smartBar";
 
@@ -104,6 +104,11 @@ describe("activity", () => {
     expect(pickBarActivity([], r, { available: true, version: "2.0.1" })?.kind).toBe("running");
     expect(pickBarActivity([], [], { available: true, version: "2.0.1" })?.kind).toBe("update");
     expect(pickBarActivity([], [], { available: false, version: null })).toBeNull();
+  });
+
+  it("lets only a reporting art fetch own the Smart-bar job", () => {
+    expect(claimArtBarJob(3, false)).toBeNull();
+    expect(claimArtBarJob(3, true)).toBe(4);
   });
 
   it("hides setup behind the splash and prefers a live scan over art", () => {

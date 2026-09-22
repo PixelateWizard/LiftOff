@@ -6,6 +6,7 @@ import { useStoreMetadata } from "../hooks/useStoreMetadata";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, rumble, type GpState } from "../utils/gamepad";
 import { formatBytes } from "../utils/formatBytes";
 import { getInstallSpaceVerdict } from "../utils/installStorage";
+import { resolveHeroType } from "../utils/heroMedia";
 import { xboxProductIdFor } from "../utils/xboxProductId";
 import type { AccentColors, App, DriveStorageInfo, StoreMovie, StoreScreenshot, ThemeColors, XboxInstallProgress } from "../types";
 
@@ -40,6 +41,7 @@ interface GameDetailsModalProps {
   heroStatic?: string;
   coverArt?: string;
   animatedHeroes: "static" | "animated" | "custom";
+  heroCustomType?: string;
   effectsEnabled: boolean;
   lastPlayedAt?: number;
   playtimeMinutes?: number;
@@ -159,6 +161,7 @@ export function GameDetailsModal({
   heroStatic,
   coverArt,
   animatedHeroes,
+  heroCustomType,
   effectsEnabled,
   lastPlayedAt,
   playtimeMinutes,
@@ -276,7 +279,7 @@ export function GameDetailsModal({
   const mediaCountRef = useRef(mediaCount);
   const mediaItemsRef = useRef(mediaItems);
   const coverFallback = `/assets/liftoff_cover_${accentName}.svg`;
-  const canAnimate = animatedHeroes !== "static" && effectsEnabled && !!heroAnimated;
+  const canAnimate = resolveHeroType(animatedHeroes, heroCustomType) === "animated" && effectsEnabled && !!heroAnimated;
   const heroMedia = canAnimate ? heroAnimated : heroStatic || heroAnimated;
   const renderVideo = canAnimate && isVideoUrl(heroAnimated);
   const renderAnimatedImage = canAnimate && isAnimatedImageUrl(heroAnimated);

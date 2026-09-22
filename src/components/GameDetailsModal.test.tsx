@@ -365,4 +365,20 @@ describe("Game Details modal", () => {
       expect(label.style.opacity).toBe("0.78");
     }
   });
+
+  it("shows a chosen static hero instead of a leftover animation", () => {
+    act(() => root.render(
+      <GameDetailsModal
+        {...baseProps()}
+        effectsEnabled
+        animatedHeroes="custom"
+        heroCustomType="static"
+        heroAnimated="https://cdn.example/hero.webm"
+        heroStatic="https://cdn.example/hero.jpg"
+      />,
+    ));
+
+    expect(container.querySelector("video")).toBeNull();
+    expect(container.querySelector("img")?.getAttribute("src")).toBe("https://cdn.example/hero.jpg");
+  });
 });
