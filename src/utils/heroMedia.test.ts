@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAnimatedImageUrl, isHeroVideoLayer, isHeroVideoUrl, resolveHeroType } from "./heroMedia";
+import { heroFallbackBlurPx, heroUploadSize, isAnimatedImageUrl, isHeroVideoLayer, isHeroVideoUrl, nativeHeroFrameStyle, resolveHeroType } from "./heroMedia";
 
 describe("isHeroVideoLayer", () => {
   it("hides static art only when Animated mode has a video URL", () => {
@@ -26,6 +26,37 @@ describe("resolveHeroType", () => {
   it("lets the global mode override a per-game choice", () => {
     expect(resolveHeroType("static", "animated")).toBe("static");
     expect(resolveHeroType("animated", "static")).toBe("animated");
+  });
+});
+
+describe("native hero resolution", () => {
+  it("leaves scale at 1 on the normal layout box", () => {
+    expect(nativeHeroFrameStyle(1)).toEqual({ position: "absolute", inset: 0 });
+    expect(nativeHeroFrameStyle(0.75)).toEqual({ position: "absolute", inset: 0 });
+  });
+
+  it("paints above-1 UI scale at the visual size and counter-scales", () => {
+    expect(nativeHeroFrameStyle(2)).toEqual({
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: "200%",
+      height: "200%",
+      transform: "scale(0.5)",
+      transformOrigin: "top left",
+    });
+  });
+
+  it("saves a 4K upload at 3840 wide without upscaling a 1080p source", () => {
+    expect(heroUploadSize(3840, 2160)).toEqual({ width: 3840, height: 1240 });
+    expect(heroUploadSize(1920, 1080)).toEqual({ width: 1920, height: 620 });
+    expect(heroUploadSize(7680, 4320)).toEqual({ width: 3840, height: 1240 });
+  });
+
+  it("keeps fallback blur visually stable inside the enlarged frame", () => {
+    expect(heroFallbackBlurPx(18, 1)).toBe(18);
+    expect(heroFallbackBlurPx(18, 2)).toBe(36);
+    expect(heroFallbackBlurPx(10, 0.75)).toBe(10);
   });
 });
 

@@ -381,4 +381,15 @@ describe("Game Details modal", () => {
     expect(container.querySelector("video")).toBeNull();
     expect(container.querySelector("img")?.getAttribute("src")).toBe("https://cdn.example/hero.jpg");
   });
+
+  it("keeps the Run as Administrator tile the same border width on hover", () => {
+    act(() => root.render(<GameDetailsModal {...baseProps()} />));
+    const admin = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Run as Administrator"));
+    expect(admin?.style.borderWidth).toBe("2px");
+    act(() => {
+      admin?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    });
+    expect(admin?.style.borderWidth).toBe("2px");
+  });
 });

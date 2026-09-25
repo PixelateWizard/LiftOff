@@ -2,7 +2,14 @@
 
 ## Unreleased
 
+## [2.0.2] - 2.0.2
+
+### Added
+- **Privacy policy** - liftofflauncher.app now includes a Privacy page, linked from the site footer, describing local storage, optional account tokens, and the third-party services LiftOff calls. Settings → About opens the same page from Privacy Policy.
+
 ### Fixed
+- **Manage action row** - Hovering Run as Administrator in Game Details no longer thickens that tile’s border, so the action row stays the same height.
+- **4K hero backgrounds** - Home hero art is painted at the on-screen resolution when UI scale is above 1, so a 4K banner is no longer softened by the interface scale. Uploaded heroes now save up to 3840×1240 instead of 1920×620; a smaller source is not enlarged, and an existing 1920×620 upload stays as it is until it is saved again.
 - **Factory reset and upgrades** - Reset still clears LiftOff data, and it leaves `liftoff.exe` and `uninstall.exe` in place. Those files share the data folder, and removing the uninstaller makes the next installer report that it cannot uninstall the previous version.
 
 ## [2.0.1] - 2.0.1

@@ -4,7 +4,7 @@ import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../theme/surfaces";
 import { AppListItem, CyberpunkCard, FocusRing } from "../components/ui";
 import { CornerCutButton } from "../components/neonblade-ui/corner-cut-button";
 import { HOME_PINNED_SHELF_ENABLED } from "../constants";
-import { isAnimatedImageUrl, isHeroVideoLayer, resolveHeroType } from "../utils/heroMedia";
+import { heroFallbackBlurPx, isAnimatedImageUrl, isHeroVideoLayer, nativeHeroFrameStyle, resolveHeroType } from "../utils/heroMedia";
 import { immersiveHeroCopyBottom, normalizeBottomBarMode, SMART_BAR_CLEARANCE } from "../utils/smartBar";
 
 interface HomeViewProps {
@@ -112,7 +112,9 @@ export function HomeView(props: HomeViewProps) {
   const SLOT_PAD_TOP = 14;
   const SLOT_PAD_BOTTOM = BOTTOM_BAR_H + 14;
   const SEMI_SLOT_H = SLOT_PAD_TOP + SLOT_LABEL_H + CARD_H + SLOT_PAD_BOTTOM + SLOT_FOCUS_BLEED + SLOT_SHADOW_BLEED;
-  const semiViewportH = `${100 / (settings.ui_scale ?? 1)}vh`;
+  const uiScale = settings.ui_scale ?? 1;
+  const heroMediaFrame = nativeHeroFrameStyle(uiScale);
+  const semiViewportH = `${100 / uiScale}vh`;
   const semiHeroHeight = `calc(${semiViewportH} - ${SEMI_SLOT_H}px)`;
   const semiCardW = `${semiHomeBase}px`;
   const semiCardH = `${CARD_H}px`;
@@ -766,12 +768,12 @@ export function HomeView(props: HomeViewProps) {
               const coverStyle: any = { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" };
               if (semiHome) {
                 return activeGame ? (
-                  <div key={activeGame.id} style={{ position: "absolute", inset: 0, opacity: 1, zIndex: 1 }}>
+                  <div key={activeGame.id} style={{ ...heroMediaFrame, opacity: 1, zIndex: 1 }}>
                     {showHeroArtwork && !activeGameIsVideo && (
                       activeGameStaticBanner ? (
                         <img src={activeGameStaticBanner} alt="" decoding="async" loading="eager" style={{ ...coverStyle, transform: "translateZ(0)" }} />
                       ) : activeGameFallback ? (
-                        <img src={activeGameFallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(10px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
+                        <img src={activeGameFallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(${heroFallbackBlurPx(10, uiScale)}px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(${heroFallbackBlurPx(18, uiScale)}px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
                       ) : (
                         <img src={getHeroPlaceholder(settings.accent)} alt="" style={{ ...coverStyle }} />
                       )
@@ -810,7 +812,7 @@ export function HomeView(props: HomeViewProps) {
                     )}
                   </div>
                 ) : showHeroArtwork ? (
-                  <div style={{ position: "absolute", inset: 0, opacity: 1, zIndex: 1 }}>
+                  <div style={{ ...heroMediaFrame, opacity: 1, zIndex: 1 }}>
                     <img src={getHeroPlaceholder(settings.accent)} alt="" style={{ ...coverStyle }} />
                   </div>
                 ) : null;
@@ -833,12 +835,12 @@ export function HomeView(props: HomeViewProps) {
                 const intendedVideo = isHeroVideoLayer(heroType, animatedUrl);
 
                 return (
-                  <div key={game.id} style={{ position: "absolute", inset: 0, opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
+                  <div key={game.id} style={{ ...(showHeroArtwork && isNearby ? heroMediaFrame : { position: "absolute", inset: 0 }), opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
                     {isNearby && showHeroArtwork && !intendedVideo
                       ? (staticBanner
                           ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
                           : fallback
-                            ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(10px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(18px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
+                            ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(${heroFallbackBlurPx(10, uiScale)}px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(${heroFallbackBlurPx(18, uiScale)}px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
                             : <img src={getHeroPlaceholder(settings.accent)} alt="" style={{ ...coverStyle }} />)
                       : <div style={{ width: "100%", height: "100%" }} />
                     }

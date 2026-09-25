@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — LiftOff</title>
+  <meta name="description" content="What data LiftOff touches and where it goes. LiftOff has no server, no account, and no analytics." />
+  <meta name="theme-color" content="#070910" />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* Page tokens use LiftOff's Space theme with the Ember accent. */
+    :root {
+      --acc:       #e8714a;
+      --acc-lt:    #ff9a6c;
+      --acc-dk:    #c94f28;
+      --acc-ink:   #ff9a6c;   /* accent used for text; darker on light themes */
+      --on-acc:    #1a0d06;   /* text on filled accent buttons */
+      --bg:        #070910;
+      --bg2:       #10131c;
+      --text:      #f5ede8;
+      --dim:       rgba(245,237,232,0.58);
+      --faint:     rgba(245,237,232,0.36);
+      --line:      rgba(245,237,232,0.12);
+      --line-soft: rgba(245,237,232,0.07);
+      --shadow:    rgba(0,0,0,0.55);
+
+      --p-border:  var(--line-soft);
+      --p-radius:  14px;
+      --btn-radius: 8px;
+
+      --max: 1160px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .cta, a {
+      transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+
+    h1, h2, h3, .logo, .cta {
+      font-family: 'Syne', sans-serif;
+    }
+    h1 {
+      font-size: clamp(32px, 4vw, 44px);
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+    h2 {
+      font-size: clamp(28px, 3.8vw, 42px);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.015em;
+    }
+    h3 {
+      font-size: 19px;
+      font-weight: 600;
+    }
+
+    :focus-visible { outline: 2px solid var(--acc); outline-offset: 3px; }
+
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: color-mix(in srgb, var(--bg) 80%, transparent);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .nav-in {
+      max-width: var(--max); margin: 0 auto; padding: 14px 40px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .logo {
+      font-weight: 800; font-size: 19px; letter-spacing: 0.04em;
+      color: var(--acc-ink); text-decoration: none;
+      display: flex; align-items: center; gap: 9px;
+    }
+    .logo img { width: 26px; height: 26px; display: block; }
+    .ver {
+      font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+      color: var(--acc-ink);
+      border: 1px solid color-mix(in srgb, var(--acc) 45%, transparent);
+      background: color-mix(in srgb, var(--acc) 14%, transparent);
+      border-radius: 100px; padding: 2px 9px;
+    }
+    .nav-links { display: flex; gap: 26px; margin-left: auto; margin-right: 14px; list-style: none; }
+    .nav-links a {
+      color: var(--dim); text-decoration: none; font-size: 14px;
+      padding: 4px 0; border-bottom: 1px solid transparent;
+    }
+    .nav-links a:hover, .nav-links a.current { color: var(--text); border-bottom-color: var(--acc); }
+
+    .cta {
+      background: var(--acc); color: var(--on-acc); text-decoration: none;
+      font-size: 14px; font-weight: 700; padding: 10px 20px;
+      border-radius: var(--btn-radius); border: none; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .cta:hover { background: var(--acc-lt); }
+
+    .doc {
+      position: relative; z-index: 1;
+      max-width: 65ch;
+      margin: 0 auto;
+      padding: 140px 40px 96px;
+    }
+    .doc h1 { max-width: none; }
+    .doc h2 { max-width: none; margin-top: 2.4em; }
+    .updated { color: var(--text); font-weight: 500; margin-top: 18px; }
+    .doc p { color: var(--dim); margin-top: 16px; }
+    .doc ul { margin-top: 16px; padding-left: 1.2em; color: var(--dim); }
+    .doc li { margin-top: 10px; }
+    .doc li strong, .doc p strong { color: var(--text); font-weight: 500; }
+    .doc code {
+      font-family: Consolas, 'Segoe UI', monospace;
+      font-size: 0.92em;
+      color: var(--text);
+    }
+    .doc a { color: var(--acc-ink); }
+    .doc a:hover { text-decoration: none; }
+
+    footer { position: relative; z-index: 1; border-top: 1px solid var(--line-soft); padding: 34px 0; }
+    .foot-in {
+      max-width: var(--max); margin: 0 auto; padding: 0 40px;
+      display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    }
+    .foot-in .logo { font-size: 16px; }
+    .foot-links { display: flex; gap: 22px; margin-left: auto; flex-wrap: wrap; }
+    .foot-links a { color: var(--faint); text-decoration: none; font-size: 13px; }
+    .foot-links a:hover { color: var(--text); }
+    .foot-copy { color: var(--faint); font-size: 12px; width: 100%; }
+
+    @media (max-width: 900px) {
+      .nav-in, .foot-in, .doc { padding-left: 20px; padding-right: 20px; }
+      .doc { padding-top: 124px; }
+      .nav-links { display: none; }
+      .nav-in .cta { margin-left: auto; }
+      .foot-links { margin-left: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition: none !important; animation: none !important; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="nav-in">
+      <a href="index.html" class="logo"><img src="liftoff-logo.png" alt="" width="26" height="26" />LiftOff</a>
+      <span class="ver">2.0</span>
+      <ul class="nav-links">
+        <li><a href="index.html#features">Features</a></li>
+        <li><a href="index.html#gallery">Gallery</a></li>
+        <li><a href="index.html#themes">Themes</a></li>
+        <li><a href="index.html#community">Community</a></li>
+      </ul>
+      <a href="index.html#download" class="cta">Download</a>
+    </div>
+  </nav>
+
+  <main class="doc">
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: September 24, 2026</p>
+    <p>
+      LiftOff is a game and app launcher for Windows. This policy explains what
+      data LiftOff touches and where it goes.
+    </p>
+
+    <h2>The short version</h2>
+    <p>
+      LiftOff doesn't have a server. There is no LiftOff account, no analytics,
+      and no crash reporting. Everything LiftOff stores lives on your own device.
+      When LiftOff talks to a third-party service — Steam, Xbox, Spotify,
+      SteamGridDB, or GitHub — it's your device talking to that service directly,
+      using your own credentials, not routed through us.
+    </p>
+
+    <h2>What LiftOff stores locally</h2>
+    <p>
+      LiftOff keeps its settings and library data in
+      <code>%LOCALAPPDATA%\LiftOff\</code> on your PC:
+    </p>
+    <ul>
+      <li>Your settings (theme, accent, scan preferences, and similar) — <code>settings.json</code></li>
+      <li>Your pinned apps and recently launched items — <code>pins.json</code>, <code>recents.json</code></li>
+      <li>Cached cover art and icons, so LiftOff doesn't re-download them — <code>art_cache.json</code>, <code>icon_cache.json</code>, and a local <code>art/</code> folder</li>
+      <li>Diagnostic logs used only for troubleshooting on your own device — in a <code>logs/</code> folder</li>
+    </ul>
+    <p>None of this leaves your device. Uninstalling LiftOff, or deleting this folder, removes it.</p>
+
+    <h2>Third-party accounts you connect</h2>
+    <p>
+      If you choose to connect an account, LiftOff stores the resulting sign-in
+      token in Windows Credential Manager — the same secure storage Windows uses
+      for other apps' saved logins — not in a LiftOff file, and not on a server
+      we run.
+    </p>
+    <ul>
+      <li><strong>Steam</strong> — LiftOff reads your local Steam library files directly to show what you own and installed. If you sign in for owned-game import, that sign-in happens through Steam's own flow.</li>
+      <li><strong>Xbox / Microsoft account</strong> — used to show your Xbox and Game Pass library. Sign-in happens through Microsoft's own OAuth flow; LiftOff never sees your password.</li>
+      <li><strong>Spotify</strong> — connecting Spotify requires you to supply your own Spotify developer Client ID. Playback tokens are used only to control playback and are never written to logs or shared.</li>
+    </ul>
+    <p>Disconnecting an account in Settings removes its saved token.</p>
+
+    <h2>Third-party services LiftOff calls</h2>
+    <ul>
+      <li><strong>SteamGridDB</strong> — used to fetch cover art. If you provide your own API key, art requests go from your device to SteamGridDB directly.</li>
+      <li><strong>GitHub</strong> — LiftOff checks GitHub's public release list to see if an update is available. This is an anonymous, unauthenticated request; it doesn't send anything identifying you.</li>
+    </ul>
+    <p>Each of these services has its own privacy policy governing what it does with a request it receives.</p>
+
+    <h2>What LiftOff does not do</h2>
+    <ul>
+      <li>LiftOff does not collect analytics, telemetry, or crash reports.</li>
+      <li>LiftOff does not have user accounts of its own.</li>
+      <li>LiftOff does not sell or share data, because it doesn't collect any to sell or share.</li>
+      <li>LiftOff is not directed at children and does not knowingly collect information from them.</li>
+    </ul>
+
+    <h2>Changes to this policy</h2>
+    <p>
+      If what LiftOff stores or connects to changes, this page will be updated,
+      and the "Last updated" date above will change.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Questions about this policy: open an issue at
+      <a href="https://github.com/PixelateWizard/LiftOff">github.com/PixelateWizard/LiftOff</a>
+      or reach out on <a href="https://discord.gg/F5ncP75WtD">Discord</a>.
+    </p>
+  </main>
+
+  <footer>
+    <div class="foot-in">
+      <span class="logo"><img src="liftoff-logo.png" alt="" width="22" height="22" />LiftOff</span>
+      <div class="foot-links">
+        <a href="https://github.com/PixelateWizard/LiftOff">GitHub</a>
+        <a href="https://discord.gg/F5ncP75WtD">Discord</a>
+        <a href="https://github.com/PixelateWizard/LiftOff/blob/main/CHANGELOG.md">Changelog</a>
+        <a href="https://buymeacoffee.com/liftoff_handheld_launcher">Support development</a>
+        <a href="privacy.html">Privacy</a>
+      </div>
+      <div class="foot-copy">GPL v3 · Made with ♥ by Taylor Denby</div>
+    </div>
+  </footer>
+
+</body>
+</html>

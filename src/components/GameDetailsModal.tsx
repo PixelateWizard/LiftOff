@@ -821,8 +821,11 @@ export function GameDetailsModal({
             onMouseEnter={() => setFocusedIndex(idx + 1)}
             style={{
               minHeight: action.sublabel ? 64 : 50,
+              boxSizing: "border-box",
               borderRadius: controlRadius,
-              border: focused ? `2px solid ${action.danger ? "#e85a5a" : accent.primary}` : `1px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+              border: `2px solid ${focused
+                ? (action.danger ? "#e85a5a" : accent.primary)
+                : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)")}`,
               background: focused
                 ? (action.danger ? "rgba(232,90,90,0.16)" : `${accent.glow}0.20)`)
                 : surfaceStyle === "material" ? "var(--material-elevation-1)" : (isDark ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.60)"),

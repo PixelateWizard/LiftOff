@@ -269,6 +269,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     { key: "coffee",  section: 5, label: t("settings.coffee"),  type: "link" },
     { key: "github",  section: 5, label: t("settings.github"),  type: "link" },
     { key: "discord", section: 5, label: t("settings.discord"), type: "link" },
+    { key: "privacy", section: 5, label: t("settings.privacy"), type: "link" },
 
     D("credits", 5),
     { key: "credit0", section: 5, label: "i18n, SGDB art, custom sources, controller glyphs, themes & settings", author: "moi952", license: "GitHub", url: "https://github.com/moi952", type: "attribution" },
@@ -1348,6 +1349,7 @@ export function SettingsScreen({
           if (item.key === "coffee")  invoke("launch_app", { path: "https://buymeacoffee.com/liftoff_handheld_launcher", id: "coffee", name: "Buy Me a Coffee", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
           if (item.key === "github")  invoke("launch_app", { path: "https://github.com/PixelateWizard/LiftOff", id: "github", name: "GitHub", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
           if (item.key === "discord") invoke("launch_app", { path: "https://discord.gg/F5ncP75WtD", id: "discord", name: "Discord", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
+          if (item.key === "privacy") invoke("launch_app", { path: "https://liftofflauncher.app/privacy.html", id: "privacy", name: "Privacy Policy", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
         }}>
           <span style={{ fontSize: 14, fontWeight: 500, color: theme.text }}>{item.label}</span>
           <span style={{ fontSize: 12, color: theme.textDim }}>{t("settings.status.open")}</span>

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { CSSProperties } from "react";
 import type { AccentColors, App, ThemeColors, RepeatSpeed } from "../../types";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
+import { HERO_UPLOAD_ASPECT, HERO_UPLOAD_MAX_WIDTH, heroUploadSize } from "../../utils/heroMedia";
 import { ThumbnailCard, type SgdbArtResult } from "./ThumbnailCard";
 import { useTheme } from "../../contexts/ThemeContext";
 import { modalSurfaceStyle } from "../modals/modalStyles";
@@ -597,6 +598,7 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
   const [saving, setSaving] = useState(false);
   const [focusedBtn, setFocusedBtn] = useState("browse");
   const [previewDimensions, setPreviewDimensions] = useState<ImageDimensions | null>(null);
+  const [savedDimensions, setSavedDimensions] = useState<ImageDimensions | null>(null);
 
   const pendingDataRef = useRef<string | null>(null);
   const focusedBtnRef = useRef("browse");
@@ -640,19 +642,23 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
     reader.onload = (ev) => {
       const img = new Image();
       img.onload = () => {
-        const TW = cropMode === "square" ? 500 : cropMode === "hero" ? 1920 : 600;
-        const TH = cropMode === "square" ? 500 : cropMode === "hero" ? 620 : 900;
+        const output = cropMode === "hero"
+          ? heroUploadSize(img.width, img.height)
+          : { width: cropMode === "square" ? 500 : 600, height: cropMode === "square" ? 500 : 900 };
         const canvas = document.createElement("canvas");
-        canvas.width = TW; canvas.height = TH;
+        canvas.width = output.width; canvas.height = output.height;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
-        const scale = Math.max(TW / img.width, TH / img.height);
-        const sw = TW / scale, sh = TH / scale;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        const scale = Math.max(output.width / img.width, output.height / img.height);
+        const sw = output.width / scale, sh = output.height / scale;
         const sx = (img.width - sw) / 2;
         const sy = (img.height - sh) / 2;
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, TW, TH);
-        const url = canvas.toDataURL("image/jpeg", 0.88);
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, output.width, output.height);
+        const url = canvas.toDataURL("image/jpeg", 0.92);
         setPreviewDimensions({ width: img.width, height: img.height });
+        setSavedDimensions(output);
         setPreview(url);
         setPendingData(url);
         pendingDataRef.current = url;
@@ -706,10 +712,12 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
     setPendingData(null);
     pendingDataRef.current = null;
     setPreviewDimensions(null);
+    setSavedDimensions(null);
   }, [currentArt]);
 
   const previewResolution = formatDimensions(previewDimensions);
-  const outputResolution = cropMode === "square" ? "500x500" : cropMode === "hero" ? "1920x620" : "600x900";
+  const heroSaveTarget = `${HERO_UPLOAD_MAX_WIDTH}x${Math.round(HERO_UPLOAD_MAX_WIDTH / HERO_UPLOAD_ASPECT)}`;
+  const outputResolution = formatDimensions(savedDimensions) ?? (cropMode === "square" ? "500x500" : cropMode === "hero" ? heroSaveTarget : "600x900");
 
   const btnStyle = (key: string, bg: string, color: string, extra: CSSProperties = {}) => {
     const focused = focusedBtn === key;

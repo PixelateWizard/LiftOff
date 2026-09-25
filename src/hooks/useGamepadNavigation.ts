@@ -1406,6 +1406,7 @@ export function useGamepadNavigation(
           if (item.key === "coffee")  invoke("launch_app", { path: "https://buymeacoffee.com/liftoff_handheld_launcher", id: "coffee", name: "Buy Me a Coffee", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
           if (item.key === "github")  invoke("launch_app", { path: "https://github.com/PixelateWizard/LiftOff", id: "github", name: "GitHub", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
           if (item.key === "discord") invoke("launch_app", { path: "https://discord.gg/F5ncP75WtD", id: "discord", name: "Discord", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
+          if (item.key === "privacy") invoke("launch_app", { path: "https://liftofflauncher.app/privacy.html", id: "privacy", name: "Privacy Policy", appType: "app", source: "", runAsAdmin: false }).catch(() => {});
           haptic("confirm");
         }
         else if (item.type === "attribution") {

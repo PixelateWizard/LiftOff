@@ -23,6 +23,10 @@ Read before bug triage, FSE/controller work, Microsoft Store uninstall changes, 
 
 ## Open Gates and Warnings
 
+### 4K hero sharpness
+
+Home hero media is counter-scaled when UI scale is above 1, and new hero uploads save up to 3840×1240. A browser stripe check confirmed the enlarged frame stays inside its clipped box and does not grow scroll size. That does not prove WebView2 on a 4K panel: compare a 3840×2160 hero before and after at UI scale 2, including an already-saved 1920×620 upload (unchanged until saved again) and a freshly chosen 4K image.
+
 ### Steam first-attempt launch reliability
 
 The user reports PEAK and likely other Steam games sometimes need two or three launch attempts in FSE: Steam's syncing/starting popup disappears, LiftOff says Launched and plays success, but no game appears. Desktop reproduction is unknown. Source confirmed unconditional success after a 15-second window timeout and frontend success even after negative verification. Those paths are corrected for Steam; confirmation now waits up to 90 seconds, Steam dispatch no longer separately starts the client before URI delivery, and FSE acquisition waits for the matching game window. These changes do not yet prove the cause of Steam abandoning an attempt or establish faster game startup.
