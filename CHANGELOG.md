@@ -10,7 +10,6 @@
 ### Fixed
 - **Manage action row** - Hovering Run as Administrator in Game Details no longer thickens that tile’s border, so the action row stays the same height.
 - **4K hero backgrounds** - Home hero art is painted at the on-screen resolution when UI scale is above 1, so a 4K banner is no longer softened by the interface scale. Uploaded heroes now save up to 3840×1240 instead of 1920×620; a smaller source is not enlarged, and an existing 1920×620 upload stays as it is until it is saved again.
-- **Factory reset and upgrades** - Reset still clears LiftOff data, and it leaves `liftoff.exe` and `uninstall.exe` in place. Those files share the data folder, and removing the uninstaller makes the next installer report that it cannot uninstall the previous version.
 
 ## [2.0.1] - 2.0.1
 ### Added
@@ -47,6 +46,7 @@
 - **2.0 promo site** - Rebuilt liftofflauncher.app for the 2.0 launch. The page now leads with real 2.0 screenshots (Home, Games, Details, and an in-launcher Game Pass install) in a click-to-enlarge gallery, and covers what shipped since the last site update: Steam QR sign-in with the full owned library, Game Pass installs, cloud games, Spotify, Game Details, and controller-first setup. A looks section lists all 12 themes and 12 accents, and swaps in a Games tab screenshot for each one that has a capture, alongside a short guide to the 7 surface styles. Screenshots are served as WebP (about 540 KB total instead of about 7 MB), with the full PNGs kept for the enlarged view, and the page now has social-share preview tags.
 
 ### Fixed
+- **Factory reset and upgrades** - Reset still clears LiftOff data, and it leaves `liftoff.exe` and `uninstall.exe` in place. Those files share the data folder, and removing the uninstaller makes the next installer report that it cannot uninstall the previous version.
 - **Game Details static hero** - Choosing a static hero for one game now replaces the animated banner in that game's info modal. A cached animation no longer keeps playing over the static pick.
 - **Smart-bar artwork notice** - Background art fetches no longer retire the live progress job, so the bottom-bar artwork notice can finish and clear instead of sticking on the last game name. This includes a library refresh after adding a cloud game while backfill is already running.
 - **Onboarding Microsoft library refresh** - Finishing setup after opening an account connection now rescans the library, so Microsoft-owned games cached during sign-in appear immediately even when the source setting was still being saved.

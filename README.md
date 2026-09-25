@@ -9,7 +9,7 @@ A free, open-source, gamepad-first game and app launcher for Windows handhelds. 
   <img src="docs/homescreen-screenshot-2.0-1.webp" width="920" alt="LiftOff Home tab showing a recently played game's hero art above a row of recent game covers" />
 </p>
 
-**[Download 2.0](https://github.com/PixelateWizard/LiftOff/releases/latest)** · **[liftofflauncher.app](https://liftofflauncher.app)** · **[Release notes](RELEASE-NOTES-2.0.0.md)**
+**[Download 2.0](https://github.com/PixelateWizard/LiftOff/releases/latest)** · **[liftofflauncher.app](https://liftofflauncher.app)** · **[Release notes](RELEASE-NOTES-2.0.2.md)** · **[Privacy](https://liftofflauncher.app/privacy.html)**
 
 ---
 

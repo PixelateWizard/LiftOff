@@ -1,6 +1,6 @@
 # LiftOff 2.0.2
 
-A small follow-up to 2.0.1. A privacy policy, sharper hero art, and a factory reset that no longer breaks the next upgrade.
+A small follow-up to 2.0.1. A privacy policy, and sharper hero art.
 
 ---
 
@@ -16,6 +16,10 @@ A small follow-up to 2.0.1. A privacy policy, sharper hero art, and a factory re
 
 **Game Details manage actions stay the same height.** Hovering Run as Administrator thickened that tile's border and stretched the row. Every manage tile now keeps the same border, so the row no longer jumps.
 
-**Factory reset leaves the next upgrade able to install.** Reset still clears your LiftOff data. It now leaves `liftoff.exe` and `uninstall.exe` in place. Those files live in the same folder as your data, and deleting the uninstaller is what made the next installer say it could not uninstall the previous version.
+---
 
-If you already factory-reset on 2.0 and the 2.0.1 installer says **Unable to uninstall!**, choose **Do not uninstall** and continue. That installs over the copy you already have. 2.0.2 should not create that situation again.
+## If you factory-reset 2.0
+
+Factory reset on 2.0 can remove the uninstaller while LiftOff itself stays installed. The 2.0.2 installer then offers **Uninstall before installing**, and that button says **Unable to uninstall!**
+
+On that screen, choose **Do not uninstall** instead, then continue. 2.0.2 installs over the copy you already have and writes a new uninstaller. Settings you created after the reset stay put. The reset itself already cleared the old library data.

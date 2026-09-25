@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented:** 2.0.2 release notes cover the privacy page, Settings link, 4K Home heroes, the Game Details action-row height, and a factory reset that keeps the uninstaller.
+- **Implemented:** README links to the corrected 2.0.2 release notes and the privacy page. The uninstaller-preserving factory reset stays listed under 2.0.1.
 
 ## Start-of-Task Workflow
 
