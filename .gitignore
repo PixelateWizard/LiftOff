@@ -20,6 +20,13 @@ dist-ssr
 # Native FSE bridge build output can remain after switching branches
 /liftoff-fse-bridge/target/
 
+# Local AI agent instructions and session files
+/CLAUDE.md
+/AGENTS.md
+/.agents/
+/.claude/
+/.gemini/
+
 # Editor directories and files
 .cursor/
 .vscode/*

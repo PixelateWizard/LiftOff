@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Changed
+- **Public repository listing** - `CLAUDE.md`, `AGENTS.md`, `.agents/`, `.claude/`, and `.gemini/` (including Antigravity session files) stay on disk for local agents and are no longer published. `npm run docs:check` skips when those files are not present.
+
 ## [2.0.2] - 2.0.2
 
 ### Added

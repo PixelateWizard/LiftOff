@@ -35,6 +35,11 @@ const requiredPlaybookSections = [
 
 const errors = [];
 
+if (!fs.existsSync(path.join(repoRoot, "CLAUDE.md"))) {
+  console.log("Agent docs are local-only and not present; skipping.");
+  process.exit(0);
+}
+
 function read(relativePath) {
   const absolutePath = path.join(repoRoot, relativePath);
   if (!fs.existsSync(absolutePath)) {
