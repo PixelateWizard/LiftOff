@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## [2.0.3] - 2.0.3
+
+### Fixed
+- **4K hero backgrounds** - Full-screen Home artwork is painted outside the interface scale, at the screen's own pixels, so a 3840×2160 image stays sharp on a 4K TV. Hero art also no longer sits on a separate graphics layer inside that scale, which was softening it on a 1080p screen. A shorter banner is shown at its real size instead of being stretched, and new uploads keep their shape up to 3840×2160. An existing cropped upload stays as it is until it is saved again.
+
 ## [2.0.2] - 2.0.2
 
 ### Added

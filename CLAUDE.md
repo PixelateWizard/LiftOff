@@ -4,7 +4,7 @@ This file is intentionally compact. Read it fully at the start of every task, th
 
 ## ⚡ Active Task
 
-- **Implemented:** README links to the corrected 2.0.2 release notes and the privacy page. The uninstaller-preserving factory reset stays listed under 2.0.1.
+- **Shipped:** 2.0.3 paints a 2160-tall Home hero at the screen's pixels and leaves a shorter banner at its own size. Remaining gate: confirm both on a 4K TV in WebView2.
 
 ## Start-of-Task Workflow
 
@@ -32,7 +32,7 @@ If the user sends only a `.md` file, treat it as a project proposal and carry it
 - **Product:** LiftOff, a Windows controller-first game/app launcher.
 - **Stack:** Tauri 2, Rust backend, React frontend, incremental TypeScript adoption.
 - **Identifier:** `com.taylo.liftoff`.
-- **Current version:** `2.0.2`; app-owned version markers must move together for releases.
+- **Current version:** `2.0.3`; app-owned version markers must move together for releases.
 - **Frontend root:** `src/App.jsx`, with domain hooks, views, components, contexts, and theme helpers under `src/`.
 - **First-run setup:** `OnboardingFlow` owns a modal-local gamepad poll outside the scaled app root and is gated by `settings.onboarding_complete`; existing settings files without the key migrate to complete on load.
 - **Backend root:** `src-tauri/src/lib.rs`, with specialized modules in `src-tauri/src/`.

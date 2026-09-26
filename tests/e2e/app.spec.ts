@@ -91,9 +91,11 @@ test.beforeEach(async ({ page }) => {
         if (command === "plugin:event|unlisten" || command === "plugin:event|emit") return null;
         if (command === "get_settings") {
           const bottombarMode = new URLSearchParams(window.location.search).get("barMode") || "smart";
+          const uiScaleParam = Number(params.get("uiScale"));
+          const uiScale = Number.isFinite(uiScaleParam) && uiScaleParam > 0 ? uiScaleParam : 1;
           return { ...(responses.get_settings as Record<string, unknown>), bottombar_mode: bottombarMode,
             onboarding_complete: params.get("fresh") !== "true", theme: params.get("theme") || "space",
-            surface_style: params.get("surface") || "clear", ui_motion: false, ui_scale: 1, language: "en" };
+            surface_style: params.get("surface") || "clear", ui_motion: false, ui_scale: uiScale, language: "en" };
         }
         if (command === "get_all_apps") {
           if (params.has("holdRefresh") && counts[command] > 1) await new Promise((resolve) => { (window as any).__releaseScan = resolve; });
@@ -412,3 +414,35 @@ for (const mode of ["full", "hidden"] as const) {
     await page.evaluate(() => (window as any).__setGamepadButton(9, false));
   });
 }
+
+test("paints the Home hero outside UI scale", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/?catalog&uiScale=2");
+  await expect(page.getByText("Home", { exact: true }).first()).toBeVisible({ timeout: 10_000 });
+  const hero = page.locator("[data-native-hero]");
+  const clip = page.locator("[data-hero-clip]");
+  await expect(hero).toBeVisible();
+  await expect(hero.locator("img").first()).toBeVisible();
+  await expect.poll(async () => page.evaluate(() => {
+    const portal = document.querySelector("[data-native-hero]");
+    const frame = document.querySelector("[data-hero-clip]");
+    if (!portal || !frame) return null;
+    const portalBox = portal.getBoundingClientRect();
+    const frameBox = frame.getBoundingClientRect();
+    return {
+      outsideScale: portal.closest("[data-theme]") === null,
+      composite: document.documentElement.style.getPropertyValue("--liftoff-hole-composite"),
+      aligned: Math.abs(portalBox.left - frameBox.left) < 2
+        && Math.abs(portalBox.top - frameBox.top) < 2
+        && Math.abs(portalBox.width - frameBox.width) < 2
+        && Math.abs(portalBox.height - frameBox.height) < 2,
+      coversFrame: portalBox.width > 200 && portalBox.height > 100,
+    };
+  })).toEqual({
+    outsideScale: true,
+    composite: "exclude",
+    aligned: true,
+    coversFrame: true,
+  });
+  await expect(clip).toBeVisible();
+});

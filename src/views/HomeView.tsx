@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject, type CSSProperties } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { useTheme } from "../contexts/ThemeContext";
 import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../theme/surfaces";
 import { AppListItem, CyberpunkCard, FocusRing } from "../components/ui";
 import { CornerCutButton } from "../components/neonblade-ui/corner-cut-button";
 import { HOME_PINNED_SHELF_ENABLED } from "../constants";
-import { heroFallbackBlurPx, isAnimatedImageUrl, isHeroVideoLayer, nativeHeroFrameStyle, resolveHeroType } from "../utils/heroMedia";
+import { applyHeroBackdropMask, heroFallbackBlurPx, heroSharpFrame, isAnimatedImageUrl, isHeroVideoLayer, nativeHeroFrameStyle, resolveHeroType } from "../utils/heroMedia";
 import { immersiveHeroCopyBottom, normalizeBottomBarMode, SMART_BAR_CLEARANCE } from "../utils/smartBar";
 
 interface HomeViewProps {
@@ -19,6 +20,18 @@ const PNG_ACCENTS = ["ember", "ocean", "neon", "rose", "midnight", "nova", "stee
 const getHeroPlaceholder = (accent: string) =>
   PNG_ACCENTS.includes(accent) ? `/assets/liftoff_hero_${accent}.png` : `/assets/liftoff_hero_${accent}.svg`;
 const getCoverPlaceholder = (accent: string) => `/assets/liftoff_cover_${accent}.svg`;
+
+/** The current hero still, or null while a video owns that slide. */
+function activeHeroStill(portal: HTMLElement): HTMLImageElement | null {
+  const slide = portal.querySelector("[data-hero-active]") ?? portal;
+  if (slide.querySelector("video")) return null;
+  const images = slide.querySelectorAll<HTMLImageElement>("img[data-hero-still]");
+  for (let i = images.length - 1; i >= 0; i -= 1) {
+    const img = images[i];
+    if (img.naturalWidth && img.naturalHeight) return img;
+  }
+  return null;
+}
 
 export function HomeView(props: HomeViewProps) {
   const {
@@ -113,7 +126,116 @@ export function HomeView(props: HomeViewProps) {
   const SLOT_PAD_BOTTOM = BOTTOM_BAR_H + 14;
   const SEMI_SLOT_H = SLOT_PAD_TOP + SLOT_LABEL_H + CARD_H + SLOT_PAD_BOTTOM + SLOT_FOCUS_BLEED + SLOT_SHADOW_BLEED;
   const uiScale = settings.ui_scale ?? 1;
-  const heroMediaFrame = nativeHeroFrameStyle(uiScale);
+  const heroArtworkOn = settings.home_mode === "normal" || settings.show_immersive_hero_art !== false;
+  // Cyberpunk's Legacy card paints its frame as a filled background. Leave that
+  // path inside the scaled root. Full-bleed heroes escape the scale.
+  const cyberCardHero = resolvedTheme === "cyberpunk" && !cinematicHome && !semiHome;
+  const nativeHeroRadius = cinematicHome || semiHome || resolvedTheme === "cyberpunk" || surfaceStyle === "win9x"
+    ? 0
+    : surfaceStyle === "material" ? 8 : 16;
+  const nativeHero = active && uiScale > 1 && heroArtworkOn && !cyberCardHero && nativeHeroRadius === 0;
+  const heroMediaFrame = nativeHero ? { position: "absolute" as const, inset: 0 } : nativeHeroFrameStyle(uiScale);
+  const heroBlurScale = nativeHero ? 1 : uiScale;
+  const heroClipRef = useRef<HTMLDivElement | null>(null);
+  const nativeHeroPortalRef = useRef<HTMLDivElement | null>(null);
+  const remeasureHeroRef = useRef<() => void>(() => {});
+  useLayoutEffect(() => {
+    if (!nativeHero) {
+      applyHeroBackdropMask(null);
+      return;
+    }
+    let frame = 0;
+    let last = "";
+    let stable = 0;
+    let running = false;
+    const apply = () => {
+      const clip = heroClipRef.current;
+      const portal = nativeHeroPortalRef.current;
+      if (!clip || !portal) return false;
+      const rect = clip.getBoundingClientRect();
+      const parent = clip.parentElement;
+      const opacity = parent ? getComputedStyle(parent).opacity : "1";
+      const dpr = window.devicePixelRatio || 1;
+      // Size the portal in device pixels so a 4K still is not stretched past its file.
+      const still = activeHeroStill(portal);
+      const place = still
+        ? heroSharpFrame(still.naturalWidth, still.naturalHeight, rect.width * dpr, rect.height * dpr)
+        : { x: 0, y: 0, width: rect.width * dpr, height: rect.height * dpr };
+      const left = rect.left + place.x / dpr;
+      const top = rect.top + place.y / dpr;
+      const width = place.width / dpr;
+      const height = place.height / dpr;
+      const next = `${left}|${top}|${width}|${height}|${opacity}|${still?.naturalWidth ?? 0}`;
+      if (next === last) return false;
+      last = next;
+      portal.style.left = `${left}px`;
+      portal.style.top = `${top}px`;
+      portal.style.width = `${Math.max(width, 0)}px`;
+      portal.style.height = `${Math.max(height, 0)}px`;
+      portal.style.opacity = opacity;
+      applyHeroBackdropMask({
+        x: left / uiScale,
+        y: top / uiScale,
+        width: width / uiScale,
+        height: height / uiScale,
+      });
+      return true;
+    };
+    function start() {
+      if (running) return;
+      running = true;
+      frame = requestAnimationFrame(tick);
+    }
+    function tick() {
+      running = false;
+      if (document.hidden) return;
+      stable = apply() ? 0 : stable + 1;
+      if (stable < 12) start();
+    }
+    const kick = () => {
+      stable = 0;
+      last = "";
+      start();
+    };
+    remeasureHeroRef.current = kick;
+    apply();
+    start();
+    const clip = heroClipRef.current;
+    const parent = clip?.parentElement ?? null;
+    const observer = new ResizeObserver(kick);
+    if (clip) observer.observe(clip);
+    const scrollers: EventTarget[] = [window, document];
+    let node = parent;
+    while (node) {
+      scrollers.push(node);
+      node = node.parentElement;
+    }
+    const onStillLoad = (event: Event) => {
+      if (event.target instanceof HTMLImageElement && event.target.dataset.heroStill != null) kick();
+    };
+    const portalNode = nativeHeroPortalRef.current;
+    portalNode?.addEventListener("load", onStillLoad, true);
+    window.addEventListener("resize", kick);
+    parent?.addEventListener("transitionrun", kick);
+    parent?.addEventListener("transitionend", kick);
+    document.addEventListener("visibilitychange", kick);
+    scrollers.forEach((target) => target.addEventListener("scroll", kick, { passive: true }));
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      portalNode?.removeEventListener("load", onStillLoad, true);
+      window.removeEventListener("resize", kick);
+      parent?.removeEventListener("transitionrun", kick);
+      parent?.removeEventListener("transitionend", kick);
+      document.removeEventListener("visibilitychange", kick);
+      scrollers.forEach((target) => target.removeEventListener("scroll", kick));
+      applyHeroBackdropMask(null);
+      remeasureHeroRef.current = () => {};
+    };
+  }, [nativeHero, uiScale]);
+  useLayoutEffect(() => {
+    remeasureHeroRef.current();
+  }, [heroIndex]);
   const semiViewportH = `${100 / uiScale}vh`;
   const semiHeroHeight = `calc(${semiViewportH} - ${SEMI_SLOT_H}px)`;
   const semiCardW = `${semiHomeBase}px`;
@@ -762,24 +884,42 @@ export function HomeView(props: HomeViewProps) {
           // padding frame (the cover art inset by padding reveals the accent edge,
           // which follows the diagonal cut because both layers are clipped).
           ...(cyberNormalHero ? { clipPath: HERO_CLIP, WebkitClipPath: HERO_CLIP, padding: heroFocused ? 3 : 2, background: heroFocused ? accent.primary : `${accent.glow}0.75)`, border: "none", boxShadow: heroFocused ? `0 0 24px ${accent.glow}0.3)` : "none" } : {}),
+          ...(nativeHero ? { background: "transparent" } : {}),
         }}>
-          <div style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: (settings.cinematic_home || semiHome) ? 0 : surfaceCardRadius, overflow: "hidden", ...(cyberNormalHero ? { clipPath: HERO_CLIP, WebkitClipPath: HERO_CLIP } : {}) }}>
+          <div ref={heroClipRef} data-hero-clip="" style={{ position: "absolute", inset: 0, zIndex: 0, borderRadius: (settings.cinematic_home || semiHome) ? 0 : surfaceCardRadius, overflow: "hidden", ...(cyberNormalHero ? { clipPath: HERO_CLIP, WebkitClipPath: HERO_CLIP } : {}) }}>
             {(() => {
+              // No translateZ here. Inside the UI-scale transform that layer resamples the hero and softens it.
               const coverStyle: any = { width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top" };
+              const placeHeroMedia = (media: any) => nativeHero
+                ? createPortal(
+                  <div
+                    ref={nativeHeroPortalRef}
+                    data-native-hero=""
+                    style={{
+                      position: "fixed",
+                      zIndex: 0,
+                      pointerEvents: "none",
+                      overflow: "hidden",
+                      borderRadius: nativeHeroRadius * uiScale,
+                    }}
+                  >{media}</div>,
+                  document.body,
+                )
+                : media;
               if (semiHome) {
-                return activeGame ? (
-                  <div key={activeGame.id} style={{ ...heroMediaFrame, opacity: 1, zIndex: 1 }}>
+                return placeHeroMedia(activeGame ? (
+                  <div key={activeGame.id} data-hero-slide="" data-hero-active="" style={{ ...heroMediaFrame, opacity: 1, zIndex: 1 }}>
                     {showHeroArtwork && !activeGameIsVideo && (
                       activeGameStaticBanner ? (
-                        <img src={activeGameStaticBanner} alt="" decoding="async" loading="eager" style={{ ...coverStyle, transform: "translateZ(0)" }} />
+                        <img src={activeGameStaticBanner} alt="" decoding="async" loading="eager" data-hero-still="" style={coverStyle} />
                       ) : activeGameFallback ? (
-                        <img src={activeGameFallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(${heroFallbackBlurPx(10, uiScale)}px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(${heroFallbackBlurPx(18, uiScale)}px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
+                        <img src={activeGameFallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(${heroFallbackBlurPx(10, heroBlurScale)}px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(${heroFallbackBlurPx(18, heroBlurScale)}px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
                       ) : (
                         <img src={getHeroPlaceholder(settings.accent)} alt="" style={{ ...coverStyle }} />
                       )
                     )}
                     {showHeroArtwork && activeGameIsAnimatedImage && activeGameAnimatedUrl && (
-                      <img src={activeGameAnimatedUrl} alt="" decoding="async" loading="eager" style={{ ...coverStyle, position: "absolute", top: 0, left: 0, transform: "translateZ(0)", opacity: 1 }} />
+                      <img src={activeGameAnimatedUrl} alt="" decoding="async" loading="eager" data-hero-still="" style={{ ...coverStyle, position: "absolute", top: 0, left: 0, opacity: 1 }} />
                     )}
                     {showHeroArtwork && activeGameIsVideo && activeGameAnimatedUrl && (
                       <video
@@ -804,7 +944,6 @@ export function HomeView(props: HomeViewProps) {
                           top: 0, left: 0,
                           width: "100%", height: "100%",
                           objectFit: "cover", objectPosition: "center top",
-                          transform: "translateZ(0)",
                           opacity: 1,
                           pointerEvents: "none",
                         }}
@@ -815,10 +954,10 @@ export function HomeView(props: HomeViewProps) {
                   <div style={{ ...heroMediaFrame, opacity: 1, zIndex: 1 }}>
                     <img src={getHeroPlaceholder(settings.accent)} alt="" style={{ ...coverStyle }} />
                   </div>
-                ) : null;
+                ) : null);
               }
 
-              return heroGames.map((game, idx) => {
+              return placeHeroMedia(heroGames.map((game, idx) => {
                 const isActive = idx === heroIdx;
                 const isNearby = Math.abs(idx - heroIdx) <= 1;
 
@@ -835,12 +974,12 @@ export function HomeView(props: HomeViewProps) {
                 const intendedVideo = isHeroVideoLayer(heroType, animatedUrl);
 
                 return (
-                  <div key={game.id} style={{ ...(showHeroArtwork && isNearby ? heroMediaFrame : { position: "absolute", inset: 0 }), opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
+                  <div key={game.id} data-hero-slide="" {...(isActive ? { "data-hero-active": "" } : {})} style={{ ...(showHeroArtwork && isNearby ? heroMediaFrame : { position: "absolute", inset: 0 }), opacity: isActive ? 1 : 0.001, transition: "opacity 0.35s ease", zIndex: isActive ? 1 : 0, pointerEvents: isActive ? "auto" : "none" }}>
                     {isNearby && showHeroArtwork && !intendedVideo
                       ? (staticBanner
-                          ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} style={{ ...coverStyle, transform: "translateZ(0)" }} />
+                          ? <img src={staticBanner} alt="" decoding="async" loading="eager" fetchPriority={isActive ? "high" : "low"} data-hero-still="" style={coverStyle} />
                           : fallback
-                            ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(${heroFallbackBlurPx(10, uiScale)}px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(${heroFallbackBlurPx(18, uiScale)}px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
+                            ? <img src={fallback} alt="" decoding="async" loading="eager" style={{ ...coverStyle, filter: materialHero ? `blur(${heroFallbackBlurPx(10, heroBlurScale)}px) brightness(${isDark ? "0.56" : "0.98"}) saturate(${isDark ? "1.12" : "1.02"})` : `blur(${heroFallbackBlurPx(18, heroBlurScale)}px) brightness(${isDark ? "0.42" : "0.92"}) saturate(${isDark ? "1.3" : "0.9"})`, transform: materialHero ? "scale(1.045)" : "scale(1.08)" }} />
                             : <img src={getHeroPlaceholder(settings.accent)} alt="" style={{ ...coverStyle }} />)
                       : <div style={{ width: "100%", height: "100%" }} />
                     }
@@ -850,12 +989,12 @@ export function HomeView(props: HomeViewProps) {
                         alt=""
                         decoding="async"
                         loading="eager"
+                        data-hero-still=""
                         style={{
                           ...coverStyle,
                           position: "absolute",
                           top: 0,
                           left: 0,
-                          transform: "translateZ(0)",
                           opacity: 1,
                         }}
                       />
@@ -887,7 +1026,6 @@ export function HomeView(props: HomeViewProps) {
                           height: "100%",
                           objectFit: "cover",
                           objectPosition: "center top",
-                          transform: "translateZ(0)",
                           opacity: (isActive && showHeroArtwork && heroVideoPlaying[game.id]) ? 1 : 0,
                           transition: "opacity 0.25s ease",
                           pointerEvents: "none",
@@ -896,7 +1034,7 @@ export function HomeView(props: HomeViewProps) {
                     )}
                   </div>
                 );
-              });
+              }));
             })()}
             <div style={{ position: "absolute", inset: 0, zIndex: 2, background: heroSideOverlay }} />
             {!defaultHome && (

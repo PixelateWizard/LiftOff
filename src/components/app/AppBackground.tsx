@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import type { AccentColors, Settings } from "../../types";
 import { AuroraBg, SynthwaveBg, CyberpunkBg, ForestBg, WebcoreBg, SpaceBg, SkyBg, WashBg, CinderBg, PlasmaBg, LofiBg } from "../backgrounds";
 import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../../theme/surfaces";
@@ -90,7 +90,26 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
   }, [appPaused, lofiEffectsEnabled, settings.lofi_music_enabled, spotifyPlaying]);
 
   return (
-    <>
+    <div
+      data-app-background=""
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: -2,
+        pointerEvents: "none",
+        contain: "paint",
+        WebkitMaskImage: "var(--liftoff-hole-image, none)",
+        maskImage: "var(--liftoff-hole-image, none)",
+        WebkitMaskSize: "var(--liftoff-hole-size, auto)",
+        maskSize: "var(--liftoff-hole-size, auto)",
+        WebkitMaskPosition: "var(--liftoff-hole-position, 0px 0px)",
+        maskPosition: "var(--liftoff-hole-position, 0px 0px)",
+        WebkitMaskRepeat: "var(--liftoff-hole-repeat, no-repeat)",
+        maskRepeat: "var(--liftoff-hole-repeat, no-repeat)",
+        WebkitMaskComposite: "var(--liftoff-hole-composite, add)",
+        maskComposite: "var(--liftoff-hole-composite, add)",
+      } as CSSProperties}
+    >
       {isLofi ? (
         <LofiBg lofiVideoRef={lofiVideoRef} lofiBg={lofiSceneFile(settings.lofi_scene)} lofiPoster={lofiScenePoster(settings.lofi_scene)} lofiEffectsEnabled={lofiEffectsEnabled} appPaused={appPaused} />
       ) : (
@@ -236,6 +255,6 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
       {resolvedTheme === "sky" && <SkyBg />}
       <div style={{ position: "fixed", top: "-80%", left: "-80%", width: "180%", height: "180%", borderRadius: "50%", background: `radial-gradient(circle, ${bgGlow1} 0%, transparent 55%)`, pointerEvents: "none", zIndex: 0 }} />
       <div style={{ position: "fixed", bottom: "-80%", right: "-80%", width: "180%", height: "180%", borderRadius: "50%", background: `radial-gradient(circle, ${bgGlow2} 0%, transparent 55%)`, pointerEvents: "none", zIndex: 0 }} />
-    </>
+    </div>
   );
 }

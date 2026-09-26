@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { CSSProperties } from "react";
 import type { AccentColors, App, ThemeColors, RepeatSpeed } from "../../types";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, type GpState } from "../../utils/gamepad";
-import { HERO_UPLOAD_ASPECT, HERO_UPLOAD_MAX_WIDTH, heroUploadSize } from "../../utils/heroMedia";
+import { HERO_UPLOAD_MAX_HEIGHT, HERO_UPLOAD_MAX_WIDTH, heroUploadSize } from "../../utils/heroMedia";
 import { ThumbnailCard, type SgdbArtResult } from "./ThumbnailCard";
 import { useTheme } from "../../contexts/ThemeContext";
 import { modalSurfaceStyle } from "../modals/modalStyles";
@@ -716,7 +716,9 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
   }, [currentArt]);
 
   const previewResolution = formatDimensions(previewDimensions);
-  const heroSaveTarget = `${HERO_UPLOAD_MAX_WIDTH}x${Math.round(HERO_UPLOAD_MAX_WIDTH / HERO_UPLOAD_ASPECT)}`;
+  const heroSaveTarget = `${HERO_UPLOAD_MAX_WIDTH}x${HERO_UPLOAD_MAX_HEIGHT}`;
+  const heroAspectSource = savedDimensions ?? previewDimensions;
+  const heroAspect = heroAspectSource ? `${heroAspectSource.width} / ${heroAspectSource.height}` : "16 / 9";
   const outputResolution = formatDimensions(savedDimensions) ?? (cropMode === "square" ? "500x500" : cropMode === "hero" ? heroSaveTarget : "600x900");
 
   const btnStyle = (key: string, bg: string, color: string, extra: CSSProperties = {}) => {
@@ -740,8 +742,8 @@ function UploadTab({ app, currentArt, hasCustomArt, cropMode = "portrait", accen
         <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
           <div style={{ flexShrink: 0, width: cropMode === "hero" ? 220 : 110 }}>
             {preview
-              ? <img src={preview} alt="" onLoad={(event) => { if (!pendingDataRef.current) setPreviewDimensions({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight }); }} style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? "1920/620" : "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
-              : <div style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? "1920/620" : "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>{t("artPicker.noArt")}</span></div>
+              ? <img src={preview} alt="" onLoad={(event) => { if (!pendingDataRef.current) setPreviewDimensions({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight }); }} style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? heroAspect : "2/3", objectFit: "cover", borderRadius: 10, display: "block" }} />
+              : <div style={{ width: "100%", aspectRatio: cropMode === "square" ? "1" : cropMode === "hero" ? heroAspect : "2/3", borderRadius: 10, background: `${accent.glow}0.1)`, display: "flex", alignItems: "center", justifyContent: "center" }}><span style={{ fontSize: 10, color: theme.textDim, textAlign: "center" }}>{t("artPicker.noArt")}</span></div>
             }
             <div style={{ marginTop: 8, fontSize: 11, color: theme.textDim, lineHeight: 1.35 }}>
               {previewResolution ? <div>{t("artPicker.sourceResolution", { resolution: previewResolution })}</div> : null}

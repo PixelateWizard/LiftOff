@@ -25,7 +25,7 @@ Read before bug triage, FSE/controller work, Microsoft Store uninstall changes, 
 
 ### 4K hero sharpness
 
-Home hero media is counter-scaled when UI scale is above 1, and new hero uploads save up to 3840×1240. A browser stripe check confirmed the enlarged frame stays inside its clipped box and does not grow scroll size. That does not prove WebView2 on a 4K panel: compare a 3840×2160 hero before and after at UI scale 2, including an already-saved 1920×620 upload (unchanged until saved again) and a freshly chosen 4K image.
+The 2.0.2 counter-scale still resampled hero art on a 4K TV because the image stayed inside the scaled root. Full-bleed heroes now paint outside that transform, and when UI scale is above 1 a still is not enlarged past its own pixels. A 3840×2160 image fills a 4K frame; a shorter banner stays at its real size with the theme around it. New uploads keep their shape inside 3840×2160. An existing 1920×620 or 3840×1240 file stays that size until it is saved again. A browser check of the hole does not prove WebView2 on a 4K panel. Confirm a 3840×2160 hero and a 3840×1240 banner in WebView2 at UI scale 2. On a 1920×1080 panel at UI scale 1, confirm the Spider-Man hero after the graphics-layer promotion was removed.
 
 ### Steam first-attempt launch reliability
 

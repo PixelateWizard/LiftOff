@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { heroFallbackBlurPx, heroUploadSize, isAnimatedImageUrl, isHeroVideoLayer, isHeroVideoUrl, nativeHeroFrameStyle, resolveHeroType } from "./heroMedia";
+import { applyHeroBackdropMask, heroBackdropMaskVars, heroFallbackBlurPx, heroSharpFrame, heroUploadSize, isAnimatedImageUrl, isHeroVideoLayer, isHeroVideoUrl, nativeHeroFrameStyle, resolveHeroType } from "./heroMedia";
 
 describe("isHeroVideoLayer", () => {
   it("hides static art only when Animated mode has a video URL", () => {
@@ -47,10 +47,29 @@ describe("native hero resolution", () => {
     });
   });
 
-  it("saves a 4K upload at 3840 wide without upscaling a 1080p source", () => {
-    expect(heroUploadSize(3840, 2160)).toEqual({ width: 3840, height: 1240 });
-    expect(heroUploadSize(1920, 1080)).toEqual({ width: 1920, height: 620 });
-    expect(heroUploadSize(7680, 4320)).toEqual({ width: 3840, height: 1240 });
+  it("keeps a 4K upload's own shape and does not enlarge a smaller one", () => {
+    expect(heroUploadSize(3840, 2160)).toEqual({ width: 3840, height: 2160 });
+    expect(heroUploadSize(1920, 1080)).toEqual({ width: 1920, height: 1080 });
+    expect(heroUploadSize(7680, 4320)).toEqual({ width: 3840, height: 2160 });
+    expect(heroUploadSize(3840, 1240)).toEqual({ width: 3840, height: 1240 });
+  });
+
+  it("fills a 4K frame with a 4K still and leaves a short banner at its own pixels", () => {
+    expect(heroSharpFrame(3840, 2160, 3840, 2160)).toEqual({ x: 0, y: 0, width: 3840, height: 2160 });
+    expect(heroSharpFrame(7680, 4320, 3840, 2160)).toEqual({ x: 0, y: 0, width: 3840, height: 2160 });
+    expect(heroSharpFrame(3840, 1240, 3840, 2160)).toEqual({ x: 0, y: 0, width: 3840, height: 1240 });
+    expect(heroSharpFrame(1920, 1080, 3840, 2160)).toEqual({ x: 960, y: 0, width: 1920, height: 1080 });
+    expect(heroSharpFrame(3840, 1240, 1920, 1080)).toEqual({ x: 0, y: 0, width: 1920, height: 1080 });
+  });
+
+  it("punches a layout-sized hole in the theme background and clears it afterwards", () => {
+    expect(heroBackdropMaskVars(null)["--liftoff-hole-image"]).toBe("none");
+    expect(heroBackdropMaskVars({ x: 10, y: 20, width: 300, height: 180 })["--liftoff-hole-size"]).toBe("100% 100%, 300px 180px");
+    expect(heroBackdropMaskVars({ x: 10.126, y: 4, width: 8, height: 9 })["--liftoff-hole-position"]).toBe("0px 0px, 10.13px 4px");
+    applyHeroBackdropMask({ x: 1, y: 2, width: 30, height: 40 });
+    expect(document.documentElement.style.getPropertyValue("--liftoff-hole-composite")).toBe("exclude");
+    applyHeroBackdropMask(null);
+    expect(document.documentElement.style.getPropertyValue("--liftoff-hole-image")).toBe("none");
   });
 
   it("keeps fallback blur visually stable inside the enlarged frame", () => {
