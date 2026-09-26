@@ -27,6 +27,12 @@ dist-ssr
 /.claude/
 /.gemini/
 
+# Release notes live on GitHub Releases; debug captures and proposals stay local
+/RELEASE-NOTES-*.md
+/debug-*.html
+/liftoff-appjsx-hooks-extraction-proposal.md
+/liftoff-appjsx-refactor-architecture.md
+
 # Editor directories and files
 .cursor/
 .vscode/*

@@ -4,6 +4,7 @@
 
 ### Changed
 - **Public repository listing** - `CLAUDE.md`, `AGENTS.md`, `.agents/`, `.claude/`, and `.gemini/` (including Antigravity session files) stay on disk for local agents and are no longer published. `npm run docs:check` skips when those files are not present.
+- **Local notes and scratch files** - Release-note markdown, debug HTML captures, and the App.jsx proposal docs stay on disk and are no longer published. The README release-notes link opens GitHub Releases.
 
 ## [2.0.2] - 2.0.2
 
