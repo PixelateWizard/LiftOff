@@ -33,6 +33,8 @@ import { SurfacePickerModal } from "./components/SurfacePickerModal";
 import { LofiScenePickerModal } from "./components/LofiScenePickerModal";
 import { OnboardingFlow } from "./components/onboarding/OnboardingFlow";
 import { HomeView } from "./views/HomeView";
+import { BookshelfHome } from "./components/bookshelf/BookshelfHome";
+import { SealGlyph } from "./components/bookshelf/bookshelfParts";
 import { GamesView } from "./views/GamesView";
 import { AppsView } from "./views/AppsView";
 import { GamepadProvider } from "./contexts/GamepadContext";
@@ -87,6 +89,7 @@ import {
   ACCENTS, THEMES, CLOUD_SHAPES, CLOUD_CONFIGS, KB_ALPHA, KB_NUMS,
   normalizeThemeKey, isDarkThemeKey,
   SURFACE_STYLE_OPTIONS, THEME_LOCKED_SETTINGS, THEME_BG_COLORS, THEME_OPTIONS, LOFI_SCENE_OPTIONS,
+  normalizeBookshelfMedia, normalizeBookshelfShelf,
   DEFAULT_FSE_RETURN_SHORTCUT, fseReturnShortcutLabel,
   getRunAsAdmin, setRunAsAdmin,
 } from "./constants";
@@ -300,6 +303,7 @@ export default function App() {
   const drawerScrollRef       = useRef(null);
   const handleNavRef          = useRef(null);
   const utilityChromeRef      = useRef(null);
+  const bookshelfHomeRef      = useRef(null);
   const autoScaleRef          = useRef(1.0);
   const handleClearCacheRef   = useRef(null);
   const handleClearRecentsRef = useRef(null);
@@ -955,6 +959,7 @@ export default function App() {
     settingsRef,
     updateSetting,
     utilityChromeRef,
+    bookshelfHomeRef,
     installFilterRef,
     setInstallFilter,
     viewbarIndexRef,
@@ -1315,6 +1320,13 @@ export default function App() {
     WebkitBackdropFilter: undefined,
     borderBottom: "1px solid rgba(255,255,255,0.07)",
     boxShadow: "none",
+  } : resolvedTheme === "bookshelf" ? {
+    background: "#141110",
+    backdropFilter: undefined,
+    WebkitBackdropFilter: undefined,
+    border: "none",
+    borderBottom: "1px solid rgba(255,255,255,0.05)",
+    boxShadow: "none",
   } : _glassBar;
   const activeTextColor = isDark
     ? (accent.darkText ? "rgba(20, 14, 10, 0.90)" : "white")
@@ -1396,7 +1408,7 @@ export default function App() {
   }, [settingsFocusIndex, settingsSection, tab, settings.ui_scale, settings.topbar_background, settings.bottombar_background, helperBarMode]);
 
   useEffect(() => {
-    if (resolvedTheme === "onyx" || settings.ui_motion === false || navRepeatingRef.current) return;
+    if (resolvedTheme === "onyx" || resolvedTheme === "bookshelf" || settings.ui_motion === false || navRepeatingRef.current) return;
     let target = null;
     if (tab === "Settings") {
       target = settingsFocusedRef.current;
@@ -2690,11 +2702,19 @@ export default function App() {
     const placeholderCover = `/assets/liftoff_cover_${settings.accent}.svg`;
     const cardRadius = resolvedTheme === "cyberpunk" ? 0 : surfaceStyle === "win9x" ? 0 : surfaceStyle === "material" ? 8 : 16;
     const isOnyx = resolvedTheme === "onyx";
+    const isBookshelf = resolvedTheme === "bookshelf";
     return (
       // Outer wrapper — no overflow:hidden so the ring can extend outside with a gap
-      <div ref={cardRef} data-card="" data-app-id={app.id} className={focused ? "focused" : ""} onClick={onClick} onDoubleClick={onDoubleClick}
+      <div ref={cardRef} data-card="" data-app-id={app.id} className={[focused ? "focused" : "", isBookshelf ? "lo-bs-motion" : ""].filter(Boolean).join(" ")} onClick={onClick} onDoubleClick={onDoubleClick}
         onContextMenu={onRightClick ? (e) => { e.preventDefault(); onRightClick(e, app); } : undefined}
-        style={{
+        style={isBookshelf ? {
+          // A game case standing on a shelf: it tips toward the viewer on focus.
+          position: "relative", borderRadius: "3px 6px 6px 3px", aspectRatio: "2/3", cursor: "pointer",
+          contentVisibility: "auto", containIntrinsicSize: "auto 240px", transformOrigin: "50% 100%",
+          transition: "transform 190ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 190ms ease",
+          boxShadow: focused ? "0 24px 28px -8px rgba(0,0,0,0.75)" : "0 0 0 0.5px rgba(0,0,0,0.6), 0 16px 20px -10px rgba(0,0,0,0.8)",
+          ...(focused ? { transform: "perspective(900px) rotateX(-6deg) translateZ(26px) translateY(-6px)" } : {}),
+        } : {
           position: "relative", borderRadius: cardRadius, aspectRatio: "2/3",
           cursor: "pointer", transition: calmMotion ? "box-shadow 0.12s ease, transform 0.08s ease" : "box-shadow 0.15s ease, transform 0.15s ease",
           ...(isOnyx ? { overflow: "visible" } : { contentVisibility: "auto", containIntrinsicSize: "auto 240px" }),
@@ -2702,7 +2722,9 @@ export default function App() {
         }}
       >
         {/* Inner content — overflow:hidden clips the art to the card */}
-        <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={focused
+        <CyberpunkCard enabled={resolvedTheme === "cyberpunk"} focused={focused} accent={accent} style={isBookshelf
+          ? { ...innerBase, border: "none", borderRadius: "3px 6px 6px 3px", overflow: "hidden", position: "absolute", inset: 0 }
+          : focused
           ? { ...innerBase, border: isOnyx ? "1px solid transparent" : `1px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, overflow: "hidden", position: "absolute", inset: 0, boxShadow: isOnyx ? "none" : surfaceStyle === "material" ? materialRaisedShadow : `0 0 0 1px ${accent.glow}0.3), 0 0 40px ${accent.glow}0.2)` }
           : { ...innerBase, border: surfaceStyle === "material" ? "1px solid var(--material-border-subtle)" : "1px solid rgba(255,255,255,0.06)", borderRadius: cardRadius, overflow: "hidden", position: "absolute", inset: 0 }
         }>
@@ -2716,6 +2738,10 @@ export default function App() {
           <RunningBadge show={cardRunning} />
           <PinBadge isPinned={isPinned} />
           <StoreBadge source={app.source} />
+          {isBookshelf && <span className="bs-case-edge" aria-hidden="true" />}
+          {isBookshelf && app.installed === false && (
+            <span className={`bs-seal${isPinned ? " bs-seal--shift" : ""}`} aria-hidden="true"><SealGlyph /></span>
+          )}
           {installing && (
             <div style={{
               position: "absolute",
@@ -2770,7 +2796,7 @@ export default function App() {
               </div>
             </div>
           )}
-          {focused && !isOnyx && resolvedTheme !== "cyberpunk" && (
+          {focused && !isOnyx && !isBookshelf && resolvedTheme !== "cyberpunk" && (
             <div style={{ position: "absolute", inset: 0, border: `2px solid ${surfaceStyle === "material" ? accent.primary : accent.glow + "0.6)"}`, borderRadius: cardRadius, pointerEvents: "none" }} />
           )}
         </CyberpunkCard>
@@ -3193,14 +3219,17 @@ export default function App() {
   const settingsMotionClass = subtabMotionActive ? subtabMotionClass : settingsDrillActive ? settingsDrillClass : tabMotionActive ? tabMotionClass : undefined;
   const settingsPanelKey = `settings-${settingsSection}-${appearanceGroupState ?? "root"}`;
   const spotifyHasTrack = spotify.status.connected && !!spotify.track;
+  const bookshelfTheme = resolvedTheme === "bookshelf";
   const immersiveHomeSpotifyChipActive =
     tab === "Home" &&
+    !bookshelfTheme &&
     helperBarMode !== "full" &&
     spotifyHasTrack &&
     (settings.cinematic_home || settings.home_mode === "immersive") &&
     !showSpotifyOverlay;
-  const semiHomeShellActive = tab === "Home" && !settings.cinematic_home && settings.home_mode === "semi";
-  const immersiveHomeShellActive = tab === "Home" && (settings.cinematic_home || settings.home_mode === "immersive");
+  const semiHomeShellActive = tab === "Home" && !bookshelfTheme && !settings.cinematic_home && settings.home_mode === "semi";
+  const immersiveHomeShellActive = tab === "Home" && !bookshelfTheme && (settings.cinematic_home || settings.home_mode === "immersive");
+  const bookshelfHomeShellActive = tab === "Home" && bookshelfTheme;
   const spotifyMiniPlayer = showSpotifyOverlay || !spotifyHasTrack
     ? null
     : (
@@ -3255,7 +3284,7 @@ export default function App() {
     <ThemeProvider value={themeValue}>
     <SettingsProvider value={settingsValue}>
     <GamepadProvider value={{ platform: settings.gamepad_platform ?? "xbox", colored: settings.gamepad_icons_colored ?? false, filled: settings.gamepad_icons_filled ?? true, themeColor: (settings.gamepad_icons_theme_color ?? false) ? accent.primary : undefined, darkText: (settings.gamepad_icons_theme_color ?? false) ? (accent.darkText ?? false) : false, btnSize: settings.gamepad_btn_size ?? "medium" }}>
-    <div data-theme={resolvedTheme} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} data-effects={settings.stars_enabled === false ? "static" : "animated"} data-focus={windowFocused && !fseSessionActive ? "active" : "blurred"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, "--accent-pulse": `${accent.glow}0.22)`, "--header-height": `${headerHeightVal}px`, "--bottom-bar-height": `${bottomBarHeightVal}px`, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: (semiHomeShellActive || immersiveHomeShellActive) ? "hidden" : "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
+    <div data-theme={resolvedTheme} data-bs-shelf={bookshelfTheme ? normalizeBookshelfShelf(settings.bookshelf_shelf) : undefined} data-motion={motionProfile} data-ui-motion={settings.ui_motion === false ? "off" : "on"} data-effects={settings.stars_enabled === false ? "static" : "animated"} data-focus={windowFocused && !fseSessionActive ? "active" : "blurred"} className={launchingApp ? "app-launch-paused" : undefined} style={{ ...materialTokens, "--accent-pulse": `${accent.glow}0.22)`, ...(bookshelfTheme ? { "--bs-accent": accent.primary } : {}), "--header-height": `${headerHeightVal}px`, "--bottom-bar-height": `${bottomBarHeightVal}px`, position: "fixed", top: 0, left: 0, width: `${100 / (settings.ui_scale ?? 1)}vw`, height: `${100 / (settings.ui_scale ?? 1)}vh`, transform: `scale(${settings.ui_scale ?? 1})`, transformOrigin: "top left", overflowY: (semiHomeShellActive || immersiveHomeShellActive || bookshelfHomeShellActive) ? "hidden" : "auto", overflowX: "hidden", animation: "appFadeIn 0.5s ease forwards", zIndex: 1, fontFamily: "'Segoe UI', sans-serif" }} ref={outerRef}>
 
       <AppBackground settings={settings} resolvedTheme={resolvedTheme} accent={accent} appBg={appBg} bgGlow1={bgGlow1} bgGlow2={bgGlow2} isDark={isDark} isMaterial={isMaterial} surfaceStyle={surfaceStyle} appPaused={appPaused} windowFocused={windowFocused} spotifyPlaying={!!spotify.track?.isPlaying} />
       <AppOverlays>
@@ -3405,6 +3434,8 @@ export default function App() {
           resolvedTheme={resolvedTheme}
           glass={glass}
           storeMetaEnabled={settings.fetch_store_metadata !== false}
+          presentation={bookshelfTheme ? "bookshelf" : "modal"}
+          bookshelfMedia={normalizeBookshelfMedia(settings.bookshelf_media)}
           t={t}
         />
       )}
@@ -4007,7 +4038,7 @@ export default function App() {
         />
         {/* Tab content area: Home, Games, and Apps stay mounted so tab switches do not rebuild large views. */}
         <AppMainContent>
-        <div style={{ position: "relative", flex: 1, overflow: (immersiveHomeShellActive || semiHomeShellActive) ? "hidden" : (!(settings.topbar_background ?? true) && tab === "Home") ? "auto" : "hidden" }}>
+        <div style={{ position: "relative", flex: 1, overflow: (immersiveHomeShellActive || semiHomeShellActive || bookshelfHomeShellActive) ? "hidden" : (!(settings.topbar_background ?? true) && tab === "Home") ? "auto" : "hidden" }}>
 
           {tab === "Settings" && (
             <div ref={tabScrollRef} style={{ position: "absolute", inset: 0, overflowY: "auto", overflowX: "hidden", overscrollBehavior: "contain", zIndex: 2, paddingTop: "var(--header-height)", paddingBottom: "var(--bottom-bar-height)", boxSizing: "border-box" }}>
@@ -4016,6 +4047,31 @@ export default function App() {
               </div>
             </div>
           )}
+          {bookshelfTheme ? (
+          <BookshelfHome
+            active={tab === "Home"}
+            apps={apps}
+            recentGames={recentGames}
+            recent={recent}
+            customArt={customArt}
+            gameArt={gameArt}
+            accentName={settings.accent}
+            showRecentShelf={settings.show_home_recents !== false}
+            showUninstalled={showUninstalledGames}
+            bottomBarMode={helperBarMode}
+            bottomBarAlignment={settings.bottombar_alignment}
+            isRunning={isRunning}
+            focusedCardRef={focusedCardRef}
+            handleRef={bookshelfHomeRef}
+            onActivate={(app) => {
+              if (settings.home_launch_games_directly) triggerLaunch(app, recentRef.current);
+              else openDetailsModal(app);
+            }}
+            onFocusedAppChange={setBarFocusedAppId}
+            RunningBadge={RunningBadge}
+            t={t}
+          />
+          ) : (
           <HomeView
             scrollRef={homeScrollRef}
             active={tab === "Home"}
@@ -4087,6 +4143,7 @@ export default function App() {
             iconColors={iconColors}
             spotifyHeroChip={spotifyHeroChip}
           />
+          )}
           <div aria-hidden={tab !== "Games"} data-tab-pane="games" className={tab === "Games" ? libraryMotionClass : undefined} style={tabPaneStyle(tab === "Games")}>
             <GamesView {...gamesLibraryViewProps} wideLayout={settings.wide_games} />
           </div>

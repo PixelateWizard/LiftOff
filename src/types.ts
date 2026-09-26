@@ -112,7 +112,7 @@ export interface XboxInstallProgress {
 
 export type ThemeMode        =
   | "space" | "sky" | "plasma" | "cinder" | "wash"
-  | "aurora" | "synthwave" | "cyberpunk" | "lofi" | "forest" | "webcore" | "onyx"
+  | "aurora" | "synthwave" | "cyberpunk" | "lofi" | "bookshelf" | "forest" | "webcore" | "onyx"
   | "ember" | "dark" | "light" | "system";
 export type DefaultTab       = "Home" | "Games" | "Apps";
 export type RepeatSpeed      = "slow" | "normal" | "fast";
@@ -130,6 +130,8 @@ export type GamepadBtnSize   = "small" | "medium" | "large";
 export type GamesSort        = "recent" | "az" | "store";
 export type FseReturnShortcut = "l3_r3" | "view_menu" | "lb_rb";
 export type LofiScene = "cozy" | "dog" | "desk" | "cat" | "rainy_street" | "pixel_shop";
+export type BookshelfShelf = "steel" | "painted" | "glass" | "oak";
+export type BookshelfMedia = "disc" | "cartridge";
 
 /** Full persisted settings object */
 export interface Settings {
@@ -219,6 +221,8 @@ export interface Settings {
   surface_style: string;
   hide_on_launch: boolean;
   fse_hard_reload_recovery?: boolean;
+  bookshelf_shelf: BookshelfShelf;
+  bookshelf_media: BookshelfMedia;
 }
 
 /** Custom folder entry from the backend */

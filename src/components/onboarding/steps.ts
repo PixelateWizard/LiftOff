@@ -163,6 +163,7 @@ export function shouldPreviewFocusedValue(step: StepKey, index: number): boolean
 export function shouldSkipOnboardingStep(step: StepKey, theme?: string): boolean {
   const key = normalizeThemeKey(String(theme ?? ""));
   if (step === "surface") return Boolean(THEME_LOCKED_SETTINGS[key]?.surface_style);
+  if (step === "home") return Boolean(THEME_LOCKED_SETTINGS[key]?.home_mode);
   if (step === "lofi_scene") return key !== "lofi";
   return false;
 }

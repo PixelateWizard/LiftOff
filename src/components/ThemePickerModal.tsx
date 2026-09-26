@@ -20,6 +20,7 @@ import {
   LofiBg,
   ForestBg,
   WebcoreBg,
+  BookshelfBg,
 } from "./backgrounds";
 
 export const THEME_KEYS = [...THEME_OPTIONS];
@@ -48,6 +49,7 @@ export const THEME_METADATA: Record<string, {
     fallbackBg: "#1e1108",
     render: (_accent, isLive) => <LofiPreview isLive={isLive} />,
   },
+  bookshelf: { fallbackBg: "#1f1d1c", render: (accent) => <BookshelfBg accent={accent} preview /> },
   forest: { fallbackBg: "#010a04", render: (accent) => <ForestBg accent={accent} /> },
   webcore: { fallbackBg: "#5c9dc8", light: true, render: (accent, isLive) => <WebcoreBg accent={accent} effectsEnabled={isLive} /> },
   onyx: { fallbackBg: "#060b18", render: () => null },

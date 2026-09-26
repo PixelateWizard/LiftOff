@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { AccentColors, Settings } from "../../types";
-import { AuroraBg, SynthwaveBg, CyberpunkBg, ForestBg, WebcoreBg, SpaceBg, SkyBg, WashBg, CinderBg, PlasmaBg, LofiBg } from "../backgrounds";
+import { AuroraBg, SynthwaveBg, CyberpunkBg, ForestBg, WebcoreBg, SpaceBg, SkyBg, WashBg, CinderBg, PlasmaBg, LofiBg, BookshelfBg } from "../backgrounds";
 import { PAPER_GRAIN_DARK, PAPER_GRAIN_LIGHT } from "../../theme/surfaces";
 import { lofiSceneFile, lofiScenePoster, LOFI_MUSIC_FILE } from "../../theme/lofiScenes";
 import { resolveLofiMediaUrl } from "../../theme/mediaSource";
@@ -224,6 +224,7 @@ export function AppBackground({ settings, resolvedTheme, accent, appBg, bgGlow1,
       {resolvedTheme === "synthwave" && <SynthwaveBg accent={accent} />}
       {resolvedTheme === "cyberpunk" && <CyberpunkBg accent={accent} effectsEnabled={effectsActive} />}
       {resolvedTheme === "forest" && <ForestBg accent={accent} />}
+      {resolvedTheme === "bookshelf" && <BookshelfBg accent={accent} shelf={settings.bookshelf_shelf} effectsEnabled={effectsEnabled} />}
       {resolvedTheme === "webcore" && <WebcoreBg accent={accent} effectsEnabled={effectsActive} />}
       {surfaceStyle === "aero" && (
         <div style={{ position: "fixed", inset: 0, zIndex: -1, pointerEvents: "none",

@@ -306,6 +306,19 @@
     "backgroundLofi": "Effets lo-fi",
     "lofiMusic": "Musique lo-fi",
     "lofiScene": "Scène",
+    "backgroundBookshelf": "Lumière de lampe",
+    "bookshelfShelf": "Étagères",
+    "bookshelfMedia": "Support de jeu",
+    "bookshelfShelfValues": {
+      "steel": "Acier",
+      "painted": "Peint",
+      "glass": "Verre",
+      "oak": "Chêne"
+    },
+    "bookshelfMediaValues": {
+      "disc": "Disque",
+      "cartridge": "Cartouche"
+    },
     "backgroundForest": "Effets foret",
     "backgroundWebcore": "Effets webcore",
     "uiMotion": "Motion UI",
@@ -339,6 +352,7 @@
       "synthwave": "Neon grids and a chrome horizon.",
       "cyberpunk": "A neon HUD over falling ASCII rain.",
       "lofi": "A cozy animated room scene. Kicks back.",
+      "bookshelf": "Des boîtes de jeux sur une étagère. Ouvrez-en une pour lire son manuel.",
       "forest": "Misty deep greens with drifting fireflies.",
       "webcore": "Windows XP nostalgia - Bliss and pixel chrome.",
       "onyx": "Jet black with cold blue depth. High contrast."
@@ -476,6 +490,7 @@
       "synthwave": "Synthwave",
       "cyberpunk": "Cyberpunk",
       "lofi": "Lo-fi",
+      "bookshelf": "Étagère",
       "cozy": "Étude cosy",
       "dog": "Chiot endormi",
       "desk": "Bureau nocturne",
@@ -671,6 +686,26 @@
       "none": "Aucun support manette"
     },
     "never": "Jamais joué"
+  },
+  "bookshelf": {
+    "recentlyPlayed": "Joués récemment",
+    "playersGuide": "Manuel du joueur",
+    "pageAbout": "À propos",
+    "pageMedia": "Médias",
+    "pageManage": "Gérer",
+    "aboutGame": "À propos du jeu",
+    "mediaHeading": "Captures et bandes-annonces",
+    "figure": "Fig. {{n}}",
+    "fullScreenHint": "Ouvrez une image pour parcourir les {{count}} en plein écran.",
+    "notInstalled": "Non installé",
+    "sealed": "Encore sous blister",
+    "downloadSize": "{{size}} à télécharger",
+    "lastPlayed": "Dernière partie {{when}}",
+    "timePlayed": "{{time}} de jeu",
+    "emptyShelves": "Aucun jeu sur l'étagère pour l'instant. Actualisez votre bibliothèque dans les Paramètres.",
+    "noStoreInstall": "Installez-le depuis sa boutique, puis actualisez votre bibliothèque.",
+    "turnPage": "Tourner la page",
+    "trailer": "Bande-annonce"
   },
   "library": {
     "refreshing": "Actualisation…",

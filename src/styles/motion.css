@@ -171,6 +171,9 @@
 .lo-smartbar-tint { transition: opacity var(--dur-base) var(--ease-standard); }
 [data-ui-motion="off"] .lo-smartbar-hints,
 [data-ui-motion="off"] .lo-smartbar-tint { transition: none; }
+/* Bookshelf tilts, light pools, and markers move with transitions; motion off snaps them. */
+[data-ui-motion="off"] .lo-bs-motion,
+[data-ui-motion="off"] .lo-bs-motion * { transition: none !important; }
 @keyframes lo-loading-spin { to { transform: rotate(360deg); } }
 .lo-loading-spinner {
   display: inline-block;
@@ -204,6 +207,7 @@
 [data-ui-motion="off"] .lo-anim-pop-out,
 [data-ui-motion="off"] .lo-smartbar-event,
 [data-ui-motion="off"] .lo-onb-scrim,
+[data-ui-motion="off"] .lo-bs-motion,
 [data-effects="static"] .lo-anim-pulse::after {
   animation-duration: 0ms !important;
 }
@@ -222,7 +226,8 @@
 .app-launch-paused .lo-anim-pop-in,
 .app-launch-paused .lo-anim-pop-out,
 .app-launch-paused .lo-smartbar-event,
-.app-launch-paused .lo-onb-scrim {
+.app-launch-paused .lo-onb-scrim,
+.app-launch-paused .lo-bs-motion {
   animation-play-state: paused;
 }
 
@@ -249,9 +254,12 @@
   .lo-anim-pop-in,
   .lo-anim-pop-out,
   .lo-smartbar-event,
-  .lo-onb-scrim {
+  .lo-onb-scrim,
+  .lo-bs-motion {
     animation-duration: 1ms !important;
   }
   .lo-smartbar-hints,
   .lo-smartbar-tint { transition: none; }
+  .lo-bs-motion,
+  .lo-bs-motion * { transition: none !important; }
 }

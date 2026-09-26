@@ -9,3 +9,4 @@ export { default as WashBg } from "./WashBg";
 export { default as CinderBg } from "./CinderBg";
 export { default as PlasmaBg } from "./PlasmaBg";
 export { default as LofiBg } from "./LofiBg";
+export { default as BookshelfBg } from "./BookshelfBg";

@@ -306,6 +306,19 @@
     "backgroundLofi": "Efectos lo-fi",
     "lofiMusic": "Música lo-fi",
     "lofiScene": "Escena",
+    "backgroundBookshelf": "Luz de lámpara",
+    "bookshelfShelf": "Estantes",
+    "bookshelfMedia": "Soporte del juego",
+    "bookshelfShelfValues": {
+      "steel": "Acero",
+      "painted": "Pintado",
+      "glass": "Cristal",
+      "oak": "Roble"
+    },
+    "bookshelfMediaValues": {
+      "disc": "Disco",
+      "cartridge": "Cartucho"
+    },
     "backgroundForest": "Efectos de bosque",
     "backgroundWebcore": "Efectos webcore",
     "uiMotion": "Movimiento de la interfaz",
@@ -339,6 +352,7 @@
       "synthwave": "Rejillas de neón y un horizonte cromado.",
       "cyberpunk": "Un HUD de neón sobre lluvia ASCII.",
       "lofi": "Una habitación animada y acogedora. Para relajarse.",
+      "bookshelf": "Cajas de juegos en una estantería. Abre una para leer su manual.",
       "forest": "Verdes profundos y brumosos con luciérnagas a la deriva.",
       "webcore": "Nostalgia de Windows XP: Bliss y cromo en píxeles.",
       "onyx": "Negro intenso con profundidad azul fría. Alto contraste."
@@ -476,6 +490,7 @@
       "synthwave": "Synthwave",
       "cyberpunk": "Ciberpunk",
       "lofi": "Lo-fi",
+      "bookshelf": "Estantería",
       "cozy": "Estudio acogedor",
       "dog": "Cachorro dormido",
       "desk": "Escritorio nocturno",
@@ -671,6 +686,26 @@
       "none": "Sin compatibilidad con mando"
     },
     "never": "Nunca jugado"
+  },
+  "bookshelf": {
+    "recentlyPlayed": "Jugados recientemente",
+    "playersGuide": "Manual del jugador",
+    "pageAbout": "Acerca de",
+    "pageMedia": "Medios",
+    "pageManage": "Gestionar",
+    "aboutGame": "Acerca del juego",
+    "mediaHeading": "Capturas y tráileres",
+    "figure": "Fig. {{n}}",
+    "fullScreenHint": "Abre una imagen para ver las {{count}} a pantalla completa.",
+    "notInstalled": "No instalado",
+    "sealed": "Aún precintado",
+    "downloadSize": "{{size}} de descarga",
+    "lastPlayed": "Jugado por última vez {{when}}",
+    "timePlayed": "{{time}} jugado",
+    "emptyShelves": "Aún no hay juegos en la estantería. Actualiza tu biblioteca en Ajustes.",
+    "noStoreInstall": "Instálalo desde su tienda y luego actualiza tu biblioteca.",
+    "turnPage": "Pasar página",
+    "trailer": "Tráiler"
   },
   "library": {
     "refreshing": "Actualizando biblioteca…",

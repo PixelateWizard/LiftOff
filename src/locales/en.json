@@ -306,6 +306,19 @@
     "backgroundLofi": "Lo-fi Effects",
     "lofiMusic": "Lo-fi Music",
     "lofiScene": "Scene",
+    "backgroundBookshelf": "Lamp Light",
+    "bookshelfShelf": "Shelves",
+    "bookshelfMedia": "Game Media",
+    "bookshelfShelfValues": {
+      "steel": "Steel",
+      "painted": "Painted",
+      "glass": "Glass",
+      "oak": "Oak"
+    },
+    "bookshelfMediaValues": {
+      "disc": "Disc",
+      "cartridge": "Cartridge"
+    },
     "backgroundForest": "Forest Effects",
     "backgroundWebcore": "Webcore Effects",
     "uiMotion": "UI Motion",
@@ -339,6 +352,7 @@
       "synthwave": "Neon grids and a chrome horizon.",
       "cyberpunk": "A neon HUD over falling ASCII rain.",
       "lofi": "A cozy animated room scene. Kicks back.",
+      "bookshelf": "Game boxes on a shelf. Open one to read its manual.",
       "forest": "Misty deep greens with drifting fireflies.",
       "webcore": "Windows XP nostalgia - Bliss and pixel chrome.",
       "onyx": "Jet black with cold blue depth. High contrast."
@@ -476,6 +490,7 @@
       "synthwave": "Synthwave",
       "cyberpunk": "Cyberpunk",
       "lofi": "Lo-fi",
+      "bookshelf": "Bookshelf",
       "cozy": "Cozy Study",
       "dog": "Sleepy Pup",
       "desk": "Late-Night Desk",
@@ -671,6 +686,26 @@
       "none": "No controller support"
     },
     "never": "Never played"
+  },
+  "bookshelf": {
+    "recentlyPlayed": "Recently played",
+    "playersGuide": "Player's guide",
+    "pageAbout": "About",
+    "pageMedia": "Media",
+    "pageManage": "Manage",
+    "aboutGame": "About this game",
+    "mediaHeading": "Screenshots and trailers",
+    "figure": "Fig. {{n}}",
+    "fullScreenHint": "Open a picture to browse all {{count}} full screen.",
+    "notInstalled": "Not installed",
+    "sealed": "Still sealed",
+    "downloadSize": "{{size}} download",
+    "lastPlayed": "Last played {{when}}",
+    "timePlayed": "{{time}} played",
+    "emptyShelves": "No games on the shelf yet. Refresh your library in Settings.",
+    "noStoreInstall": "Install it from its store app, then refresh your library.",
+    "turnPage": "Turn page",
+    "trailer": "Trailer"
   },
   "library": {
     "refreshing": "Refreshing library…",

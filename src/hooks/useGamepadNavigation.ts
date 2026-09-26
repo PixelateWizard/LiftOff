@@ -53,6 +53,11 @@ export interface UseGamepadNavigationOptions {
     activate: () => void;
     exit: () => void;
   }>;
+  /** Set while the Bookshelf theme renders Home; the loop forwards Home moves and A to it. */
+  bookshelfHomeRef?: AnyRef<null | {
+    move: (direction: "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight") => boolean;
+    focusedApp: () => App | null;
+  }>;
   installFilterRef?: AnyRef<string>;
   setInstallFilter?: (value: string) => void;
   viewbarIndexRef?: AnyRef<number>;
@@ -320,6 +325,10 @@ export function useGamepadNavigation(
       move: (dir: -1 | 1) => void;
       activate: () => void;
       exit: () => void;
+    }>,
+    bookshelfHomeRef = { current: null } as AnyRef<null | {
+      move: (direction: "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight") => boolean;
+      focusedApp: () => App | null;
     }>,
     installFilterRef = { current: "all" } as AnyRef<string>,
     setInstallFilter = noop as (value: string) => void,
@@ -1196,6 +1205,7 @@ export function useGamepadNavigation(
       if (section === "pinned" && fPinned[index]) focusedApp = fPinned[index];
       else if (section === "recent" && fRecent[index]) focusedApp = fRecent[index];
       else if (section === "grid"   && fApps[index])   focusedApp = fApps[index];
+      if (currentTab === "Home" && bookshelfHomeRef.current) focusedApp = bookshelfHomeRef.current.focusedApp();
       if (focusedApp) { playSound(); togglePin(focusedApp); }
       return;
     }
@@ -1481,6 +1491,17 @@ export function useGamepadNavigation(
           openDetailsModal(app);
         }
       };
+
+      // Bookshelf Home owns its shelf geometry; the loop only forwards moves and A.
+      const bookshelf = bookshelfHomeRef.current;
+      if (bookshelf) {
+        if (key === "ArrowUp" || key === "ArrowDown" || key === "ArrowLeft" || key === "ArrowRight") bookshelf.move(key);
+        else if (key === "Enter") {
+          const app = bookshelf.focusedApp();
+          if (app) activateHomeEntry(app);
+        }
+        return;
+      }
 
       const goTo = (sec: string) => {
         setFocusSection(sec); focusSectionRef.current = sec;

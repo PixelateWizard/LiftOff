@@ -5,9 +5,18 @@ import { useDeckCompat, type DeckCompatCategory } from "../hooks/useDeckCompat";
 import { useStoreMetadata } from "../hooks/useStoreMetadata";
 import { getBestGamepad, readGpState, shouldHandleDirectionRepeat, rumble, type GpState } from "../utils/gamepad";
 import { formatBytes } from "../utils/formatBytes";
+import { formatPlaytime, formatRelativeTime } from "../utils/timeFormat";
 import { getInstallSpaceVerdict } from "../utils/installStorage";
 import { resolveHeroType } from "../utils/heroMedia";
 import { xboxProductIdFor } from "../utils/xboxProductId";
+import {
+  BOOKSHELF_MEDIA_LIMIT,
+  BookshelfCase,
+  bookshelfPages,
+  type BookshelfBadge,
+  type BookshelfPage,
+  type BookshelfPhase,
+} from "./bookshelf/BookshelfCase";
 import type { AccentColors, App, DriveStorageInfo, StoreMovie, StoreScreenshot, ThemeColors, XboxInstallProgress } from "../types";
 
 type SizeBytes = number | "loading" | undefined;
@@ -89,6 +98,9 @@ interface GameDetailsModalProps {
   surfaceStyle: string;
   resolvedTheme?: string;
   glass: CSSProperties;
+  /** "bookshelf" renders Details as the opened game case of the Bookshelf theme. */
+  presentation?: "modal" | "bookshelf";
+  bookshelfMedia?: "disc" | "cartridge";
   t: (k: string, o?: any) => string;
 }
 
@@ -98,38 +110,6 @@ const isVideoUrl = (url?: string) => /\.(webm|mp4)(?:$|\?)/i.test(url ?? "");
 const PNG_ACCENTS = ["ember", "ocean", "neon", "rose", "midnight", "nova", "steel", "lunar", "atomic", "aqua", "sage", "copper"];
 const getHeroPlaceholder = (accent: string) =>
   PNG_ACCENTS.includes(accent) ? `/assets/liftoff_hero_${accent}.png` : `/assets/liftoff_hero_${accent}.svg`;
-
-function normalizeEpochMs(value?: number) {
-  if (!value) return undefined;
-  return value < 100000000000 ? value * 1000 : value;
-}
-
-function formatRelativeTime(value: number, never: string) {
-  const ms = normalizeEpochMs(value);
-  if (!ms) return never;
-  const diff = Date.now() - ms;
-  if (diff < 60_000) return "Just now";
-  const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
-    ["year", 365 * 24 * 60 * 60_000],
-    ["month", 30 * 24 * 60 * 60_000],
-    ["week", 7 * 24 * 60 * 60_000],
-    ["day", 24 * 60 * 60_000],
-    ["hour", 60 * 60_000],
-    ["minute", 60_000],
-  ];
-  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
-  for (const [unit, unitMs] of units) {
-    if (diff >= unitMs) return rtf.format(-Math.floor(diff / unitMs), unit);
-  }
-  return never;
-}
-
-function formatPlaytime(minutes: number) {
-  if (minutes < 60) return `${Math.max(1, Math.round(minutes))}m`;
-  const hours = Math.floor(minutes / 60);
-  const rem = Math.round(minutes % 60);
-  return rem > 0 ? `${hours}h ${rem}m` : `${hours}h`;
-}
 
 function normalizeMediaUrl(url?: string | null) {
   if (!url) return undefined;
@@ -209,6 +189,8 @@ export function GameDetailsModal({
   surfaceStyle,
   resolvedTheme,
   glass,
+  presentation = "modal",
+  bookshelfMedia = "disc",
   t,
 }: GameDetailsModalProps) {
   const [focusIdx, setFocusIdx] = useState(0);
@@ -232,6 +214,19 @@ export function GameDetailsModal({
   const xboxConfirmFocusIdxRef = useRef(0);
   const xboxConfirmActionsRef = useRef<Array<() => void>>([]);
   const xboxConfirmButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const isBookshelf = presentation === "bookshelf";
+  const isBookshelfRef = useRef(isBookshelf);
+  isBookshelfRef.current = isBookshelf;
+  const [bsPage, setBsPage] = useState<BookshelfPage>("about");
+  const bsPageRef = useRef<BookshelfPage>("about");
+  const [bsPhase, setBsPhase] = useState<BookshelfPhase>("opening");
+  const bsPhaseRef = useRef<BookshelfPhase>("opening");
+  const bsCloseQueuedRef = useRef(false);
+  const bsPagesRef = useRef<BookshelfPage[]>(["about", "manage"]);
+  const bsMediaCountRef = useRef(0);
+  const bsPrimaryRef = useRef<() => void>(() => {});
+  const bsPrimaryTimerRef = useRef<number | null>(null);
+  const [bsSpinning, setBsSpinning] = useState(false);
   const source = app.source?.toLowerCase() ?? "";
   const isCloud = source === "cloud";
   const isSteam = source === "steam";
@@ -494,11 +489,32 @@ export function GameDetailsModal({
   }, [hasStoreContent]);
 
   const tabItemCount = hasStoreContent && activeTab === "details" ? mediaCount : actions.length;
-  const focusCount = 1 + tabItemCount;
+  const bsMediaCount = Math.min(mediaCount, BOOKSHELF_MEDIA_LIMIT);
+  const bsPages = useMemo(() => bookshelfPages(bsMediaCount > 0), [bsMediaCount]);
+  bsPagesRef.current = bsPages;
+  bsMediaCountRef.current = bsMediaCount;
+  const focusCount = isBookshelf
+    ? 1 + (bsPage === "media" ? bsMediaCount : bsPage === "manage" ? actions.length : 0)
+    : 1 + tabItemCount;
   focusCountRef.current = focusCount;
   actionsRef.current = actions;
+  const requestBookshelfClose = useCallback(() => {
+    if (bsPhaseRef.current === "closing") return;
+    bsPhaseRef.current = "closing";
+    setBsPhase("closing");
+  }, []);
+  const handleBookshelfOpened = useCallback(() => {
+    if (bsPhaseRef.current !== "opening") return;
+    bsPhaseRef.current = "open";
+    setBsPhase("open");
+    if (bsCloseQueuedRef.current) {
+      bsCloseQueuedRef.current = false;
+      requestBookshelfClose();
+    }
+  }, [requestBookshelfClose]);
+
   primaryActionRef.current = handlePrimaryAction;
-  closeRef.current = onClose;
+  closeRef.current = isBookshelf ? requestBookshelfClose : onClose;
   hapticEnabledRef.current = hapticEnabled;
   interactionBlockedRef.current = interactionBlocked;
   xboxConfirmActionsRef.current = xboxSpaceVerdict === "insufficient"
@@ -527,6 +543,8 @@ export function GameDetailsModal({
     setControlsRevealed(false);
     setFocusedIndex(0);
     setActiveTab("details");
+    bsPageRef.current = "about";
+    setBsPage("about");
     setOverlay(null);
     xboxConfirmOpenRef.current = false;
     xboxConfirmFocusIdxRef.current = 0;
@@ -635,6 +653,74 @@ export function GameDetailsModal({
           return;
         }
 
+        if (isBookshelfRef.current) {
+          const phase = bsPhaseRef.current;
+          if (phase !== "open") {
+            // The case is still moving; remember B so the box closes as soon as it has opened.
+            if (phase === "opening" && state.Escape && !last.Escape) bsCloseQueuedRef.current = true;
+            Object.assign(last, state);
+            rafId = requestAnimationFrame(poll);
+            return;
+          }
+          const pages = bsPagesRef.current;
+          const countFor = (p: BookshelfPage) => (p === "media" ? bsMediaCountRef.current : p === "manage" ? actionsRef.current.length : 0);
+          const focusBs = (index: number) => {
+            if (focusIdxRef.current === index) return;
+            focusIdxRef.current = index;
+            setFocusIdx(index);
+          };
+          const turn = (dir: -1 | 1) => {
+            const next = pages[pages.indexOf(bsPageRef.current) + dir];
+            if (!next) return;
+            bsPageRef.current = next;
+            setBsPage(next);
+            if (focusIdxRef.current > 0) focusBs(countFor(next) > 0 ? 1 : 0);
+            rumble("tab", hapticEnabledRef.current);
+          };
+          if (state.BumperLeft && !last.BumperLeft) turn(-1);
+          if (state.BumperRight && !last.BumperRight) turn(1);
+          // Focus 0 is the disc or install card; 1..n are items on the current manual page.
+          const page = bsPageRef.current;
+          const count = countFor(page);
+          const idx = focusIdxRef.current;
+          const item = idx - 1;
+          const grid = page === "media";
+          const step = grid ? 2 : 1;
+          if (shouldHandleDirectionRepeat("ArrowLeft", state, last, now, pressTime, repeating)) {
+            if (idx === 0) {
+              if (count > 0) focusBs(grid ? Math.min(count, 2) : 1);
+            } else if (grid && item % 2 === 1) {
+              focusBs(idx - 1);
+            }
+          }
+          if (shouldHandleDirectionRepeat("ArrowRight", state, last, now, pressTime, repeating) && idx > 0) {
+            if (grid && item % 2 === 0 && item + 1 < count) focusBs(idx + 1);
+            else focusBs(0);
+          }
+          if (shouldHandleDirectionRepeat("ArrowUp", state, last, now, pressTime, repeating) && idx > 0 && item - step >= 0) {
+            focusBs(idx - step);
+          }
+          if (shouldHandleDirectionRepeat("ArrowDown", state, last, now, pressTime, repeating) && idx > 0 && item + step < count) {
+            focusBs(idx + step);
+          }
+          if (state.Enter && !last.Enter) {
+            const at = focusIdxRef.current;
+            if (at === 0) {
+              bsPrimaryRef.current();
+            } else if (bsPageRef.current === "media") {
+              rumble("confirm", hapticEnabledRef.current);
+              setOverlay({ index: at - 1 });
+            } else if (bsPageRef.current === "manage") {
+              rumble("confirm", hapticEnabledRef.current);
+              actionsRef.current[at - 1]?.onClick();
+            }
+          }
+          if (state.Escape && !last.Escape) closeRef.current();
+          Object.assign(last, state);
+          rafId = requestAnimationFrame(poll);
+          return;
+        }
+
         if (controlsRevealedRef.current && hasStoreContentRef.current) {
           const switchTab = () => {
             const next = activeTabRef.current === "details" ? "manage" : "details";
@@ -737,6 +823,32 @@ export function GameDetailsModal({
           ? xboxInstallLabel
         : installLabel;
   const primaryDisabled = !installed && (uninstalling || (!installing && !canInstall && !canXboxInstall));
+  const bsMotion = effectsEnabled && !(typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
+  // Bookshelf spins the disc (or ejects the cartridge) for a beat before Play launches.
+  const runBookshelfPrimary = useCallback(() => {
+    if (primaryDisabled || bsPrimaryTimerRef.current != null) return;
+    rumble("confirm", hapticEnabledRef.current);
+    if (installed && !running && bsMotion) {
+      setBsSpinning(true);
+      bsPrimaryTimerRef.current = window.setTimeout(() => {
+        bsPrimaryTimerRef.current = null;
+        primaryActionRef.current();
+      }, 420);
+      return;
+    }
+    primaryActionRef.current();
+  }, [bsMotion, installed, primaryDisabled, running]);
+  bsPrimaryRef.current = runBookshelfPrimary;
+  useEffect(() => () => {
+    if (bsPrimaryTimerRef.current != null) window.clearTimeout(bsPrimaryTimerRef.current);
+  }, []);
+  const turnBookshelfPage = useCallback((next: BookshelfPage) => {
+    if (bsPageRef.current === next) return;
+    bsPageRef.current = next;
+    setBsPage(next);
+    focusIdxRef.current = 0;
+    setFocusIdx(0);
+  }, []);
   const overlayItem = overlay ? mediaItems[overlay.index] : null;
   const overlayMovieSrc = overlayItem?.type === "trailer" ? movieSource(overlayItem.movie) : undefined;
   const overlayMovieUsesHls = isHlsMediaUrl(overlayMovieSrc);
@@ -801,6 +913,31 @@ export function GameDetailsModal({
     }] : []),
     ...(!installed && downloadBytes != null ? [{ label: t("details.downloadSize"), value: formatBytes(downloadBytes) }] : []),
   ];
+
+  const bsBadges: BookshelfBadge[] = [
+    ...(controllerSupport && !(isSteam && deckCompat?.category === "verified") ? [{
+      key: "controller",
+      label: t(`details.controllerSupport.${controllerSupport}`),
+      tone: (controllerSupport === "full" ? "ink" : controllerSupport === "partial" ? "warn" : "muted") as BookshelfBadge["tone"],
+    }] : []),
+    ...(isSteam && deckCompat ? [{
+      key: "deck",
+      label: t(`details.deckCompat.${deckCompat.category}`),
+      tone: (deckCompat.category === "verified" ? "ok" : deckCompat.category === "playable" ? "warn" : "muted") as BookshelfBadge["tone"],
+    }] : []),
+  ];
+  const bsByline = [store.data?.genres?.[0], store.data?.developers?.[0]].filter(Boolean).join(" · ");
+  const bsTiles = mediaItems.slice(0, BOOKSHELF_MEDIA_LIMIT).map((item, index) => ({
+    key: `${item.type}-${item.type === "trailer" ? item.movie.id || index : index}`,
+    thumb: normalizeMediaUrl(item.thumb) ?? "",
+    trailer: item.type === "trailer",
+  }));
+  const bsInstallStatus = uninstalling
+    ? t("install.uninstalling")
+    : liveInstall
+      ? t(installPhaseLabel)
+      : `${t(installPhaseLabel)} ${installPct}%`;
+  const bsDownloadLabel = !installed && downloadBytes != null ? t("bookshelf.downloadSize", { size: formatBytes(downloadBytes) }) : undefined;
 
   const actionGrid = (
     <div
@@ -885,7 +1022,7 @@ export function GameDetailsModal({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: 24,
+        padding: isBookshelf ? 0 : 24,
         boxSizing: "border-box",
         fontFamily: "'Segoe UI', sans-serif",
         userSelect: "none",
@@ -893,22 +1030,28 @@ export function GameDetailsModal({
       onClick={onClose}
     >
       {/* Scrim as a sibling of the panel. See ModalShell for the rationale. */}
-      <div
-        className="lo-anim-overlay"
-        aria-hidden="true"
-        style={{
+      {!isBookshelf && (
+        <div
+          className="lo-anim-overlay"
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(0,0,0,0.72)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      <section
+        className={isBookshelf ? undefined : "lo-anim-modal"}
+        data-modal=""
+        style={isBookshelf ? {
           position: "absolute",
           inset: 0,
-          background: "rgba(0,0,0,0.72)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          pointerEvents: "none",
-        }}
-      />
-      <section
-        className="lo-anim-modal"
-        data-modal=""
-        style={{
+          overflow: "hidden",
+        } : {
           ...glass,
           width: "min(1040px, 94vw)",
           height: "min(680px, 90vh)",
@@ -933,6 +1076,53 @@ export function GameDetailsModal({
             }
           }
         `}</style>
+        {isBookshelf ? (
+          <BookshelfCase
+            app={app}
+            coverArt={coverArt || coverFallback}
+            fallbackCover={coverFallback}
+            bannerArt={heroStatic || undefined}
+            media={bookshelfMedia}
+            installed={installed}
+            primaryLabel={primaryLabel}
+            primaryDisabled={primaryDisabled}
+            spinning={bsSpinning}
+            installing={installing}
+            installPct={installPct}
+            indeterminateInstall={indeterminateInstall}
+            installStatus={bsInstallStatus}
+            installError={installErrorText}
+            downloadLabel={bsDownloadLabel}
+            metaItems={metaItems}
+            badges={bsBadges}
+            byline={bsByline}
+            description={shortDescription}
+            mediaTiles={bsTiles}
+            mediaTotal={mediaCount}
+            actions={actions}
+            pages={bsPages}
+            page={bsPage}
+            focusIdx={focusIdx}
+            phase={bsPhase}
+            motion={bsMotion}
+            onPrimary={runBookshelfPrimary}
+            onFocus={setFocusedIndex}
+            onOpenMedia={(index) => {
+              setFocusedIndex(index + 1);
+              setOverlay({ index });
+            }}
+            onAction={(index) => {
+              setFocusedIndex(index + 1);
+              actions[index]?.onClick();
+            }}
+            onTurnTo={turnBookshelfPage}
+            onRequestClose={requestBookshelfClose}
+            onOpened={handleBookshelfOpened}
+            onClosed={onClose}
+            t={t}
+          />
+        ) : (
+        <>
         <div style={{
           position: "relative",
           height: controlsRevealed ? 112 : "44%",
@@ -1346,6 +1536,8 @@ export function GameDetailsModal({
             ) : actionGrid}
           </div>
         </div>
+        </>
+        )}
         {xboxConfirmOpen && (
           <div
             role="presentation"

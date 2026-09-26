@@ -117,6 +117,30 @@ describe("Lo-fi scene picker", () => {
   });
 });
 
+describe("Bookshelf settings", () => {
+  it("adds shelf finish and game media rows and hides Home rows that do not apply", () => {
+    const t = (key: string) => key;
+    const items = buildSettingsItems(t as never, "bookshelf");
+    const shelf = items.find((item) => item.key === "bookshelf_shelf");
+    const media = items.find((item) => item.key === "bookshelf_media");
+    expect(shelf?.type).toBe("cycle");
+    expect(media?.type).toBe("cycle");
+    if (shelf?.type === "cycle") expect(shelf.options).toEqual(["steel", "painted", "glass", "oak"]);
+    if (media?.type === "cycle") expect(media.options).toEqual(["disc", "cartridge"]);
+    expect(items.some((item) => item.key === "show_immersive_hero_art")).toBe(false);
+    expect(items.some((item) => item.key === "show_home_collections")).toBe(false);
+    expect(items.some((item) => item.key === "show_home_recents")).toBe(true);
+    const surface = items.find((item) => item.key === "surface_style");
+    const homeMode = items.find((item) => item.key === "home_mode");
+    expect(surface && "locked" in surface && surface.locked).toBe(true);
+    expect(homeMode && "lockedValue" in homeMode && homeMode.lockedValue).toBe("bookshelf");
+
+    const spaceItems = buildSettingsItems(t as never, "space");
+    expect(spaceItems.some((item) => item.key === "bookshelf_shelf")).toBe(false);
+    expect(spaceItems.some((item) => item.key === "show_immersive_hero_art")).toBe(true);
+  });
+});
+
 describe("Language options", () => {
   it("offers Auto, English, French, and Spanish", () => {
     const t = (key: string) => key;

@@ -6,7 +6,7 @@ import { IoAlbumsOutline, IoChevronForward, IoColorPaletteOutline, IoGridOutline
 import { CollapsibleGroup, ToggleKnob, FocusRing } from "../components/ui";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSettings } from "../contexts/SettingsContext";
-import { ACCENTS, APP_VERSION, FSE_RETURN_SHORTCUT_OPTIONS, GITHUB_REPO, HOME_PINNED_SHELF_ENABLED, LANGUAGE_OPTIONS, THEME_LOCKED_SETTINGS, normalizeThemeKey } from "../constants";
+import { ACCENTS, APP_VERSION, BOOKSHELF_MEDIA_OPTIONS, BOOKSHELF_SHELF_OPTIONS, FSE_RETURN_SHORTCUT_OPTIONS, GITHUB_REPO, HOME_PINNED_SHELF_ENABLED, LANGUAGE_OPTIONS, THEME_LOCKED_SETTINGS, normalizeThemeKey } from "../constants";
 import type { Settings, SettingsItem, SettingsDividerItem, SettingsSubItem, CustomFolder, SettingsHomeCollectionItem, SettingsAppearanceCategoryItem, SettingsAppearanceBackItem, XboxStatus, DriveStorageInfo } from "../types";
 import type { SpotifyStatus } from "../hooks/useSpotify";
 import { SPOTIFY_REDIRECT_URI } from "../components/spotify/constants";
@@ -86,6 +86,7 @@ function getCategorySummary(idx: number, settings: Settings, t: TFunction): stri
       return `${themeLabel} · ${surfaceLabel}`;
     }
     case 1:
+      if (normalizeThemeKey(String(settings.theme)) === "bookshelf") return String(t("settings.values.bookshelf"));
       return settingValueLabel("home_mode", settings.home_mode ?? "normal", t);
     case 2:
       return `${Math.round((settings.ui_scale ?? 1) * 100)}%`;
@@ -98,6 +99,8 @@ function settingValueLabel(key: string, value: string, t: TFunction): string {
   if (key === "home_mode") {
     return String(t(`settings.homeModeValues.${value}`, String(t(`settings.values.${value}`, value))));
   }
+  if (key === "bookshelf_shelf") return String(t(`settings.bookshelfShelfValues.${value}`, value));
+  if (key === "bookshelf_media") return String(t(`settings.bookshelfMediaValues.${value}`, value));
   if (key === "bottombar_mode") {
     const suffix = value === "full" ? "Full" : value === "hidden" ? "Hidden" : "Smart";
     return String(t(`settings.bottombarMode${suffix}`, value));
@@ -110,6 +113,15 @@ function CategoryIcon({ index, focused }: { index: number; focused: boolean }) {
   const Icon = CATEGORY_ICONS[index] ?? IoColorPaletteOutline;
   return <Icon size={20} color={focused ? accent.primary : theme.textDim} />;
 }
+
+const BOOKSHELF_HIDDEN_HOME_KEYS = new Set([
+  "show_immersive_hero_art",
+  "show_hero_cover",
+  "home_section_title_size",
+  "show_home_collections",
+  "show_recent_games_only",
+  "home_pinned_pos",
+]);
 
 /** Build full SETTINGS_ITEMS array with translated labels, annotated with section index. */
 export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsItem[] {
@@ -131,6 +143,7 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
     activeTheme === "synthwave" ? t("settings.backgroundSynthwave") :
     activeTheme === "cyberpunk" ? t("settings.backgroundCyberpunk") :
     activeTheme === "lofi"      ? t("settings.backgroundLofi")      :
+    activeTheme === "bookshelf" ? t("settings.backgroundBookshelf") :
     activeTheme === "forest"    ? t("settings.backgroundForest")    :
     activeTheme === "webcore"   ? t("settings.backgroundWebcore")   :
     activeTheme === "wash"      ? t("settings.backgroundWash")      :
@@ -289,6 +302,18 @@ export function buildSettingsItems(t: TFunction, activeTheme: string): SettingsI
       { key: "onyx_top_light", section: 0, group: 0, label: t("settings.onyxTopLight"), type: "toggle", indent: true },
       { key: "onyx_flat_settings", section: 0, group: 0, label: t("settings.onyxFlatSettings"), type: "toggle", indent: true },
     );
+  }
+
+  // Bookshelf: shelf finish and game media sit under the theme; hero and collection rows do not apply to its Home.
+  if (activeTheme === "bookshelf") {
+    const starsIdx = items.findIndex(i => i.key === "stars_enabled");
+    if (starsIdx !== -1) items.splice(starsIdx + 1, 0,
+      { key: "bookshelf_shelf", section: 0, group: 0, label: t("settings.bookshelfShelf"), type: "cycle", options: [...BOOKSHELF_SHELF_OPTIONS], indent: true },
+      { key: "bookshelf_media", section: 0, group: 0, label: t("settings.bookshelfMedia"), type: "cycle", options: [...BOOKSHELF_MEDIA_OPTIONS], indent: true },
+    );
+    for (let i = items.length - 1; i >= 0; i -= 1) {
+      if (BOOKSHELF_HIDDEN_HOME_KEYS.has(items[i].key)) items.splice(i, 1);
+    }
   }
 
   // Mark items whose value is forced by the active theme

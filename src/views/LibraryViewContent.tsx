@@ -1,7 +1,8 @@
-import { memo, type RefObject } from "react";
+import { memo, type CSSProperties, type RefObject } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 import { AppListItem, CyberpunkCard, FocusRing } from "../components/ui";
 import { GamepadBtn } from "../components/GamepadBtn";
+import { BookshelfAppCard, BookshelfGridShelves } from "../components/bookshelf/BookshelfGrid";
 
 export interface LibraryViewContentProps {
   tab: "Games" | "Apps";
@@ -14,6 +15,7 @@ export interface LibraryViewContentProps {
 function LibraryViewContentBase(props: LibraryViewContentProps) {
   const {
     tab,
+    active = false,
     scrollRef,
     wideLayout,
     customSources,
@@ -84,6 +86,19 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
   const { surface, resolvedTheme } = useTheme();
   const isPixel = surfaceStyle === "win9x";
   const isOnyx = resolvedTheme === "onyx";
+  const isBookshelf = resolvedTheme === "bookshelf";
+  // Bookshelf leaves room between rows for the planks the cases stand on.
+  const shelfGridStyle = (cols: number): CSSProperties => ({
+    display: "grid",
+    gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+    columnGap: 22,
+    rowGap: 46,
+    position: "relative",
+    paddingTop: 14,
+    paddingBottom: 34,
+  });
+  const pinnedShelfFocus = active && focusSection === "pinned" ? focusIndex : null;
+  const gridShelfFocus = active && focusSection === "grid" ? focusIndex : null;
   const getAppCardSurface = (art: string | undefined | null) => art
     ? { background: "transparent", backdropFilter: "none", WebkitBackdropFilter: "none" }
     : {
@@ -340,7 +355,8 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                   <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", opacity: 0.6 }}>{t('grid.unpinHint')}</span>
                 </div>
                 {tab === "Games" ? (
-                  <div style={{ display: "grid", gridTemplateColumns: `repeat(${effectiveGameCols}, minmax(0, 1fr))`, gap: 12, paddingTop: 6, marginTop: -6, paddingBottom: 14 }}>
+                  <div style={isBookshelf ? shelfGridStyle(effectiveGameCols) : { display: "grid", gridTemplateColumns: `repeat(${effectiveGameCols}, minmax(0, 1fr))`, gap: 12, paddingTop: 6, marginTop: -6, paddingBottom: 14 }}>
+                    {isBookshelf && <BookshelfGridShelves count={pinnedAppsReactive.length} cols={effectiveGameCols} focusedIndex={pinnedShelfFocus} />}
                     {pinnedAppsReactive.map((app, i) => {
                       const focused = focusSection === "pinned" && focusIndex === i;
                       const isPinned = true;
@@ -379,11 +395,29 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                     })}
                   </div>
                 ) : (
-                  <div style={{ display: "grid", gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`, gap: 10, paddingTop: 6, marginTop: -6, paddingBottom: 14 }}>
+                  <div style={isBookshelf ? shelfGridStyle(COLS) : { display: "grid", gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`, gap: 10, paddingTop: 6, marginTop: -6, paddingBottom: 14 }}>
+                    {isBookshelf && <BookshelfGridShelves count={pinnedAppsReactive.length} cols={COLS} focusedIndex={pinnedShelfFocus} />}
                     {pinnedAppsReactive.map((app, i) => {
                       const focused = focusSection === "pinned" && focusIndex === i;
                       const color = iconColors[app.id];
                       const art = customArt[app.id];
+                      if (isBookshelf) {
+                        return (
+                          <BookshelfAppCard
+                            key={app.id}
+                            ref={focused ? focusedCardRef : null}
+                            app={app}
+                            focused={focused}
+                            art={art}
+                            color={color}
+                            icon={<AppIcon app={app} size={26} />}
+                            badges={<><PinBadge isPinned={true} small /><RunningBadge show={isRunning?.(app.id)} small /></>}
+                            onClick={() => { setFocusSection("pinned"); focusSectionRef.current = "pinned"; setFocusIndex(i); focusIndexRef.current = i; }}
+                            onDoubleClick={() => triggerLaunch(app, recent)}
+                            onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
+                          />
+                        );
+                      }
                       const tintBg = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : glass.background;
                       const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : "rgba(255,255,255,0.08)";
                       const pixelCard = isPixel ? {
@@ -459,7 +493,8 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                   </div>
                 </div>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: `repeat(${effectiveGameCols}, minmax(0, 1fr))`, gap: 12, paddingBottom: tabContentBottomPadding }}>
+                <div style={isBookshelf ? shelfGridStyle(effectiveGameCols) : { display: "grid", gridTemplateColumns: `repeat(${effectiveGameCols}, minmax(0, 1fr))`, gap: 12, paddingBottom: tabContentBottomPadding }}>
+                  {isBookshelf && <BookshelfGridShelves count={filteredApps.length} cols={effectiveGameCols} focusedIndex={gridShelfFocus} />}
                   {filteredApps.map((app, i) => {
                     const focused = isFocused("grid", i);
                     const isPinned = pins.includes(app.id);
@@ -500,12 +535,30 @@ function LibraryViewContentBase(props: LibraryViewContentProps) {
                 })}
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`, gap: 10, paddingBottom: tabContentBottomPadding }}>
+              <div style={isBookshelf ? shelfGridStyle(COLS) : { display: "grid", gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`, gap: 10, paddingBottom: tabContentBottomPadding }}>
+                {isBookshelf && <BookshelfGridShelves count={filteredApps.length} cols={COLS} focusedIndex={gridShelfFocus} />}
                 {filteredApps.map((app, i) => {
                   const focused = isFocused("grid", i);
                   const isPinned = pins.includes(app.id);
                   const color = iconColors[app.id];
                   const art = customArt[app.id];
+                  if (isBookshelf) {
+                    return (
+                      <BookshelfAppCard
+                        key={app.id}
+                        ref={focused ? focusedCardRef : null}
+                        app={app}
+                        focused={focused}
+                        art={art}
+                        color={color}
+                        icon={<AppIcon app={app} size={26} />}
+                        badges={<><PinBadge isPinned={isPinned} small /><RunningBadge show={isRunning?.(app.id)} small /></>}
+                        onClick={() => { setFocusSection("grid"); focusSectionRef.current = "grid"; setFocusIndex(i); focusIndexRef.current = i; }}
+                        onDoubleClick={() => triggerLaunch(app, recent)}
+                        onContextMenu={(e) => { e.preventDefault(); setContextMenu({ x: e.clientX, y: e.clientY, app }); }}
+                      />
+                    );
+                  }
                   const tintBg = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : glass.background;
                   const tintBorder = color ? `rgba(${color.r},${color.g},${color.b},0.18)` : "rgba(255,255,255,0.08)";
                   const pixelCard = isPixel ? {

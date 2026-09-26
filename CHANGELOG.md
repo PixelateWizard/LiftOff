@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- **Bookshelf theme** - A new theme where your games stand on shelves. Home shows a face-out Recently played shelf and your whole library as spines, A to Z with letter dividers; the focused spine tips out and a plaque names it. Opening a game pulls its case off the shelf and swings it open: the left side is a manual with About, Media, and Manage pages (LB/RB turns the page), and the right side holds a disc or a cartridge that spins or ejects before Play. Games and Apps keep their grids, drawn as cases and floppy disks on shelves. Settings › Appearance adds Shelves (Steel, Painted, Glass, Oak) and Game Media (Disc, Cartridge) while Bookshelf is selected.
+
 ### Changed
 - **Public repository listing** - `CLAUDE.md`, `AGENTS.md`, `.agents/`, `.claude/`, and `.gemini/` (including Antigravity session files) stay on disk for local agents and are no longer published. `npm run docs:check` skips when those files are not present.
 - **Local notes and scratch files** - Release-note markdown, debug HTML captures, and the App.jsx proposal docs stay on disk and are no longer published. The README release-notes link opens GitHub Releases.

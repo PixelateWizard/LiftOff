@@ -80,5 +80,8 @@ describe("onboarding row translations", () => {
     expect(visibleProgressSteps("space")).not.toContain("lofi_scene");
     expect(shouldSkipOnboardingStep("surface", "onyx")).toBe(true);
     expect(shouldSkipOnboardingStep("surface", "lofi")).toBe(false);
+    expect(shouldSkipOnboardingStep("surface", "bookshelf")).toBe(true);
+    expect(shouldSkipOnboardingStep("home", "bookshelf")).toBe(true);
+    expect(shouldSkipOnboardingStep("home", "space")).toBe(false);
   });
 });

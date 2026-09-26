@@ -355,6 +355,10 @@ pub struct Settings {
     pub hide_on_launch: bool,
     #[serde(default = "default_true")]
     pub fse_hard_reload_recovery: bool,
+    #[serde(default = "default_bookshelf_shelf")]
+    pub bookshelf_shelf: String,
+    #[serde(default = "default_bookshelf_media")]
+    pub bookshelf_media: String,
 }
 
 fn default_lofi_scene() -> String {
@@ -425,6 +429,12 @@ fn default_update_channel() -> String {
 }
 fn default_games_sort() -> String {
     "recent".to_string()
+}
+fn default_bookshelf_shelf() -> String {
+    "steel".to_string()
+}
+fn default_bookshelf_media() -> String {
+    "disc".to_string()
 }
 
 impl Default for Settings {
@@ -517,6 +527,8 @@ impl Default for Settings {
             surface_style: "clear".to_string(),
             hide_on_launch: true,
             fse_hard_reload_recovery: true,
+            bookshelf_shelf: default_bookshelf_shelf(),
+            bookshelf_media: default_bookshelf_media(),
         }
     }
 }
@@ -592,6 +604,26 @@ mod settings_compat_tests {
         let saved = serde_json::to_value(aliased).unwrap();
         assert_eq!(saved["lofi_scene"], "desk");
         assert!(saved.get("lofi_background").is_none());
+    }
+
+    #[test]
+    fn bookshelf_fields_default_for_existing_files() {
+        let mut value = serde_json::to_value(Settings::default()).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.remove("bookshelf_shelf");
+        object.remove("bookshelf_media");
+        let loaded: Settings = serde_json::from_value(value).unwrap();
+        assert_eq!(loaded.bookshelf_shelf, "steel");
+        assert_eq!(loaded.bookshelf_media, "disc");
+
+        let mut chosen = serde_json::to_value(Settings::default()).unwrap();
+        let object = chosen.as_object_mut().unwrap();
+        object.insert("bookshelf_shelf".to_string(), serde_json::json!("glass"));
+        object.insert("bookshelf_media".to_string(), serde_json::json!("cartridge"));
+        let loaded: Settings = serde_json::from_value(chosen).unwrap();
+        let saved = serde_json::to_value(loaded).unwrap();
+        assert_eq!(saved["bookshelf_shelf"], "glass");
+        assert_eq!(saved["bookshelf_media"], "cartridge");
     }
 }
 

@@ -46,6 +46,7 @@ export const THEMES: Record<string, { text: string; textDim: string; textFaint: 
   synthwave: { text: "#ffe8f8", textDim: "rgba(255,232,248,0.40)", textFaint: "rgba(255,232,248,0.28)" },
   cyberpunk: { text: "#e4f8ff", textDim: "rgba(228,248,255,0.40)", textFaint: "rgba(228,248,255,0.24)" },
   lofi:      { text: "#fff0e8", textDim: "rgba(255,240,232,0.52)", textFaint: "rgba(255,240,232,0.34)" },
+  bookshelf: { text: "#efe3cc", textDim: "rgba(239,227,204,0.46)", textFaint: "rgba(239,227,204,0.30)" },
   forest:    { text: "#d4edd8", textDim: "rgba(212,237,216,0.40)", textFaint: "rgba(212,237,216,0.26)" },
   webcore:   { text: "#1a1a1a", textDim: "rgba(0,0,0,0.55)",       textFaint: "rgba(0,0,0,0.35)"       },
   onyx:      { text: "#d0dcff", textDim: "rgba(208,220,255,0.40)", textFaint: "rgba(208,220,255,0.26)" },
@@ -53,7 +54,7 @@ export const THEMES: Record<string, { text: string; textDim: string; textFaint: 
 
 export const THEME_OPTIONS = [
   "space", "sky", "plasma", "cinder", "wash",
-  "aurora", "synthwave", "cyberpunk", "lofi", "forest", "webcore", "onyx",
+  "aurora", "synthwave", "cyberpunk", "lofi", "bookshelf", "forest", "webcore", "onyx",
 ] as const;
 
 export const SURFACE_STYLE_OPTIONS = ["glass", "aero", "material", "clear", "obsidian", "neon", "win9x"] as const;
@@ -68,6 +69,7 @@ export const THEME_SURFACE_DEFAULTS: Record<string, string> = {
   synthwave: "aero",
   cyberpunk: "neon",
   lofi: "obsidian",
+  bookshelf: "material",
   forest: "glass",
   webcore: "win9x",
   onyx: "glass",
@@ -85,6 +87,13 @@ export const THEME_LOCKED_SETTINGS: Partial<Record<string, Partial<Record<string
   cyberpunk: {
     surface_style: "neon",
   },
+  // Bookshelf draws its own shelves and Home, on top of the opaque Material chrome.
+  // home_mode locks the Home style row in Settings and skips the onboarding Home step;
+  // the stored home_mode is untouched, and App.jsx picks Bookshelf Home from the theme.
+  bookshelf: {
+    surface_style: "material",
+    home_mode: "bookshelf",
+  },
 };
 
 /**
@@ -93,6 +102,7 @@ export const THEME_LOCKED_SETTINGS: Partial<Record<string, Partial<Record<string
  */
 export const THEME_BG_COLORS: Partial<Record<string, string>> = {
   onyx: "#070c1a",
+  bookshelf: "#1f1d1c",
 };
 
 export const normalizeThemeKey = (theme: string | undefined) => {
@@ -161,6 +171,13 @@ export function fseReturnShortcutLabel(shortcut?: string | null): string {
 export const LANGUAGE_OPTIONS = ["auto", "en", "fr", "es"] as const;
 export const LOFI_SCENE_OPTIONS = ["cozy", "dog", "desk", "cat", "rainy_street", "pixel_shop"] as const;
 export const LOFI_SCENE_PICKER_COLS = 3;
+export const BOOKSHELF_SHELF_OPTIONS = ["steel", "painted", "glass", "oak"] as const;
+export const BOOKSHELF_MEDIA_OPTIONS = ["disc", "cartridge"] as const;
+
+export const normalizeBookshelfShelf = (value: string | undefined): typeof BOOKSHELF_SHELF_OPTIONS[number] =>
+  BOOKSHELF_SHELF_OPTIONS.includes(value as any) ? value as typeof BOOKSHELF_SHELF_OPTIONS[number] : "steel";
+export const normalizeBookshelfMedia = (value: string | undefined): typeof BOOKSHELF_MEDIA_OPTIONS[number] =>
+  BOOKSHELF_MEDIA_OPTIONS.includes(value as any) ? value as typeof BOOKSHELF_MEDIA_OPTIONS[number] : "disc";
 
 /** Home pinned pills now live in the helper tray; keep this off to avoid a second row. */
 export const HOME_PINNED_SHELF_ENABLED = false;
@@ -181,6 +198,8 @@ export const DEFAULT_SETTINGS = {
   onyx_top_light: true,
   hide_on_launch: true,
   fse_hard_reload_recovery: true,
+  bookshelf_shelf: "steel",
+  bookshelf_media: "disc",
 } as const;
 
 export type AccentKey = keyof typeof ACCENTS;
