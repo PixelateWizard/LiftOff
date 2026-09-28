@@ -2586,6 +2586,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.58315.14493400267440481.75ff9293-18d0-471f-95d3-a6068200205f.d53c5c11-017d-413e-86ef-d37ec206148a"
   },
   {
+    "name": "Dune: Awakening",
+    "slug": "dune-awakening",
+    "productId": "9PJ6FV3130QZ",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.58998.14221973547534254.c9400a22-a0eb-4428-bc72-11e2270ad849.fcbce16e-22b4-4a1a-ae75-75fa207548b5"
+  },
+  {
     "name": "Dune: Spice Wars",
     "slug": "dune-spice-wars",
     "productId": "9N46JZZNGS3P",
@@ -2944,6 +2950,12 @@
     "slug": "fade-to-silence",
     "productId": "C5B84LR72JB7",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.54692.67100026391380756.d53352f0-f514-465e-b3ec-32bd491339c9.a1e04bcd-4930-4778-b1c3-b5ec37281824"
+  },
+  {
+    "name": "Fading Echo",
+    "slug": "fading-echo",
+    "productId": "9N0MHMP8Z20G",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.8177.13922829360157865.ec0508fa-8c89-43a1-a287-7d30a50f1447.06977335-331c-4066-b6a3-3ed0e9086f18"
   },
   {
     "name": "Fae Farm",
@@ -5296,6 +5308,12 @@
     "slug": "mad-experiments-escape-room",
     "productId": "9NS0F0D1STB5",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.49424.14373357902736642.0cf235e8-5943-4f04-a3bb-f9414f9fe61d.a721ae73-a781-4b23-8d86-b1550643460c"
+  },
+  {
+    "name": "Mad King Redemption",
+    "slug": "mad-king-redemption",
+    "productId": "9N944N1WP67T",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.56038.13544556109351948.9c4c33b4-f6ce-4d2c-ac5f-3aa565d08d7d.42b5ee39-b724-4340-b34e-39af9df10075"
   },
   {
     "name": "Mad Max",
