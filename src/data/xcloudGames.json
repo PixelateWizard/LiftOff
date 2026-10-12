@@ -1926,6 +1926,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.15028.14346269945886296.6f97d7ca-56af-436f-ba7f-82aed0a77d47.8ec73e74-2841-466d-bc9c-ed218c885826"
   },
   {
+    "name": "Cuphead",
+    "slug": "cuphead",
+    "productId": "9NJRX71M5X9P",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.37905.13670972585585116.7f29dc82-c969-4e89-aaf9-7c0e3f52d890.2e5a9c92-cf00-4c10-ae28-264c564478c3"
+  },
+  {
     "name": "Curious Cases",
     "slug": "curious-cases",
     "productId": "9NRG099DCJ65",
@@ -2508,6 +2514,18 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.31256.13550667734912371.ad6e81d5-dd89-44c2-86b8-c61a8971cbf8.57701225-bdf3-4aa8-ad06-552aee3c7787"
   },
   {
+    "name": "Dragon’s Dogma 2",
+    "slug": "dragons-dogma-2",
+    "productId": "9PJQMBMJ3154",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.35227.14277259033847105.7852260c-8a58-4e28-9e97-dd6d1a7f62f9.92aee604-ef74-4fe3-aede-b71a63fa45dd"
+  },
+  {
+    "name": "Dragon’s Dogma: Dark Arisen",
+    "slug": "dragons-dogma-dark-arisen",
+    "productId": "BNGT6SZBFM2T",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.49742.67911549011456094.d8474473-f221-48ba-9acd-d6da2d065dab.0651af78-dd46-4c21-ae9d-993a8dce6a85"
+  },
+  {
     "name": "Drake Hollow",
     "slug": "drake-hollow",
     "productId": "9PGNGGWBX1NR",
@@ -2722,6 +2740,12 @@
     "slug": "easy-red-2",
     "productId": "9P0CK3BW4N20",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.30812.14463456402887035.b33ac934-bb4d-4d17-8470-99e196390fe9.21650fa9-14f9-4a2c-ba48-20cfc1fd5bce"
+  },
+  {
+    "name": "Echo Generation: Midnight Edition",
+    "slug": "echo-generation-midnight-edition",
+    "productId": "9NN7M263513G",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.39422.13747800295288275.c4d19abe-7e26-4824-9975-fb2336c464cf.2f02c3af-023e-4cb7-a07a-5ea62176685a"
   },
   {
     "name": "EDENS ZERO",
@@ -4108,6 +4132,12 @@
     "slug": "hellpoint",
     "productId": "9NT99F4GCVC4",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.40426.14418113900709785.33e0f9b8-367d-41d1-aa86-e0085ae716ab.6aaf2a0d-7a3d-4b57-adea-10858a299fd7"
+  },
+  {
+    "name": "Herdling",
+    "slug": "herdling",
+    "productId": "9NNHK7K8RV9C",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.28060.13742556933276558.09935f63-bc59-4aec-9e7d-67306264be9b.933c709a-17be-4c80-b977-f8c7be2e3903"
   },
   {
     "name": "Heretic + Hexen",
@@ -6054,6 +6084,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.53895.13907683889228979.59937977-1a57-4871-afde-66c690b605c2.b1de6635-0bdc-4113-bd3b-5dac2d24c904"
   },
   {
+    "name": "myPOPGOES",
+    "slug": "mypopgoes",
+    "productId": "9PH57C2TWZHP",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.32408.14238298347191908.a33c0bbf-d6d2-48a5-a555-488456116a36.de7ad824-6c13-4e29-a14f-c7d461a6213c"
+  },
+  {
     "name": "Myst",
     "slug": "myst",
     "productId": "9P6PQLFP9BN0",
@@ -6112,6 +6148,12 @@
     "slug": "need-for-speed-unbound",
     "productId": "9PCTJZRLV21G",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.31585.14162616918399619.3bd2ca47-45c2-4302-b9de-350727313275.5b81a285-0fd1-4245-ab0e-df38b0d09fa5"
+  },
+  {
+    "name": "Neon Abyss 2",
+    "slug": "neon-abyss-2",
+    "productId": "9P5QV5XX8S9H",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.11563.14568732908027610.68635d5d-3a83-401c-989b-7640ee69ed9c.34d576fc-b83b-46ab-939e-a06d96e8f02c"
   },
   {
     "name": "Neon White",
