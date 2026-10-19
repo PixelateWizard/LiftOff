@@ -888,6 +888,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.1392.67660042887481018.7de2bfcd-48ef-4a6c-bba4-e65d208d67ec.d712d519-5ad0-4aac-9271-ad4424fd3702"
   },
   {
+    "name": "Battlefield 6",
+    "slug": "battlefield-6",
+    "productId": "9P2FF14JZLL3",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.65490.14559138935406168.e7f01a08-ebf9-41d8-88ba-39fb1a148711.c65ba007-7378-497e-b934-101230f24e82"
+  },
+  {
     "name": "Beacon Pines",
     "slug": "beacon-pines",
     "productId": "9P4R2M0NRWNK",
@@ -7200,6 +7206,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.14606.65780799141015212.07b74564-f8a6-4ab1-b868-91169ad4faff.9416d5a7-9aa0-47ab-b85e-5f4ff6f6fa9d"
   },
   {
+    "name": "Ratatan",
+    "slug": "ratatan",
+    "productId": "9N325V9CL7CV",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.45441.13945242878162791.c42b3ab5-da0b-43cb-a00f-7f17ec5d4ab6.6cde090b-4e96-464c-a21b-42679d176c80"
+  },
+  {
     "name": "Ravenswatch",
     "slug": "ravenswatch",
     "productId": "9P4NX9RD7FRG",
@@ -8610,6 +8622,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.19977.13545235395514258.880c634b-cde6-4c95-892a-89c0e784d11a.4bdacf5f-6e6f-4b97-bdb1-d49bee68fc66"
   },
   {
+    "name": "Stumble Guys",
+    "slug": "stumble-guys",
+    "productId": "9N9L211HC9LQ",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.20384.13535531230137705.da10e97f-1db4-41fc-bf82-fc4fe5ddb484.a691de53-ee1f-43e1-822f-5ce5cbf35d09"
+  },
+  {
     "name": "Styx: Blades of Greed",
     "slug": "styx-blades-of-greed",
     "productId": "9NZTKVTDZ2LB",
@@ -9754,6 +9772,12 @@
     "slug": "the-walking-dead-the-final-season",
     "productId": "9NL9XP529G4Q",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.60830.13715445583677913.9255e94f-f6ef-43ee-96cc-014db1f03269.1776419b-738e-4b3d-af7c-66a7015ea851"
+  },
+  {
+    "name": "The Wandering Village",
+    "slug": "the-wandering-village",
+    "productId": "9N8B7SVL2DTL",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.45206.14048243661558759.33bf9b15-96a7-42d1-8ed5-6e37f651a1cc.601c7c6a-fffd-463b-b9ae-d8ec7902dd48"
   },
   {
     "name": "The Wild at Heart",
