@@ -690,6 +690,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.17703.13510798887933723.57e43f19-4066-429e-b1a2-caea56e427b4.f555e1de-d116-4ab1-bed1-408a78622ba6"
   },
   {
+    "name": "ASTRONEER: Megatech",
+    "slug": "astroneer-megatech",
+    "productId": "9PJBL7ZK6K5B",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.7671.14214786208051715.fe9b7109-3c95-4fe6-a957-b141109be083.abce8b2d-fb56-4c9c-8c35-fcf2d9d3e2f5"
+  },
+  {
     "name": "ASTROSMASH",
     "slug": "astrosmash",
     "productId": "9NLVFTKQV50J",
@@ -892,6 +898,12 @@
     "slug": "battlefield-6",
     "productId": "9P2FF14JZLL3",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.65490.14559138935406168.e7f01a08-ebf9-41d8-88ba-39fb1a148711.c65ba007-7378-497e-b934-101230f24e82"
+  },
+  {
+    "name": "Battlefield REDSEC",
+    "slug": "battlefield-redsec",
+    "productId": "9N8PLG9HD32S",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.51833.14045397784376503.87b776b1-664d-474b-93a7-b54603179855.5f67784c-a49b-4710-ab1e-e0a66d5b14bc"
   },
   {
     "name": "Beacon Pines",
@@ -1348,6 +1360,12 @@
     "slug": "call-of-duty-black-ops-cold-war",
     "productId": "9N2DMQBN9RC4",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.54574.13958233436121605.1b468d8b-6591-4a41-bbbc-74f5a2da15ae.5782c5be-1533-4c56-85f8-60d00121684c"
+  },
+  {
+    "name": "Call of Duty: Modern Warfare 4",
+    "slug": "call-of-duty-modern-warfare-4",
+    "productId": "9NCPSQQD1Z66",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.4715.13559635275456449.72d1efe7-e297-4b01-9ff5-81f9541bc9a1.a25cb344-59ba-49dd-8858-37563c544636"
   },
   {
     "name": "Call of Duty: Modern Warfare II",
@@ -2374,6 +2392,12 @@
     "slug": "dodgeball-academia",
     "productId": "9NBHQSQ3621M",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.1816.13512894043958814.0c1d3980-6634-4920-89fc-bc5f23ac14f2.80124cf8-1995-4056-a3f2-82d14e6443fd"
+  },
+  {
+    "name": "Dodo Duckie",
+    "slug": "dodo-duckie",
+    "productId": "9P7S9F02293J",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.25990.14101741972261561.9e10f950-0892-454b-9313-97bca79aa676.8670253d-aac4-4976-8dbb-f4dddb211c62"
   },
   {
     "name": "Dogurai",
@@ -3610,6 +3634,12 @@
     "slug": "gears-of-war-4",
     "productId": "9NBLGGH4PBBM",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.11650.13510798887356280.235dc311-b50e-403c-af16-ceffcc2c2399.99b85445-285f-4bc9-a0ec-53e5c36b1ae3"
+  },
+  {
+    "name": "Gears of War: E-Day",
+    "slug": "gears-of-war-e-day",
+    "productId": "9N4PT8HGCDHQ",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.58579.13978914104035031.46ab30c4-87b3-48d6-9e4a-ed44b301b17a.0c0f53d8-d3af-4c48-a1a6-22b31c4ec463"
   },
   {
     "name": "Gears of War: Judgment",
@@ -6624,6 +6654,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.49186.14023862983584172.71823e2e-c6b2-4372-a1b9-ec0708e514ce.1790f650-e744-4849-8a26-df3dfbd68004"
   },
   {
+    "name": "Party Animals",
+    "slug": "party-animals",
+    "productId": "9MZ08RDQ4DM1",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.9974.13884485183103116.0a0871f2-1ade-492d-9726-428ea1c1cd31.fa951e82-20a7-4620-b1b5-fdff692d6d4a"
+  },
+  {
     "name": "Party Hard",
     "slug": "party-hard",
     "productId": "BXVBZGL29961",
@@ -6724,6 +6760,12 @@
     "slug": "pba-pro-bowling-2026",
     "productId": "9PJRQHMCFQGS",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.52979.14276876348664667.9e0ca272-03d8-4736-b77b-d1224ceb323a.0a60754b-ec9d-4c8b-93bc-87a7abd5bfca"
+  },
+  {
+    "name": "PEAK",
+    "slug": "peak",
+    "productId": "9NMKF7LPVX44",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.3656.13690576805036811.a692716b-bccb-4296-95be-ce651e257db8.ebfc93b2-fa82-491e-845d-93db854088bc"
   },
   {
     "name": "Peggle 2",
@@ -7936,6 +7978,12 @@
     "slug": "shoot-the-wall",
     "productId": "9N6CZLF1V9TF",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.18254.14020471933554520.96db1038-f78a-4dc3-89b0-7d39f4babcc8.b4186774-49e2-4e3e-9e7b-769429ff1c83"
+  },
+  {
+    "name": "Shoresy: Legends of the North",
+    "slug": "shoresy-legends-of-the-north",
+    "productId": "9N30NJWJ25GX",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.50230.13942042185480323.354ed583-436f-4ce9-880d-d2db51a3c5ad.e3f72e55-1ada-4fc1-91b6-3cc8ed7bb90f"
   },
   {
     "name": "Shovel Knight: Treasure Trove",
@@ -9682,6 +9730,12 @@
     "slug": "the-strange-story-of-brian-fisher-chapter-1",
     "productId": "9NFVPRCP0PNC",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.25923.13587353900076032.c425fae9-02f5-41b5-8d5a-ef711f9eb0e3.a328a470-160b-4266-8e61-acc4f9844dcf"
+  },
+  {
+    "name": "The Strange Story Of Brian Fisher: Chapter 2",
+    "slug": "the-strange-story-of-brian-fisher-chapter-2",
+    "productId": "9MXTM4JL2QQK",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.3320.13887470150962154.d3a5a4cb-cc61-44ac-9e64-c89bbf39df69.03f47a6d-d83a-42ef-b185-f86e08317723"
   },
   {
     "name": "The Surge",
