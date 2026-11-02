@@ -702,6 +702,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.62540.13700047774909363.a7430cec-9b47-4f90-ae5c-8cb1c025a7ab.d1f2e2c2-c64e-434c-a242-e466486d0db5"
   },
   {
+    "name": "Asylum",
+    "slug": "asylum",
+    "productId": "9N11994G514B",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.49180.13915026531015961.22f4f66a-24dd-4f93-bd86-6756e2022410.eb7fabba-8fc2-4351-875d-9acc7fddac59"
+  },
+  {
     "name": "Atari 50: The Anniversary Celebration",
     "slug": "atari-50-the-anniversary-celebration",
     "productId": "9N3TFDSQ531T",
@@ -1365,6 +1371,12 @@
     "name": "Call of Duty: Modern Warfare 4",
     "slug": "call-of-duty-modern-warfare-4",
     "productId": "9NCPSQQD1Z66",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.4715.13559635275456449.72d1efe7-e297-4b01-9ff5-81f9541bc9a1.a25cb344-59ba-49dd-8858-37563c544636"
+  },
+  {
+    "name": "Call of Duty: Modern Warfare 4",
+    "slug": "call-of-duty-modern-warfare-4",
+    "productId": "9P36PB4N42GW",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.4715.13559635275456449.72d1efe7-e297-4b01-9ff5-81f9541bc9a1.a25cb344-59ba-49dd-8858-37563c544636"
   },
   {
@@ -2928,6 +2940,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.30838.14258741107754172.90f988fc-06e9-4e1c-80e3-e8d217356bed.5e7a2656-7948-4a7c-9d66-379f5eff2287"
   },
   {
+    "name": "Escape from Ever After",
+    "slug": "escape-from-ever-after",
+    "productId": "9P08H8ZQKPFD",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.38095.14461031920254969.f9cbaffd-6827-486e-9c0a-8f56f4dd6e29.603e6def-486a-4591-a267-acb09ef93824"
+  },
+  {
     "name": "Escape Simulator",
     "slug": "escape-simulator",
     "productId": "9NKBDN695GTT",
@@ -3214,6 +3232,12 @@
     "slug": "fear-the-spotlight",
     "productId": "9NW2S9T1GH7X",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.45521.14453210688244237.2da23406-8c5f-405c-8876-174d3a439bdd.3089fbd0-325b-4026-84e6-03588021022a"
+  },
+  {
+    "name": "Fear The Timeloop",
+    "slug": "fear-the-timeloop",
+    "productId": "9P1MPWT913V2",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.1753.14508410969908901.d22d7d0e-5bb2-4d47-88bf-02cc671a7d3a.6e88fbc2-fb6c-4f71-8ce3-0e5283840ebe"
   },
   {
     "name": "FEROCIOUS",
@@ -5766,6 +5790,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.33944.13513466192535313.7e8b9323-4eea-4260-af50-a8f2d5927c57.299464b8-e6f8-4d99-b2be-fb5b279cd39f"
   },
   {
+    "name": "Mini Racer Car Shop Simulator",
+    "slug": "mini-racer-car-shop-simulator",
+    "productId": "9NV7D2JQ1C2Z",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.26589.14399719421184058.edc8eab0-3d08-4a2f-9d3a-8d8e09ef16e7.cc08fd11-0522-4e5e-b29d-4b710eb5ef5b"
+  },
+  {
     "name": "Minishoot’ Adventures",
     "slug": "minishoot-adventures",
     "productId": "9N5PKH0KW2L1",
@@ -5902,6 +5932,12 @@
     "slug": "monsters-are-coming",
     "productId": "9PJBKF27C16M",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.48961.14214770193219588.d7b03b82-15f1-412f-bb45-0e565e91a1bc.6e5a043d-3875-4ee9-a40e-fef35247c6f6"
+  },
+  {
+    "name": "Montabi",
+    "slug": "montabi",
+    "productId": "9PMP77PLHTX0",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.25988.14289738902544275.899eaaf1-2001-4e7b-9eeb-144ee6c775e6.a8861daf-6d63-4077-9503-20ea3e2f2789"
   },
   {
     "name": "Moon Mystery",
@@ -6918,6 +6954,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.61874.66663660452837213.88feed53-4335-4b35-8a3a-476a0f0fd6ca.2fb76fcc-ce28-470d-b90d-e5285e6ed205"
   },
   {
+    "name": "Plants vs. Zombies: Replanted",
+    "slug": "plants-vs-zombies-replanted",
+    "productId": "9PGSDFM3JD85",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.44024.14249493036313298.22c0dae5-4fa6-41f8-a5bd-bfdfcb3e98a0.e9d9cbb7-341e-49bc-9f14-09919dbaae4e"
+  },
+  {
     "name": "PlateUp!",
     "slug": "plateup",
     "productId": "9P2HHT3VS7MP",
@@ -7474,6 +7516,12 @@
     "slug": "rivals-of-aether",
     "productId": "BWSQ6832LWNL",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.33384.71675777330374625.59b62521-97d1-4000-b8ec-327296881bba.ac6cb85b-d0d0-40c4-820c-fe471035b20e"
+  },
+  {
+    "name": "Riven",
+    "slug": "riven",
+    "productId": "9P62C7M1XHW7",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.27543.14628434922521498.b16a6119-3fec-425d-8387-d4ac4b7f607b.308cad33-1d33-4c26-a6f7-86b029bea407"
   },
   {
     "name": "River City Girls",
@@ -9222,6 +9270,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.44920.68188801292582061.75a97ced-cd49-4d61-95a3-8be9bd225231.18d43a98-401e-400b-a584-cb5455859946"
   },
   {
+    "name": "The End of the Sun",
+    "slug": "the-end-of-the-sun",
+    "productId": "9P0Q2XX2D358",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.23154.14526573739430925.76bc7a20-cd90-4ac9-b32b-94dabd89f870.20b40686-70e2-4eff-b606-7a1e6f26086c"
+  },
+  {
     "name": "The Enigma Machine",
     "slug": "the-enigma-machine",
     "productId": "9PKP9F0NZ5PP",
@@ -9844,6 +9898,12 @@
     "slug": "the-witcher-3-wild-hunt",
     "productId": "BR765873CQJD",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.13986.69531514236615003.534d4f71-03cb-4592-929a-b00a7de28b58.c4152bcf-9088-4e35-98b5-9a2e44b927c5"
+  },
+  {
+    "name": "The Wolf Among Us",
+    "slug": "the-wolf-among-us",
+    "productId": "C02SL8LBS5K2",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.5089.64565521137234771.d4fa27af-3a00-44af-9927-ce57a7066702.c87b015a-61cf-46d6-a77a-0b8d09279d37"
   },
   {
     "name": "theHunter: Call of the Wild",
@@ -10542,6 +10602,12 @@
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.5092.13678602760656256.81c7a853-cc4f-4e4a-bde1-6d611a050985.d1458f44-2f73-4912-8031-d18aac026878"
   },
   {
+    "name": "Vigor",
+    "slug": "vigor",
+    "productId": "BQL8L17RV09Z",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.54805.69196089202583628.8810ce7b-6d06-402d-b311-80270503242a.d4716c17-f031-475d-a365-f54515fde88b"
+  },
+  {
     "name": "Visage",
     "slug": "visage",
     "productId": "9P9V698V6MVR",
@@ -11122,6 +11188,12 @@
     "slug": "zombie-army-4-dead-war",
     "productId": "9PLSCHRN5715",
     "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.57045.14307155302772688.6d2bb19d-e8cc-4826-bd21-920020654895.8c854128-fe7f-43cb-aa88-cfc11f91f65d"
+  },
+  {
+    "name": "Zombie Graveyard Simulator",
+    "slug": "zombie-graveyard-simulator",
+    "productId": "9PNLPMMTV8CL",
+    "boxArtUrl": "https://store-images.s-microsoft.com/image/apps.35136.14346269915994235.9e786e90-3223-453e-ad2b-484e4d6e14ed.8b354c6c-2153-40fe-adfc-014f4329cede"
   },
   {
     "name": "Zombie Rollerz: Pinball Heroes",
